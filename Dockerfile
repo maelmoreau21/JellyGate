@@ -11,10 +11,12 @@ FROM golang:1.24-bookworm AS go-builder
 ARG TARGETARCH
 WORKDIR /opt/build
 
-# Install native dependencies required for CGO (libolm, sqlite, etc.)
+# Install native dependencies required for CGO (libolm, sqlite, build tools)
 RUN apt-get update && apt-get install -y \
     libolm-dev \
     libsqlite3-dev \
+    pkg-config \
+    build-essential \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -22,8 +24,16 @@ RUN apt-get update && apt-get install -y \
 COPY . .
 COPY --from=frontend-builder /opt/build/build/data ./build/data
 
+# Ensure CGO is enabled and pre-download modules
+ENV CGO_ENABLED=1
+RUN go mod download
+
 # Build the Go binary natively
-RUN VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/v//g' || echo "dev") && \
+RUN set -e; \
+    # Diagnostic: check if pkg-config finds libraries
+    pkg-config --exists olm || (echo "ERROR: libolm not found by pkg-config" && exit 1); \
+    pkg-config --exists sqlite3 || (echo "ERROR: sqlite3 not found by pkg-config" && exit 1); \
+    VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/v//g' || echo "dev") && \
     COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
     BUILDTIME=$(date +%s) && \
     CSSVERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged") && \
