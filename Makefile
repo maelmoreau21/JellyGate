@@ -11,7 +11,7 @@ else
 endif
 GOBINARY ?= go
 
-CSSVERSION ?= $(shell git describe --tags --abbrev=0)
+CSSVERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "untagged")
 CSS_BUNDLE = $(DATA)/web/css/$(CSSVERSION)bundle.css
 
 VERSION ?= $(shell git describe --exact-match HEAD 2> /dev/null || echo vgit)
