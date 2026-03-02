@@ -11,11 +11,11 @@ RUN npm ci
 # Build all frontend assets (CSS, TypeScript, HTML, email templates, swagger docs, config)
 RUN env GOOS= GOARCH= make precompile
 
-# Build the Go binary using goreleaser (skipping before hooks, already done above)
-RUN bash ./scripts/version.sh goreleaser build --snapshot --skip=validate,before --clean --id notray-e2ee
+# Build the Go binary using goreleaser (verbose for debugging, skip before hooks since done above)
+RUN bash ./scripts/version.sh goreleaser build --snapshot --skip=before --clean --id notray-e2ee --verbose
 
-RUN mv /opt/build/dist/*_linux_arm_6 /opt/build/dist/placeholder_linux_arm
-RUN sed -i 's#id="password_resets-watch_directory" placeholder="/config/jellyfin"#id="password_resets-watch_directory" value="/jf" disabled#g' /opt/build/build/data/html/setup.html
+RUN mv dist/*_linux_arm_6 dist/placeholder_linux_arm
+RUN sed -i 's#id="password_resets-watch_directory" placeholder="/config/jellyfin"#id="password_resets-watch_directory" value="/jf" disabled#g' build/data/html/setup.html
 
 FROM gcr.io/distroless/base:latest AS final
 ARG TARGETARCH
