@@ -1,10 +1,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 project_name: jellygate
-before:
-  hooks:
-    - npm ci
-    - env GOOS= GOARCH= make precompile
+# No before hooks - frontend build is done by the Dockerfile explicitly
 builds:
   - id: notray-e2ee
     dir: ./
