@@ -203,6 +203,8 @@ INLINE_SRC = html/crash.html
 INLINE_TARGET = $(DATA)/crash.html
 $(INLINE_TARGET): $(CSS_FULLTARGET) $(INLINE_SRC)
 	cp html/crash.html $(DATA)/crash.html
+	sed -i 's/v0.6.0bundle.css/$(CSSVERSION)bundle.css/g' $(DATA)/crash.html
+
 	$(UNCSS) # generates $(DATA)/bundle.css for us
 	node scripts/inline.js root $(DATA) $(DATA)/crash.html $(DATA)/crash.html
 	rm $(DATA)/bundle.css
