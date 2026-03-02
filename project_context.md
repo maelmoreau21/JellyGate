@@ -42,7 +42,7 @@ JellyGate is a specialized fork of `jfa-go` aimed at transforming it into a ente
 | **Backend** | Go (Monolith) |
 | **Frontend** | HTML5, TypeScript, Vanilla CSS |
 | **Container** | Docker (Distroless final image) |
-| **CI/CD** | Woodpecker / GitHub Actions |
+| **CI/CD** | GitHub Actions (GHCR Publishing) |
 
 ---
 
