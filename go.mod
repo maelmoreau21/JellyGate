@@ -14,8 +14,6 @@ replace github.com/hrfee/jfa-go/logmessages => ./logmessages
 
 replace github.com/hrfee/jfa-go/linecache => ./linecache
 
-replace github.com/hrfee/jfa-go/api => ./api
-
 replace github.com/hrfee/jfa-go/easyproxy => ./easyproxy
 
 replace github.com/hrfee/jfa-go/jellyseerr => ./jellyseerr

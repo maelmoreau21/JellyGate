@@ -30,8 +30,10 @@ RUN set -e; \
       -X main.buildTimeUnix=${BUILDTIME} \
       -X main.builtBy=docker \
       -X main.updater=docker" && \
+    echo "Running go mod tidy..." && \
+    go mod tidy && \
     echo "Starting native build for ${TARGETARCH}..." && \
-    go build -v -tags "e2ee,goolm,external" -ldflags "${LDFLAGS}" -o /jellygate .
+    go build -v -tags "e2ee goolm external" -ldflags "${LDFLAGS}" -o /jellygate .
 
 # Final cleanup of the data folder (specific project logic)
 RUN sed -i 's#id="password_resets-watch_directory" placeholder="/config/jellyfin"#id="password_resets-watch_directory" value="/jf" disabled#g' build/data/html/setup.html
