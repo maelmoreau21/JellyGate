@@ -1,0 +1,19 @@
+{
+    "meta": {
+        "name": "العربية (AR)"
+    },
+    "strings": {
+        "startMessage": "أهلاً!\nأدخل رمز Jellyfin هنا لتأكيد حسابك.",
+        "discordStartMessage": "أهلاً!\nأدخل رمزك باستخدام ⁦.لتأكيد حسابك /pin <الرمز>",
+        "matrixStartMessage": "أهلاً\nأدخل الرمز أدناه في صفحة التسجيل في Jellyfin لتأكيد حسابك.",
+        "invalidPIN": "هذا الرمز خاطئ، حاول مرة أُخرى.",
+        "pinSuccess": "تم! يمكنك الآن العودة إلى صفحة التسجيل.",
+        "languageMessage": "ملاحظة: اطّلع على اللغات المتاحة باستخدام {command}، وقم بتعيين اللغة باستخدام {command} <language code>.",
+        "languageMessageDiscord": "ملاحظة: اختر اللغة باستخدام ⁦./lang <language name>",
+        "languageSet": "تم تعيين اللغة إلى {language}.",
+        "discordDMs": "يرجى التحقق من رسائلك المباشرة للحصول على رد.",
+        "noPermission": "لا تملك الصلاحية لهذا الإجراء.",
+        "sentInvite": "تم إرسال الدعوة.",
+        "sentInviteFailure": "فشل إرسال الدعوة، تحقق من السجلات."
+    }
+}

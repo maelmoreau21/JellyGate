@@ -1,0 +1,170 @@
+{
+    "meta": {
+        "name": "Ελληνικά (GR)"
+    },
+    "strings": {
+        "invites": "Προσκλήσεις",
+        "accounts": "Λογαριασμοί",
+        "settings": "Ρυθμίσεις",
+        "inviteDays": "Ημέρες",
+        "inviteHours": "Ώρες",
+        "inviteMinutes": "Λεπτά",
+        "inviteNumberOfUses": "Αριθμός χρήσεων",
+        "warning": "Προσοχή",
+        "inviteInfiniteUsesWarning": "μπορεί να γίνει κατάχρηση των προσκλήσεων με άπειρες χρήσεις",
+        "inviteSendToEmail": "Αποστολή σε",
+        "create": "Δημιουργία",
+        "apply": "Εφαρμογή",
+        "name": "Όνομα",
+        "date": "Ημερομηνία",
+        "lastActiveTime": "Τελευταία Ενεργός",
+        "from": "Απο",
+        "user": "Χρήστης",
+        "aboutProgram": "Σχετικά",
+        "version": "Έκδοση",
+        "commitNoun": "Καταχώρηση",
+        "newUser": "Νέος Χρήστης",
+        "profile": "Προφίλ",
+        "unknown": "Άγνωστο",
+        "label": "Ετικέτα",
+        "modifySettings": "Επεξεργασία Ρυθμίσεων",
+        "modifySettingsDescription": "Εφαρμογή ρυθμίσεων απο υπάρχον προφίλ ή απευθείας απο χρήστη.",
+        "applyHomescreenLayout": "Εφαρμογή δομής αρχικής οθόνης",
+        "sendDeleteNotificationEmail": "Αποστολή ενημερωτικού email",
+        "sendDeleteNotifiationExample": "Ο λογαριασμός σας έχει διαγραφεί.",
+        "settingsRestart": "Επανεκίνηση",
+        "settingsRestarting": "Επανεκινεί…",
+        "settingsRestartRequired": "Απαιτείται επανεκκίνηση",
+        "settingsRestartRequiredDescription": "Απαιτείται επανεκκίνηση για να εφαρμοστούν κάποιες απο τις ρυθμίσεις που αλλάξατε. Επανεκκίνηση τώρα ή αργότερα?",
+        "settingsApplyRestartLater": "Εφαρμογή, επανεκκίνηση αργότερα",
+        "settingsApplyRestartNow": "Εφαρμογή και επανεκκίνηση",
+        "settingsApplied": "Οι ρυθμίσεις εφαρμόστηκαν.",
+        "settingsRefreshPage": "Επαναφορτόστε την σελίδα σε μερικά δεύτερα.",
+        "settingsRequiredOrRestartMessage": "Σημείωση: {n} δηλώνει υποχρεωτικό πεδίο, {n} δηλώνει αλλαγές που απαιτούν επανεκκίνηση.",
+        "settingsSave": "Αποθήκευση",
+        "ombiUserDefaults": "Προεπιλογές χρήστη Ombi",
+        "ombiUserDefaultsDescription": "Δημιουργήστε έναν χρήστη Ombi και ρυθμίστε τον, μετά επιλέξτε τον απο κάτω. Οι ρυθμίσεις/άδειες θα αποθηκευτούν και εφαρμοστούν σε νέους χρήστες Ombi που έχουν δημιουργηθεί απο το jfa-go",
+        "userProfiles": "Προφιλ Χρήστη",
+        "userProfilesDescription": "Τα προφίλ εφαρμόζονται στους χρήστες όταν δημιουργούν λογαριασμό. Το προφίλ περιέχει δικαιώματα στις βιβλιοθήκες και δομή αρχικής οθόνης.",
+        "userProfilesIsDefault": "Προκαθορισμένα",
+        "userProfilesLibraries": "Βιβλιοθήκες",
+        "addProfile": "Προσθήκη Προφίλ",
+        "addProfileDescription": "Δημιουργήστε χρήστη Jellyfin και ρυθμίστε τον, μετά επιλέξτε τον παρακάτω. Όταν αυτό το προφίλ επιλέγεται σε μία πρόσκληση, τότε οι νέοι χρήστες θα δημιουργηθούν με αυτές τις ρυθμίσεις.",
+        "addProfileNameOf": "Όνομα Προφίλ",
+        "addProfileStoreHomescreenLayout": "Αποθήκευση αρχικής οθόνης",
+        "inviteNoUsersCreated": "Τίποτα ακόμα!",
+        "inviteUsersCreated": "Δημιουργηθέντες χρήστες",
+        "inviteNoProfile": "Κανένα Προφίλ",
+        "inviteDateCreated": "Δημιουργηθέντα",
+        "inviteNoInvites": "Καμία",
+        "inviteExpiresInTime": "Λήγει σε {n}",
+        "notifyEvent": "Ενημέρωση όταν:",
+        "notifyInviteExpiry": "Στην λήξη",
+        "notifyUserCreation": "Στην δημιουργία χρήστη",
+        "variables": "Μεταβλητές",
+        "preview": "Προεπισκόπηση",
+        "reset": "Επαναφορά",
+        "customizeMessages": "Παραμετροποίηση Emails",
+        "advancedSettings": "Προχωρημένες Ρυθμίσεις",
+        "customizeMessagesDescription": "Αν δεν θέλετε να ζρησιμοποιήσετε τα πρότυπα email του jfa-go, μπορείτε να δημιουργήσετε τα δικά σας με χρήση Markdown.",
+        "updates": "Ενημερώσεις",
+        "update": "Ενημέρωση",
+        "download": "Λήψη",
+        "search": "Αναζήτηση",
+        "inviteDuration": "Διάρκεια Πρόσκλησης",
+        "userExpiry": "Λήξη Χρήστη",
+        "userExpiryDescription": "Μετά απο ένα καθορισμένο χρόνο μετά απο κάθε εγγραφή, το jfa-go θα διαγράφει/απενεργοποιεί τον λογαριασμό. Μπορείτε να αλλάξετε αυτή την συμπεριφορά στις ρυθμίσεις.",
+        "announce": "Ανακοίνωση",
+        "subject": "Θέμα Email",
+        "message": "Μήνυμα",
+        "extendExpiry": "Παράταση λήξης",
+        "markdownSupported": "Το Markdown υποστυρίζεται.",
+        "inviteMonths": "Μήνες"
+    },
+    "notifications": {
+        "changedEmailAddress": "Αλλαγή {n} διεύθυνσεων email.",
+        "userCreated": "Δημιουργήθηκε ο {n} χρήστης.",
+        "createProfile": "Δημιουργήθηκε το {n} προφίλ.",
+        "saveSettings": "Οι ρυθμίσεις αποθηκεύτηκαν",
+        "setOmbiDefaults": "Αποθηκεύτηκαν οι προκαθορισμένες ρυθμίσεις του ombi.",
+        "errorSettingsAppliedNoHomescreenLayout": "Οι ρυθμίσεις αποθηκεύτηκαν, αλλά η καταχώρηση δομής αρχικής οθόνης ίσως απέτυχε.",
+        "errorHomescreenAppliedNoSettings": "Η δομή αρχικής οθόνης εφαρμόστηκε, αλλά οι ρυθμίσεις ίσως απέτυχαν.",
+        "errorSettingsFailed": "Η εφαρμογή απέτυχε.",
+        "errorBlankFields": "Τα πεφία ήταν κενά",
+        "errorDeleteProfile": "Αποτυχία διαγραφής του προφίλ {n}",
+        "errorLoadProfiles": "Αποτυχία φόρτωσης των προφίλ.",
+        "errorCreateProfile": "Αποτυχία δημιουργίας του προφίλ {n}",
+        "errorSetDefaultProfile": "Αποτυχία ορισμού του προκαθορισμένου προφίλ.",
+        "errorLoadUsers": "Αποτυχία φόρτωσης χρηστών.",
+        "errorLoadSettings": "Αποτυχία φόρτωσης ρυθμίσεων.",
+        "errorSetOmbiDefaults": "Αποτυχία αποθήκευσης προκαθορισμένων ρυθμίσεων για το Ombi.",
+        "errorLoadOmbiUsers": "Αποτυχία φόρτωσης χρηστών Ombi.",
+        "errorChangedEmailAddress": "Αποτυχία αλλαγής email του {n}.",
+        "errorFailureCheckLogs": "Αποτυχία (ελέγξτε κονσόλα/καταγραφές)",
+        "errorPartialFailureCheckLogs": "Μερική αποτυχία (ελέγξτε κονσόλα/καταγραφές)",
+        "errorUserCreated": "Αποτυχία δημιουργίας του χρήστη {n}.",
+        "errorSendWelcomeEmail": "Αποτυχία αποστολής email καλωσορίσματος (ελέγξτε κονσόλα/καταγραφές)",
+        "saveEmail": "Το email αποθηκεύτηκε.",
+        "sentAnnouncement": "Ανακοίνωση εστάλη.",
+        "updateApplied": "Η ενημέρωση εφαρμόστηκε, παρακαλώ επανεκκινήστε.",
+        "errorSaveEmail": "Αποτυχία αποθήκευσης του email.",
+        "errorApplyUpdate": "Αποτυχία εγκατάστασης ενημέρωσης, προσπαθήστε χειροκίνητα.",
+        "errorCheckUpdate": "Αποτυχία ελέγχου για ενημερώσεις.",
+        "updateAvailable": "Μια νέα ενημέρωση είναι διαθέσιμη, ελέγξτε τις ρυθμίσεις.",
+        "noUpdatesAvailable": "Δεν υπάρχουν διαθέσιμες ενημερώσεις."
+    },
+    "quantityStrings": {
+        "modifySettingsFor": {
+            "singular": "Επεξεργασία Ρυθμίσεων για {n} χρήστη",
+            "plural": "Επεξεργασία Ρυθμίσεων για {n} χρήστες"
+        },
+        "deleteNUsers": {
+            "singular": "Διαγραφή {n} χρήστη",
+            "plural": "Διαγραφή {n} χρηστών"
+        },
+        "addUser": {
+            "singular": "Προσθήκη χρήστη",
+            "plural": "Προσθήκη χρηστών"
+        },
+        "deleteUser": {
+            "singular": "Διαγραφή Χρήστη",
+            "plural": "Διαγραφή Χρηστών"
+        },
+        "deletedUser": {
+            "singular": "Διαγράφη {n} χρήστη.",
+            "plural": "Διαγράφησαν {n} χρήστες."
+        },
+        "appliedSettings": {
+            "singular": "Εφαρμογή ρυθμίσεων σε {n} χρήστη.",
+            "plural": "Εφαρμογή ρυθμίσεων σε {n} χρήστες."
+        },
+        "announceTo": {
+            "singular": "Ανακοίνωση σε {n} χρήστη",
+            "plural": "Ανακοίνωση σε {n} χρήστες"
+        },
+        "extendExpiry": {
+            "plural": "Επέκταση λήξης σε {n} χρήστες",
+            "singular": "Επέκταση λήξης σε {n} χρήστη"
+        },
+        "extendedExpiry": {
+            "singular": "Εκτεταμένη λήξη για {n} χρήστη.",
+            "plural": "Εκτεταμένη λήξη για {n} χρήστες."
+        },
+        "disableUsers": {
+            "singular": "Απενεργοποίηση {n} χρήστη",
+            "plural": "Απενεργοποίηση {n} χρηστών"
+        },
+        "reEnableUsers": {
+            "singular": "Εκ νέου ενεργοποίηση {n} χρήστη",
+            "plural": "Εκ νέου ενεργοποίηση {n} χρηστών"
+        },
+        "disabledUser": {
+            "singular": "Απενεργοποιήθηκε {n} χρήστης.",
+            "plural": "Απενεργοποιήθηκαν {n} χρήστες."
+        },
+        "enabledUser": {
+            "singular": "Εργοποιήθηκε {n} χρήστης.",
+            "plural": "Εργοποιήθηκαν {n} χρήστες."
+        }
+    }
+}

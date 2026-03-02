@@ -1,0 +1,89 @@
+{
+    "meta": {
+        "name": "English (US)"
+    },
+    "strings": {
+        "ifItWasNotYou": "If this wasn't you, please ignore this.",
+        "helloUser": "Hi {username},",
+        "reason": "Reason"
+    },
+    "userCreated": {
+        "name": "User creation",
+        "title": "Notice: User created",
+        "aUserWasCreated": "A user was created using code {code}.",
+        "time": "Time",
+        "notificationNotice": "Note: Notification messages can be toggled on the admin dashboard."
+    },
+    "inviteExpiry": {
+        "name": "Invite expiry",
+        "title": "Notice: Invite expired",
+        "inviteExpired": "Invite expired.",
+        "expiredAt": "Code {code} expired at {time}.",
+        "notificationNotice": "Note: Notification messages can be toggled on the admin dashboard."
+    },
+    "passwordReset": {
+        "name": "Password reset",
+        "title": "Password reset requested - Jellyfin",
+        "someoneHasRequestedReset": "Someone has recently requested a password reset on Jellyfin.",
+        "ifItWasYou": "If this was you, enter the pin below into the prompt.",
+        "ifItWasYouLink": "If this was you, click the link below.",
+        "codeExpiry": "The code will expire on {date}, at {time} UTC, which is in {expiresInMinutes}.",
+        "pin": "PIN"
+    },
+    "userDeleted": {
+        "name": "User deletion",
+        "title": "Your account was deleted - Jellyfin",
+        "yourAccountWasDeleted": "Your Jellyfin account was deleted."
+    },
+    "userDisabled": {
+        "name": "User disabled",
+        "title": "Your account has been disabled - Jellyfin",
+        "yourAccountWasDisabled": "Your account was disabled."
+    },
+    "userEnabled": {
+        "name": "User enabled",
+        "title": "Your account has been re-enabled - Jellyfin",
+        "yourAccountWasEnabled": "Your account was re-enabled."
+    },
+    "userExpiryAdjusted": {
+        "name": "Expiry adjusted",
+        "title": "Account expiry adjusted - Jellyfin",
+        "yourExpiryWasAdjusted": "Your account's expiry date has been adjusted.",
+        "ifPreviouslyDisabled": "If your account was previously disabled, it may have been re-enabled.",
+        "newExpiry": "Your account will now expire on {date}."
+    },
+    "inviteEmail": {
+        "name": "Invite email",
+        "title": "Invite - Jellyfin",
+        "hello": "Hi",
+        "youHaveBeenInvited": "You've been invited to Jellyfin.",
+        "toJoin": "To join, follow the below link.",
+        "inviteExpiry": "This invite will expire on {date} at {time}, which is in {expiresInMinutes}, so act quick.",
+        "linkButton": "Setup your account"
+    },
+    "welcomeEmail": {
+        "name": "Welcome",
+        "title": "Welcome to Jellyfin",
+        "welcome": "Welcome to Jellyfin!",
+        "youCanLoginWith": "You can login with the details below",
+        "yourAccountWillExpire": "Your account will expire on {date}.",
+        "jellyfinURL": "URL"
+    },
+    "emailConfirmation": {
+        "name": "Confirmation email",
+        "title": "Confirm your email - Jellyfin",
+        "clickBelow": "Click the link below to confirm your email address and start using Jellyfin.",
+        "confirmEmail": "Confirm Email"
+    },
+    "userExpired": {
+        "name": "User expiry",
+        "title": "Your account has expired - Jellyfin",
+        "yourAccountHasExpired": "Your account has expired.",
+        "contactTheAdmin": "Contact the administrator for more info."
+    },
+    "expiryReminder": {
+        "name": "Expiry reminder",
+        "title": "Reminder: your account will expire soon - Jellyfin",
+        "yourAccountIsDueToExpire": "Your account is due to expire in {expiresIn}, or on {date} at {time}."
+    }
+}

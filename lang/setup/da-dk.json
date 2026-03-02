@@ -1,0 +1,160 @@
+{
+    "meta": {
+        "name": "Dansk (DK)"
+    },
+    "strings": {
+        "pageTitle": "Opsæt - jfa-go",
+        "next": "Næste",
+        "back": "Tilbage",
+        "optional": "Valgfri",
+        "serverType": "Servertype",
+        "disabled": "Deaktiveret",
+        "enabled": "Aktiveret",
+        "port": "Port",
+        "message": "Besked",
+        "serverAddress": "Serveradresse",
+        "emailSubject": "E-mail emne",
+        "URL": "URL",
+        "apiKey": "API Nøgle",
+        "errorNotAdmin": "Brugeren har ikke tilladelse til at administrere server.",
+        "errorInvalidUserPass": "Ugyldigt brugernavn/adgangskode.",
+        "errorUserDisabled": "Bruger kan være deaktiveret.",
+        "error404": "404, tjek den interne URL.",
+        "errorConnectionRefused": "Tilslutning afvist.",
+        "error": "Fejl",
+        "errorUnknown": "Ukendt fejl, tjek app logfiler."
+    },
+    "startPage": {
+        "welcome": "Velkommen!",
+        "pressStart": "Du bliver nødt til at gøre et par ting for at konfigurere jfa-go. Tryk på start for at fortsætte.",
+        "httpsNotice": "Sørg for, at du tilgår denne side via HTTPS eller på et privat netværk.",
+        "start": "Start"
+    },
+    "endPage": {
+        "finished": "Færdig!",
+        "restartMessage": "Funktioner som Discord/Telegram/Matrix bots, brugerdefinerede Markdown beskeder og en brugertilgængelig side \"Min konto\" kan findes i Indstillinger, så sørg for at gennemse den. Klik nedenfor for at genstarte, og opdater derefter siden.",
+        "refreshPage": "Opdater"
+    },
+    "language": {
+        "title": "Sprog",
+        "description": "Fællesskabsoversættelser er tilgængelige for de fleste dele af jfa-go. Du kan vælge standardsprogene nedenfor, men brugere kan stadig ændre det, hvis de ønsker det. Hvis du vil hjælpe med at oversætte, skal du tilmelde dig til {n} for at begynde at bidrage!",
+        "defaultAdminLang": "Standard administrator sprog",
+        "defaultFormLang": "Standard kontooprettelses sprog",
+        "defaultEmailLang": "Standard e-mail sprog"
+    },
+    "general": {
+        "title": "Generel",
+        "listenAddress": "Listen Adresse",
+        "urlBase": "URL-base",
+        "urlBaseNotice": "Kun nødvendigt hvis du bruger en omvendt proxy på et underdomæne (f.eks. 'Jellyf.in/accounts').",
+        "lightTheme": "Lys",
+        "darkTheme": "Mørk",
+        "useHTTPS": "Brug HTTPS",
+        "httpsPort": "HTTPS Port",
+        "useHTTPSNotice": "Anbefales kun hvis du ikke bruger en omvendt proxy.",
+        "pathToCertificate": "Sti til certifikat",
+        "pathToKeyFile": "Sti til nøglefil"
+    },
+    "updates": {
+        "title": "Opdateringer",
+        "description": "Få besked når nye opdateringer er tilgængelige. jfa-go kontrollerer {n} hvert 30 minut. Ingen IP'er eller personlige identificerbare oplysninger indsamles.",
+        "updateChannel": "Opdaterings Kanal",
+        "stable": "Stabil",
+        "unstable": "Ustabil"
+    },
+    "login": {
+        "title": "Log på",
+        "description": "For at få adgang til admin-siden skal du logge ind med nedenstående metode:",
+        "authorizeWithJellyfin": "Autoriser med Jellyfin/Emby: Loginoplysninger deles med Jellyfin, hvilket giver mulighed for flere brugere.",
+        "authorizeManual": "Brugernavn og adgangskode: indtast brugernavn og adgangskode manuelt.",
+        "adminOnly": "Kun administratorbrugere (anbefalet)",
+        "emailNotice": "Din e-mail adresse kan bruges til at modtage underretninger.",
+        "allowAll": "Tillad alle Jellyfin brugere at logge ind",
+        "allowAllDescription": "Det anbefales ikke, du bør tillade individuelle brugere at logge ind, når de er konfigureret.",
+        "authorizeManualUserPageNotice": "Brug af dette vil deaktivere \"Brugerside\" funktionen."
+    },
+    "jellyfinEmby": {
+        "title": "Jellyfin/Emby",
+        "description": "En administratorkonto er nødvendig fordi API'en ikke tillader oprettelse af brugere ved hjælp af en API-nøgle. Du skal oprette en separat konto og markere 'Tillad denne bruger at administrere serveren'. Du kan deaktivere alt andet. Når du er færdig, skal du indtaste loginoplysningerne her.",
+        "embyNotice": "Emby support er begrænset og understøtter ikke nulstilling af adgangskode.",
+        "internal": "Intern",
+        "external": "Ekstern",
+        "replaceJellyfin": "Server navn",
+        "replaceJellyfinNotice": "Hvis angivet, vil dette erstatte enhver forekomst af 'Jellyfin' i appen.",
+        "addressExternalNotice": "Lad det være tomt for at bruge den samme adresse.",
+        "testConnection": "Test forbindelse"
+    },
+    "ombi": {
+        "title": "Ombi",
+        "description": "Ved at oprette forbindelse til Ombi, oprettes både en Jellyfin og Ombi konto når en bruger tilmelder sig via jfa-go. Når installationen er afsluttet, skal du gå til Indstillinger for at indstille en standardprofil til nye Ombi brugere.",
+        "apiKeyNotice": "Find dette i den første fane i Ombi indstillinger."
+    },
+    "email": {
+        "title": "E-mail",
+        "description": "jfa-go kan sende PIN-koder til nulstilling af adgangskoder og forskellige meddelelser via e-mail. Du kan oprette forbindelse til en SMTP-server eller bruge {n} API.",
+        "method": "Afsendelsesmetode",
+        "useEmailAsUsername": "Brug e-mail adresser som brugernavn",
+        "useEmailAsUsernameNotice": "Hvis aktiveret, logger nye brugere på Jellyfin/Emby med deres e-mail adresse i stedet for et brugernavn.",
+        "fromAddress": "Fra adresse",
+        "senderName": "Afsender navn",
+        "dateFormat": "Datoformat",
+        "dateFormatNotice": "Dato følger strftime formatet. For flere oplysninger, besøg {n}.",
+        "encryption": "Kryptering",
+        "mailgunApiURL": "API-URL"
+    },
+    "notifications": {
+        "title": "Admin Meddelelser",
+        "description": "Hvis aktiveret, kan du vælge (pr. Invitation) at modtage besked når en invitation udløber, eller når en bruger oprettes. Hvis du ikke valgte Jellyfin login metoden, skal du sørge for at angive din e-mail adresse, eller tilføje en anden kontakt metode senere."
+    },
+    "welcomeEmails": {
+        "title": "Velkomst beskeder",
+        "description": "Hvis aktiveret, sendes en besked til nye brugere med Jellyfin/Emby URL'en og deres brugernavn."
+    },
+    "inviteEmails": {
+        "title": "Invitations Beskeder",
+        "description": "Hvis aktiveret, kan du sende invitationer direkte til en brugers e-mail adresse, Discord eller Matrix bruger. Fordi du muligvis bruger en omvendt proxy, skal du angive en URL, invitationer tilgås fra. Skriv din URL-base, og tilføj '/invite'."
+    },
+    "passwordResets": {
+        "title": "Nulstilling af Adgangskoder",
+        "description": "Når en bruger forsøger at nulstille deres adgangskode, opretter Jellyfin en fil med navnet 'passwordreset - *. Json', som indeholder en Pinkode. jfa-go læser filen og sender Pinkoden til brugeren. jfa-go læser filen og sender Pinkoden til brugeren. Hvis du aktiverede funktionen \"Brugerside\", kan en nulstilling også udføres der, givet et brugernavn, email eller kontaktmetode.",
+        "pathToJellyfin": "Sti til Jellyfin's konfigurations mappe",
+        "pathToJellyfinNotice": "Hvis du ikke ved hvor dette er, kan du prøve at nulstille din adgangskode i Jellyfin. En popup med '<sti til jellyfin>/passwordreset - *. Json' vises. Dette er ikke nødvendigt, hvis du kun ønsker at bruge selvbetjenings nulstilling af adgangskode via \"Brugersiden\".",
+        "resetLinks": "Send et link i stedet for en PIN-kode",
+        "resetLinksNotice": "Hvis Ombi integration er aktiveret, skal du bruge denne til at synkronisere nulstilling af Jellyfin's adgangskode med Ombi.",
+        "resetLinksLanguage": "Standard sprog til nulstillings link",
+        "setPassword": "Angiv adgangskode gennem link",
+        "setPasswordNotice": "Aktivering af dette betyder at brugeren ikke behøver at ændre sin adgangskode væk fra pinkoden efter nulstillingen. Adgangskodevalidering håndhæves også.",
+        "resetLinksRequiredForUserPage": "Nødvendig for nulstilling af selvbetjenings adgangskode på brugersiden."
+    },
+    "passwordValidation": {
+        "title": "Validering af adgangskode",
+        "description": "Hvis aktiveret, vises et sæt adgangskrav på siden til oprettelse af konto, såsom minimumslængde, store/små bogstaver osv.",
+        "length": "Længde",
+        "uppercase": "Store bogstaver",
+        "lowercase": "Små bogstaver",
+        "numbers": "Tal",
+        "special": "Specialtegn (%, * osv.)"
+    },
+    "helpMessages": {
+        "title": "Hjælpe Meddelelser",
+        "description": "Disse meddelelser vises på siden til oprettelse af konto og i nogle e-mails.",
+        "contactMessage": "Kontakt Meddelelse",
+        "contactMessageNotice": "Vises nederst på alle sider undtagen admin-siden.",
+        "helpMessage": "Hjælpe Meddelelse",
+        "helpMessageNotice": "Vises på siden til oprettelse af konto.",
+        "successMessage": "Succes Meddelelse",
+        "successMessageNotice": "Vises når en bruger opretter sin konto.",
+        "emailMessage": "E-mail Meddelelse",
+        "emailMessageNotice": "Vises i bunden af e-mails."
+    },
+    "messages": {
+        "title": "Beskeder",
+        "description": "jfa-go kan sende nulstilling af adgangskoder og forskellige meddelelser via E-mail, Discord, Telegram og/eller Matrix. Du kan konfigurere E-mail herunder, og de andre kan konfigureres i Indstillinger senere. Instruktioner kan findes på {n}. Hvis du ikke har brug for dette, kan du deaktivere disse funktioner her."
+    },
+    "userPage": {
+        "description": "Brugersiden (vist som \"Min konto\") giver brugerne adgang til oplysninger om deres konto, såsom deres kontaktmetoder og kontoudløb. De kan også ændre deres adgangskode, starte en nulstilling af adgangskode og linke/ændre kontaktmetoder uden at skulle spørge dig. Derudover kan tilpassede Markdown beskeder vises til brugerne før og efter login.",
+        "title": "Brugerside",
+        "customizeMessages": "Klik på redigeringsknappen ved siden af \"Brugerside\" i indstillingerne for at indstille dem senere.",
+        "requiredSettings": "Log ind på jfa-go via Jellyfin skal indstilles. Sørg for, at \"nulstil adgangskode via link\" er valgt senere for selvbetjenings nulstilling af adgangskode."
+    }
+}

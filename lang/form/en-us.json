@@ -1,0 +1,88 @@
+{
+    "meta": {
+        "name": "English (US)"
+    },
+    "strings": {
+        "pageTitle": "Create Jellyfin Account",
+        "createAccountHeader": "Create Account",
+        "accountDetails": "Details",
+        "emailAddress": "Email",
+        "username": "Username",
+        "oldPassword": "Old Password",
+        "newPassword": "New Password",
+        "password": "Password",
+        "reEnterPassword": "Re-enter Password",
+        "reEnterPasswordInvalid": "Passwords are not the same.",
+        "createAccountButton": "Create Account",
+        "passwordRequirementsHeader": "Password Requirements",
+        "successHeader": "Success!",
+        "confirmationRequired": "Email confirmation required",
+        "confirmationRequiredMessage": "Please check your email inbox to verify your address.",
+        "yourAccountIsValidUntil": "Your account will be valid until {date}.",
+        "sendPIN": "Send the PIN below to the bot, then come back here to link your account.",
+        "sendPINDiscord": "Type {command} in {server_channel} on Discord, then send the PIN below.",
+        "matrixEnterUser": "Enter your User ID, press submit, and a PIN will be sent to you. Enter it here to continue.",
+        "welcomeUser": "Welcome, {user}!",
+        "addContactMethod": "Add Contact Method",
+        "editContactMethod": "Edit Contact Method",
+        "joinTheServer": "Join the server:",
+        "customMessagePlaceholderHeader": "Customize this card",
+        "customMessagePlaceholderContent": "Click the user page edit button in settings to customize this card, or show one on the login screen, and don't worry, the user can't see this.",
+        "userPageSuccessMessage": "You can see and change details about your account later on the {myAccount} page.",
+        "resetPassword": "Reset Password",
+        "resetPasswordThroughJellyfin": "To reset your password, visit {jfLink} and press the \"Forgot Password\" button.",
+        "resetPasswordThroughLink": "To reset your password, enter your username, email address or a linked contact method username, and submit. A link will be sent to reset your password.",
+        "resetPasswordThroughLinkStart": "To reset your password, enter one of the following below:",
+        "resetPasswordThroughLinkEnd": "Then press submit. A link will be sent to reset your password.",
+        "resetPasswordUsername": "Your Jellyfin username",
+        "resetPasswordEmail": "Your email address",
+        "resetPasswordContactMethod": "The username of any contact method linked to your account",
+        "resetSent": "Reset Sent.",
+        "resetSentDescription": "If an account with the given username/contact method exists, a password reset link has been sent via all contact methods available. The code will expire in 30 minutes.",
+        "changePassword": "Change Password",
+        "referralsDescription": "Invite friends & family to Jellyfin with this link. Come back here for a new one if it expires.",
+        "referralsWithExpiryDescription": "Invite friends & family to Jellyfin with this link. The link will be disabled once it expires.",
+        "copyReferral": "Copy Link",
+        "invitedBy": "You were invited by user {user}."
+    },
+    "notifications": {
+        "errorUserExists": "User already exists.",
+        "errorInvalidCode": "Invalid invite code.",
+        "errorAccountLinked": "Account already in use.",
+        "errorEmailLinked": "Email already in use.",
+        "errorTelegramVerification": "Telegram verification required.",
+        "errorDiscordVerification": "Discord verification required.",
+        "errorMatrixVerification": "Matrix verification required.",
+        "errorInvalidPIN": "PIN is invalid.",
+        "errorUnknown": "Unknown error.",
+        "errorNoEmail": "Email required.",
+        "errorCaptcha": "Captcha incorrect.",
+        "errorPassword": "Check password requirements.",
+        "errorNoMatch": "Passwords don't match.",
+        "errorOldPassword": "Old password incorrect.",
+        "passwordChanged": "Password Changed.",
+        "verified": "Account verified."
+    },
+    "validationStrings": {
+        "length": {
+            "singular": "Must have at least {n} character",
+            "plural": "Must have at least {n} characters"
+        },
+        "uppercase": {
+            "singular": "Must have at least {n} uppercase character",
+            "plural": "Must have at least {n} uppercase characters"
+        },
+        "lowercase": {
+            "singular": "Must have at least {n} lowercase character",
+            "plural": "Must have at least {n} lowercase characters"
+        },
+        "number": {
+            "singular": "Must have at least {n} number",
+            "plural": "Must have at least {n} numbers"
+        },
+        "special": {
+            "singular": "Must have at least {n} special character",
+            "plural": "Must have at least {n} special characters"
+        }
+    }
+}

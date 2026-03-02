@@ -1,0 +1,18 @@
+{
+    "meta": {
+        "name": "Dansk (DK)"
+    },
+    "strings": {
+        "startMessage": "Hej!\nIndtast din Jellyfin PIN-kode her for at bekræfte din konto.",
+        "matrixStartMessage": "Hej!\nIndtast PIN-koden på Jellyfin tilmeldingssiden for at bekræfte din konto.",
+        "invalidPIN": "Den PIN-kode var ugyldig, prøv igen.",
+        "pinSuccess": "Sådan! Du kan nu gå tilbage til tilmeldingssiden.",
+        "languageMessage": "Note: Se tilgængelige sprog med {command}, og vælg sprog med {command} <sprog kode>.",
+        "discordStartMessage": "Hej!\n Indtast din pinkode med `/pin <PIN>` for at bekræfte din konto.",
+        "languageMessageDiscord": "Note: Sæt dit sprog med /lang <sprog navn>.",
+        "languageSet": "Sprog sat til {language}.",
+        "discordDMs": "Tjek venligst dine DMs for et svar.",
+        "sentInvite": "Invitation Sendt.",
+        "sentInviteFailure": "Kunne ikke sende invitation, tjek logfilerne."
+    }
+}

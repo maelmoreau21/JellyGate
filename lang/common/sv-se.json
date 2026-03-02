@@ -1,0 +1,50 @@
+{
+    "meta": {
+        "name": "Svenska (SV)"
+    },
+    "strings": {
+        "username": "Användarnamn",
+        "password": "Lösenord",
+        "emailAddress": "E-postadress",
+        "name": "Namn",
+        "submit": "Skicka",
+        "success": "Lyckades",
+        "continue": "Fortsätt",
+        "error": "Fel",
+        "copy": "Kopiera",
+        "time24h": "24 timmarsklocka",
+        "time12h": "12 timmarsklocka",
+        "theme": "Tema",
+        "login": "Logga in",
+        "logout": "Logga ut",
+        "admin": "Admin",
+        "enabled": "Aktiverad",
+        "disabled": "Inaktiverad",
+        "expiry": "Löper ut",
+        "edit": "Redigera",
+        "delete": "Radera",
+        "inviteRemainingUses": "Återstående användningar",
+        "send": "Skicka",
+        "linkDiscord": "Länka Discord",
+        "copied": "Kopierat",
+        "linkTelegram": "Länka Telegram",
+        "contactEmail": "Kontakta via e-post",
+        "contactTelegram": "Kontakta via Telegram",
+        "refresh": "Uppdatera",
+        "required": "Obligatoriskt",
+        "contactDiscord": "Kontakt via Discord",
+        "linkMatrix": "Länka Matrix",
+        "reEnable": "Återaktivera",
+        "disable": "Inaktivera",
+        "contactMethods": "Kontaktmetoder",
+        "accountStatus": "Kontostatus",
+        "notSet": "Inte inställt"
+    },
+    "notifications": {
+        "errorLoginBlank": "Användarnamnet och/eller lösenordet lämnades tomt.",
+        "errorConnection": "Det gick inte att ansluta till jfa-go.",
+        "errorUnknown": "Okänt fel.",
+        "error401Unauthorized": "Obehörig. Prova att uppdatera sidan.",
+        "errorSaveSettings": "Det gick inte att spara inställningarna."
+    }
+}

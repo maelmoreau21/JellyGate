@@ -1,0 +1,57 @@
+{{ define "form-base" }}
+<script> 
+    window.usernameEnabled = {{ .username }};
+    window.validationStrings = JSON.parse({{ .validationStrings }});
+    window.invalidPassword = "{{ .strings.reEnterPasswordInvalid }}";
+    window.code = "{{ .code }}";
+    window.language = "{{ .langName }}";
+    window.messages = JSON.parse({{ .notifications }});
+    window.confirmation = {{ .confirmation }};
+    window.userExpiryEnabled = {{ .userExpiry }};
+    window.userExpiryMonths = {{ .userExpiryMonths }};
+    window.userExpiryDays = {{ .userExpiryDays }};
+    window.userExpiryHours = {{ .userExpiryHours }};
+    window.userExpiryMinutes = {{ .userExpiryMinutes }};
+    window.userExpiryMessage = {{ .userExpiryMessage }};
+    window.telegramRequired = {{ .telegramRequired }};
+    window.telegramPIN = "{{ .telegramPIN }}";
+    window.emailRequired = {{ .emailRequired }};
+    window.discordRequired = {{ .discordRequired }};
+    window.discordPIN = "{{ .discordPIN }}";
+    window.discordInviteLink = {{ .discordInviteLink }};
+    window.discordServerName = "{{ .discordServerName }}";
+    window.matrixRequired = {{ .matrixRequired }};
+    window.matrixUserID = "{{ .matrixUser }}";
+    window.captcha = {{ .captcha }};
+    window.reCAPTCHA = {{ .reCAPTCHA }};
+    window.reCAPTCHASiteKey = "{{ .reCAPTCHASiteKey }}";
+    window.userPageEnabled = {{ .userPageEnabled }};
+    window.userPageAddress = "{{ .userPageAddress }}";
+    window.collectEmail = {{ .collectEmail }};
+    {{ if index . "customSuccessCard" }}
+        window.customSuccessCard = {{ .customSuccessCard }};
+    {{ else }}
+        window.customSuccessCard = false;
+    {{ end }}
+</script>
+{{ if .passwordReset }}
+<script src="js/pwr.js" type="module"></script>
+<script>
+    window.pwrPIN = "{{ .pwrPIN }}";
+</script>
+{{ else }}
+<script src="js/form.js" type="module"></script>
+{{ end }}
+{{ if .reCAPTCHA }}
+<script>
+    var reCAPTCHACallback = () => {
+        const el = document.getElementsByClassName("g-recaptcha")[0];
+        grecaptcha.render(el, {
+            "sitekey": window.reCAPTCHASiteKey,
+            "theme": document.documentElement.classList.contains("dark") ? "dark" : "light"
+        });
+    }
+</script>
+<script src="https://www.google.com/recaptcha/api.js?onload=reCAPTCHACallback&render=explicit" async defer></script>
+{{ end }}
+{{ end }}

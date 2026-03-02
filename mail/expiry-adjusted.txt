@@ -1,0 +1,11 @@
+{{ .helloUser }}
+
+{{ .yourExpiryWasAdjusted }}
+
+{{ .ifPreviouslyDisabled }}
+
+{{ .newExpiry }}
+
+{{ .reasonString }}: {{ .reason }}
+
+{{ .footer }}

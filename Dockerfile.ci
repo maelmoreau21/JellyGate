@@ -1,0 +1,10 @@
+FROM gcr.io/distroless/base:latest AS final
+ARG TARGETARCH
+
+COPY ./dist/notray-e2ee_linux_${TARGETARCH}* /jfa-go
+COPY ./build/data /jfa-go/data
+
+EXPOSE 8056
+EXPOSE 8057
+
+CMD [ "/jfa-go/jfa-go", "-data", "/data" ]

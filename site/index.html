@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en" class="light-theme">
+    <head>
+        <link rel="stylesheet" type="text/css" href="bundle.css">
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <meta name="Description" content="jfa-go, a better way to manage Jellyfin users.">
+        <meta name="color-scheme" content="dark light">
+
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+        <link rel="manifest" href="/site.webmanifest">
+        <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+        <meta name="msapplication-TileColor" content="#603cba">
+        <meta name="theme-color" content="#ffffff">
+        <title>jfa-go - a better way to manage Jellyfin users</title>
+    </head>
+    <body class="max-w-full overflow-x-hidden section">
+        <div id="modal-deb" class="modal">
+            <div class="relative mx-auto my-[10%] w-4/5 lg:w-2/3 content card">
+                <span class="heading"> Debian/Ubuntu (apt)</span>
+                <div class="mt-1">
+                    <pre style="margin: 0; line-height: 125%">sudo apt-get update && sudo apt-get install curl apt-transport-https gnupg
+curl https://apt.hrfee.dev/hrfee.pubkey.gpg | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/apt.hrfee.dev.gpg
+
+echo <span style="color: #aa5500">&quot;deb https://apt.hrfee.dev trusty<span id="deb-unstable" class="unfocused">-unstable</span> main&quot;</span> | sudo tee /etc/apt/sources.list.d/hrfee.list
+
+sudo apt-get update
+
+<span style="color: #aaaaaa; font-style: italic"># For servers</span>
+sudo apt-get install jfa-go
+<span style="color: #aaaaaa; font-style: italic"># ------</span>
+<span style="color: #aaaaaa; font-style: italic"># For desktops/servers with GUI (has dependencies)</span>
+sudo apt-get install jfa-go-tray
+<span style="color: #aaaaaa; font-style: italic"># ------</span></pre>
+                </div>
+            </div>
+        </div>
+        <div id="modal-docker" class="modal">
+            <div class="relative mx-auto my-[10%] w-4/5 lg:w-2/3 content card">
+                <span class="heading"> Docker</span>
+                <div class="mt-1">
+                    <pre style="margin: 0; line-height: 125%">docker create <span style="color: #BB6622; font-weight: bold">\</span>
+     --name <span style="color: #BA2121">&quot;jfa-go&quot;</span> <span style="color: #BB6622; font-weight: bold">\ </span><span style="color: #408080; font-style: italic"># Whatever you want to name it</span>
+     -p 8056:8056 <span style="color: #BB6622; font-weight: bold">\</span>
+   <span style="color: #408080; font-style: italic"># -p 8057:8057 if using tls</span>
+     -v /path/to/.config/jfa-go:/data <span style="color: #BB6622; font-weight: bold">\ </span><span style="color: #408080; font-style: italic"># Path to wherever you want to store the config file and other data</span>
+     -v /path/to/jellyfin:/jf <span style="color: #BB6622; font-weight: bold">\ </span><span style="color: #408080; font-style: italic"># Optional path to Jellyfin config directory for auto password resets, ignore if using Emby</span>
+     -v /etc/localtime:/etc/localtime:ro <span style="color: #BB6622; font-weight: bold">\ </span><span style="color: #408080; font-style: italic"># Makes sure time is correct</span>
+     hrfee/jfa-go<span id="docker-unstable" class="unfocused">:unstable</span></pre>
+                </div>
+            </div>
+        </div>
+        <div class="page-container m-2 lg:my-20 lg:mx-72" id="page-container">
+            <div class="card ~neutral @low mb-1">
+                <div class="row col flex center">
+                    <span class="heading welcome">jellyfin-accounts (go)</span>
+                </div>
+                <div class="row col flex center">
+                    <p class="content">a better way to manage your Jellyfin users.</p>
+                </div>
+                <div class="row col flex center">
+                    <ul class="support list-disc">
+                        <li>Send invite links to your users, let them sign up themselves</li>
+                        <li>Create setting profiles to restrict permissions of new users</li>
+                        <li>Handles password resets without your intervention</li>
+                        <li>
+                            Enforce sign-up requirements:
+                            <ul>
+                                <li>Password strength</li>
+                                <li>Contact method verification</li>
+                                <li>CAPTCHA</li>
+                            </ul>
+                        </li>
+                        <li>Send messages & notifications to your users (email, discord, telegram, matrix available)</li>
+                        <li>Set accounts to expire after a specified time</li>
+                        <li>Manage your users in bulk</li>
+                        <li><a href="https://github.com/hrfee/jfa-go#features" target="_blank">More</a></li>
+                    </ul>
+                </div>
+                <span class="row col flex center supra">notices</span>
+                <div class="row col flex center">
+                    <aside class="aside ~critical w-9/12 text-xs">
+                        <strong>Project Status:</strong> Due to studies, support from me (<a href="https://github.com/hrfee">@hrfee</a>) will be sporadic.
+                    </aside>
+                </div>
+                <span class="row col flex center supra">links</span>
+                <div class="row col flex center">
+                    <a class="button ~neutral mr-2 mt-1 mb-1" href="https://github.com/hrfee/jfa-go">github</a>
+                    <a class="button ~urge mt-1 mb-1 mr-2" href="https://wiki.jfa-go.com">wiki/docs</a>
+                    <a class="button ~positive mt-1 mb-1 mr-2" href="https://weblate.jfa-go.com">translation</a>
+                    <div class="dropdown mr-2" tabindex="0">
+                        <a href="https://github.com/sponsors/hrfee" target="_blank" class="button ~info mt-1 mb-1 dropdown-button">
+                            <i class="ri-hand-heart-line mr-2"></i>
+                            donate
+                            <span class="ml-2 chev"></span>
+                        </a>
+                        <div class="dropdown-display">
+                            <div class="card @low">
+                                <a href="https://github.com/sponsors/hrfee" target="_blank" class="button input ~neutral field mb-2 lang-link">GitHub</a>
+                                <a href="https://ko-fi.com/hrfee" target="_blank" class="button input ~neutral field mb-2 lang-link">Ko-fi</a>
+                            </div>
+                        </div>
+                    </div>
+                    <a class="button ~urge mt-1 mb-1 @low discord" href="https://discord.com/invite/MrtvuQmyhP" target="_blank"><i class="ri-discord-line mr-2"></i>discord</a>
+                </div>
+                <p class="row col flex center supra">downloads</p>
+                <p class="row col flex center support">instructions can be found&nbsp<a target="_blank" href="https://github.com/hrfee/jfa-go#install">here</a></p>
+                <p class="row col flex center text-center support">note: tray icon builds should only be used on systems with a Desktop Interface, and require extra dependencies on linux, see the github README for more info.</p>
+                <div class="row col flex center">
+                    <span class="button ~neutral @high mr-1 mt-1" id="download-stable">Stable (-ish)</span>
+                    <span class="button ~neutral mt-1 mr-1" id="download-unstable">Unstable</span>
+                </div>
+                <div class="mt-1" id="sect-stable">
+                    <p class="row center">Released sporadically, not necessarily super stable.</p>
+                    <div class="row col flex center">
+                        <a class="button ~info mr-2 mb-2 lang-link" target="_blank" href="https://github.com/hrfee/jfa-go/releases">windows/mac/linux</a>
+                        <a class="button ~info mr-2 mb-2 lang-link" id="download-docker">docker</a>
+                        <a class="button ~info mr-2 mb-2 lang-link" id="download-deb">debian/ubuntu</a>
+                        <a class="button ~info mr-2 mb-2 lang-link" target="_blank" href="https://aur.archlinux.org/packages/jfa-go">arch (aur)</a>
+                        <a class="button ~info mr-2 mb-2 lang-link" target="_blank" href="https://aur.archlinux.org/packages/jfa-go-bin">arch (aur binary)</a>
+                    </div>
+                </div>
+                <div class="mt-1 unfocused" id="sect-unstable">
+                    <p class="row center">Built on every commit, so may include incomplete/broken features. Take care.</p>
+                    <div class="row col flex center">
+                        <a class="button ~info mr-2 mb-2 lang-link" id="download-docker-unstable">docker</a>
+                        <a class="button ~info mr-2 mb-2 lang-link" id="download-deb-unstable">debian/ubuntu</a>
+                        <a class="button ~info mr-2 mb-2 lang-link" target="_blank" href="https://aur.archlinux.org/packages/jfa-go-git">arch (aur git)</a>
+                    </div>
+                </div>
+                <section class="section ~neutral banner footer flex flex-row justify-between middle">
+                    <a href="https://github.com/hrfee/jfa-go/blob/main/LICENSE" class="support">© 2023 Harvey Tindall</a>
+                </section>
+            </div>
+        </div>
+        <script src="main.js"></script>
+    </body>
+</html>
+

@@ -1,0 +1,79 @@
+{
+    "meta": {
+        "name": "繁體中文 (TW)"
+    },
+    "strings": {
+        "pageTitle": "創建 Jellfin 帳戶",
+        "createAccountHeader": "創建帳戶",
+        "accountDetails": "詳細資訊",
+        "emailAddress": "電子郵件",
+        "username": "帳戶名稱",
+        "password": "密碼",
+        "reEnterPassword": "重新輸入密碼",
+        "reEnterPasswordInvalid": "密碼不一樣。",
+        "createAccountButton": "創建帳戶",
+        "passwordRequirementsHeader": "密碼格式要求",
+        "successHeader": "成功！",
+        "confirmationRequired": "需要電子郵件確認",
+        "confirmationRequiredMessage": "請檢查您的電子郵件收件匣以驗證您的地址。",
+        "yourAccountIsValidUntil": "您的帳戶有效期至 {date}。",
+        "sendPIN": "將下面的 PIN 碼發送給機器人，然後返回此處連結您的帳戶。",
+        "sendPINDiscord": "在 Discord 上的 {server_channel} 中輸入 {command}，然後發送下方的 PIN 碼。",
+        "matrixEnterUser": "輸入您的帳戶 ID 並點擊提交。在此處輸入發送給您的PIN 碼以繼續。",
+        "oldPassword": "舊密碼",
+        "newPassword": "新密碼",
+        "welcomeUser": "歡迎，{user}!",
+        "addContactMethod": "添加聯繫方式",
+        "editContactMethod": "編輯聯繫方式",
+        "joinTheServer": "加入伺服器:",
+        "customMessagePlaceholderHeader": "自定義此卡片",
+        "customMessagePlaceholderContent": "單擊設置中的用戶頁面編輯按鈕可以自定義此卡片，或在登錄屏幕上顯示一張卡片，不用擔心，用戶看不到它。",
+        "userPageSuccessMessage": "您稍後可以在 {myAccount} 頁面上查看和更改有關您帳戶的詳細信息。",
+        "resetPassword": "重設密碼",
+        "resetPasswordThroughJellyfin": "要重置您的密碼，請訪問 {jfLink} 並按“忘記密碼”按鈕。",
+        "resetPasswordThroughLink": "要重置密碼，請輸入您的用戶名、電子郵件地址或鏈接的聯繫方式用戶名，然後提交。 將發送一個鏈接以重置您的密碼。",
+        "resetSent": "重置已發送。",
+        "resetSentDescription": "如果存在具有給定用戶名/聯繫方式的帳戶，則已通過所有可用的聯繫方式發送密碼重置鏈接。 該代碼將在 30 分鐘後過期。",
+        "changePassword": "更改密碼"
+    },
+    "notifications": {
+        "errorUserExists": "帳戶已存在。",
+        "errorInvalidCode": "邀請碼無效。",
+        "errorTelegramVerification": "需要 Telegram 驗證。",
+        "errorDiscordVerification": "需要 Discord 驗證。",
+        "errorMatrixVerification": "需要 Matrix 驗證。",
+        "errorInvalidPIN": "無效的PIN碼。",
+        "errorUnknown": "未知的錯誤。",
+        "errorNoEmail": "電子郵件必填。",
+        "errorCaptcha": "CAPTCHA 驗證碼不正確。",
+        "errorPassword": "請您檢查密碼要求後再試。",
+        "errorNoMatch": "密碼不匹配。",
+        "verified": "帳戶已驗證。",
+        "errorEmailLinked": "電子郵件已被使用。",
+        "errorAccountLinked": "帳戶已在使用。",
+        "errorOldPassword": "舊密碼不正確。",
+        "passwordChanged": "密碼已更改。"
+    },
+    "validationStrings": {
+        "length": {
+            "singular": "必須至少包含 {n} 個字元",
+            "plural": "必須至少包含 {n} 個字元"
+        },
+        "uppercase": {
+            "singular": "必須至少包含 {n} 個大寫字母",
+            "plural": "必須至少包含 {n} 個大寫字母"
+        },
+        "lowercase": {
+            "singular": "必須至少包含 {n} 個小寫字母",
+            "plural": "必須至少包含 {n} 個小寫字母"
+        },
+        "number": {
+            "singular": "必須至少包含 {n} 個數字",
+            "plural": "必須至少包含 {n} 個數字"
+        },
+        "special": {
+            "singular": "必須至少包含 {n} 個特殊字元",
+            "plural": "必須至少包含 {n} 個特殊字元"
+        }
+    }
+}

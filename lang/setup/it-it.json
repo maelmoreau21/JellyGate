@@ -1,0 +1,152 @@
+{
+    "meta": {
+        "name": "Italiano (IT)"
+    },
+    "strings": {
+        "pageTitle": "Configurazione - jfa-go",
+        "next": "Avanti",
+        "back": "Indietro",
+        "optional": "Opzionale",
+        "serverType": "Tipo server",
+        "disabled": "Disabilitato",
+        "enabled": "Abilitato",
+        "port": "Porta",
+        "message": "Messaggio",
+        "serverAddress": "Indirizzo server",
+        "emailSubject": "Oggetto email",
+        "URL": "URL",
+        "apiKey": "Chiave API",
+        "error": "Errore",
+        "errorInvalidUserPass": "Username/password non validi.",
+        "errorNotAdmin": "Utente non autorizzato a gestire il server.",
+        "errorUserDisabled": "L’utente potrebbe essere disabilitato.",
+        "error404": "404, controlla l’URL interno.",
+        "errorConnectionRefused": "Connessione rifiutata.",
+        "errorUnknown": "Errore sconosciuto, controllare i log."
+    },
+    "startPage": {
+        "welcome": "Benvenuto!",
+        "pressStart": "Dovrai eseguire un paio di cose per impostare jfa-go. Premi Inizia per continuare.",
+        "httpsNotice": "Assicurati di star accedendo a questa pagina tramite HTTPS o una rete privata.",
+        "start": "Inizia"
+    },
+    "endPage": {
+        "finished": "Finito!",
+        "restartMessage": "Puoi configurare bot di Discord/Telegram/Matrix, personalizzare i tuoi messaggi e altro nelle Impostazioni. Clicca qui sotto per riavviare, poi ricarica la pagina.",
+        "refreshPage": "Ricarica"
+    },
+    "language": {
+        "title": "Lingua",
+        "description": "Le traduzioni della community sono disponibili per la maggior parte di jfa-go. Puoi scegliere le lingue di default qui sotto, ma altri utenti possono sempre cambiarle se lo desiderano. Se vuoi aiutare nelle traduzioni, accedi a {n} per iniziare a contribuire!",
+        "defaultAdminLang": "Lingua default per admin",
+        "defaultFormLang": "Lingua default per creazione account",
+        "defaultEmailLang": "Lingua default per email"
+    },
+    "general": {
+        "title": "Generale",
+        "listenAddress": "Indirizzo d'ascolto",
+        "urlBase": "Base dell'URL",
+        "urlBaseNotice": "Necessario solo con sottodominio sotto reverse proxy (e.g 'jellyf.in/accounts').",
+        "lightTheme": "Chiaro",
+        "darkTheme": "Scuro",
+        "useHTTPS": "Usa HTTPS",
+        "httpsPort": "Porta HTTPS",
+        "useHTTPSNotice": "Consigliato solo senza l'utilizzo di un reverse proxy.",
+        "pathToCertificate": "Path del certificato",
+        "pathToKeyFile": "Path del file key"
+    },
+    "updates": {
+        "title": "Aggiornamenti",
+        "description": "Abilita per ricevere una notifica quando nuovi aggiornamenti sono disponibili. jfa-go controllerà {n} ogni 30 minuti. Non vengono raccolte informazioni di identificazione personale o IP.",
+        "updateChannel": "Canale degli aggiornamenti",
+        "stable": "Stabile",
+        "unstable": "Instabile"
+    },
+    "login": {
+        "title": "Login",
+        "description": "Per accedere alla pagina amministrativa, devi effettuare il login con un metodo qui sotto:",
+        "authorizeWithJellyfin": "Autorizza con Jellyfin/Emby: Le credenziali di accesso sono condivise con Jellyfin, che supporta utenti multipli.",
+        "authorizeManual": "Username e Password: Imposta manualmente username e password.",
+        "adminOnly": "Solo utenti amministrativi (consigliato)",
+        "allowAll": "Consenti l'accesso a tutti gli utenti Jellyfin",
+        "allowAllDescription": "Non consigliato, dovresti consentire ai singoli utenti di accedere una volta configurato.",
+        "emailNotice": "Il tuo indirizzo email può essere usato per ricevere notifiche."
+    },
+    "jellyfinEmby": {
+        "title": "Jellyfin/Emby",
+        "description": "Un account amministrativo è richiesto perchè l'API non consente la creazione di utenti usando un'API key. Dovresti creare un account separato e spuntare 'Consenti a questo utente di amministrare il server'. Puoi disabilitare tutto il resto. Una volta fatto, inserisci le credenziali di login qui.",
+        "embyNotice": "Il supporto per Emby è limitato e non supporta il reset delle password.",
+        "internal": "Interno",
+        "external": "Esterno",
+        "replaceJellyfin": "Nome server",
+        "replaceJellyfinNotice": "Se fornito, sostituisce ogni occorrenza di 'Jellyfin' nell'app.",
+        "addressExternalNotice": "Lasciare in bianco per usare lo stesso indirizzo.",
+        "testConnection": "Test di connessione"
+    },
+    "ombi": {
+        "title": "Ombi",
+        "description": "Collegandosi ad Ombi, verrà creato un account sia su Jellyfin che su Ombi quando un utente accede tramite jfa-go. Al termine del setup, accedi alle impostazioni per impostare un profilo di default per i nuovi utenti Ombi.",
+        "apiKeyNotice": "Presente nella prima scheda delle impostazioni di Ombi."
+    },
+    "messages": {
+        "title": "Messaggi",
+        "description": "jfa-go può inviare reset password e diversi messaggi tramite Email, Discord, Telegram, e/o Matrix. Puoi configurare l'email qui sotto, e gli altri possono essere configurati successivamente nelle impostazioni. Le istruzioni si trovano sugli {n}. Se non ne hai bisogno, puoi disabilitare queste funzionalità qui."
+    },
+    "email": {
+        "title": "Email",
+        "description": "jfa-go può inviare PIN di reset password e diverse notifiche tramite email. Puoi connetterti ad un server SMTP, o usare le {n} API.",
+        "method": "Metodo di invio",
+        "useEmailAsUsername": "",
+        "useEmailAsUsernameNotice": "",
+        "fromAddress": "",
+        "senderName": "",
+        "dateFormat": "",
+        "dateFormatNotice": "",
+        "encryption": "Crittografia",
+        "mailgunApiURL": "URL API"
+    },
+    "notifications": {
+        "title": "Notifiche amministrative",
+        "description": ""
+    },
+    "welcomeEmails": {
+        "title": "Messaggi di benvenuto",
+        "description": ""
+    },
+    "inviteEmails": {
+        "title": "Messaggi d'invito",
+        "description": ""
+    },
+    "passwordResets": {
+        "title": "Reset password",
+        "description": "",
+        "pathToJellyfin": "",
+        "pathToJellyfinNotice": "",
+        "resetLinks": "",
+        "resetLinksNotice": "",
+        "resetLinksLanguage": "",
+        "setPassword": "",
+        "setPasswordNotice": ""
+    },
+    "passwordValidation": {
+        "title": "",
+        "description": "",
+        "length": "",
+        "uppercase": "",
+        "lowercase": "",
+        "numbers": "",
+        "special": ""
+    },
+    "helpMessages": {
+        "title": "",
+        "description": "",
+        "contactMessage": "",
+        "contactMessageNotice": "",
+        "helpMessage": "",
+        "helpMessageNotice": "",
+        "successMessage": "",
+        "successMessageNotice": "",
+        "emailMessage": "",
+        "emailMessageNotice": ""
+    }
+}

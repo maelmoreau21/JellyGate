@@ -1,0 +1,24 @@
+services:
+  jellygate:
+    image: ghcr.io/maelmoreau21/jellygate:latest
+    container_name: jellygate
+    restart: unless-stopped
+    environment:
+      PUID: "1000"
+      GUID: "1000"
+      PORT: "8056"
+
+      # Jellyfin connection
+      JFA_JELLYFIN_SERVER: "http://jellyfin:8096"
+      JFA_JELLYFIN_PUBLIC_SERVER: "https://jellyfin.example.com"
+      JFA_JELLYFIN_API_KEY: "replace-with-jellyfin-api-key"
+
+      # Identity backend switch
+      JFA_USER_BACKEND: "ldap" # jellyfin | ldap
+    ports:
+      - "8056:8056"
+    volumes:
+      - ./data:/data
+      - /etc/localtime:/etc/localtime:ro
+      # Optional: Jellyfin reset watch dir if used
+      - /path/to/jellyfin:/jf

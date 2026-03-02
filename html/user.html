@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="{{ .shortLang }}" dir="{{ .pageDirection }}" class="light">
+    <head>
+        <script>
+            window.langFile = JSON.parse({{ .language }});
+            window.linkResetEnabled = {{ .linkResetEnabled }};
+            window.language = "{{ .langName }}";
+            window.telegramRequired = {{ .telegramRequired }};
+            window.telegramUsername = {{ .telegramUsername }};
+            window.telegramURL = {{ .telegramURL }};
+            window.emailRequired = {{ .emailRequired }};
+            window.discordRequired = {{ .discordRequired }};
+            window.discordServerName = "{{ .discordServerName }}";
+            window.discordInviteLink = {{ .discordInviteLink }};
+            window.discordSendPINMessage = "{{ .discordSendPINMessage }}";
+            window.matrixRequired = {{ .matrixRequired }};
+            window.matrixUserID = "{{ .matrixUser }}";
+            window.validationStrings = JSON.parse({{ .validationStrings }});
+        </script>
+        {{ template "header.txt" . }}
+        <title>{{ .strings.myAccount }}</title>
+    </head>
+    <body class="max-w-full overflow-x-hidden section">
+        <div id="modal-email" class="modal">
+            <div class="card relative mx-auto my-[10%] w-4/5 lg:w-1/3">
+                <div class="flex flex-col gap-2 modal-email-content">
+                    <span class="heading"></span>
+                    <label class="label flex flex-col gap-2">
+                        <span class="supra">{{ .strings.emailAddress }}</span>
+                        <input type="email" class="field ~neutral @low input" id="modal-email-input" placeholder="{{ .strings.emailAddress }}">
+                    </label>
+                    <button class="button ~urge @low supra full-width center lg modal-submit">{{ .strings.submit }}</button>
+                </div>
+                <div class="confirmation-required unfocused flex flex-col gap-2">
+                    <span class="heading">{{ .strings.confirmationRequired }} <span class="modal-close">&times;</span></span>
+                    <p class="content">{{ .strings.confirmationRequiredMessage }}</p>
+                </div>
+            </div>
+        </div>
+        {{ if .pwrEnabled }}
+        <div id="modal-pwr" class="modal">
+            <div class="card relative mx-auto my-[10%] w-4/5 lg:w-1/3 ~neutral @low flex flex-col gap-2">
+                <span class="heading">{{ .strings.resetPassword }}</span>
+                <div class="content">
+                    {{ if .linkResetEnabled }}
+                        <p>{{ .strings.resetPasswordThroughLinkStart }}</p>
+                        <ul class="content">
+                            {{ if .resetPasswordUsername }}<li>{{ .strings.resetPasswordUsername }}</li>{{ end }}
+                            {{ if .resetPasswordEmail }}<li>{{ .strings.resetPasswordEmail }}</li>{{ end }}
+                            {{ if .resetPasswordContactMethod }}<li>{{ .strings.resetPasswordContactMethod }}</li>{{ end }}
+                        </ul>
+                        <p>{{ .strings.resetPasswordThroughLinkEnd }}</p>
+                    {{ else }}
+                        <p>{{ .strings.resetPasswordThroughJellyfin }}</p>
+                    {{ end }}
+                </div>
+                <input type="text" class="col sm field ~neutral @low input" id="pwr-address" placeholder="username | example@example.com | user#1234 | @user:host | @username">
+                {{ if .linkResetEnabled }}
+                    <span class="button ~info @low full-width center" id="pwr-submit">
+                        {{ .strings.submit }}
+                    </span>
+                {{ else }}
+                    <a class="button ~info @low full-width center" href="{{ .jfLink }}" target="_blank">{{ .strings.continue }}</a>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+        {{ template "login-modal.html" . }}
+        {{ template "account-linking.html" . }}
+        <div id="notification-box"></div>
+        <div class="page-container m-2 lg:my-20 lg:mx-64 flex flex-col gap-4 unfocused">
+            <div class="top-2 inset-x-2 lg:absolute flex flex-row justify-between">
+                <div class="flex flex-row gap-2">
+                    {{ template "lang-select.html" . }}
+                    <span class="button ~warning h-min" alt="{{ .strings.theme }}" id="button-theme"><i class="ri-sun-line"></i></span>
+                    <span class="button ~critical @low unfocused" id="logout-button">{{ .strings.logout }}</span>
+                </div>
+                <a class="button ~info unfocused h-min flex flex-row gap-1" href="/" id="admin-back-button"><i class="ri-arrow-left-fill"></i>{{ .strings.admin }}</a>
+            </div>
+            <div class="card @low dark:~d_neutral" id="card-user">
+                <span class="heading flex flex-row gap-4"></span>
+            </div>
+            <div class="columns-1 sm:columns-2 gap-4" id="user-cardlist">
+                {{ if index . "PageMessageEnabled" }}
+                    {{ if .PageMessageEnabled }}
+                        <div class="card @low dark:~d_neutral content break-words" id="card-message">
+                            {{ .PageMessageContent }}
+                        </div>
+                    {{ end }}
+                {{ end }}
+                <div class="card @low dark:~d_neutral flex flex-col gap-2" id="card-contact">
+                    <span class="heading">{{ .strings.contactMethods }}</span>
+                    <div class="content flex justify-between flex-col h-100"></div>
+                </div>
+                <div>
+                    <div class="card @low dark:~d_neutral flex flex-col gap-2" id="card-password">
+                        <span class="heading">{{ .strings.changePassword }}</span>
+                        <div class="flex flex-col gap-2">
+                            <div class="content">
+                                <span class="label supra row">{{ .strings.passwordRequirementsHeader }}</span>
+                                <ul>
+                                    {{ range $key, $value := .requirements }}
+                                        <li class="" id="requirement-{{ $key }}" min="{{ $value }}">
+                                            <span class="badge lg ~positive requirement-valid"></span> <span class="content requirement-content"></span>
+                                        </li>
+                                    {{ end }}
+                                </ul>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="label supra" for="user-old-password">{{ .strings.oldPassword }}</label>
+                                <input type="password" class="input ~neutral @low" placeholder="{{ .strings.password }}" id="user-old-password" aria-label="{{ .strings.oldPassword }}">
+                                <label class="label supra" for="user-new-password">{{ .strings.newPassword }}</label>
+                                <input type="password" class="input ~neutral @low" placeholder="{{ .strings.password }}" id="user-new-password" aria-label="{{ .strings.newPassword }}">
+
+                                <label class="label supra" for="user-reenter-password">{{ .strings.reEnterPassword }}</label>
+                                <input type="password" class="input ~neutral @low" placeholder="{{ .strings.password }}" id="user-reenter-new-password" aria-label="{{ .strings.reEnterPassword }}">
+                                <span class="button ~info @low full-width center" id="user-password-submit">
+                                    {{ .strings.changePassword }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <div class="card @low dark:~d_neutral unfocused flex flex-col gap-2" id="card-status">
+                        <span class="heading">{{ .strings.expiry }}</span>
+                        <aside class="aside ~warning user-expiry"></aside>
+                        <div class="user-expiry-countdown"></div>
+                    </div>
+                </div>
+                {{ if .referralsEnabled }}
+                    <div>
+                        <div class="card @low dark:~d_neutral unfocused flex flex-col gap-2" id="card-referrals">
+                            <span class="heading">{{ .strings.referrals }}</span>
+                            <aside class="aside ~neutral col user-referrals-description"></aside>
+                            <div class="flex flex-row justify-between gap-2">
+                                <div class="user-referrals-info flex flex-col gap-2"></div>
+                                <div class="grid">
+                                    <button type="button" class="user-referrals-button button ~info dark:~d_info @low flex flex-row gap-2" title="Copy">{{ .strings.copyReferral }}<i class="ri-file-copy-line"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {{ end }}
+            </div>
+        </div>
+        <script src="{{ .pages.Base }}/js/user.js" type="module"></script>
+    </body>
+</html>
+

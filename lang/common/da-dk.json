@@ -1,0 +1,67 @@
+{
+    "meta": {
+        "name": "Dansk (DK)"
+    },
+    "strings": {
+        "username": "Brugernavn",
+        "password": "Adgangskode",
+        "emailAddress": "Email adresse",
+        "name": "Navn",
+        "submit": "Indsend",
+        "send": "Send",
+        "success": "Succes",
+        "continue": "Fortsæt",
+        "error": "Fejl",
+        "copy": "Kopiér",
+        "copied": "Kopiret",
+        "time24h": "24 timers tid",
+        "time12h": "12 timers tid",
+        "linkTelegram": "Link Telegram",
+        "contactEmail": "Kontakt gennem E-mail",
+        "contactTelegram": "Kontakt gennem Telegram",
+        "linkDiscord": "Link Discord",
+        "linkMatrix": "Link Matrix",
+        "contactDiscord": "Kontakt gennem Discord",
+        "theme": "Tema",
+        "refresh": "Opdater",
+        "required": "Påkrævet",
+        "login": "Log på",
+        "logout": "Log ud",
+        "admin": "Administrator",
+        "enabled": "Aktiveret",
+        "disabled": "Deaktiveret",
+        "reEnable": "Genaktiver",
+        "disable": "Deaktiver",
+        "expiry": "Udløb",
+        "add": "Tilføj",
+        "edit": "Rediger",
+        "delete": "Slet",
+        "inviteRemainingUses": "Resterende anvendelser",
+        "referrals": "Henvisninger",
+        "contactMethods": "Kontakt Metoder",
+        "accountStatus": "Kontostatus",
+        "notSet": "Ikke sat",
+        "myAccount": "Min Konto"
+    },
+    "notifications": {
+        "errorLoginBlank": "Brugernavnet og/eller adgangskoden blev efterladt tomme.",
+        "errorConnection": "Kunne ikke oprette forbindelse til jfa-go.",
+        "errorUnknown": "Ukendt fejl.",
+        "error401Unauthorized": "Adgang nægtet. Prøv at genindlæse siden.",
+        "errorSaveSettings": "Kunne ikke gemme indstillingerne."
+    },
+    "quantityStrings": {
+        "year": {
+            "singular": "{n} År",
+            "plural": "{n} År"
+        },
+        "month": {
+            "singular": "{n} Månede",
+            "plural": "{n} Måneder"
+        },
+        "day": {
+            "singular": "{n} Dag",
+            "plural": "{n} Dage"
+        }
+    }
+}

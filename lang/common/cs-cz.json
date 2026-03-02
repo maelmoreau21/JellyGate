@@ -1,0 +1,67 @@
+{
+    "meta": {
+        "name": "Čeština (CZ)"
+    },
+    "strings": {
+        "username": "Uživatelské jméno",
+        "password": "Heslo",
+        "emailAddress": "Emailová adresa",
+        "name": "Název",
+        "submit": "Odeslat",
+        "send": "Poslat",
+        "success": "Hotovo",
+        "continue": "Pokračovat",
+        "error": "Chyba",
+        "copy": "Kopírovat",
+        "copied": "Zkopírováno",
+        "time24h": "Čas 24 hodin",
+        "time12h": "Čas 12 hodin",
+        "linkTelegram": "Link Telegram",
+        "contactEmail": "Kontakt přes Email",
+        "contactTelegram": "Kontakt přes Telegram",
+        "linkDiscord": "Link Discord",
+        "linkMatrix": "Link Matrix",
+        "contactDiscord": "Kontakt přes Discord",
+        "theme": "Téma",
+        "refresh": "Obnovit",
+        "required": "Požadované",
+        "login": "Přihlásit se",
+        "logout": "Odhlásit se",
+        "admin": "Admin",
+        "enabled": "Povoleno",
+        "disabled": "Zakázáno",
+        "reEnable": "Znovu povolit",
+        "disable": "Zakázat",
+        "contactMethods": "Kontaktní metody",
+        "accountStatus": "Stav účtu",
+        "notSet": "Nenastaveno",
+        "expiry": "Uplynutí",
+        "add": "Přidat",
+        "edit": "Upravit",
+        "delete": "Vymazat",
+        "myAccount": "Můj účet",
+        "referrals": "Doporučení",
+        "inviteRemainingUses": "Zbývající použití"
+    },
+    "notifications": {
+        "errorLoginBlank": "Uživatelské jméno a/nebo heslo zůstalo prázdné.",
+        "errorConnection": "Nelze se připojit k jfa-go.",
+        "errorUnknown": "Neznámá chyba.",
+        "error401Unauthorized": "Neoprávněný. Zkuste stránku obnovit.",
+        "errorSaveSettings": "Nastavení se nepodařilo uložit."
+    },
+    "quantityStrings": {
+        "year": {
+            "singular": "{n} rok",
+            "plural": "{n} let"
+        },
+        "month": {
+            "singular": "{n} měsíc",
+            "plural": "{n} měsíců"
+        },
+        "day": {
+            "singular": "{n} den",
+            "plural": "{n} dní"
+        }
+    }
+}

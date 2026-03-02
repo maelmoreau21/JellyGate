@@ -1,0 +1,49 @@
+{
+    "meta": {
+        "name": "繁體中文 (TW)"
+    },
+    "strings": {
+        "username": "帳戶名稱",
+        "password": "密碼",
+        "emailAddress": "電子郵件",
+        "name": "帳戶名稱",
+        "submit": "提交",
+        "send": "發送",
+        "success": "成功",
+        "continue": "繼續",
+        "error": "錯誤",
+        "copy": "複製",
+        "copied": "已複製",
+        "time24h": "24小時制",
+        "time12h": "12小時制",
+        "linkTelegram": "連結 Telegram",
+        "contactEmail": "通過電子郵件聯繫",
+        "contactTelegram": "通過 Telegram 聯繫",
+        "linkDiscord": "連結 Discord",
+        "linkMatrix": "連結 Matrix",
+        "contactDiscord": "通過 Discord 聯繫",
+        "theme": "主題",
+        "refresh": "重新整理",
+        "required": "必填",
+        "login": "登錄",
+        "logout": "登出",
+        "admin": "管理員",
+        "enabled": "已啟用",
+        "disabled": "已禁用",
+        "reEnable": "重新啟用",
+        "disable": "禁用",
+        "expiry": "到期",
+        "add": "添加",
+        "edit": "編輯",
+        "delete": "刪除",
+        "inviteRemainingUses": "剩餘使用次數"
+    },
+    "notifications": {
+        "errorLoginBlank": "帳戶名稱和/或密碼留空。",
+        "errorConnection": "無法連接到 jfa-go。",
+        "errorUnknown": "未知的錯誤。",
+        "error401Unauthorized": "未經授權。嘗試重新整理頁面。",
+        "errorSaveSettings": "無法儲存設置。"
+    },
+    "quantityStrings": {}
+}

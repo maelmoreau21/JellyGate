@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="{{ .shortLang }}" dir="{{ .pageDirection }}" class="{{ .cssClass }}">
+    <head>
+        <title>404 - jfa-go</title>
+        {{ template "header.txt" . }}
+    </head>
+    <body class="section">
+        <div class="page-container m-2 lg:my-20 lg:mx-64">
+            <div class="card">
+                <h1 class="heading">Page not found.</h1>
+                <p class="content">
+                    {{ .contactMessage }}
+                </p>
+            </div>
+        </div>
+    </body>
+</html>                            

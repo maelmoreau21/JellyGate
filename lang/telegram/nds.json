@@ -1,0 +1,16 @@
+{
+    "meta": {
+        "name": "Nedderdütsch (NDS)"
+    },
+    "strings": {
+        "startMessage": "",
+        "discordStartMessage": "",
+        "matrixStartMessage": "",
+        "invalidPIN": "",
+        "pinSuccess": "",
+        "languageMessage": "",
+        "languageMessageDiscord": "",
+        "languageSet": "",
+        "discordDMs": ""
+    }
+}

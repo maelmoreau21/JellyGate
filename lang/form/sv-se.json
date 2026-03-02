@@ -1,0 +1,51 @@
+{
+    "meta": {
+        "name": "Svenska (SV)"
+    },
+    "strings": {
+        "pageTitle": "Skapa Jellyfin-konto",
+        "createAccountHeader": "Skapa konto",
+        "accountDetails": "Detaljer",
+        "emailAddress": "E-post",
+        "username": "Användarnamn",
+        "password": "Lösenord",
+        "reEnterPassword": "Skriv lösenordet igen",
+        "reEnterPasswordInvalid": "Lösenorden är inte samma.",
+        "createAccountButton": "Skapa konto",
+        "passwordRequirementsHeader": "Lösenordskrav",
+        "successHeader": "Lyckades!",
+        "confirmationRequired": "E-postbekräftelse krävs",
+        "confirmationRequiredMessage": "Kontrollera din e-postkorg för att verifiera din adress.",
+        "yourAccountIsValidUntil": "Ditt konto är giltigt fram tills {date}.",
+        "sendPIN": "Skicka PIN-koden nedan till botten, återvänd sedan till den här sidan för att länka ditt konto."
+    },
+    "notifications": {
+        "errorUserExists": "Användare finns redan.",
+        "errorInvalidCode": "Ogiltig inbjudningskod.",
+        "errorInvalidPIN": "Telegram-PIN är ogiltig.",
+        "errorTelegramVerification": "Telegram-verifiering krävs.",
+        "telegramVerified": "Telegram-konto verifierades."
+    },
+    "validationStrings": {
+        "length": {
+            "singular": "Måste ha minst {n} tecken",
+            "plural": "Måste ha minst {n} tecken"
+        },
+        "uppercase": {
+            "singular": "Måste ha minst {n} versaler",
+            "plural": "Måste ha minst {n} versaler"
+        },
+        "lowercase": {
+            "singular": "Måste ha minst {n} gemener",
+            "plural": "Måste ha minst {n} gemener"
+        },
+        "number": {
+            "singular": "Måste ha minst {n} siffra",
+            "plural": "Måste ha minst {n} siffror"
+        },
+        "special": {
+            "singular": "Måste ha minst {n} specialtecken",
+            "plural": "Måste ha minst {n} specialtecken"
+        }
+    }
+}

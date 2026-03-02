@@ -1,0 +1,72 @@
+{
+    "meta": {
+        "name": "العربية (AR)"
+    },
+    "strings": {
+        "username": "اسم المستخدم",
+        "password": "كلمة المرور",
+        "emailAddress": "عنوان البريد الإلكتروني",
+        "name": "الاسم",
+        "submit": "إرسال",
+        "success": "تم",
+        "continue": "متابعة",
+        "error": "خطأ",
+        "copy": "نسخ",
+        "time24h": "توقيت 24 ساعة",
+        "time12h": "توقيت 12 ساعة",
+        "linkTelegram": "ربط Telegram",
+        "contactTelegram": "التواصل عبر Telegram",
+        "linkDiscord": "ربط Discord",
+        "linkMatrix": "ربط Matrix",
+        "contactDiscord": "التواصل عبر Discord",
+        "theme": "السمة",
+        "refresh": "تحديث",
+        "required": "مطلوب",
+        "login": "تسجيل الدخول",
+        "admin": "المسؤول",
+        "reEnable": "إعادة تفعيل",
+        "disable": "تعطيل",
+        "accountStatus": "حالة الحساب",
+        "notSet": "لم تحدد",
+        "expiry": "انتهاء الصلاحية",
+        "add": "إضافة",
+        "edit": "تعديل",
+        "delete": "حذف",
+        "myAccount": "حسابي",
+        "disabled": "معطّل",
+        "enabled": "مفعّل",
+        "send": "إرسال",
+        "copied": "تم النسخ",
+        "contactEmail": "التواصل عبر البريد",
+        "logout": "تسجيل الخروج",
+        "contactMethods": "وسائل الاتصال",
+        "referrals": "الإحالات",
+        "inviteRemainingUses": "الاستخدامات المتبقية",
+        "internal": "داخلي",
+        "external": "خارجي",
+        "sent": "تم إرساُلها",
+        "failed": "فشل"
+    },
+    "notifications": {
+        "errorUnknown": "خطأ غير معروف.",
+        "error401Unauthorized": "غير مخوّل. حاول تحديث الصفحة.",
+        "errorSaveSettings": "تعذر حفظ الإعدادات.",
+        "errorLoginBlank": "اسم المستخدم و/أو كلمة المرور تُرِكا فارغَين.",
+        "errorConnection": "تعذر الاتصال بـ jfa-go.",
+        "errorSpecialSymbols": "لا يمكن أن يحتوي الحقل على رموز خاصة."
+    },
+    "quantityStrings": {
+        "year": {
+            "singular": "سنة",
+            "plural": "{n} سنوات"
+        },
+        "month": {
+            "singular": "شهر",
+            "plural": "{n} أشهر"
+        },
+        "day": {
+            "singular": "يوم",
+            "plural": "{n} أيام"
+        }
+    }
+}

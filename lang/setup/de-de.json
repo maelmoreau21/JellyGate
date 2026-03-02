@@ -1,0 +1,160 @@
+{
+    "meta": {
+        "name": "Deutsch (DE)"
+    },
+    "strings": {
+        "pageTitle": "Setup - jfa-go",
+        "next": "Weiter",
+        "back": "Zurück",
+        "optional": "Optional",
+        "serverType": "Servertyp",
+        "disabled": "Deaktiviert",
+        "enabled": "Aktiviert",
+        "port": "Port",
+        "message": "Nachricht",
+        "serverAddress": "Serveradresse",
+        "emailSubject": "E-Mail-Betreff",
+        "URL": "URL",
+        "apiKey": "API-Schlüssel",
+        "errorInvalidUserPass": "Benutzername/Passwort ungültig.",
+        "errorNotAdmin": "Dieser Benutzer darf den Server nicht verwalten.",
+        "errorUserDisabled": "Konto ist eventuell deaktiviert.",
+        "error404": "404, prüfe die interne URL.",
+        "errorConnectionRefused": "Verbindung abgelehnt.",
+        "error": "Fehler",
+        "errorUnknown": "Unbekannter Fehler, prüfe die Logs.",
+        "errorProxy": "Proxy Konfiguration ungültig."
+    },
+    "startPage": {
+        "welcome": "Willkommen!",
+        "pressStart": "Du musst einige Dinge tun, um jfa-go einzurichten. Drücke Start, um fortzufahren.",
+        "httpsNotice": "Stelle sicher, dass du über HTTPS oder in einem privaten Netzwerk auf diese Seite zugreifst.",
+        "start": "Start"
+    },
+    "endPage": {
+        "finished": "Fertig!",
+        "restartMessage": "In den Einstellungen kannst du Discord/Telegram/Matrix Bots konfigurieren, Benachrichtigungen anpassen und vieles mehr. Klicke unten, um neu zu starten, aktualisiere dann die Seite.",
+        "refreshPage": "Aktualisieren"
+    },
+    "language": {
+        "title": "Sprache",
+        "description": "Gemeinschaftsübersetzungen sind für die meisten Teile von jfa-go verfügbar. Du kannst unten die Standardsprachen auswählen, aber Benutzer können dies immer noch ändern, wenn sie wollen. Wenn du helfen willst zu übersetzen, melde dich bei {n} an, um anzufangen, etwas beizutragen!",
+        "defaultAdminLang": "Admin Standardsprache",
+        "defaultFormLang": "Kontoerstellung Standardsprache",
+        "defaultEmailLang": "E-Mail Standardsprache"
+    },
+    "general": {
+        "title": "Allgemein",
+        "listenAddress": "Listening-Adresse",
+        "urlBase": "URL-Basis",
+        "urlBaseNotice": "Nur erforderlich, wenn ein Reverse-Proxy auf einer Subdomain verwendet wird (z. B. 'jellyf.in/accounts').",
+        "lightTheme": "Hell",
+        "darkTheme": "Dunkel",
+        "useHTTPS": "HTTPS verwenden",
+        "httpsPort": "HTTPS Port",
+        "useHTTPSNotice": "Nur empfohlen, wenn du keinen Reverse-Proxy verwendest.",
+        "pathToCertificate": "Pfad zum Zertifikat",
+        "pathToKeyFile": "Pfad zur Schlüsseldatei"
+    },
+    "login": {
+        "title": "Anmelden",
+        "description": "Um auf die Admin-Seite zuzugreifen, musst du dich mit einer untenstehenden Methode anmelden:",
+        "authorizeWithJellyfin": "Mit Jellyfin/Emby autorisieren: Anmeldedaten werden mit Jellyfin geteilt, was mehrere Benutzer ermöglicht.",
+        "authorizeManual": "Benutzername und Passwort: Lege Benutzername und Passwort manuell fest.",
+        "adminOnly": "Nur Admin-Benutzer (empfohlen)",
+        "emailNotice": "Deine E-Mail-Adresse kann verwendet werden, um Benachrichtigungen zu erhalten.",
+        "allowAll": "Erlaube allen Jellyfin-Nutzern sich anzumelden",
+        "allowAllDescription": "Nicht empfohlen. Nach der Einrichtung solltest du einzelnen Benutzern erlauben, sich anzumelden.",
+        "authorizeManualUserPageNotice": "Dadurch wird die Funktion \"Benutzerseite\" deaktiviert."
+    },
+    "jellyfinEmby": {
+        "title": "Jellyfin/Emby",
+        "description": "Ein Admin-Konto ist erforderlich, weil die API keine Benutzererstellung unter Verwendung eines API-Schlüssels erlaubt. Du solltest ein separates Konto erstellen und 'Dieser Benutzer kann den Server managen' aktivieren. Du kannst alles andere deaktivieren. Ist das erledigt, gib die Anmeldedaten hier ein.",
+        "embyNotice": "Emby-Unterstützung ist begrenzt und unterstützt keine Passwortzurücksetzung.",
+        "internal": "Intern",
+        "external": "Extern",
+        "replaceJellyfin": "Servername",
+        "replaceJellyfinNotice": "Wenn angegeben, ersetzt dies alle Vorkommen von 'Jellyfin' in der App.",
+        "addressExternalNotice": "Leer lassen, um die selbe Adresse zu verwenden.",
+        "testConnection": "Verbindung testen"
+    },
+    "ombi": {
+        "title": "Ombi",
+        "description": "Durch den Anschluss an Ombi wird sowohl ein Jellyfin-Konto als auch ein Ombi-Konto erstellt, wenn ein Benutzer durch jfa-go beitritt. Nachdem das Setup abgeschlossen ist, gehe zu den Einstellungen, um ein Standardprofil für neue Ombi-Benutzer festzulegen.",
+        "apiKeyNotice": "Finde dies in der ersten Registerkarte der Ombi-Einstellungen."
+    },
+    "email": {
+        "title": "E-Mail",
+        "description": "jfa-go kann Passwortzurücksetzung-PINs und verschiedene Benachrichtigungen per E-Mail senden. Du kannst eine Verbindung zu einem SMTP-Server herstellen, oder die {n} API verwenden.",
+        "method": "Versandmethode",
+        "useEmailAsUsername": "E-Mail-Adresse als Benutzernamen verwenden",
+        "useEmailAsUsernameNotice": "Wenn aktiviert, werden sich neue Benutzer bei Jellyfin/Emby mit ihrer E-Mail-Adresse anstatt eines Benutzernamens anmelden.",
+        "fromAddress": "Absenderadresse",
+        "senderName": "Absendername",
+        "dateFormat": "Datumsformat",
+        "dateFormatNotice": "Datum folgt dem strftime-Format. Für weitere Informationen, besuche {n}.",
+        "encryption": "Verschlüsselung",
+        "mailgunApiURL": "API-URL"
+    },
+    "notifications": {
+        "title": "Admin-Benachrichtigungen",
+        "description": "Wenn aktiviert, kannst du (pro Invite) wählen, eine Benachrichtigung zu erhalten, wenn ein Invite abläuft oder ein Benutzer erstellt wird. Wenn du nicht die Jellyfin-Login-Methode gewählt hast, stelle sicher, dass du deine E-Mail-Adresse angegeben hast, oder füge später eine andere Kontaktmöglichkeit hinzu."
+    },
+    "welcomeEmails": {
+        "title": "Willkommens-Benachrichtigungen",
+        "description": "Wenn aktiviert, wird eine Benachrichtigung mit der Jellyfin-/Emby-URL und dem Benutzernamen an neue Benutzer gesendet."
+    },
+    "inviteEmails": {
+        "title": "Einladungs-Benachrichtigungen",
+        "description": "Wenn aktiviert, kannst du Invites direkt an die E-Mail-Adresse oder das Discord-/Matrix-Konto eines Benutzers schicken. Weil du möglicherweise einen Reverse-Proxy verwendest, musst du die URL angeben, von welcher auf Invites zugegriffen wird. Schreibe deine URL-Basis, und füge '/invite' hinzu."
+    },
+    "passwordResets": {
+        "title": "Passwortzurücksetzungen",
+        "description": "Wenn ein Benutzer versucht sein Passwort zurückzusetzen, erstellt Jellyfin eine Datei namens 'passwordreset-*.json', welche eine PIN enthält. jfa-go liest die Datei und sendet die PIN an den Benutzer.",
+        "pathToJellyfin": "Pfad zum Jellyfin-Konfigurationsverzeichnis",
+        "pathToJellyfinNotice": "Wenn du nicht weißt, wo das ist, versuche dein Passwort in Jellyfin zurückzusetzen. Ein Popup mit '<Pfad zu Jellyfin>/passwordreset-*.json' wird angezeigt werden.",
+        "resetLinks": "Einen Link statt einer PIN senden",
+        "resetLinksNotice": "Wenn die Ombi-Integration aktiviert ist, verwende dies, um zurückgesetzte Passwörter von Jellyfin mit Ombi zu synchronisieren.",
+        "resetLinksLanguage": "Standardsprache für den Link zum Zurücksetzen des Passworts",
+        "setPassword": "Setze Password durch Link",
+        "setPasswordNotice": "Wenn aktiviert, muss der Benutzer sein Passwort nicht über eine PIN ändern. So wird ebenfalls die Passwortvalidierung erzwungen."
+    },
+    "passwordValidation": {
+        "title": "Passwortüberprüfung",
+        "description": "Wenn aktiviert, wird eine Reihe von Passwortanforderungen, wie z. B. Mindestlänge, Groß-/Kleinbuchstaben, usw., auf der Kontoerstellungsseite angezeigt.",
+        "length": "Länge",
+        "uppercase": "Großbuchstaben",
+        "lowercase": "Kleinbuchstaben",
+        "numbers": "Zahlen",
+        "special": "Sonderzeichen (%, *, usw.)"
+    },
+    "helpMessages": {
+        "title": "Hilfenachrichten",
+        "description": "Diese Nachrichten werden auf der Kontoerstellungsseite und in einigen E-Mails angezeigt.",
+        "contactMessage": "Kontaktnachricht",
+        "contactMessageNotice": "Wird am Ende jeder außer der Admin-Seite angezeigt.",
+        "helpMessage": "Hilfenachricht",
+        "helpMessageNotice": "Wird auf der Kontoerstellungsseite angezeigt.",
+        "successMessage": "Erfolgsnachricht",
+        "successMessageNotice": "Wird angezeigt, wenn ein Benutzer sein Konto erstellt.",
+        "emailMessage": "E-Mailnachricht",
+        "emailMessageNotice": "Wird am Ende von E-Mails angezeigt."
+    },
+    "updates": {
+        "updateChannel": "Aktualisierungskanal",
+        "unstable": "Unstable",
+        "stable": "Stable",
+        "title": "Aktualisierungen",
+        "description": "Aktiviere, um informiert zu werden, wenn neue Aktualisierungen verfügbar sind. jfa-go wird {n} alle 30 Minuten überprüfen. Keine IP-Adressen oder personenbezogene Daten werden gesammelt."
+    },
+    "messages": {
+        "title": "Mitteilungen",
+        "description": "jfa-go kann Passwortrücksetzungen und verschiedene Benachrichtigungen per E-Mail, Discord, Telegram und/oder Matrix verschicken. E-Mail kannst du unten einrichten, die Anderen später in den Einstellungen. Anweisungen findest du im {n}. Falls nicht benötigt, kannst du diese Funktionen hier deaktivieren."
+    },
+    "proxy": {
+        "description": "Lass jfa-go alle Verbindungen über einen HTTP/SOCKS5-Proxy herstellen. Die Verbindung zu Jellyfin wird über diesen Proxy getestet.",
+        "title": "Proxy",
+        "protocol": "Protokoll",
+        "address": "Adresse (inkl. Port)"
+    }
+}

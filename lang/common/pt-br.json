@@ -1,0 +1,67 @@
+{
+    "meta": {
+        "name": "Português (BR)"
+    },
+    "strings": {
+        "username": "Nome do Usuário",
+        "password": "Senha",
+        "emailAddress": "Endereço de e-mail",
+        "name": "Nome",
+        "submit": "Envie",
+        "send": "Enviar",
+        "success": "Sucesso",
+        "continue": "Continuar",
+        "error": "Erro",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "time24h": "Horário 24h",
+        "time12h": "Horário 12h",
+        "linkTelegram": "Link do Telegram",
+        "contactEmail": "Contato por Email",
+        "contactTelegram": "Contato pelo Telegram",
+        "linkDiscord": "Link do Discord",
+        "linkMatrix": "Link do Matrix",
+        "contactDiscord": "Contato através do Discord",
+        "theme": "Tema",
+        "refresh": "Atualizar",
+        "required": "Requeridos",
+        "login": "Login",
+        "logout": "Sair",
+        "admin": "Admin",
+        "enabled": "Habilitado",
+        "disabled": "Desativado",
+        "reEnable": "Reativar",
+        "disable": "Desativar",
+        "expiry": "Expira",
+        "add": "Adicionar",
+        "edit": "Editar",
+        "delete": "Deletar",
+        "inviteRemainingUses": "Uso restantes",
+        "referrals": "Referências",
+        "contactMethods": "Métodos de contato",
+        "accountStatus": "Estado da conta",
+        "notSet": "Não configurado",
+        "myAccount": "Minha conta"
+    },
+    "notifications": {
+        "errorLoginBlank": "O nome de usuário e/ou senha foram deixados em branco.",
+        "errorConnection": "Não foi possível conectar ao jfa-go.",
+        "errorUnknown": "Erro desconhecido.",
+        "error401Unauthorized": "Não autorizado. Tente atualizar a página.",
+        "errorSaveSettings": "Não foi possível salvar as configurações."
+    },
+    "quantityStrings": {
+        "day": {
+            "plural": "{n} Dias",
+            "singular": "{n} Dia"
+        },
+        "year": {
+            "singular": "{n} Ano",
+            "plural": "{n} anos"
+        },
+        "month": {
+            "singular": "{n} Mês",
+            "plural": "{n} meses"
+        }
+    }
+}

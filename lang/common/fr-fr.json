@@ -1,0 +1,67 @@
+{
+    "meta": {
+        "name": "Français (FR)"
+    },
+    "strings": {
+        "username": "Nom d'utilisateur",
+        "password": "Mot de passe",
+        "emailAddress": "Adresse mail",
+        "name": "Nom",
+        "submit": "Soumettre",
+        "send": "Envoyer",
+        "success": "Succès",
+        "continue": "Continuer",
+        "error": "Erreur",
+        "copy": "Copier",
+        "copied": "Copié",
+        "time24h": "Temps 24h",
+        "time12h": "Temps 12h",
+        "linkTelegram": "Lien Telegram",
+        "contactEmail": "Contact par e-mail",
+        "contactTelegram": "Contact par Telegram",
+        "linkDiscord": "Lier Discord",
+        "linkMatrix": "Lier Matrix",
+        "contactDiscord": "Contacter par Discord",
+        "theme": "Thème",
+        "refresh": "Actualiser",
+        "required": "Requis",
+        "login": "S'identifier",
+        "logout": "Se déconnecter",
+        "admin": "Administrateur",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "reEnable": "Ré-activé",
+        "disable": "Désactiver",
+        "expiry": "Expiration",
+        "add": "Ajouter",
+        "edit": "Éditer",
+        "delete": "Effacer",
+        "inviteRemainingUses": "Utilisations restantes",
+        "accountStatus": "Statut du compte",
+        "notSet": "Non défini",
+        "myAccount": "Mon compte",
+        "contactMethods": "Moyens de contact",
+        "referrals": "Programme de parrainage"
+    },
+    "notifications": {
+        "errorLoginBlank": "Le nom d'utilisateur et/ou le mot de passe sont vides.",
+        "errorConnection": "Impossible de se connecter à jfa-go.",
+        "errorUnknown": "Erreur inconnue.",
+        "error401Unauthorized": "Non autorisé. Essayez d'actualiser la page.",
+        "errorSaveSettings": "Impossible d'enregistrer les paramètres."
+    },
+    "quantityStrings": {
+        "year": {
+            "plural": "{n} années",
+            "singular": "{n} année"
+        },
+        "day": {
+            "singular": "{n} jour",
+            "plural": "{n} jours"
+        },
+        "month": {
+            "singular": "{n} mois",
+            "plural": "{n} mois"
+        }
+    }
+}

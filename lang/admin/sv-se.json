@@ -1,0 +1,143 @@
+{
+    "meta": {
+        "name": "Svenska (SV)"
+    },
+    "strings": {
+        "invites": "Inbjudningar",
+        "accounts": "Konton",
+        "settings": "Inställningar",
+        "inviteDays": "Dagar",
+        "inviteHours": "Timmar",
+        "inviteMinutes": "Minuter",
+        "inviteNumberOfUses": "Antal användningar",
+        "warning": "Varning",
+        "inviteInfiniteUsesWarning": "inbjudningar med oändligt antal användningar kan missbrukas",
+        "inviteSendToEmail": "Skicka till",
+        "create": "Skapa",
+        "apply": "Tillämpa",
+        "name": "Namn",
+        "date": "Datum",
+        "lastActiveTime": "Senast aktiv",
+        "from": "Från",
+        "user": "Användare",
+        "aboutProgram": "Om",
+        "version": "Version",
+        "commitNoun": "Skicka",
+        "newUser": "Ny användare",
+        "profile": "Profil",
+        "unknown": "Okänd",
+        "label": "Etikett",
+        "announce": "Meddela",
+        "subject": "E-postämne",
+        "message": "Meddelande",
+        "variables": "Variabler",
+        "preview": "Förhandsvisning",
+        "reset": "Återställ",
+        "customizeMessages": "Anpassa e-post",
+        "customizeMessagesDescription": "Om du inte vill använda jfa-go's e-postmallar, så kan du skapa dina egna med Markdown.",
+        "markdownSupported": "Markdown stöds.",
+        "modifySettings": "Ändra inställningar",
+        "modifySettingsDescription": "Tillämpa inställningar från en befintlig profil eller kopiera dem direkt från en användare.",
+        "applyHomescreenLayout": "Tillämpa hemskärmslayout",
+        "sendDeleteNotificationEmail": "Skicka notifikations e-postmeddelande",
+        "sendDeleteNotifiationExample": "Ditt konto har raderats.",
+        "settingsRestart": "Omstart",
+        "settingsRestarting": "Startar om…",
+        "settingsRestartRequired": "Omstart krävs",
+        "settingsRestartRequiredDescription": "En omstart är nödvändig för att tillämpa vissa inställningar du ändrat. Starta om nu eller senare?",
+        "settingsApplyRestartLater": "Tillämpa, men starta om senare",
+        "settingsApplyRestartNow": "Tillämpa och starta om",
+        "settingsApplied": "Inställningarna tillämpade.",
+        "settingsRefreshPage": "Uppdatera sidan om några sekunder.",
+        "settingsRequiredOrRestartMessage": "Notera: {n} anger ett obligatoriskt fält, {n} anger att ändringar kräver omstart.",
+        "settingsSave": "Spara",
+        "ombiUserDefaults": "Ombi standardanvändare",
+        "ombiUserDefaultsDescription": "Skapa en Ombi-användare och konfigurera denna, välj sedan denna här nedan. Inställningar/behörigheter lagras och tillämpas på nya Ombi-användare som skapats av jfa-go",
+        "userProfiles": "Användarprofiler",
+        "userProfilesDescription": "Profiler tillämpas på användare när de skapar ett konto. En profil inkluderar biblioteksåtkomsträttigheter och layout på hemskärmen.",
+        "userProfilesIsDefault": "Standard",
+        "userProfilesLibraries": "Bibliotek",
+        "addProfile": "Lägg till profil",
+        "addProfileDescription": "Skapa en Jellyfin-användare och konfigurera samt välj denna här nedan. När den här profilen tillämpas på en inbjudan skapas nya användare med inställningarna.",
+        "addProfileNameOf": "Profilnamn",
+        "addProfileStoreHomescreenLayout": "Lagra hemskärmslayout",
+        "inviteNoUsersCreated": "Ingen än!",
+        "inviteUsersCreated": "Skapade användare",
+        "inviteNoProfile": "Ingen profil",
+        "inviteDateCreated": "Skapad",
+        "inviteNoInvites": "Ingen",
+        "inviteExpiresInTime": "Går ut om {n}",
+        "notifyEvent": "Meddela den:",
+        "notifyInviteExpiry": "Vid utgång",
+        "notifyUserCreation": "Vid användarskapande",
+        "inviteDuration": "Varaktighet för inbjudan",
+        "userExpiry": "Användarutgång",
+        "userExpiryDescription": "Efter en angiven tid efter varje registrering så tar jfa-go bort/inaktiverar kontot. Du kan ändra detta beteende i inställningarna.",
+        "extendExpiry": "Förläng utgång"
+    },
+    "notifications": {
+        "changedEmailAddress": "Ändrad e-postadress för {n}.",
+        "userCreated": "Användaren {n} har skapats.",
+        "createProfile": "Skapad profil {n}.",
+        "saveSettings": "Inställningar sparades",
+        "saveEmail": "E-post sparad.",
+        "sentAnnouncement": "Meddelande skickat.",
+        "setOmbiDefaults": "Lagrade ombi-standardvärden.",
+        "errorSettingsAppliedNoHomescreenLayout": "Inställningarna tillämpades, men tillämpningen av hemskärmslayout kan ha misslyckats.",
+        "errorHomescreenAppliedNoSettings": "Hemskärmslayout tillämpades, men tillämpningen av inställningar kan ha misslyckats.",
+        "errorSettingsFailed": "Tillämpning misslyckades.",
+        "errorSaveEmail": "Det gick inte att spara e-postmeddelandet.",
+        "errorBlankFields": "Fält lämnades tomma",
+        "errorDeleteProfile": "Det gick inte att ta bort profilen {n}",
+        "errorLoadProfiles": "Det gick inte att läsa in profiler.",
+        "errorCreateProfile": "Det gick inte att skapa profilen {n}",
+        "errorSetDefaultProfile": "Det gick inte att ange standardprofil.",
+        "errorLoadUsers": "Det gick inte att läsa in användare.",
+        "errorLoadSettings": "Det gick inte att läsa in inställningarna.",
+        "errorSetOmbiDefaults": "Det gick inte att lagra ombi-standardvärden.",
+        "errorLoadOmbiUsers": "Det gick inte att ladda ombi-användare.",
+        "errorChangedEmailAddress": "Det gick inte att ändra e-postadressen för {n}.",
+        "errorFailureCheckLogs": "Misslyckades (kontrollera konsol/loggar)",
+        "errorPartialFailureCheckLogs": "Partiellt fel (kontrollera konsol/loggarna)",
+        "errorUserCreated": "Det gick inte att skapa användaren {n}.",
+        "errorSendWelcomeEmail": "Det gick inte att skicka välkomstmail (kontrollera konsol/loggar)"
+    },
+    "quantityStrings": {
+        "modifySettingsFor": {
+            "singular": "Ändra inställningar för {n} användare",
+            "plural": "Ändra inställningar för {n} användare"
+        },
+        "deleteNUsers": {
+            "singular": "Ta bort {n} användare",
+            "plural": "Ta bort {n} användare"
+        },
+        "addUser": {
+            "singular": "Lägg till användare",
+            "plural": "Lägg till användare"
+        },
+        "deleteUser": {
+            "singular": "Radera användare",
+            "plural": "Radera användare"
+        },
+        "deletedUser": {
+            "singular": "{N} användare borttagen.",
+            "plural": "{N} användare har tagits bort."
+        },
+        "announceTo": {
+            "singular": "Meddela till {n} användare",
+            "plural": "Meddela till {n} användare"
+        },
+        "appliedSettings": {
+            "singular": "Tillämpade inställningar för {n} användare.",
+            "plural": "Tillämpade inställningar för {n} användare."
+        },
+        "extendExpiry": {
+            "plural": "Förläng utgången för {n} användare",
+            "singular": "Förläng utgången för {n} användare"
+        },
+        "extendedExpiry": {
+            "singular": "Utökad giltighetstid för {n} användare.",
+            "plural": "Utökad giltighetstid för {n} användare."
+        }
+    }
+}

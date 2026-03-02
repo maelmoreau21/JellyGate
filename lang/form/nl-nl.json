@@ -1,0 +1,89 @@
+{
+    "meta": {
+        "name": "Nederlands (NL)"
+    },
+    "strings": {
+        "pageTitle": "Maak Jellyfin-account aan",
+        "createAccountHeader": "Account aanmaken",
+        "accountDetails": "Details",
+        "emailAddress": "E-mail",
+        "username": "Gebruikersnaam",
+        "password": "Wachtwoord",
+        "reEnterPassword": "Bevestig wachtwoord",
+        "reEnterPasswordInvalid": "Wachtwoorden komen niet overeen.",
+        "createAccountButton": "Maak account aan",
+        "passwordRequirementsHeader": "Wachtwoordvereisten",
+        "successHeader": "Succes!",
+        "confirmationRequired": "Bevestiging van e-mailadres verplicht",
+        "confirmationRequiredMessage": "Controleer je e-mail inbox om je adres te bevestigen.",
+        "yourAccountIsValidUntil": "Je account zal geldig zijn tot {date}.",
+        "sendPIN": "Stuur onderstaande pincode naar de bot, en kom daarna hier terug om je account te koppelen.",
+        "matrixEnterUser": "Voer je gebruikers ID in, druk op versturen, en er wordt je een pincode toegestuurd. Vul die hier in om door te gaan.",
+        "sendPINDiscord": "Typ {command} in {server_channel} op Discord, stuur daarna onderstaande pincode.",
+        "oldPassword": "Huidig wachtwoord",
+        "newPassword": "Nieuw wachtwoord",
+        "welcomeUser": "Welkom, {user}!",
+        "addContactMethod": "Voeg contact methode toe",
+        "editContactMethod": "Wijzig contact methode",
+        "joinTheServer": "Word lid van de server:",
+        "resetPassword": "Wachtwoord opnieuw instellen",
+        "changePassword": "Wachtwoord wijzigen",
+        "resetSentDescription": "Als er een account met de opgegeven gebruikersnaam/contactmethode bestaat, is er een wachtwoordreset-link verstuurd via alle bekende contactmethodes. De link is 30 minuten geldig.",
+        "customMessagePlaceholderHeader": "Kaart aanpassen",
+        "customMessagePlaceholderContent": "Klik op de gebruikerspagina aanpassen knop in instellingen om deze kaart aan te passen, of om op het loginscherm te tonen. En wees maar niet bang: de gebruiker kan dit niet zien.",
+        "userPageSuccessMessage": "Je kunt details van je account later bekijken en aanpassen op de {myAccount} pagina.",
+        "resetPasswordThroughJellyfin": "Om je wachtwoord te resetten, ga naar {jfLink} en druk op de \"Wachtwoord vergeten\" knop.",
+        "resetPasswordThroughLink": "Om je wachtwoord te resetten, vul je gebruikersnaam, e-mailadres of gebruikersnaam van een gelinkte contactmethode in, en verstuur. Er wordt een wachtwoord-reset link gestuurd.",
+        "resetSent": "Reset-link verstuurd.",
+        "referralsDescription": "Nodig vrienden en familie uit met deze link. Kom hier terug voor een nieuwe als hij verloopt.",
+        "copyReferral": "Kopieer link",
+        "invitedBy": "Je bent uitgenodigd door gebruiker {user}.",
+        "resetPasswordThroughLinkStart": "Voer één van onderstaande velden in om je wachtwoord te resetten:",
+        "resetPasswordUsername": "Je Jellyfin gebruikersnaam",
+        "referralsWithExpiryDescription": "Nodig vrienden en familie uit voor Jellyfin met deze link. De link wordt uitgeschakeld zodra hij verloopt.",
+        "resetPasswordEmail": "Je e-mailadres",
+        "resetPasswordThroughLinkEnd": "Druk daarna op versturen. Er wordt dan een link verstuurd om je wachtwoord te resetten.",
+        "resetPasswordContactMethod": "De gebruikersnaam van een contactmethode die aan je account gekoppeld is"
+    },
+    "validationStrings": {
+        "length": {
+            "singular": "Moet ten minste {n} teken bevatten",
+            "plural": "Moet ten minste {n} tekens bevatten"
+        },
+        "uppercase": {
+            "singular": "Moet ten minste {n} hoofdletter bevatten",
+            "plural": "Moet ten minste {n} hoofdletters bevatten"
+        },
+        "lowercase": {
+            "singular": "Moet ten minste {n} kleine letter bevatten",
+            "plural": "Moet ten minste {n} kleine letters bevatten"
+        },
+        "number": {
+            "singular": "Moet ten minste {n} cijfer bevatten",
+            "plural": "Moet ten minste {n} cijfers bevatten"
+        },
+        "special": {
+            "singular": "Moet ten minste {n} bijzonder teken bevatten",
+            "plural": "Moet ten minste {n} bijzondere tekens bevatten"
+        }
+    },
+    "notifications": {
+        "errorUserExists": "Gebruiker bestaat al.",
+        "errorInvalidCode": "Ongeldige uitnodigingscode.",
+        "telegramVerified": "Telegram-account goedgekeurd.",
+        "errorTelegramVerification": "Telegram-verificatie nodig.",
+        "errorInvalidPIN": "Pincode is ongeldig.",
+        "errorDiscordVerification": "Discord-verificatie vereist.",
+        "errorUnknown": "Onbekende fout.",
+        "errorMatrixVerification": "Matrix-verificatie vereist.",
+        "verified": "Account geverifieerd.",
+        "errorNoEmail": "E-mail vereist.",
+        "errorPassword": "Controleer wachtwoordeisen.",
+        "errorNoMatch": "Wachtwoorden komen niet overeen.",
+        "errorCaptcha": "Captcha incorrect.",
+        "errorAccountLinked": "Account is al in gebruik.",
+        "errorEmailLinked": "Emailadres is al in gebruik.",
+        "errorOldPassword": "Huidig wachtwoord is niet correct.",
+        "passwordChanged": "Wachtwoord gewijzigd."
+    }
+}

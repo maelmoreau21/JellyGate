@@ -1,0 +1,11 @@
+{{ .welcome }}
+
+{{ .youCanLoginWith }}:
+
+{{ .jellyfinURLString }}: {{ .jellyfinURL }}
+
+{{ .usernameString }}: {{ .username }}
+
+{{ .yourAccountWillExpire }}
+
+{{ .footer }}

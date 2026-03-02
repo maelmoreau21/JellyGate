@@ -1,0 +1,88 @@
+{
+    "meta": {
+        "name": "العربية (AR)"
+    },
+    "strings": {
+        "pageTitle": "إنشاء حساب Jellyfin",
+        "createAccountHeader": "إنشاء حساب",
+        "accountDetails": "التفاصيل",
+        "emailAddress": "البريد الإلكتروني",
+        "username": "اسم المستخدم",
+        "password": "كلمة المرور",
+        "reEnterPassword": "تأكيد كلمة المرور",
+        "reEnterPasswordInvalid": "كلمات المرور غير متطابقة.",
+        "createAccountButton": "إنشاء الحساب",
+        "passwordRequirementsHeader": "متطلبات كلمة المرور",
+        "successHeader": "تم!",
+        "confirmationRequired": "مطلوب تأكيد البريد الإلكتروني",
+        "confirmationRequiredMessage": "يرجى التحقق من بريدك الإلكتروني لتأكيد العنوان.",
+        "yourAccountIsValidUntil": "سيكون حسابك صالحاً حتى {date}.",
+        "sendPIN": "أرسل الرمز أدناه إلى البوت، ثم عُد إلى هنا لربط حسابك.",
+        "sendPINDiscord": "اكتب {command} في {server_channel} في Discord، ثم أرسل الرمز أدناه.",
+        "matrixEnterUser": "أدخل مُعرّف المستخدم الخاص بك، واضغط على إرسال، وسيتم إرسال رمز إليك. أدخله هنا للمتابعة.",
+        "oldPassword": "كلمة المرور القديمة",
+        "newPassword": "كلمة المرور الجديدة",
+        "joinTheServer": "انضم إلى الخادم:",
+        "editContactMethod": "تغيير وسيلة الاتصال",
+        "customMessagePlaceholderHeader": "تخصيص هذه البطاقة",
+        "resetPassword": "إعادة تعيين كلمة المرور",
+        "resetSent": "تم إرسال إعادة التعيين.",
+        "resetSentDescription": "في حال وجود حساب يملك اسم المستخدم/وسيلة الاتصال المحددة، فسيتم إرسال رابط إعادة تعيين كلمة المرور عبر جميع وسائل الاتصال المتاحة. ستنتهي صلاحية الرمز خلال 30 دقيقة.",
+        "changePassword": "تغيير كلمة المرور",
+        "welcomeUser": "مرحباً، {user}!",
+        "addContactMethod": "أضف وسيلة اتصال",
+        "customMessagePlaceholderContent": "اضغط على زر التعديل في صفحة المستخدم في الإعدادات لتخصيص هذه البطاقة، أو أظهر واحدة على صفحة تسجيل الدخول، ولا تقلق، لا يستطيع المستخدم رؤيتها.",
+        "userPageSuccessMessage": "يمكنك الاطلاع على تفاصيل حسابك وتغييرها لاحقاً على صفحة {myAccount}.",
+        "resetPasswordThroughJellyfin": "لإعادة تعيين كلمة المرور، قم بزيارة {jfLink} واضغط على زر \"نسيت كلمة المرور\".",
+        "resetPasswordThroughLink": "لإعادة تعيين كلمة المرور، أدخل اسم المستخدم، عنوان البريد الإلكتروني، أو اسم مستخدم لوسيلة اتصال مربوطة، ثم أرسل. سيتم إرسال رابط لإعادة تعيين كلمة المرور.",
+        "resetPasswordThroughLinkEnd": "ثم اضغط على إرسال. سيتم إرسال رابط لإعادة تعيين كلمة مرورك.",
+        "referralsDescription": "ادعُ أصدقاءك وعائلتك إلى Jellyfin باستخدام هذا الرابط. عُد إلى هنا للحصول على رابط جديد إذا انتهت صلاحيته.",
+        "resetPasswordThroughLinkStart": "لإعادة تعيين كلمة مرورك، أدخل أحد الخيارات التالية:",
+        "resetPasswordContactMethod": "اسم المستخدم لأي وسيلة اتصال مرتبطة بحسابك",
+        "copyReferral": "نسخ الرابط",
+        "invitedBy": "تمت دعوتك من قبل المستخدم {user}.",
+        "resetPasswordUsername": "اسم مستخدم Jellyfin الخاص بك",
+        "resetPasswordEmail": "عنوان بريدك الإلكتروني",
+        "referralsWithExpiryDescription": "ادعُ أصدقاءك وعائلتك إلى Jellyfin باستخدام هذا الرابط. سيتم تعطيل الرابط بعد انتهاء صلاحيته."
+    },
+    "notifications": {
+        "errorUserExists": "المستخدم موجود مسبقا.",
+        "errorInvalidCode": "رمز دعوة غير صالح.",
+        "errorTelegramVerification": "مطلوب تأكيد Telegram.",
+        "errorDiscordVerification": "مطلوب تأكيد Discord.",
+        "errorMatrixVerification": "مطلوب تأكيد Matrix.",
+        "errorInvalidPIN": "الرمز غير صالح.",
+        "errorUnknown": "خطأ غير معروف.",
+        "errorNoEmail": "البريد الإلكتروني مطلوب.",
+        "errorCaptcha": "كلمة التحقق خاطئة.",
+        "errorPassword": "تحقق من متطلبات كلمة المرور.",
+        "errorNoMatch": "كلمات المرور غير متطابقة.",
+        "verified": "تم تأكيد الحساب.",
+        "errorAccountLinked": "الحساب مستخدم بالفعل.",
+        "errorEmailLinked": "البريد مستخدم بالفعل.",
+        "errorOldPassword": "كلمة المرور القديمة خاطئة.",
+        "passwordChanged": "تم تغيير كلمة المرور."
+    },
+    "validationStrings": {
+        "length": {
+            "singular": "يجب ألا يقل عدد الأحرف عن {n}",
+            "plural": "يجب ألا يقل عدد الأحرف عن {n}"
+        },
+        "uppercase": {
+            "singular": "يجب ألا يقل عدد الأحرف الكبيرة عن {n}",
+            "plural": "يجب ألا يقل عدد الأحرف الكبيرة عن {n}"
+        },
+        "lowercase": {
+            "singular": "يجب ألا يقل عدد الأحرف الصغيرة عن {n}",
+            "plural": "يجب ألا يقل عدد الأحرف الصغيرة عن {n}"
+        },
+        "number": {
+            "singular": "يجب ألا يقل عدد الأرقام عن {n}",
+            "plural": "يجب ألا يقل عدد الأرقام عن {n}"
+        },
+        "special": {
+            "singular": "يجب ألا يقل عدد الأحرف الخاصة عن {n}",
+            "plural": "يجب ألا يقل عدد الأحرف الخاصة عن {n}"
+        }
+    }
+}
