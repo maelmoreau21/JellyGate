@@ -4,8 +4,6 @@ ENV JFA_GO_BUILT_BY=$BUILT_BY
 
 COPY . /opt/build
 
-# Fetch missing dependencies before building
-RUN cd /opt/build && go get github.com/go-ldap/ldap/v3 && go mod tidy
 RUN cd /opt/build && chmod +x ./scripts/version.sh && INTERNAL=off UPDATER=docker ./scripts/version.sh goreleaser build --snapshot --skip=validate --clean --id notray-e2ee
 
 RUN mv /opt/build/dist/*_linux_arm_6 /opt/build/dist/placeholder_linux_arm
