@@ -6,7 +6,7 @@ COPY . .
 RUN git config --global --add safe.directory /opt/build
 RUN npm ci
 RUN CSSVERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged") \
-    env GOOS= GOARCH= CSSVERSION=$CSSVERSION make precompile
+    env GOOS= GOARCH= CSSVERSION=$CSSVERSION make precompile > make_debug.log 2>&1 || (tail -n 100 make_debug.log && exit 1)
 
 # STAGE 2: Go Builder (Runs on target architecture for native compilation)
 FROM --platform=$TARGETPLATFORM docker.io/hrfee/jfa-go-build-docker:latest AS go-builder
