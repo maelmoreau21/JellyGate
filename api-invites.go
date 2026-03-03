@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/itchyny/timefmt-go"
 	"github.com/lithammer/shortuuid/v3"
 	"github.com/timshannon/badgerhold/v4"

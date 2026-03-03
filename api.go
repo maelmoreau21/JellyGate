@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hrfee/jfa-go/common"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/common"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/hrfee/mediabrowser"
 	"github.com/itchyny/timefmt-go"
 	"github.com/lithammer/shortuuid/v3"

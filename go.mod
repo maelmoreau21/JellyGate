@@ -1,22 +1,22 @@
-module github.com/hrfee/jfa-go
+module github.com/maelmoreau21/JellyGate
 
 go 1.24.0
 
-replace github.com/hrfee/jfa-go/docs => ./docs
+replace github.com/maelmoreau21/JellyGate/docs => ./docs
 
-replace github.com/hrfee/jfa-go/common => ./common
+replace github.com/maelmoreau21/JellyGate/common => ./common
 
-replace github.com/hrfee/jfa-go/ombi => ./ombi
+replace github.com/maelmoreau21/JellyGate/ombi => ./ombi
 
-replace github.com/hrfee/jfa-go/logger => ./logger
+replace github.com/maelmoreau21/JellyGate/logger => ./logger
 
-replace github.com/hrfee/jfa-go/logmessages => ./logmessages
+replace github.com/maelmoreau21/JellyGate/logmessages => ./logmessages
 
-replace github.com/hrfee/jfa-go/linecache => ./linecache
+replace github.com/maelmoreau21/JellyGate/linecache => ./linecache
 
-replace github.com/hrfee/jfa-go/easyproxy => ./easyproxy
+replace github.com/maelmoreau21/JellyGate/easyproxy => ./easyproxy
 
-replace github.com/hrfee/jfa-go/jellyseerr => ./jellyseerr
+replace github.com/maelmoreau21/JellyGate/jellyseerr => ./jellyseerr
 
 // replace github.com/hrfee/mediabrowser => ../mediabrowser
 
@@ -33,19 +33,19 @@ require (
 	github.com/goccy/go-yaml v1.18.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a
-	github.com/hrfee/jfa-go/common v0.0.0-20251123165523-7c9f91711460
-	github.com/hrfee/jfa-go/docs v0.0.0-20251123165523-7c9f91711460
-	github.com/hrfee/jfa-go/easyproxy v0.0.0-20251123165523-7c9f91711460
-	github.com/hrfee/jfa-go/jellyseerr v0.0.0-20251123165523-7c9f91711460
-	github.com/hrfee/jfa-go/linecache v0.0.0-20251123165523-7c9f91711460
-	github.com/hrfee/jfa-go/logger v0.0.0-20251123165523-7c9f91711460
-	github.com/hrfee/jfa-go/logmessages v0.0.0-20251123165523-7c9f91711460
-	github.com/hrfee/jfa-go/ombi v0.0.0-20251123165523-7c9f91711460
 	github.com/hrfee/mediabrowser v0.3.36
 	github.com/hrfee/simple-template v1.1.0
 	github.com/itchyny/timefmt-go v0.1.7
 	github.com/lithammer/shortuuid/v3 v3.0.7
 	github.com/lutischan-ferenc/systray v1.2.1
+	github.com/maelmoreau21/JellyGate/common v0.0.0-20251123165523-7c9f91711460
+	github.com/maelmoreau21/JellyGate/docs v0.0.0-20251123165523-7c9f91711460
+	github.com/maelmoreau21/JellyGate/easyproxy v0.0.0-20251123165523-7c9f91711460
+	github.com/maelmoreau21/JellyGate/jellyseerr v0.0.0-20251123165523-7c9f91711460
+	github.com/maelmoreau21/JellyGate/linecache v0.0.0-20251123165523-7c9f91711460
+	github.com/maelmoreau21/JellyGate/logger v0.0.0-20251123165523-7c9f91711460
+	github.com/maelmoreau21/JellyGate/logmessages v0.0.0-20251123165523-7c9f91711460
+	github.com/maelmoreau21/JellyGate/ombi v0.0.0-20251123165523-7c9f91711460
 	github.com/mailgun/mailgun-go/v4 v4.23.0
 	github.com/mattn/go-sqlite3 v1.14.32
 	github.com/robert-nix/ansihtml v1.0.1
@@ -61,6 +61,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.2 // indirect
@@ -71,6 +72,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.11 // indirect
 	github.com/gin-contrib/sse v1.1.0 // indirect
+	github.com/go-asn1-ber/asn1-ber v1.5.8-0.20250403174932-29230038a667 // indirect
 	github.com/go-chi/chi/v5 v5.2.3 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

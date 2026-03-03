@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 
-	"github.com/hrfee/jfa-go/common"
+	"github.com/maelmoreau21/JellyGate/common"
 )
 
 const (

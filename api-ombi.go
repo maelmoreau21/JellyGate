@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hrfee/jfa-go/common"
-	lm "github.com/hrfee/jfa-go/logmessages"
-	ombiLib "github.com/hrfee/jfa-go/ombi"
+	"github.com/maelmoreau21/JellyGate/common"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
+	ombiLib "github.com/maelmoreau21/JellyGate/ombi"
 	"github.com/hrfee/mediabrowser"
 )
 

@@ -1,4 +1,4 @@
-module github.com/hrfee/jfa-go/logger
+module github.com/maelmoreau21/JellyGate/logger
 
 go 1.16
 

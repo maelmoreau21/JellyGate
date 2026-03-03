@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hrfee/jfa-go/ombi"
+	"github.com/maelmoreau21/JellyGate/ombi"
 	"gopkg.in/ini.v1"
 )
 

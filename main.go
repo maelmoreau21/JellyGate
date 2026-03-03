@@ -28,12 +28,12 @@ import (
 	"github.com/lithammer/shortuuid/v3"
 	"gopkg.in/ini.v1"
 
-	"github.com/hrfee/jfa-go/common"
-	_ "github.com/hrfee/jfa-go/docs"
-	"github.com/hrfee/jfa-go/jellyseerr"
-	"github.com/hrfee/jfa-go/logger"
-	lm "github.com/hrfee/jfa-go/logmessages"
-	"github.com/hrfee/jfa-go/ombi"
+	"github.com/maelmoreau21/JellyGate/common"
+	_ "github.com/maelmoreau21/JellyGate/docs"
+	"github.com/maelmoreau21/JellyGate/jellyseerr"
+	"github.com/maelmoreau21/JellyGate/logger"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
+	"github.com/maelmoreau21/JellyGate/ombi"
 )
 
 var (

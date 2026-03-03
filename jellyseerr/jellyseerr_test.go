@@ -3,7 +3,7 @@ package jellyseerr
 import (
 	"testing"
 
-	"github.com/hrfee/jfa-go/common"
+	"github.com/maelmoreau21/JellyGate/common"
 )
 
 const (

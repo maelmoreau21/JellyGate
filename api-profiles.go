@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	_ "github.com/hrfee/mediabrowser"
 	"github.com/timshannon/badgerhold/v4"
 )

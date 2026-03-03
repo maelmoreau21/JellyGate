@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hrfee/jfa-go.git"
+    "url": "git+https://github.com/maelmoreau21/JellyGate.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/hrfee/jfa-go/issues"
+    "url": "https://github.com/maelmoreau21/JellyGate/issues"
   },
-  "homepage": "https://github.com/hrfee/jfa-go#readme",
+  "homepage": "https://github.com/maelmoreau21/JellyGate#readme",
   "dependencies": {
     "@af-utils/scrollend-polyfill": "^0.0.14",
     "@hrfee/simpletemplate": "^1.1.0",

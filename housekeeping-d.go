@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/hrfee/mediabrowser"
 	"github.com/timshannon/badgerhold/v4"
 )

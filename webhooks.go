@@ -5,9 +5,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hrfee/jfa-go/common"
-	"github.com/hrfee/jfa-go/logger"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/common"
+	"github.com/maelmoreau21/JellyGate/logger"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 )
 
 type WebhookSender struct {

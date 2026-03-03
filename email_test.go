@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/hrfee/jfa-go/logger"
+	"github.com/maelmoreau21/JellyGate/logger"
 	"github.com/lithammer/shortuuid/v3"
 	"github.com/timshannon/badgerhold/v4"
 )

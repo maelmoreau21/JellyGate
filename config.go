@@ -13,9 +13,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hrfee/jfa-go/common"
-	"github.com/hrfee/jfa-go/easyproxy"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/common"
+	"github.com/maelmoreau21/JellyGate/easyproxy"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"gopkg.in/ini.v1"
 )
 

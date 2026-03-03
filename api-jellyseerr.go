@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hrfee/jfa-go/common"
-	"github.com/hrfee/jfa-go/jellyseerr"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/common"
+	"github.com/maelmoreau21/JellyGate/jellyseerr"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 )
 
 // @Summary Get a list of Jellyseerr users.

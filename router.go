@@ -10,7 +10,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )

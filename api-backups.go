@@ -7,7 +7,7 @@ import (
 	"sort"
 
 	"github.com/gin-gonic/gin"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 )
 
 // @Summary Creates a backup of the database.

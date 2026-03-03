@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hrfee/jfa-go/easyproxy"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/easyproxy"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/hrfee/mediabrowser"
 )
 

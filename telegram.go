@@ -8,7 +8,7 @@ import (
 	"time"
 
 	tg "github.com/go-telegram-bot-api/telegram-bot-api"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/timshannon/badgerhold/v4"
 )
 

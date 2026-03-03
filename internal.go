@@ -7,7 +7,7 @@ import (
 	"embed"
 	"io/fs"
 
-	"github.com/hrfee/jfa-go/logger"
+	"github.com/maelmoreau21/JellyGate/logger"
 )
 
 const binaryType = "internal"

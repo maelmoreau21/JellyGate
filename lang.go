@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/hrfee/jfa-go/common"
+	"github.com/maelmoreau21/JellyGate/common"
 )
 
 type langMeta struct {

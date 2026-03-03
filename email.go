@@ -23,8 +23,8 @@ import (
 
 	"github.com/gomarkdown/markdown"
 	"github.com/gomarkdown/markdown/html"
-	"github.com/hrfee/jfa-go/easyproxy"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/easyproxy"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/hrfee/mediabrowser"
 	"github.com/itchyny/timefmt-go"
 	"github.com/mailgun/mailgun-go/v4"

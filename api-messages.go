@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hrfee/jfa-go/common"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/common"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/lithammer/shortuuid/v3"
 	"gopkg.in/ini.v1"
 )

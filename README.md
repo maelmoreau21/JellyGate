@@ -61,7 +61,7 @@ services:
 
 - **LDAP Setup**: See the [MIGRATION_LDAP.md](MIGRATION_LDAP.md) for Synology AD/LDAP configuration.
 - **Project History**: Read our [Project Context](project_context.md) for development milestones.
-- **Original Project**: Based on the excellent work by [hrfee](https://github.com/hrfee/jfa-go).
+- **Original Project**: Based on the excellent work by [hrfee](https://github.com/maelmoreau21/JellyGate).
 
 ---
 

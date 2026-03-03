@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hrfee/jfa-go/logger"
+	"github.com/maelmoreau21/JellyGate/logger"
 )
 
 const binaryType = "external"

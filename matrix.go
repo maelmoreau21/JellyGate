@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gomarkdown/markdown"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/timshannon/badgerhold/v4"
 	"maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"

@@ -1,4 +1,4 @@
-module github.com/hrfee/jfa-go/scripts/account-gen
+module github.com/maelmoreau21/JellyGate/scripts/account-gen
 
 go 1.18
 

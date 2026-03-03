@@ -1,4 +1,4 @@
-module github.com/hrfee/jfa-go/docs
+module github.com/maelmoreau21/JellyGate/docs
 
 go 1.15
 

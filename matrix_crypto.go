@@ -6,8 +6,8 @@ package main
 import (
 	"context"
 
-	"github.com/hrfee/jfa-go/logger"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/logger"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 
 	_ "github.com/mattn/go-sqlite3"
 

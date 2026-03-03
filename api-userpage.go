@@ -9,8 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
-	"github.com/hrfee/jfa-go/jellyseerr"
-	lm "github.com/hrfee/jfa-go/logmessages"
+	"github.com/maelmoreau21/JellyGate/jellyseerr"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
 	"github.com/lithammer/shortuuid/v3"
 	"github.com/timshannon/badgerhold/v4"
 )

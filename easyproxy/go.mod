@@ -1,4 +1,4 @@
-module github.com/hrfee/jfa-go/easyproxy
+module github.com/maelmoreau21/JellyGate/easyproxy
 
 go 1.24.0
 

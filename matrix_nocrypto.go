@@ -4,7 +4,7 @@
 package main
 
 import (
-	"github.com/hrfee/jfa-go/logger"
+	"github.com/maelmoreau21/JellyGate/logger"
 	"maunium.net/go/mautrix/id"
 )
 

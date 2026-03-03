@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/hrfee/jfa-go/common"
-	"github.com/hrfee/jfa-go/jellyseerr"
-	"github.com/hrfee/jfa-go/logger"
+	"github.com/maelmoreau21/JellyGate/common"
+	"github.com/maelmoreau21/JellyGate/jellyseerr"
+	"github.com/maelmoreau21/JellyGate/logger"
 	"github.com/hrfee/mediabrowser"
 	"github.com/timshannon/badgerhold/v4"
 )
