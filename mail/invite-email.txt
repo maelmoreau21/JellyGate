@@ -1,8 +1,0 @@
-{{ .hello }},
-{{ .youHaveBeenInvited }}
-{{ .toJoin }}
-{{ .inviteExpiry }}
-
-{{ .inviteURL }}
-
-{{ .footer }}

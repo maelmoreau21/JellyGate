@@ -1,0 +1,140 @@
+{{/* invite.html — Formulaire d'inscription via invitation */}}
+{{ template "layouts/base.html" . }}
+
+{{ define "title" }}{{ .T "invite_title" }} — JellyGate{{ end }}
+
+{{ define "body" }}
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+
+        {{/* Logo + Titre */}}
+        <div class="text-center mb-8">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 mb-4 glow-accent">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+            <h1 class="text-2xl font-bold mb-1">{{ .T "invite_heading" }}</h1>
+            <p class="text-sm text-slate-400">{{ .T "invite_subheading" }}</p>
+            {{ if .Invitation.Label }}
+            <span
+                class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-400">
+                {{ .Invitation.Label }}
+            </span>
+            {{ end }}
+        </div>
+
+        {{/* Carte formulaire */}}
+        <div class="glass-card p-8 glow-accent">
+            <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate>
+
+                {{/* Username */}}
+                <div class="mb-5">
+                    <label class="jg-label" for="username">{{ .T "field_username" }}</label>
+                    <input type="text" id="username" name="username" class="jg-input" placeholder="{{ .T "
+                        field_username_placeholder" }}" required pattern="[a-zA-Z0-9_-]+" minlength="3" maxlength="32"
+                        autocomplete="username">
+                    <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }}</p>
+                </div>
+
+                {{/* Display Name */}}
+                <div class="mb-5">
+                    <label class="jg-label" for="display_name">{{ .T "field_display_name" }}</label>
+                    <input type="text" id="display_name" name="display_name" class="jg-input" placeholder="{{ .T "
+                        field_display_name_placeholder" }}" maxlength="64" autocomplete="name">
+                </div>
+
+                {{/* Email */}}
+                <div class="mb-5">
+                    <label class="jg-label" for="email">{{ .T "field_email" }}</label>
+                    <input type="email" id="email" name="email" class="jg-input" placeholder="{{ .T "
+                        field_email_placeholder" }}" autocomplete="email">
+                </div>
+
+                {{/* Password */}}
+                <div class="mb-5">
+                    <label class="jg-label" for="password">{{ .T "field_password" }}</label>
+                    <input type="password" id="password" name="password" class="jg-input" placeholder="{{ .T "
+                        field_password_placeholder" }}" required minlength="8" autocomplete="new-password">
+                </div>
+
+                {{/* Password Confirm */}}
+                <div class="mb-6">
+                    <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
+                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
+                        placeholder="{{ .T " field_password_confirm_placeholder" }}" required minlength="8"
+                        autocomplete="new-password">
+                    <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
+                </div>
+
+                {{/* Submit */}}
+                <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-3" id="submit-btn">
+                    {{ .T "invite_submit" }}
+                </button>
+
+            </form>
+        </div>
+
+        {{/* Footer */}}
+        <p class="text-center text-xs text-slate-600 mt-6">
+            {{ .T "invite_footer" }}
+        </p>
+    </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+    (function () {
+        const form = document.getElementById('invite-form');
+        const pw = document.getElementById('password');
+        const pwc = document.getElementById('password_confirm');
+        const msg = document.getElementById('password-match-msg');
+        const inputs = form.querySelectorAll('.jg-input');
+
+        // Live validation
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                if (input.validity.valid && input.value) {
+                    input.classList.remove('is-invalid');
+                    input.classList.add('is-valid');
+                } else if (input.value) {
+                    input.classList.remove('is-valid');
+                    input.classList.add('is-invalid');
+                } else {
+                    input.classList.remove('is-valid', 'is-invalid');
+                }
+            });
+        });
+
+        // Password match check
+        function checkMatch() {
+            if (!pwc.value) { msg.classList.add('hidden'); return; }
+            msg.classList.remove('hidden');
+            if (pw.value === pwc.value) {
+                msg.textContent = '✓ ' + (window.__t?.password_match || 'Les mots de passe correspondent');
+                msg.className = 'text-xs mt-1 text-emerald-400';
+                pwc.classList.remove('is-invalid');
+                pwc.classList.add('is-valid');
+            } else {
+                msg.textContent = '✗ ' + (window.__t?.password_mismatch || 'Les mots de passe ne correspondent pas');
+                msg.className = 'text-xs mt-1 text-red-400';
+                pwc.classList.remove('is-valid');
+                pwc.classList.add('is-invalid');
+            }
+        }
+        pw.addEventListener('input', checkMatch);
+        pwc.addEventListener('input', checkMatch);
+
+        // Submit button loading
+        form.addEventListener('submit', function (e) {
+            if (pw.value !== pwc.value) { e.preventDefault(); return; }
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> ' + (window.__t?.submitting || 'Création en cours...');
+        });
+    })();
+</script>
+{{ end }}

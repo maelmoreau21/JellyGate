@@ -1,24 +1,62 @@
 services:
   jellygate:
-    image: ghcr.io/maelmoreau21/jellygate:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: jellygate
     restart: unless-stopped
-    environment:
-      PUID: "1000"
-      GUID: "1000"
-      PORT: "8056"
-
-      # Jellyfin connection
-      JFA_JELLYFIN_SERVER: "http://jellyfin:8096"
-      JFA_JELLYFIN_PUBLIC_SERVER: "https://jellyfin.example.com"
-      JFA_JELLYFIN_API_KEY: "replace-with-jellyfin-api-key"
-
-      # Identity backend switch
-      JFA_USER_BACKEND: "ldap" # jellyfin | ldap
     ports:
-      - "8056:8056"
+      - "${JELLYGATE_PORT:-8097}:8097"
     volumes:
-      - ./data:/data
-      - /etc/localtime:/etc/localtime:ro
-      # Optional: Jellyfin reset watch dir if used
-      - /path/to/jellyfin:/jf
+      - jellygate_data:/data
+    env_file:
+      - .env
+    environment:
+      # ── Application ──────────────────────────────────────────────────
+      - JELLYGATE_PORT=8097
+      - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
+      - JELLYGATE_DATA_DIR=/data
+      - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
+      - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-fr}
+
+      # ── Jellyfin ─────────────────────────────────────────────────────
+      - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL est requis}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:?❌ JELLYFIN_API_KEY est requis}
+
+      # ── LDAP / Synology Active Directory ─────────────────────────────
+      - LDAP_HOST=${LDAP_HOST:?❌ LDAP_HOST est requis}
+      - LDAP_PORT=${LDAP_PORT:-636}
+      - LDAP_USE_TLS=${LDAP_USE_TLS:-true}
+      - LDAP_SKIP_VERIFY=${LDAP_SKIP_VERIFY:-false}
+      - LDAP_BIND_DN=${LDAP_BIND_DN:?❌ LDAP_BIND_DN est requis}
+      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:?❌ LDAP_BIND_PASSWORD est requis}
+      - LDAP_BASE_DN=${LDAP_BASE_DN:?❌ LDAP_BASE_DN est requis}
+      - LDAP_USER_OU=${LDAP_USER_OU:-CN=Users}
+      - LDAP_USER_GROUP=${LDAP_USER_GROUP:-}
+      - LDAP_DOMAIN=${LDAP_DOMAIN:?❌ LDAP_DOMAIN est requis}
+
+      # ── SMTP ─────────────────────────────────────────────────────────
+      - SMTP_HOST=${SMTP_HOST:?❌ SMTP_HOST est requis}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:?❌ SMTP_USERNAME est requis}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:?❌ SMTP_PASSWORD est requis}
+      - SMTP_FROM=${SMTP_FROM:?❌ SMTP_FROM est requis}
+      - SMTP_TLS=${SMTP_TLS:-true}
+
+      # ── Webhooks (optionnels) ────────────────────────────────────────
+      - WEBHOOK_DISCORD_URL=${WEBHOOK_DISCORD_URL:-}
+      - WEBHOOK_TELEGRAM_TOKEN=${WEBHOOK_TELEGRAM_TOKEN:-}
+      - WEBHOOK_TELEGRAM_CHAT_ID=${WEBHOOK_TELEGRAM_CHAT_ID:-}
+      - WEBHOOK_MATRIX_URL=${WEBHOOK_MATRIX_URL:-}
+      - WEBHOOK_MATRIX_ROOM_ID=${WEBHOOK_MATRIX_ROOM_ID:-}
+      - WEBHOOK_MATRIX_TOKEN=${WEBHOOK_MATRIX_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8097/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  jellygate_data:
+    driver: local

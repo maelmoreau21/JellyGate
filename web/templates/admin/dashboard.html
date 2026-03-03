@@ -1,0 +1,215 @@
+{{/* dashboard.html — Tableau de bord administrateur */}}
+{{ template "layouts/base.html" . }}
+
+{{ define "title" }}{{ .T "dashboard_title" }} — JellyGate{{ end }}
+
+{{ define "body" }}
+{{/* ── Sidebar ─────────────────────────────────────────────────────────── */}}
+<aside id="sidebar" class="jg-sidebar">
+    <div class="jg-sidebar-logo">
+        <svg viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="14" fill="url(#grd)" />
+            <defs>
+                <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
+                    <stop stop-color="#8b5cf6" />
+                    <stop offset="1" stop-color="#6366f1" />
+                </linearGradient>
+            </defs>
+            <path d="M10 22V10l12 6-12 6z" fill="#fff" />
+        </svg>
+        <span>JellyGate</span>
+    </div>
+
+    <nav class="jg-nav">
+        <a href="/admin/" class="jg-nav-item active">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
+        </a>
+        <a href="/admin/users" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_users" }}</span>
+        </a>
+        <a href="/admin/invitations" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
+        </a>
+        <a href="/admin/settings" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
+        </a>
+        <a href="/admin/logs" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
+        </a>
+    </nav>
+
+    <div class="jg-sidebar-footer">
+        <form method="POST" action="/admin/logout">
+            <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+{{/* ── Main content ────────────────────────────────────────────────────── */}}
+<main class="jg-main">
+    {{/* Header */}}
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <h1 class="text-2xl font-bold inline">{{ .T "dashboard_heading" }}</h1>
+            <p class="text-sm text-slate-400 mt-1">{{ .T "dashboard_welcome" }}, <span
+                    class="text-purple-400 font-semibold">{{ .AdminUsername }}</span></p>
+        </div>
+    </div>
+
+    {{/* Stats cards */}}
+    <div class="stats-grid mb-8" id="stats-grid">
+        <div class="glass-card-sm stat-card">
+            <div class="stat-icon bg-purple-500/15">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-value" id="stat-users">—</div>
+                <div class="stat-label">{{ .T "stat_total_users" }}</div>
+            </div>
+        </div>
+        <div class="glass-card-sm stat-card">
+            <div class="stat-icon bg-emerald-500/15">
+                <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-value" id="stat-active">—</div>
+                <div class="stat-label">{{ .T "stat_active_users" }}</div>
+            </div>
+        </div>
+        <div class="glass-card-sm stat-card">
+            <div class="stat-icon bg-amber-500/15">
+                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-value" id="stat-invitations">—</div>
+                <div class="stat-label">{{ .T "stat_invitations" }}</div>
+            </div>
+        </div>
+        <div class="glass-card-sm stat-card">
+            <div class="stat-icon bg-red-500/15">
+                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+            </div>
+            <div>
+                <div class="stat-value" id="stat-banned">—</div>
+                <div class="stat-label">{{ .T "stat_banned_users" }}</div>
+            </div>
+        </div>
+    </div>
+
+    {{/* Recent users */}}
+    <div class="glass-card p-0 overflow-hidden">
+        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+            <h2 class="font-semibold">{{ .T "dashboard_recent_users" }}</h2>
+            <a href="/admin/users" class="jg-btn jg-btn-ghost jg-btn-sm">
+                {{ .T "view_all" }} →
+            </a>
+        </div>
+        <div class="jg-table-wrap">
+            <table class="jg-table" id="recent-users-table">
+                <thead>
+                    <tr>
+                        <th>{{ .T "col_username" }}</th>
+                        <th>{{ .T "col_status" }}</th>
+                        <th>{{ .T "col_invited_by" }}</th>
+                        <th>{{ .T "col_created_at" }}</th>
+                    </tr>
+                </thead>
+                <tbody id="recent-users-body">
+                    <tr>
+                        <td colspan="4" class="text-center text-slate-500 py-8"><span class="spinner"></span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // Sidebar toggle
+        const toggle = document.getElementById('sidebar-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                document.getElementById('sidebar').classList.toggle('open');
+                document.getElementById('sidebar').classList.toggle('collapsed');
+                document.querySelector('.jg-main').classList.toggle('expanded');
+            });
+        }
+
+        // Load stats
+        JG.api('/admin/api/users').then(res => {
+            if (!res.success) return;
+            const users = res.data || [];
+            document.getElementById('stat-users').textContent = users.length;
+            document.getElementById('stat-active').textContent = users.filter(u => u.is_active && !u.is_banned).length;
+            document.getElementById('stat-banned').textContent = users.filter(u => u.is_banned).length;
+
+            // Recent 5
+            const tbody = document.getElementById('recent-users-body');
+            tbody.innerHTML = '';
+            users.slice(0, 5).forEach(u => {
+                const status = u.is_banned
+                    ? '<span class="badge badge-danger">Banni</span>'
+                    : u.is_active
+                        ? '<span class="badge badge-success">Actif</span>'
+                        : '<span class="badge badge-warning">Inactif</span>';
+                tbody.innerHTML += `<tr>
+        <td class="font-medium">${JG.esc(u.username)}</td>
+        <td>${status}</td>
+        <td class="text-slate-400">${JG.esc(u.invited_by || '—')}</td>
+        <td class="text-slate-500 text-sm">${JG.esc(u.created_at || '—')}</td>
+      </tr>`;
+            });
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-8">Aucun utilisateur</td></tr>';
+            }
+        });
+    });
+</script>
+{{ end }}

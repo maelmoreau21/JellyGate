@@ -1,0 +1,109 @@
+{{/* reset.html — Réinitialisation de mot de passe */}}
+{{ template "layouts/base.html" . }}
+
+{{ define "title" }}{{ .T "reset_title" }} — JellyGate{{ end }}
+
+{{ define "body" }}
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md">
+
+        {{/* Logo */}}
+        <div class="text-center mb-8">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 mb-4">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                </svg>
+            </div>
+        </div>
+
+        {{ if .ShowNewPasswordForm }}
+        {{/* ── Formulaire nouveau mot de passe ────────────────────────────── */}}
+        <div class="glass-card p-8">
+            <h1 class="text-xl font-bold text-center mb-2">{{ .T "reset_new_heading" }}</h1>
+            <p class="text-sm text-slate-400 text-center mb-6">{{ .T "reset_new_subheading" }}</p>
+
+            <form id="reset-form" method="POST" action="/reset/{{ .ResetCode }}" novalidate>
+                <div class="mb-5">
+                    <label class="jg-label" for="password">{{ .T "field_new_password" }}</label>
+                    <input type="password" id="password" name="password" class="jg-input" placeholder="••••••••"
+                        required minlength="8" autocomplete="new-password">
+                </div>
+
+                <div class="mb-6">
+                    <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
+                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
+                        placeholder="••••••••" required minlength="8" autocomplete="new-password">
+                    <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
+                </div>
+
+                <button type="submit" class="jg-btn jg-btn-primary w-full py-3" id="submit-btn">
+                    {{ .T "reset_submit" }}
+                </button>
+            </form>
+        </div>
+
+        {{ else }}
+        {{/* ── Formulaire de demande ──────────────────────────────────────── */}}
+        <div class="glass-card p-8">
+            <h1 class="text-xl font-bold text-center mb-2">{{ .T "reset_request_heading" }}</h1>
+            <p class="text-sm text-slate-400 text-center mb-6">{{ .T "reset_request_subheading" }}</p>
+
+            {{ if .SuccessMessage }}
+            <div
+                class="mb-6 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm text-center">
+                {{ .SuccessMessage }}
+            </div>
+            {{ end }}
+
+            <form method="POST" action="/reset/request" novalidate>
+                <div class="mb-6">
+                    <label class="jg-label" for="identifier">{{ .T "field_identifier" }}</label>
+                    <input type="text" id="identifier" name="identifier" class="jg-input" placeholder="{{ .T "
+                        field_identifier_placeholder" }}" required autocomplete="username">
+                </div>
+
+                <button type="submit" class="jg-btn jg-btn-primary w-full py-3">
+                    {{ .T "reset_request_submit" }}
+                </button>
+            </form>
+
+            <div class="text-center mt-4">
+                <a href="/admin/login" class="text-sm text-slate-400 hover:text-purple-400 transition-colors">
+                    ← {{ .T "back_to_login" }}
+                </a>
+            </div>
+        </div>
+        {{ end }}
+
+    </div>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+    (function () {
+        const pw = document.getElementById('password');
+        const pwc = document.getElementById('password_confirm');
+        if (!pw || !pwc) return;
+        const msg = document.getElementById('password-match-msg');
+
+        function checkMatch() {
+            if (!pwc.value) { msg.classList.add('hidden'); return; }
+            msg.classList.remove('hidden');
+            if (pw.value === pwc.value) {
+                msg.textContent = '✓ OK';
+                msg.className = 'text-xs mt-1 text-emerald-400';
+                pwc.classList.remove('is-invalid'); pwc.classList.add('is-valid');
+            } else {
+                msg.textContent = '✗ Mismatch';
+                msg.className = 'text-xs mt-1 text-red-400';
+                pwc.classList.remove('is-valid'); pwc.classList.add('is-invalid');
+            }
+        }
+        pw.addEventListener('input', checkMatch);
+        pwc.addEventListener('input', checkMatch);
+    })();
+</script>
+{{ end }}

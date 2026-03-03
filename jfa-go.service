@@ -1,8 +1,0 @@
-[Unit]
-Description=An account management system for Jellyfin.
-
-[Service]
-ExecStart={executable}
-
-[Install]
-WantedBy=default.target

@@ -1,50 +1,68 @@
-# STAGE 1: Frontend Builder (Runs on host architecture for speed)
-FROM --platform=$BUILDPLATFORM docker.io/hrfee/jfa-go-build-docker:latest AS frontend-builder
-WORKDIR /opt/build
+# =============================================================================
+# JellyGate — Dockerfile (Multi-stage build)
+# =============================================================================
+# Image finale : ~10-15 Mo (Alpine + binaire Go statique, pure Go / sans CGO)
+# =============================================================================
+
+# ── Étape 1 : Compilation du binaire Go ─────────────────────────────────────
+FROM golang:1.22-alpine AS builder
+
+# Arguments injectés automatiquement par Docker Buildx pour le cross-compile
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
+WORKDIR /build
+
+# Copier les fichiers de dépendances en premier (cache Docker optimisé)
+COPY go.mod go.sum ./
+RUN go mod download && go mod verify
+
+# Copier le reste du code source
 COPY . .
-# Git is needed for version numbering in the Makefile/Go build
-RUN git config --global --add safe.directory /opt/build
-RUN npm ci
-RUN CSSVERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged") \
-    env GOOS= GOARCH= CSSVERSION=$CSSVERSION make precompile > make_debug.log 2>&1 || (tail -n 100 make_debug.log && exit 1)
 
-# STAGE 2: Go Builder (Runs on target architecture for native compilation)
-FROM --platform=$TARGETPLATFORM docker.io/hrfee/jfa-go-build-docker:latest AS go-builder
-ARG TARGETARCH
-WORKDIR /opt/build
+# Compiler le binaire statique (CGO désactivé — SQLite via modernc.org/sqlite)
+# TARGETOS et TARGETARCH sont fournis par Buildx lors du multi-arch build
+RUN CGO_ENABLED=0 \
+    GOOS=${TARGETOS} \
+    GOARCH=${TARGETARCH} \
+    go build \
+      -ldflags="-s -w" \
+      -trimpath \
+      -o /build/jellygate \
+      ./cmd/jellygate
 
-# Copy the ENTIRE build directory from stage 1 to include generated files (docs/docs.go, etc.)
-COPY --from=frontend-builder /opt/build ./
-RUN git config --global --add safe.directory /opt/build
+# ── Étape 2 : Image finale minimale ─────────────────────────────────────────
+FROM alpine:3.19
 
-# Build the Go binary natively
-RUN set -e; \
-    export VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/v//g' || echo "dev") && \
-    export COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown") && \
-    export BUILDTIME=$(date +%s) && \
-    export CSSVERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "untagged") && \
-    export LDFLAGS="-s -w \
-      -X main.version=${VERSION} \
-      -X main.commit=${COMMIT} \
-      -X main.cssVersion=${CSSVERSION} \
-      -X main.buildTimeUnix=${BUILDTIME} \
-      -X main.builtBy=docker \
-      -X main.updater=docker" && \
-    echo "Running go mod tidy..." && \
-    go mod tidy && \
-    echo "Starting native build for ${TARGETARCH}..." && \
-    go build -v -tags "e2ee goolm external" -ldflags "${LDFLAGS}" -o /jellygate .
+# Certificats TLS (nécessaires pour LDAPS et SMTP TLS)
+RUN apk add --no-cache ca-certificates tzdata wget
 
-# Final cleanup of the data folder (specific project logic)
-RUN sed -i 's#id="password_resets-watch_directory" placeholder="/config/jellyfin"#id="password_resets-watch_directory" value="/jf" disabled#g' build/data/html/setup.html
+# Utilisateur non-root pour la sécurité
+RUN addgroup -S jellygate && adduser -S jellygate -G jellygate
 
-# STAGE 3: Final Image
-FROM gcr.io/distroless/base:latest AS final
-WORKDIR /jfa-go
-COPY --from=go-builder /jellygate /jfa-go/jfa-go
-COPY --from=go-builder /opt/build/build/data /jfa-go/data
+# Répertoire des données
+RUN mkdir -p /data && chown jellygate:jellygate /data
 
-EXPOSE 8056
-EXPOSE 8057
+WORKDIR /app
 
-CMD [ "/jfa-go/jfa-go", "-data", "/data" ]
+# Copier le binaire compilé
+COPY --from=builder /build/jellygate .
+
+# Copier les assets web (templates, static, locales)
+COPY --from=builder /build/web ./web
+
+# Passage en utilisateur non-root
+USER jellygate
+
+# Volume pour les données persistantes (SQLite, config)
+VOLUME ["/data"]
+
+# Port par défaut
+EXPOSE 8097
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8097/ || exit 1
+
+# Point d'entrée
+ENTRYPOINT ["./jellygate"]

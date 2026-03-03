@@ -1,7 +1,0 @@
-{{ .helloUser }}
-
-{{ .yourAccountWas }}
-
-{{ .reasonString }}: {{ .reason }}
-
-{{ .footer }}
