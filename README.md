@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/Go-1.22-00ADD8?style=flat-square&logo=go" alt="Go">
+  <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=flat-square&logo=go" alt="Go">
   <img src="https://img.shields.io/github/v/release/maelmoreau21/JellyGate?style=flat-square&color=8b5cf6" alt="Release">
   <img src="https://img.shields.io/badge/Docker-Multi--arch-2496ED?style=flat-square&logo=docker" alt="Docker">
   <img src="https://img.shields.io/badge/Platforms-amd64%20%7C%20arm64-informational?style=flat-square" alt="Platforms">

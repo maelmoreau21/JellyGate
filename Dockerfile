@@ -5,7 +5,7 @@
 # =============================================================================
 
 # ── Étape 1 : Compilation du binaire Go ─────────────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Arguments injectés automatiquement par Docker Buildx pour le cross-compile
 ARG TARGETOS=linux
