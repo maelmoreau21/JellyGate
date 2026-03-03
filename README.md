@@ -2,9 +2,8 @@
 
 **The ultimate bridge between Jellyfin and your LDAP/AD Directory.**
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/hrfee/jfa-go?label=docker&style=for-the-badge)](https://hub.docker.com/r/hrfee/jfa-go)
 [![GitHub release](https://img.shields.io/github/v/release/maelmoreau21/JellyGate?style=for-the-badge)](https://github.com/maelmoreau21/JellyGate/releases)
-[![License](https://img.shields.io/github/license/hrfee/jfa-go?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/github/license/maelmoreau21/JellyGate?style=for-the-badge)](LICENSE)
 
 ---
 

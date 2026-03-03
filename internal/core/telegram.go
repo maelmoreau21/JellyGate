@@ -1,0 +1,366 @@
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"net/http"
+	"strings"
+	"time"
+
+	tg "github.com/go-telegram-bot-api/telegram-bot-api"
+	lm "github.com/maelmoreau21/JellyGate/logmessages"
+	"github.com/timshannon/badgerhold/v4"
+)
+
+const (
+	VERIF_TOKEN_EXPIRY_SEC = 10 * 60
+)
+
+type TelegramVerifiedToken struct {
+	JellyfinID string `badgerhold:"key"` // optional, for ensuring a user-requested change is only accessed by them.
+	ChatID     int64  `badgerhold:"index"`
+	Username   string `badgerhold:"index"`
+}
+
+func (tv TelegramVerifiedToken) ToUser() *TelegramUser {
+	return &TelegramUser{
+		TelegramVerifiedToken: tv,
+	}
+}
+
+func EmptyTelegramUser() *TelegramUser {
+	return &TelegramUser{
+		TelegramVerifiedToken: TelegramVerifiedToken{
+			JellyfinID: "",
+			ChatID:     0,
+			Username:   "",
+		},
+		Lang:    "",
+		Contact: false,
+	}
+}
+
+func (t *TelegramVerifiedToken) Name() string                 { return t.Username }
+func (t *TelegramVerifiedToken) SetMethodID(id any)           { t.ChatID = id.(int64) }
+func (t *TelegramVerifiedToken) MethodID() any                { return t.ChatID }
+func (t *TelegramVerifiedToken) SetJellyfin(id string)        { t.JellyfinID = id }
+func (t *TelegramVerifiedToken) Jellyfin() string             { return t.JellyfinID }
+func (t *TelegramUser) SetAllowContactFromDTO(req newUserDTO) { t.Contact = req.TelegramContact }
+func (t *TelegramUser) SetAllowContact(contact bool)          { t.Contact = contact }
+func (t *TelegramUser) AllowContact() bool                    { return t.Contact }
+func (t *TelegramUser) Store(st *Storage) {
+	st.SetTelegramKey(t.Jellyfin(), *t)
+}
+
+// VerifToken stores details about a pending user verification token.
+type VerifToken struct {
+	Expiry     time.Time
+	JellyfinID string // optional, for ensuring a user-requested change is only accessed by them.
+}
+
+type TelegramDaemon struct {
+	Stopped              bool
+	ShutdownChannel      chan string
+	bot                  *tg.BotAPI
+	username             string
+	tokens               map[string]VerifToken            // Map of pins to tokens.
+	verifiedTokens       map[string]TelegramVerifiedToken // Map of token pins to the responsible ChatID+Username.
+	languages            map[int64]string                 // Store of languages for chatIDs. Added to on first interaction, and loaded from app.storage.telegram on start.
+	ignoreClientLanguage bool                             // Whether to ignore the sender's client language and just use the preconfigured default language or not.
+	link                 string
+	app                  *appContext
+}
+
+func newTelegramDaemon(app *appContext) (*TelegramDaemon, error) {
+	token := app.config.Section("telegram").Key("token").String()
+	if token == "" {
+		return nil, fmt.Errorf("token was blank")
+	}
+	bot, err := tg.NewBotAPI(token)
+	if err != nil {
+		return nil, err
+	}
+	td := &TelegramDaemon{
+		ShutdownChannel:      make(chan string),
+		bot:                  bot,
+		username:             bot.Self.UserName,
+		tokens:               map[string]VerifToken{},
+		verifiedTokens:       map[string]TelegramVerifiedToken{},
+		languages:            map[int64]string{},
+		ignoreClientLanguage: app.config.Section("telegram").Key("ignore_client_language").MustBool(false),
+		link:                 "https://t.me/" + bot.Self.UserName,
+		app:                  app,
+	}
+	for _, user := range app.storage.GetTelegram() {
+		if user.Lang != "" {
+			td.languages[user.ChatID] = user.Lang
+		}
+	}
+	return td, nil
+}
+
+// SetTransport sets the http.Transport to use for requests. Can be used to set a proxy.
+func (d *TelegramDaemon) SetTransport(t *http.Transport) {
+	d.bot.Client.Transport = t
+}
+
+func genAuthToken() string {
+	rand.Seed(time.Now().UnixNano())
+	pin := make([]rune, 8)
+	for i := range pin {
+		if (i+1)%3 == 0 {
+			pin[i] = '-'
+		} else {
+			pin[i] = runes[rand.Intn(len(runes))]
+		}
+	}
+	return string(pin)
+}
+
+var runes = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+// NewAuthToken generates an 8-character pin in the form "A1-2B-CD".
+func (t *TelegramDaemon) NewAuthToken() string {
+	pin := genAuthToken()
+	t.tokens[pin] = VerifToken{Expiry: time.Now().Add(VERIF_TOKEN_EXPIRY_SEC * time.Second), JellyfinID: ""}
+	return pin
+}
+
+// NewAssignedAuthToken generates an 8-character pin in the form "A1-2B-CD",
+// and assigns it for access only with the given Jellyfin ID.
+func (t *TelegramDaemon) NewAssignedAuthToken(id string) string {
+	pin := genAuthToken()
+	t.tokens[pin] = VerifToken{Expiry: time.Now().Add(VERIF_TOKEN_EXPIRY_SEC * time.Second), JellyfinID: id}
+	return pin
+}
+
+func (t *TelegramDaemon) run() {
+	t.app.info.Printf(lm.StartDaemon, lm.Telegram)
+	u := tg.NewUpdate(0)
+	u.Timeout = 60
+	updates, err := t.bot.GetUpdatesChan(u)
+	if err != nil {
+		t.app.err.Printf(lm.FailedStartDaemon, lm.Telegram, err)
+		telegramEnabled = false
+		return
+	}
+	for {
+		var upd tg.Update
+		select {
+		case upd = <-updates:
+			if upd.Message == nil {
+				continue
+			}
+			sects := strings.Split(upd.Message.Text, " ")
+			if len(sects) == 0 {
+				continue
+			}
+			lang := t.app.storage.lang.chosenTelegramLang
+			storedLang, ok := t.languages[upd.Message.Chat.ID]
+			if !ok {
+				found := t.ignoreClientLanguage
+				if !found {
+					for code := range t.app.storage.lang.Telegram {
+						if code[:2] == upd.Message.From.LanguageCode {
+							lang = code
+							found = true
+							break
+						}
+					}
+				}
+				if found {
+					t.languages[upd.Message.Chat.ID] = lang
+				}
+			} else {
+				lang = storedLang
+			}
+			switch msg := sects[0]; msg {
+			case "/start":
+			case "/help":
+			case "!help":
+				t.commandStart(&upd, sects, lang)
+				continue
+			case "/lang":
+				t.commandLang(&upd, sects, lang)
+				continue
+			default:
+				t.commandPIN(&upd, sects, lang)
+			}
+
+		case <-t.ShutdownChannel:
+			t.bot.StopReceivingUpdates()
+			t.ShutdownChannel <- "Down"
+			return
+		}
+	}
+}
+
+func (t *TelegramDaemon) Reply(upd *tg.Update, content string) error {
+	msg := tg.NewMessage((*upd).Message.Chat.ID, content)
+	_, err := t.bot.Send(msg)
+	return err
+}
+
+func (t *TelegramDaemon) QuoteReply(upd *tg.Update, content string) error {
+	msg := tg.NewMessage((*upd).Message.Chat.ID, content)
+	msg.ReplyToMessageID = (*upd).Message.MessageID
+	_, err := t.bot.Send(msg)
+	return err
+}
+
+var escapedChars = []string{"_", "\\_", "*", "\\*", "[", "\\[", "]", "\\]", "(", "\\(", ")", "\\)", "~", "\\~", "`", "\\`", ">", "\\>", "#", "\\#", "+", "\\+", "-", "\\-", "=", "\\=", "|", "\\|", "{", "\\{", "}", "\\}", ".", "\\.", "!", "\\!"}
+var escaper = strings.NewReplacer(escapedChars...)
+
+// Send will send a telegram message to a list of chat IDs. message.text is used if no markdown is given.
+func (t *TelegramDaemon) Send(message *Message, ID ...int64) error {
+	for _, id := range ID {
+		var msg tg.MessageConfig
+		if message.Markdown == "" {
+			msg = tg.NewMessage(id, message.Text)
+		} else {
+			text := escaper.Replace(message.Markdown)
+			msg = tg.NewMessage(id, text)
+			msg.ParseMode = "MarkdownV2"
+		}
+		_, err := t.bot.Send(msg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *TelegramDaemon) Shutdown() {
+	t.Stopped = true
+	t.ShutdownChannel <- "Down"
+	<-t.ShutdownChannel
+	close(t.ShutdownChannel)
+}
+
+func (t *TelegramDaemon) commandStart(upd *tg.Update, sects []string, lang string) {
+	content := t.app.storage.lang.Telegram[lang].Strings.get("startMessage") + "\n"
+	content += t.app.storage.lang.Telegram[lang].Strings.template("languageMessage", tmpl{"command": "/lang"})
+	err := t.Reply(upd, content)
+	if err != nil {
+		t.app.err.Printf(lm.FailedReply, lm.Telegram, upd.Message.From.UserName, err)
+	}
+}
+
+func (t *TelegramDaemon) commandLang(upd *tg.Update, sects []string, lang string) {
+	if len(sects) == 1 {
+		list := "/lang `<lang>`\n"
+		list += "`default`: " + t.app.storage.lang.Telegram[t.app.storage.lang.chosenTelegramLang].Meta.Name + "\n"
+		for code := range t.app.storage.lang.Telegram {
+			list += fmt.Sprintf("`%s`: %s\n", code, t.app.storage.lang.Telegram[code].Meta.Name)
+		}
+		err := t.Reply(upd, list)
+		if err != nil {
+			t.app.err.Printf(lm.FailedReply, lm.Telegram, upd.Message.From.UserName, err)
+		}
+		return
+	}
+	if sects[1] == "default" {
+		delete(t.languages, upd.Message.Chat.ID)
+		for _, user := range t.app.storage.GetTelegram() {
+			if user.ChatID == upd.Message.Chat.ID {
+				user.Lang = ""
+				t.app.storage.SetTelegramKey(user.JellyfinID, user)
+				break
+			}
+		}
+		return
+	}
+	if _, ok := t.app.storage.lang.Telegram[sects[1]]; ok {
+		t.languages[upd.Message.Chat.ID] = sects[1]
+		for _, user := range t.app.storage.GetTelegram() {
+			if user.ChatID == upd.Message.Chat.ID {
+				user.Lang = sects[1]
+				t.app.storage.SetTelegramKey(user.JellyfinID, user)
+				break
+			}
+		}
+	}
+}
+
+func (t *TelegramDaemon) commandPIN(upd *tg.Update, sects []string, lang string) {
+	token, ok := t.tokens[upd.Message.Text]
+	if !ok || time.Now().After(token.Expiry) {
+		err := t.QuoteReply(upd, t.app.storage.lang.Telegram[lang].Strings.get("invalidPIN"))
+		if err != nil {
+			t.app.err.Printf(lm.FailedReply, lm.Telegram, upd.Message.From.UserName, err)
+		}
+		delete(t.tokens, upd.Message.Text)
+		return
+	}
+	err := t.QuoteReply(upd, t.app.storage.lang.Telegram[lang].Strings.get("pinSuccess"))
+	if err != nil {
+		t.app.err.Printf(lm.FailedReply, lm.Telegram, upd.Message.From.UserName, err)
+	}
+	t.verifiedTokens[upd.Message.Text] = TelegramVerifiedToken{
+		ChatID:     upd.Message.Chat.ID,
+		Username:   upd.Message.Chat.UserName,
+		JellyfinID: token.JellyfinID,
+	}
+	delete(t.tokens, upd.Message.Text)
+}
+
+// TokenVerified returns whether or not a token with the given PIN has been verified, and the token itself.
+func (t *TelegramDaemon) TokenVerified(pin string) (token TelegramVerifiedToken, ok bool) {
+	token, ok = t.verifiedTokens[pin]
+	// delete(t.verifiedTokens, pin)
+	return
+}
+
+// AssignedTokenVerified returns whether or not a token with the given PIN has been verified, and the token itself.
+// Returns false if the given Jellyfin ID does not match the one in the token.
+func (t *TelegramDaemon) AssignedTokenVerified(pin string, jfID string) (token TelegramVerifiedToken, ok bool) {
+	token, ok = t.verifiedTokens[pin]
+	if ok && token.JellyfinID != jfID {
+		ok = false
+	}
+	// delete(t.verifiedTokens, pin)
+	return
+}
+
+// UserExists returns whether or not a user with the given username exists.
+func (t *TelegramDaemon) UserExists(username string) bool {
+	c, err := t.app.storage.db.Count(&TelegramUser{}, badgerhold.Where("Username").Eq(username))
+	return err != nil || c > 0
+}
+
+// Exists returns whether or not the given user exists.
+func (t *TelegramDaemon) Exists(user ContactMethodUser) bool {
+	return t.UserExists(user.Name())
+}
+
+// DeleteVerifiedToken removes the token with the given PIN.
+func (t *TelegramDaemon) DeleteVerifiedToken(PIN string) {
+	delete(t.verifiedTokens, PIN)
+}
+
+func (t *TelegramDaemon) PIN(req newUserDTO) string { return req.TelegramPIN }
+
+func (t *TelegramDaemon) Name() string { return lm.Telegram }
+
+func (t *TelegramDaemon) Required() bool {
+	return t.app.config.Section("telegram").Key("required").MustBool(false)
+}
+
+func (t *TelegramDaemon) UniqueRequired() bool {
+	return t.app.config.Section("telegram").Key("require_unique").MustBool(false)
+}
+
+func (t *TelegramDaemon) UserVerified(PIN string) (ContactMethodUser, bool) {
+	token, ok := t.TokenVerified(PIN)
+	if !ok {
+		return &TelegramUser{}, false
+	}
+	tu := token.ToUser()
+	if lang, ok := t.languages[tu.ChatID]; ok {
+		tu.Lang = lang
+	}
+
+	return tu, ok
+}
+
+func (t *TelegramDaemon) PostVerificationTasks(string, ContactMethodUser) error { return nil }
