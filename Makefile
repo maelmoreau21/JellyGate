@@ -160,6 +160,11 @@ SWAGGER_SRC = $(wildcard api*.go) $(wildcard *auth.go) views.go
 SWAGGER_TARGET = docs/docs.go
 $(SWAGGER_TARGET): $(SWAGGER_SRC)
 	$(SWAGINSTALL)
+	@# Create a stub docs package so "go mod vendor" can resolve the import
+	@# before swag generates the real file. This is needed for Docker builds
+	@# where docs/docs.go is gitignored and not present in the build context.
+	@mkdir -p docs
+	@test -f docs/docs.go || printf 'package docs\n' > docs/docs.go
 	go mod vendor
 	swag init --parseDependency --parseInternal -g main.go
 
