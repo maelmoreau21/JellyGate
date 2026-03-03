@@ -1,12 +1,12 @@
 # 🧠 Project Context: JellyGate
 
-**Last Updated**: 2026-03-02
-**Project Identity**: `JellyGate` (formerly `jfa-go` fork / JDA-Bridge)
+**Last Updated**: 2026-03-03
+**Project Identity**: `JellyGate` (formerly JDA-Bridge)
 
 ---
 
 ## 🎯 Project Objective
-JellyGate is a specialized fork of `jfa-go` aimed at transforming it into a enterprise-grade user provisioning tool for Jellyfin.
+JellyGate is a specialized enterprise-grade user provisioning tool for Jellyfin.
 
 **Core goals:**
 - ✅ **LDAP/Active Directory Support**: Direct integration with Synology Directory Server and generic LDAP.
@@ -27,11 +27,12 @@ JellyGate is a specialized fork of `jfa-go` aimed at transforming it into a ente
 - [x] Support `PUID`, `GUID`, and `PORT` overrides.
 - [x] Implement API Key authentication for Jellyfin.
 - [x] Expose all LDAP settings through the Web UI and `config.ini`.
+- [x] Fix `/data/config.ini: permission denied` Docker directory ownership issue by shifting directory creation order.
 
 ### 🎨 Phase 3: UX & Interface (Current Focus)
 - [x] Clean Up Tab Navigation in Admin Settings.
 - [x] Improve responsiveness of the sidebar and settings panels.
-- [/] **Documentation Overhaul**: New professional `README.md` and branding.
+- [x] **Documentation Overhaul**: New professional `README.md` and branding.
 
 ---
 
@@ -56,4 +57,4 @@ JellyGate is a specialized fork of `jfa-go` aimed at transforming it into a ente
 ## 📝 Important Instructions
 - **Read This First**: Always consult this file and `README.md` before initiating major changes.
 - **Maintain Identity**: Use `JellyGate` as the primary project name.
-- **Incremental Changes**: Prioritize non-destructive updates and maintain backward compatibility with `jfa-go` settings where possible.
+- **Incremental Changes**: Prioritize non-destructive updates.

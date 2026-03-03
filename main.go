@@ -170,12 +170,32 @@ func (app *appContext) applyProcessIdentityFromEnv() {
 		return
 	}
 
-	if gid, ok := parseEnvInt("GUID", "guid", "GID", "gid", "PGID", "pgid"); ok {
+	gid, gOk := parseEnvInt("GUID", "guid", "GID", "gid", "PGID", "pgid")
+	uid, uOk := parseEnvInt("PUID", "puid", "UID", "uid")
+
+	if gOk || uOk {
+		chownUid := -1
+		chownGid := -1
+		if uOk {
+			chownUid = uid
+		}
+		if gOk {
+			chownGid = gid
+		}
+		filepath.Walk(app.dataPath, func(name string, info os.FileInfo, err error) error {
+			if err == nil {
+				os.Chown(name, chownUid, chownGid)
+			}
+			return err
+		})
+	}
+
+	if gOk {
 		if err := syscall.Setgid(gid); err != nil {
 			app.err.Printf("failed to apply group id from env: %v", err)
 		}
 	}
-	if uid, ok := parseEnvInt("PUID", "puid", "UID", "uid"); ok {
+	if uOk {
 		if err := syscall.Setuid(uid); err != nil {
 			app.err.Printf("failed to apply user id from env: %v", err)
 		}
@@ -255,14 +275,15 @@ func start(asDaemon, firstCall bool) {
 	app.info.SetFatalFunc(Exit)
 	app.err = logger.NewLogger(os.Stdout, "[ERROR] ", log.Ltime|log.Lshortfile, color.FgRed)
 	app.err.SetFatalFunc(Exit)
-	app.applyProcessIdentityFromEnv()
-
 	app.loadArgs(firstCall)
 
-	var firstRun bool
 	if _, err := os.Stat(app.dataPath); os.IsNotExist(err) {
 		os.Mkdir(app.dataPath, 0700)
 	}
+
+	app.applyProcessIdentityFromEnv()
+
+	var firstRun bool
 	if _, err := os.Stat(app.configPath); os.IsNotExist(err) {
 		firstRun = true
 		dConfig, err := fs.ReadFile(localFS, "config-default.ini")
