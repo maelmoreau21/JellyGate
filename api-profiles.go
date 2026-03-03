@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	lm "github.com/hrfee/jfa-go/logmessages"
+	_ "github.com/hrfee/mediabrowser"
 	"github.com/timshannon/badgerhold/v4"
 )
 

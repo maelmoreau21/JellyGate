@@ -160,6 +160,7 @@ SWAGGER_SRC = $(wildcard api*.go) $(wildcard *auth.go) views.go
 SWAGGER_TARGET = docs/docs.go
 $(SWAGGER_TARGET): $(SWAGGER_SRC)
 	$(SWAGINSTALL)
+	go mod download
 	swag init --parseDependency --parseInternal -g main.go
 
 VARIANTS_SRC = $(wildcard html/*.html) $(wildcard html/*.txt)
