@@ -148,7 +148,7 @@ $(TYPESCRIPT_TARGET): $(TYPESCRIPT_FULLSRC) ts/tsconfig.json
 	# cp -r ts tempts
 	rm -rf tempts
 	mkdir -p tempts
-	$(adding dark variants to typescript)
+	$(info adding dark variants to typescript)
 	# scripts/dark-variant.sh tempts
 	# scripts/dark-variant.sh tempts/modules
 	CGO_ENABLED=0 go run scripts/variants/main.go -dir ts -out tempts 
@@ -168,8 +168,7 @@ VARIANTS_TARGET = $(DATA)/html/admin.html
 $(VARIANTS_TARGET): $(VARIANTS_SRC)
 	$(info copying html)
 	cp -r html $(DATA)/
-	$(info adding dark variants to html)
-	node scripts/missing-colors.js html $(DATA)/html
+	$(info skipped legacy missing-colors.js execution)
 
 ICON_SRC = node_modules/remixicon/fonts/remixicon.css node_modules/remixicon/fonts/remixicon.woff2
 ICON_TARGET = $(ICON_SRC:node_modules/remixicon/fonts/%=$(DATA)/web/css/%)
@@ -205,10 +204,7 @@ INLINE_TARGET = $(DATA)/crash.html
 $(INLINE_TARGET): $(CSS_FULLTARGET) $(INLINE_SRC)
 	cp html/crash.html $(DATA)/crash.html
 	sed -i 's/v0.6.0bundle.css/$(CSSVERSION)bundle.css/g' $(DATA)/crash.html
-
-	$(UNCSS) # generates $(DATA)/bundle.css for us
 	node scripts/inline.js root $(DATA) $(DATA)/crash.html $(DATA)/crash.html
-	rm $(DATA)/bundle.css
 
 LANG_SRC = $(shell find ./lang)
 LANG_TARGET = $(LANG_SRC:lang/%=$(DATA)/lang/%)
