@@ -130,6 +130,7 @@ func (db *DB) migrate() error {
 				invited_by        TEXT,
 				is_active         BOOLEAN NOT NULL DEFAULT 1,
 				is_banned         BOOLEAN NOT NULL DEFAULT 0,
+				can_invite        BOOLEAN NOT NULL DEFAULT 0,
 				access_expires_at DATETIME,
 				created_at        DATETIME NOT NULL DEFAULT (datetime('now')),
 				updated_at        DATETIME NOT NULL DEFAULT (datetime('now'))

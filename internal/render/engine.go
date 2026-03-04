@@ -40,6 +40,8 @@ type TemplateData struct {
 	// Raccourcis pour les templates (évite .Data.XXX dans les templates)
 	Invitation          interface{}
 	AdminUsername       string
+	IsAdmin             bool
+	CanInvite           bool
 	ShowNewPasswordForm bool
 	ResetCode           string
 	SuccessMessage      string

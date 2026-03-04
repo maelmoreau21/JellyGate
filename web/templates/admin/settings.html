@@ -26,6 +26,7 @@
       </svg>
       <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
     </a>
+    {{ if .IsAdmin }}
     <a href="/admin/users" class="jg-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -33,6 +34,8 @@
       </svg>
       <span class="jg-nav-label">{{ .T "nav_users" }}</span>
     </a>
+    {{ end }}
+    {{ if .CanInvite }}
     <a href="/admin/invitations" class="jg-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -40,6 +43,8 @@
       </svg>
       <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
     </a>
+    {{ end }}
+    {{ if .IsAdmin }}
     <a href="/admin/settings" class="jg-nav-item active">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -55,6 +60,7 @@
       </svg>
       <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
     </a>
+    {{ end }}
   </nav>
   <div class="jg-sidebar-footer">
     <form method="POST" action="/admin/logout">
@@ -120,8 +126,8 @@
         <form id="form-general" onsubmit="saveSettings('general', event)">
           <div class="space-y-4">
             <div class="max-w-xs">
-              <label class="form-label" for="default-lang">{{ .T "settings_default_lang" }}</label>
-              <select id="default-lang" class="form-input">
+              <label class="jg-label" for="default-lang">{{ .T "settings_default_lang" }}</label>
+              <select id="default-lang" class="jg-input">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇬🇧 English</option>
               </select>
@@ -161,12 +167,12 @@
           <div id="ldap-fields" class="space-y-4 transition-opacity">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="form-label" for="ldap-host">Host *</label>
-                <input type="text" id="ldap-host" class="form-input" placeholder="nas.local">
+                <label class="jg-label" for="ldap-host">Host *</label>
+                <input type="text" id="ldap-host" class="jg-input" placeholder="nas.local">
               </div>
               <div>
-                <label class="form-label" for="ldap-port">Port</label>
-                <input type="number" id="ldap-port" class="form-input" value="636">
+                <label class="jg-label" for="ldap-port">Port</label>
+                <input type="number" id="ldap-port" class="jg-input" value="636">
               </div>
             </div>
 
@@ -182,30 +188,30 @@
             </div>
 
             <div>
-              <label class="form-label" for="ldap-bind-dn">Bind DN *</label>
-              <input type="text" id="ldap-bind-dn" class="form-input" placeholder="CN=admin,CN=Users,DC=example,DC=com">
+              <label class="jg-label" for="ldap-bind-dn">Bind DN *</label>
+              <input type="text" id="ldap-bind-dn" class="jg-input" placeholder="CN=admin,CN=Users,DC=example,DC=com">
             </div>
             <div>
-              <label class="form-label" for="ldap-bind-password">Bind Password *</label>
-              <input type="password" id="ldap-bind-password" class="form-input" placeholder="••••••••">
+              <label class="jg-label" for="ldap-bind-password">Bind Password *</label>
+              <input type="password" id="ldap-bind-password" class="jg-input" placeholder="••••••••">
             </div>
             <div>
-              <label class="form-label" for="ldap-base-dn">Base DN *</label>
-              <input type="text" id="ldap-base-dn" class="form-input" placeholder="DC=example,DC=com">
+              <label class="jg-label" for="ldap-base-dn">Base DN *</label>
+              <input type="text" id="ldap-base-dn" class="jg-input" placeholder="DC=example,DC=com">
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="form-label" for="ldap-user-ou">User OU</label>
-                <input type="text" id="ldap-user-ou" class="form-input" value="CN=Users">
+                <label class="jg-label" for="ldap-user-ou">User OU</label>
+                <input type="text" id="ldap-user-ou" class="jg-input" value="CN=Users">
               </div>
               <div>
-                <label class="form-label" for="ldap-domain">Domaine AD *</label>
-                <input type="text" id="ldap-domain" class="form-input" placeholder="example.com">
+                <label class="jg-label" for="ldap-domain">Domaine AD *</label>
+                <input type="text" id="ldap-domain" class="jg-input" placeholder="example.com">
               </div>
             </div>
             <div>
-              <label class="form-label" for="ldap-user-group">Groupe AD (optionnel)</label>
-              <input type="text" id="ldap-user-group" class="form-input"
+              <label class="jg-label" for="ldap-user-group">Groupe AD (optionnel)</label>
+              <input type="text" id="ldap-user-group" class="jg-input"
                 placeholder="CN=JellyfinUsers,CN=Users,DC=example,DC=com">
             </div>
           </div>
@@ -233,28 +239,28 @@
           <div class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="form-label" for="smtp-host">Host *</label>
-                <input type="text" id="smtp-host" class="form-input" placeholder="smtp.gmail.com">
+                <label class="jg-label" for="smtp-host">Host *</label>
+                <input type="text" id="smtp-host" class="jg-input" placeholder="smtp.gmail.com">
               </div>
               <div>
-                <label class="form-label" for="smtp-port">Port</label>
-                <input type="number" id="smtp-port" class="form-input" value="587">
-              </div>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="form-label" for="smtp-username">Utilisateur *</label>
-                <input type="text" id="smtp-username" class="form-input" placeholder="noreply@example.com">
-              </div>
-              <div>
-                <label class="form-label" for="smtp-password">Mot de passe *</label>
-                <input type="password" id="smtp-password" class="form-input" placeholder="••••••••">
+                <label class="jg-label" for="smtp-port">Port</label>
+                <input type="number" id="smtp-port" class="jg-input" value="587">
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="form-label" for="smtp-from">Adresse expéditeur *</label>
-                <input type="text" id="smtp-from" class="form-input" placeholder="noreply@example.com">
+                <label class="jg-label" for="smtp-username">Utilisateur *</label>
+                <input type="text" id="smtp-username" class="jg-input" placeholder="noreply@example.com">
+              </div>
+              <div>
+                <label class="jg-label" for="smtp-password">Mot de passe *</label>
+                <input type="password" id="smtp-password" class="jg-input" placeholder="••••••••">
+              </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="jg-label" for="smtp-from">Adresse expéditeur *</label>
+                <input type="text" id="smtp-from" class="jg-input" placeholder="noreply@example.com">
               </div>
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="smtp-tls" checked class="form-checkbox">
@@ -288,9 +294,8 @@
             {{/* Discord */}}
             <div class="p-4 rounded-xl bg-white/5 border border-white/10">
               <h3 class="text-sm font-semibold text-purple-400 mb-3">🎮 Discord</h3>
-              <label class="form-label" for="wh-discord-url">Webhook URL</label>
-              <input type="url" id="wh-discord-url" class="form-input"
-                placeholder="https://discord.com/api/webhooks/...">
+              <label class="jg-label" for="wh-discord-url">Webhook URL</label>
+              <input type="url" id="wh-discord-url" class="jg-input" placeholder="https://discord.com/api/webhooks/...">
             </div>
 
             {{/* Telegram */}}
@@ -298,12 +303,12 @@
               <h3 class="text-sm font-semibold text-blue-400 mb-3">📱 Telegram</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="form-label" for="wh-telegram-token">Bot Token</label>
-                  <input type="text" id="wh-telegram-token" class="form-input" placeholder="123456:ABC-DEF...">
+                  <label class="jg-label" for="wh-telegram-token">Bot Token</label>
+                  <input type="text" id="wh-telegram-token" class="jg-input" placeholder="123456:ABC-DEF...">
                 </div>
                 <div>
-                  <label class="form-label" for="wh-telegram-chat">Chat ID</label>
-                  <input type="text" id="wh-telegram-chat" class="form-input" placeholder="-1001234567890">
+                  <label class="jg-label" for="wh-telegram-chat">Chat ID</label>
+                  <input type="text" id="wh-telegram-chat" class="jg-input" placeholder="-1001234567890">
                 </div>
               </div>
             </div>
@@ -313,17 +318,17 @@
               <h3 class="text-sm font-semibold text-green-400 mb-3">🔗 Matrix</h3>
               <div class="space-y-3">
                 <div>
-                  <label class="form-label" for="wh-matrix-url">Homeserver URL</label>
-                  <input type="url" id="wh-matrix-url" class="form-input" placeholder="https://matrix.example.com">
+                  <label class="jg-label" for="wh-matrix-url">Homeserver URL</label>
+                  <input type="url" id="wh-matrix-url" class="jg-input" placeholder="https://matrix.example.com">
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label class="form-label" for="wh-matrix-room">Room ID</label>
-                    <input type="text" id="wh-matrix-room" class="form-input" placeholder="!abcdef:example.com">
+                    <label class="jg-label" for="wh-matrix-room">Room ID</label>
+                    <input type="text" id="wh-matrix-room" class="jg-input" placeholder="!abcdef:example.com">
                   </div>
                   <div>
-                    <label class="form-label" for="wh-matrix-token">Access Token</label>
-                    <input type="text" id="wh-matrix-token" class="form-input" placeholder="syt_...">
+                    <label class="jg-label" for="wh-matrix-token">Access Token</label>
+                    <input type="text" id="wh-matrix-token" class="jg-input" placeholder="syt_...">
                   </div>
                 </div>
               </div>

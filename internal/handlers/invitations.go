@@ -425,11 +425,25 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	}
 	defer tx.Rollback() // No-op si Commit() a été appelé
 
+	// Parsing du profil JSON pour récupérer UserExpiryDays
+	var userExpiryDays int
+	if inv.JellyfinProfile != "" {
+		var pf jellyfin.InviteProfile
+		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &pf); err == nil {
+			userExpiryDays = pf.UserExpiryDays
+		}
+	}
+
+	var accessExpiresAt interface{}
+	if userExpiryDays > 0 {
+		accessExpiresAt = time.Now().AddDate(0, 0, userExpiryDays)
+	}
+
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, invited_by, is_active, is_banned)
-		 VALUES (?, ?, ?, ?, ?, 1, 0)`,
-		jellyfinID, form.Username, form.Email, ldapDN, inv.Code,
+		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, invited_by, is_active, is_banned, access_expires_at)
+		 VALUES (?, ?, ?, ?, ?, 1, 0, ?)`,
+		jellyfinID, form.Username, form.Email, ldapDN, inv.Code, accessExpiresAt,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)

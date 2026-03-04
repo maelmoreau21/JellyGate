@@ -186,48 +186,66 @@ func main() {
 		r.Post("/login", authHandler.LoginSubmit)
 		r.Post("/logout", authHandler.Logout)
 
-		// Routes protégées par le middleware d'authentification Jellyfin
+		// Routes protégées par le middleware d'authentification global (standard + admin)
 		r.Group(func(r chi.Router) {
 			r.Use(jgmw.RequireAuth(cfg.SecretKey))
 
+			// Le tableau de bord est commun
 			r.Get("/", adminHandler.DashboardPage)
 
-			// Gestion des utilisateurs — pages HTML
-			r.Get("/users", adminHandler.UsersPage)
+			// ── Routes limitées aux administrateurs purs ────────────────────
+			r.Group(func(r chi.Router) {
+				r.Use(jgmw.RequireAdminAuth())
 
-			// API JSON de gestion des utilisateurs
-			r.Route("/api/users", func(r chi.Router) {
-				r.Get("/", adminHandler.ListUsers)
-				r.Post("/{id}/toggle", adminHandler.ToggleUser)
-				r.Post("/{id}/ban", handlePlaceholder("Bannir utilisateur"))
-				r.Delete("/{id}", adminHandler.DeleteUser)
-				r.Post("/{id}/extend", handlePlaceholder("Prolonger accès utilisateur"))
+				r.Get("/users", adminHandler.UsersPage)
+				r.Route("/api/users", func(r chi.Router) {
+					r.Get("/", adminHandler.ListUsers)
+					r.Post("/sync", adminHandler.SyncJellyfinUsers)
+					r.Post("/{id}/toggle", adminHandler.ToggleUser)
+					r.Post("/{id}/invite-toggle", adminHandler.ToggleUserInvite)
+					r.Post("/{id}/ban", handlePlaceholder("Bannir utilisateur"))
+					r.Delete("/{id}", adminHandler.DeleteUser)
+					r.Post("/{id}/extend", handlePlaceholder("Prolonger accès utilisateur"))
+				})
+
+				r.Route("/api/settings", func(r chi.Router) {
+					r.Get("/", settingsHandler.GetAll)
+					r.Post("/general", settingsHandler.SaveGeneral)
+					r.Post("/ldap", settingsHandler.SaveLDAP)
+					r.Post("/smtp", settingsHandler.SaveSMTP)
+					r.Post("/webhooks", settingsHandler.SaveWebhooks)
+				})
+
+				r.Route("/api/logs", func(r chi.Router) {
+					r.Get("/", adminHandler.ListLogs)
+				})
+
+				r.Get("/settings", adminHandler.SettingsPage)
+				r.Post("/settings", handlePlaceholder("Sauvegarder les paramètres"))
+
+				r.Get("/logs", adminHandler.LogsPage)
 			})
 
-			// API JSON de gestion des paramètres
-			r.Route("/api/settings", func(r chi.Router) {
-				r.Get("/", settingsHandler.GetAll)
-				r.Post("/general", settingsHandler.SaveGeneral)
-				r.Post("/ldap", settingsHandler.SaveLDAP)
-				r.Post("/smtp", settingsHandler.SaveSMTP)
-				r.Post("/webhooks", settingsHandler.SaveWebhooks)
-			})
-
-			// Gestion des invitations
+			// ── Routes d'invitations (Filtées en interne selon IsAdmin) ─────
 			r.Route("/invitations", func(r chi.Router) {
 				r.Get("/", adminHandler.InvitationsPage)
-				r.Post("/", handlePlaceholder("Créer une invitation"))
-				r.Delete("/{id}", handlePlaceholder("Supprimer une invitation"))
+			})
+			r.Route("/api/invitations", func(r chi.Router) {
+				r.Get("/", adminHandler.ListInvitations)
+				r.Post("/", adminHandler.CreateInvitation)
+				r.Delete("/{id}", adminHandler.DeleteInvitation)
 			})
 
-			// Paramètres
-			r.Get("/settings", adminHandler.SettingsPage)
-			r.Post("/settings", handlePlaceholder("Sauvegarder les paramètres"))
+			// ── Route de profil (Changement MDP, par tout le monde) ─────────
+			r.Post("/api/users/me/password", adminHandler.ChangeMyPassword)
 
-			// Journal d'audit
-			r.Get("/logs", adminHandler.LogsPage)
-		}) // fin Group (routes protégées)
+		}) // fin Group RequireAuth
 	})
+
+	// ── Lancer la Job d'expiration Automatique ──────────────────────────────
+	ctx, cancelMain := context.WithCancel(context.Background())
+	defer cancelMain()
+	adminHandler.StartExpirationJob(ctx)
 
 	// ── 5. Démarrer le serveur HTTP ─────────────────────────────────────────
 	addr := fmt.Sprintf(":%d", cfg.Port)

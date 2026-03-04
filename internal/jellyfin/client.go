@@ -108,7 +108,8 @@ type InviteProfile struct {
 	EnableDownload     bool     `json:"enable_download"`
 	EnableRemoteAccess bool     `json:"enable_remote_access"`
 	MaxSessions        int      `json:"max_sessions"`
-	BitrateLimit       int      `json:"bitrate_limit"` // 0 = illimité
+	BitrateLimit       int      `json:"bitrate_limit"`    // 0 = illimité
+	UserExpiryDays     int      `json:"user_expiry_days"` // 0 = illimité
 }
 
 // ── Opérations CRUD ─────────────────────────────────────────────────────────
@@ -139,10 +140,10 @@ func (c *Client) CreateUser(name, password string) (*User, error) {
 
 	var user User
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		return nil, fmt.Errorf("jellyfin.CreateUser: erreur de décodage: %w", err)
+		return nil, fmt.Errorf("jellyfin.CreateUser: parse error: %w", err)
 	}
 
-	slog.Info("Utilisateur Jellyfin créé", "id", user.ID, "name", user.Name)
+	slog.Info("Utilisateur créé dans Jellyfin", "name", name, "id", user.ID)
 	return &user, nil
 }
 

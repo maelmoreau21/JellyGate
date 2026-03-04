@@ -232,7 +232,8 @@ JellyGate/
 | `DELETE` | `/admin/invitations/{id}` | Supprimer une invitation |
 | `GET` | `/admin/settings` | Page des paramètres |
 | `POST` | `/admin/settings` | Sauvegarder les paramètres |
-| `GET` | `/admin/logs` | Journal d'audit |
+| `GET` | `/admin/logs` | Page du journal d'audit |
+| `GET` | `/admin/api/logs` | Récupérer l'historique d'audit (JSON) |
 
 ### Routes statiques
 

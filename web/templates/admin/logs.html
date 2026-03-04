@@ -27,6 +27,7 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
         </a>
+        {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -34,6 +35,8 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_users" }}</span>
         </a>
+        {{ end }}
+        {{ if .CanInvite }}
         <a href="/admin/invitations" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -41,6 +44,8 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
         </a>
+        {{ end }}
+        {{ if .IsAdmin }}
         <a href="/admin/settings" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -56,6 +61,7 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
         </a>
+        {{ end }}
     </nav>
     <div class="jg-sidebar-footer">
         <form method="POST" action="/admin/logout">
@@ -83,18 +89,108 @@
         </div>
     </div>
 
-    <div class="glass-card p-8 text-center glow-accent max-w-2xl mx-auto mt-16">
-        <div class="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
+    <div class="glass-card p-0 overflow-hidden">
+        <div class="jg-table-wrap">
+            <table class="jg-table w-full text-left border-collapse">
+                <thead>
+                    <tr>
+                        <th
+                            class="w-48 border-b border-white/10 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                            Date</th>
+                        <th
+                            class="w-40 border-b border-white/10 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                            Action</th>
+                        <th
+                            class="w-40 border-b border-white/10 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                            Acteur</th>
+                        <th
+                            class="border-b border-white/10 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                            Cible</th>
+                        <th
+                            class="border-b border-white/10 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                            Détails</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-tbody" class="divide-y divide-white/5">
+                    <tr>
+                        <td colspan="5" class="text-center py-8 text-slate-400">Chargement des journaux...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <h2 class="text-xl font-bold mb-3 text-white">Interface en construction</h2>
-        <p class="text-slate-300">
-            Les journaux d'audit sont enregistrés en tâche de fond. Leur affichage complet dans cette interface est
-            prévu pour la prochaine version.
-        </p>
     </div>
 </main>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchLogs();
+    });
+
+    async function fetchLogs() {
+        try {
+            const tbody = document.getElementById("logs-tbody");
+            const res = await fetch("/admin/api/logs");
+            if (!res.ok) throw new Error("Erreur réseau");
+            const data = await res.json();
+
+            if (!data.success || !data.data || data.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">Aucun journal trouvé.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = "";
+            data.data.forEach(log => {
+                const tr = document.createElement("tr");
+                tr.className = "hover:bg-white/5 transition-colors";
+
+                // Formater la date
+                const date = new Date(log.created_at);
+                const dateStr = date.toLocaleString('fr-FR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                }).replace(',', ' à');
+
+                // Badge de couleur selon l'action
+                let actionBadge = "bg-slate-500/20 text-slate-300 border-slate-500/30";
+                if (log.action.includes("login") || log.action.includes("success")) {
+                    actionBadge = "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
+                } else if (log.action.includes("delete") || log.action.includes("fail") || log.action.includes("error")) {
+                    actionBadge = "bg-red-500/20 text-red-400 border-red-500/30";
+                } else if (log.action.includes("create") || log.action.includes("invite")) {
+                    actionBadge = "bg-blue-500/20 text-blue-400 border-blue-500/30";
+                } else if (log.action.includes("update") || log.action.includes("modify") || log.action.includes("toggle")) {
+                    actionBadge = "bg-amber-500/20 text-amber-400 border-amber-500/30";
+                }
+
+                const actorHtml = log.actor === "system"
+                    ? `<span class="px-2 py-0.5 rounded text-xs bg-slate-700/50 text-slate-300 border border-slate-600">Système</span>`
+                    : `<span class="font-medium text-slate-200">${escapeHtml(log.actor)}</span>`;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-sm text-slate-400 whitespace-nowrap">${dateStr}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-medium border ${actionBadge}">${escapeHtml(log.action)}</span></td>
+                    <td class="px-4 py-3 text-sm">${actorHtml}</td>
+                    <td class="px-4 py-3 text-sm text-slate-300">${escapeHtml(log.target || "-")}</td>
+                    <td class="px-4 py-3 text-xs text-slate-500 truncate max-w-xs font-mono" title="${escapeHtml(log.details)}">${escapeHtml(log.details || "-")}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (err) {
+            console.error(err);
+            document.getElementById("logs-tbody").innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-400">Erreur lors du chargement des journaux.</td></tr>';
+        }
+    }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return "";
+        return unsafe.toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+</script>
 {{ end }}

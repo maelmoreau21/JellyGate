@@ -28,6 +28,7 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
         </a>
+        {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -35,6 +36,8 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_users" }}</span>
         </a>
+        {{ end }}
+        {{ if .CanInvite }}
         <a href="/admin/invitations" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -42,6 +45,8 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
         </a>
+        {{ end }}
+        {{ if .IsAdmin }}
         <a href="/admin/settings" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -57,6 +62,7 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
         </a>
+        {{ end }}
     </nav>
 
     <div class="jg-sidebar-footer">
@@ -88,6 +94,31 @@
         </div>
     </div>
 
+    {{/* Password Reset Card (Visible par tous les utilisateurs) */}}
+    <div class="glass-card mb-8">
+        <h2 class="text-xl font-bold mb-4">🔐 Mon Compte</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <p class="text-slate-400 mb-4 text-sm">Modifiez votre mot de passe d'accès (Jellyfin et Active
+                    Directory). La déconnexion ne sera pas immédiate sur vos autres appareils.</p>
+                <form id="change-password-form" onsubmit="event.preventDefault(); submitInternalPasswordChange();">
+                    <div class="mb-4">
+                        <label class="jg-label">Nouveau mot de passe</label>
+                        <input type="password" id="new-password" class="jg-input" minlength="8" required
+                            placeholder="8 caractères minimum">
+                    </div>
+                    <div class="mb-4">
+                        <label class="jg-label">Confirmez le mot de passe</label>
+                        <input type="password" id="new-password-confirm" class="jg-input" required
+                            placeholder="Ressaisir le mot de passe">
+                    </div>
+                    <button type="submit" class="jg-btn">Mettre à jour le mot de passe</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    {{ if .IsAdmin }}
     {{/* Stats cards */}}
     <div class="stats-grid mb-8" id="stats-grid">
         <div class="glass-card-sm stat-card">
@@ -166,6 +197,7 @@
             </table>
         </div>
     </div>
+    {{ end }}
 </main>
 {{ end }}
 
@@ -183,6 +215,7 @@
         }
 
         // Load stats
+        { { if .IsAdmin } }
         JG.api('/admin/api/users').then(res => {
             if (!res.success) return;
             const users = res.data || [];
@@ -210,6 +243,37 @@
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-8">Aucun utilisateur</td></tr>';
             }
         });
+        { { end } }
     });
+
+    // Change Password function
+    async function submitInternalPasswordChange() {
+        const p1 = document.getElementById('new-password').value;
+        const p2 = document.getElementById('new-password-confirm').value;
+
+        if (p1 !== p2) {
+            JG.toast("Les mots de passe ne correspondent pas", "error");
+            return;
+        }
+        if (p1.length < 8) {
+            JG.toast("Le mot de passe est trop court", "error");
+            return;
+        }
+
+        const res = await JG.api('/admin/api/users/me/password', {
+            method: 'POST',
+            body: JSON.stringify({
+                current_password: "not_needed_by_admin_token",
+                new_password: p1
+            })
+        });
+
+        if (res.success) {
+            JG.toast(res.message, "success");
+            document.getElementById('change-password-form').reset();
+        } else {
+            JG.toast(res.message || "Erreur lors du changement", "error");
+        }
+    }
 </script>
 {{ end }}

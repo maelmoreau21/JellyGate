@@ -107,10 +107,6 @@ func Verify(cookieValue, secretKey string) (*Payload, error) {
 		return nil, fmt.Errorf("session expirée")
 	}
 
-	if !payload.IsAdmin {
-		return nil, fmt.Errorf("utilisateur non-administrateur")
-	}
-
 	return &payload, nil
 }
 

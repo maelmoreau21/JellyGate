@@ -106,24 +106,20 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ── 3. Vérifier que l'utilisateur est administrateur ────────────────
-	if !authResp.User.Policy.IsAdministrator {
-		slog.Warn("Utilisateur non-admin a tenté de se connecter",
+	// ── 3. Le statut d'administrateur détermine les permissions ────────────
+	isAdmin := authResp.User.Policy.IsAdministrator
+	if !isAdmin {
+		slog.Info("Utilisateur standard connecté",
 			"username", username,
 			"jellyfin_id", authResp.User.ID,
-			"remote", r.RemoteAddr,
 		)
-		_ = h.db.LogAction("admin.login.denied", username, authResp.User.ID, "Utilisateur non-administrateur")
-
-		http.Redirect(w, r, "/admin/login?error=forbidden", http.StatusSeeOther)
-		return
 	}
 
 	// ── 4. Créer le cookie de session signé ─────────────────────────────
 	sess := session.Payload{
 		UserID:   authResp.User.ID,
 		Username: authResp.User.Name,
-		IsAdmin:  true,
+		IsAdmin:  isAdmin,
 		Exp:      time.Now().Add(session.Duration).Unix(),
 	}
 
