@@ -10,6 +10,7 @@
 //   - POST /admin/api/settings/ldap     → Sauvegarder la config LDAP
 //   - POST /admin/api/settings/smtp     → Sauvegarder la config SMTP
 //   - POST /admin/api/settings/webhooks → Sauvegarder la config Webhooks
+//   - POST /admin/api/settings/backup    → Sauvegarder la config de sauvegarde planifiée
 package handlers
 
 import (
@@ -47,6 +48,7 @@ type settingsResponse struct {
 	LDAP           config.LDAPConfig           `json:"ldap"`
 	SMTP           config.SMTPConfig           `json:"smtp"`
 	Webhooks       config.WebhooksConfig       `json:"webhooks"`
+	Backup         config.BackupConfig         `json:"backup"`
 	EmailTemplates config.EmailTemplatesConfig `json:"email_templates"`
 }
 
@@ -91,6 +93,16 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	backupCfg, err := h.db.GetBackupConfig()
+	if err != nil {
+		slog.Error("Erreur lecture config Backup", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur lecture configuration sauvegardes",
+		})
+		return
+	}
+
 	// Masquer le mot de passe LDAP et SMTP dans la réponse
 	maskedLDAP := ldapCfg
 	if maskedLDAP.BindPassword != "" {
@@ -113,6 +125,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			LDAP:           maskedLDAP,
 			SMTP:           maskedSMTP,
 			Webhooks:       webhooksCfg,
+			Backup:         backupCfg,
 			EmailTemplates: emailTemplatesCfg,
 		},
 	})
@@ -295,6 +308,45 @@ func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
 		Success: true,
 		Message: "Configuration Webhooks sauvegardée",
 	})
+}
+
+// ── POST /admin/api/settings/backup ────────────────────────────────────────
+
+// SaveBackup sauvegarde la configuration des sauvegardes planifiées.
+func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
+	var input config.BackupConfig
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	if input.Hour < 0 || input.Hour > 23 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Heure invalide (0-23)"})
+		return
+	}
+	if input.Minute < 0 || input.Minute > 59 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Minutes invalides (0-59)"})
+		return
+	}
+	if input.RetentionCount < 1 || input.RetentionCount > 365 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Rétention invalide (1-365)"})
+		return
+	}
+
+	if err := h.db.SaveBackupConfig(input); err != nil {
+		slog.Error("Erreur sauvegarde config Backup", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur de sauvegarde",
+		})
+		return
+	}
+
+	_ = h.db.LogAction("settings.backup.saved", "", "", "")
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Configuration de sauvegarde sauvegardée"})
 }
 
 // ── POST /admin/api/settings/email-templates ────────────────────────────────

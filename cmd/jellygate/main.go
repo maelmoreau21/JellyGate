@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/maelmoreau21/JellyGate/internal/backup"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/handlers"
@@ -49,6 +50,10 @@ func main() {
 		"base_url", cfg.BaseURL,
 		"jellyfin_url", cfg.Jellyfin.URL,
 	)
+
+	if err := backup.ApplyPendingRestore(cfg.DataDir); err != nil {
+		slog.Error("Erreur application restauration en attente", "error", err)
+	}
 
 	// ── 3. Initialiser la base de données SQLite ────────────────────────────
 	db, err := database.New(cfg.DataDir)
@@ -107,6 +112,8 @@ func main() {
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db)
+	backupService := backup.NewService(cfg.DataDir, db)
+	backupHandler := handlers.NewBackupHandler(db, backupService)
 
 	// Callbacks de rechargement à chaud
 	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
@@ -219,7 +226,17 @@ func main() {
 					r.Post("/ldap", settingsHandler.SaveLDAP)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
+					r.Post("/backup", settingsHandler.SaveBackup)
 					r.Post("/email-templates", settingsHandler.SaveEmailTemplates)
+				})
+
+				r.Route("/api/backups", func(r chi.Router) {
+					r.Get("/", backupHandler.ListBackups)
+					r.Post("/create", backupHandler.CreateBackup)
+					r.Post("/import", backupHandler.ImportBackup)
+					r.Get("/{name}/download", backupHandler.DownloadBackup)
+					r.Post("/{name}/restore", backupHandler.RestoreBackup)
+					r.Delete("/{name}", backupHandler.DeleteBackup)
 				})
 
 				r.Route("/api/logs", func(r chi.Router) {
@@ -252,6 +269,7 @@ func main() {
 	ctx, cancelMain := context.WithCancel(context.Background())
 	defer cancelMain()
 	adminHandler.StartExpirationJob(ctx)
+	backupService.StartScheduler(ctx)
 
 	// ── 5. Démarrer le serveur HTTP ─────────────────────────────────────────
 	addr := fmt.Sprintf(":%d", cfg.Port)

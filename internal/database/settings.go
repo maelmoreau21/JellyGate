@@ -22,6 +22,8 @@ const (
 	SettingSMTPConfig     = "smtp_config"     // JSON: config.SMTPConfig
 	SettingWebhooksConfig = "webhooks_config" // JSON: config.WebhooksConfig
 	SettingEmailTemplates = "email_templates" // JSON: config.EmailTemplatesConfig
+	SettingBackupConfig   = "backup_config"   // JSON: config.BackupConfig
+	SettingBackupLastRun  = "backup_last_run" // Date locale YYYY-MM-DD
 	SettingDefaultLang    = "default_lang"    // Langue par défaut du serveur ("fr" ou "en")
 )
 
@@ -170,6 +172,61 @@ func (db *DB) SaveSMTPConfig(cfg config.SMTPConfig) error {
 		return fmt.Errorf("SaveSMTPConfig marshal: %w", err)
 	}
 	return db.SetSetting(SettingSMTPConfig, string(data))
+}
+
+// ── Backup Config ───────────────────────────────────────────────────────────
+
+// GetBackupConfig récupère la configuration des sauvegardes planifiées.
+func (db *DB) GetBackupConfig() (config.BackupConfig, error) {
+	cfg := config.DefaultBackupConfig()
+
+	raw, err := db.GetSetting(SettingBackupConfig)
+	if err != nil {
+		return cfg, err
+	}
+	if raw == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config Backup", "error", err)
+		return config.DefaultBackupConfig(), nil
+	}
+
+	if cfg.Hour < 0 || cfg.Hour > 23 {
+		cfg.Hour = 3
+	}
+	if cfg.Minute < 0 || cfg.Minute > 59 {
+		cfg.Minute = 0
+	}
+	if cfg.RetentionCount < 1 {
+		cfg.RetentionCount = 7
+	}
+
+	return cfg, nil
+}
+
+// SaveBackupConfig sauvegarde la configuration des sauvegardes planifiées.
+func (db *DB) SaveBackupConfig(cfg config.BackupConfig) error {
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SaveBackupConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingBackupConfig, string(data))
+}
+
+// GetBackupLastRun retourne la date locale YYYY-MM-DD du dernier backup auto.
+func (db *DB) GetBackupLastRun() string {
+	val, err := db.GetSetting(SettingBackupLastRun)
+	if err != nil {
+		return ""
+	}
+	return val
+}
+
+// SetBackupLastRun enregistre la date locale YYYY-MM-DD du dernier backup auto.
+func (db *DB) SetBackupLastRun(day string) error {
+	return db.SetSetting(SettingBackupLastRun, day)
 }
 
 // ── Emails Templates Config ─────────────────────────────────────────────────

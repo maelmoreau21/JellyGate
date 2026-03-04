@@ -114,6 +114,10 @@
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
         📝 Modèles Email
       </button>
+      <button onclick="switchTab('backup')" id="tab-backup"
+        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        💾 Sauvegardes
+      </button>
     </div>
 
     {{/* ═══════════════════════════════════════════════════════════════ */}}
@@ -355,65 +359,98 @@
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-white/10">
           <h2 class="text-lg font-semibold text-white">Modèles de courriels (Templates)</h2>
-          <p class="text-sm text-slate-400">Personnalisez chaque situation d'envoi. Variables communes : {{ "{{" }}.Username{{ "}}" }}, {{ "{{" }}.Email{{ "}}" }}, {{ "{{" }}.InviteLink{{ "}}" }}, {{ "{{" }}.ResetLink{{ "}}" }}, {{ "{{" }}.ExpiryDate{{ "}}" }}, {{ "{{" }}.HelpURL{{ "}}" }}.</p>
+          <p class="text-sm text-slate-400">Chaque carte correspond à un scénario précis. Tu peux personnaliser le texte et utiliser les variables indiquées dans la carte.</p>
         </div>
+
+        <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
+          <h3 class="text-sm font-semibold text-purple-200 mb-2">Variables disponibles</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-300">
+            <div><span class="text-purple-200">{{ "{{" }}.Username{{ "}}" }}</span> : nom d'utilisateur</div>
+            <div><span class="text-purple-200">{{ "{{" }}.Email{{ "}}" }}</span> : adresse email</div>
+            <div><span class="text-purple-200">{{ "{{" }}.DisplayName{{ "}}" }}</span> : nom affiché</div>
+            <div><span class="text-purple-200">{{ "{{" }}.InviteLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.InviteURL{{ "}}" }}</span> : lien d'invitation</div>
+            <div><span class="text-purple-200">{{ "{{" }}.InviteCode{{ "}}" }}</span> : code d'invitation</div>
+            <div><span class="text-purple-200">{{ "{{" }}.HelpURL{{ "}}" }}</span> : URL d'aide (JellyGate)</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ResetLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.ResetURL{{ "}}" }}</span> : lien reset</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ResetCode{{ "}}" }}</span> : code reset</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ExpiresIn{{ "}}" }}</span> : durée de validité</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ExpiryDate{{ "}}" }}</span> : date d'expiration</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyfinURL{{ "}}" }}</span> : URL Jellyfin</div>
+            <div><span class="text-purple-200">{{ "{{" }}.Message{{ "}}" }}</span> : message personnalisé (invitation admin)</div>
+          </div>
+        </div>
+
         <form id="form-email-templates" onsubmit="saveSettings('email-templates', event)">
           <div class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-confirmation">Email de confirmation</label>
+                <p class="text-xs text-slate-400 mb-2">Envoyé pour confirmer l'inscription.</p>
                 <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-expiry-reminder">Expiry reminder</label>
+                <label class="jg-label" for="tpl-expiry-reminder">Rappel d'expiration</label>
+                <p class="text-xs text-slate-400 mb-2">Notification automatique avant expiration du compte.</p>
                 <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-invitation">Courriel d'invitation</label>
+                <p class="text-xs text-slate-400 mb-2">Message principal quand un admin envoie un lien d'invitation.</p>
                 <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-invite-expiry">Expiration de l'invitation</label>
+                <p class="text-xs text-slate-400 mb-2">Rappel qu'un lien d'invitation va expirer.</p>
                 <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-password-reset">Réinitialisation du mot de passe</label>
+                <p class="text-xs text-slate-400 mb-2">Contient le lien/code de reset envoyé à l'utilisateur.</p>
                 <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-pre-signup-help">Pre-signup help card</label>
+                <label class="jg-label" for="tpl-pre-signup-help">Aide avant inscription</label>
+                <p class="text-xs text-slate-400 mb-2">Conseils avant de créer le compte.</p>
                 <textarea id="tpl-pre-signup-help" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-post-signup-help">Post-signup help card</label>
+                <label class="jg-label" for="tpl-post-signup-help">Aide après inscription</label>
+                <p class="text-xs text-slate-400 mb-2">Instructions après création du compte.</p>
                 <textarea id="tpl-post-signup-help" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-creation">Création d'utilisateur</label>
+                <p class="text-xs text-slate-400 mb-2">Confirme la création d'un compte par un administrateur.</p>
                 <textarea id="tpl-user-creation" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-deletion">Suppression de l'utilisateur</label>
+                <p class="text-xs text-slate-400 mb-2">Notification de suppression de compte.</p>
                 <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-disabled">Utilisateur désactivé</label>
+                <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte est désactivé.</p>
                 <textarea id="tpl-user-disabled" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-enabled">Utilisateur activé</label>
+                <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte est réactivé.</p>
                 <textarea id="tpl-user-enabled" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-expired">Utilisateur expiré</label>
+                <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte expire automatiquement.</p>
                 <textarea id="tpl-user-expired" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-expiry-adjusted">Expiry adjusted</label>
+                <label class="jg-label" for="tpl-expiry-adjusted">Expiration ajustée</label>
+                <p class="text-xs text-slate-400 mb-2">Envoyé quand la date d'expiration est modifiée.</p>
                 <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-welcome">Bienvenue</label>
+                <p class="text-xs text-slate-400 mb-2">Message d'accueil global post-inscription.</p>
                 <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
             </div>
@@ -423,6 +460,74 @@
             <button type="submit" class="btn-primary px-6 py-2.5">💾 Sauvegarder les modèles</button>
           </div>
         </form>
+      </div>
+    </div>
+
+    {{/* ═══════════════════════════════════════════════════════════════ */}}
+    {{/* TAB: Sauvegardes */}}
+    {{/* ═══════════════════════════════════════════════════════════════ */}}
+    <div id="panel-backup" class="tab-panel hidden">
+      <div class="glass-card p-6 md:p-8">
+        <div class="mb-6 pb-4 border-b border-white/10">
+          <h2 class="text-lg font-semibold text-white">Sauvegardes & restauration</h2>
+          <p class="text-sm text-slate-400">Configure les sauvegardes automatiques, crée des sauvegardes manuelles, importe des archives et prépare une restauration.</p>
+        </div>
+
+        <form id="form-backup" onsubmit="saveSettings('backup', event)">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-200 md:col-span-3">
+              <input type="checkbox" id="backup-enabled" class="form-checkbox">
+              Activer les sauvegardes automatiques
+            </label>
+            <div>
+              <label class="jg-label" for="backup-time">Heure d'exécution quotidienne</label>
+              <input id="backup-time" type="time" class="jg-input" value="03:00">
+            </div>
+            <div>
+              <label class="jg-label" for="backup-retention">Nombre de sauvegardes conservées</label>
+              <input id="backup-retention" type="number" min="1" max="365" class="jg-input" value="7">
+            </div>
+            <div class="flex items-end">
+              <button type="submit" class="btn-primary px-6 py-2.5 w-full">💾 Sauvegarder la planification</button>
+            </div>
+          </div>
+        </form>
+
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <h3 class="text-sm font-semibold text-white mb-3">Sauvegarde manuelle</h3>
+            <p class="text-xs text-slate-400 mb-3">Crée une archive ZIP exportable (base SQLite + paramètres + templates).</p>
+            <button id="backup-create-btn" class="jg-btn">Créer une sauvegarde maintenant</button>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <h3 class="text-sm font-semibold text-white mb-3">Importer une sauvegarde</h3>
+            <p class="text-xs text-slate-400 mb-3">Importe une archive ZIP dans JellyGate pour la restaurer plus tard.</p>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <input id="backup-import-file" type="file" accept=".zip" class="jg-input">
+              <button id="backup-import-btn" class="jg-btn jg-btn-ghost" type="button">Importer</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+          <h3 class="text-sm font-semibold text-white mb-3">Archives disponibles</h3>
+          <p class="text-xs text-slate-400 mb-4">La restauration est préparée puis appliquée au prochain redémarrage de JellyGate.</p>
+          <div class="jg-table-wrap">
+            <table class="jg-table">
+              <thead>
+                <tr>
+                  <th>Archive</th>
+                  <th>Taille</th>
+                  <th>Date</th>
+                  <th class="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="backup-list-body">
+                <tr><td colspan="4" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -491,6 +596,14 @@
     document.getElementById('wh-matrix-url').value = (d.webhooks.matrix && d.webhooks.matrix.url) || '';
     document.getElementById('wh-matrix-room').value = (d.webhooks.matrix && d.webhooks.matrix.room_id) || '';
     document.getElementById('wh-matrix-token').value = (d.webhooks.matrix && d.webhooks.matrix.token) || '';
+
+    // Backups
+    const backupCfg = d.backup || {};
+    document.getElementById('backup-enabled').checked = !!backupCfg.enabled;
+    const backupHour = Number.isInteger(backupCfg.hour) ? backupCfg.hour : 3;
+    const backupMinute = Number.isInteger(backupCfg.minute) ? backupCfg.minute : 0;
+    document.getElementById('backup-time').value = `${String(backupHour).padStart(2, '0')}:${String(backupMinute).padStart(2, '0')}`;
+    document.getElementById('backup-retention').value = backupCfg.retention_count || 7;
 
     // Modèles Email
     if (d.email_templates) {
@@ -574,6 +687,14 @@
         expiry_adjusted: document.getElementById('tpl-expiry-adjusted').value,
         welcome: document.getElementById('tpl-welcome').value,
       };
+    } else if (section === 'backup') {
+      const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
+      body = {
+        enabled: document.getElementById('backup-enabled').checked,
+        hour: parseInt(hourStr, 10),
+        minute: parseInt(minuteStr, 10),
+        retention_count: parseInt(document.getElementById('backup-retention').value, 10) || 7,
+      };
     }
 
     const res = await JG.api(endpoint, {
@@ -589,8 +710,116 @@
     }
   }
 
+  function formatSize(n) {
+    if (!n || n <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let idx = 0;
+    let value = n;
+    while (value >= 1024 && idx < units.length - 1) {
+      value /= 1024;
+      idx++;
+    }
+    return `${value.toFixed(idx === 0 ? 0 : 1)} ${units[idx]}`;
+  }
+
+  function fmtDateTime(v) {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return v || '—';
+    return d.toLocaleString();
+  }
+
+  async function loadBackups() {
+    const tbody = document.getElementById('backup-list-body');
+    const res = await JG.api('/admin/api/backups');
+    if (!res || !res.success) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red-300 py-8">Impossible de charger les sauvegardes.</td></tr>';
+      return;
+    }
+
+    const backups = res.data || [];
+    if (backups.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-8">Aucune sauvegarde disponible.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = backups.map(b => `
+      <tr>
+        <td class="font-mono text-xs text-slate-200">${JG.esc(b.name)}</td>
+        <td class="text-slate-400">${JG.esc(formatSize(b.size_bytes))}</td>
+        <td class="text-slate-400">${JG.esc(fmtDateTime(b.created_at))}</td>
+        <td class="text-right">
+          <div class="flex justify-end gap-2 flex-wrap">
+            <button class="jg-btn jg-btn-sm jg-btn-ghost" onclick="downloadBackup('${JG.esc(b.name)}')">Exporter</button>
+            <button class="jg-btn jg-btn-sm" onclick="restoreBackup('${JG.esc(b.name)}')">Restaurer</button>
+            <button class="jg-btn jg-btn-sm jg-btn-danger" onclick="deleteBackup('${JG.esc(b.name)}')">Supprimer</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function createBackupNow() {
+    const res = await JG.api('/admin/api/backups/create', { method: 'POST' });
+    if (res && res.success) {
+      JG.toast(res.message || 'Sauvegarde créée', 'success');
+      await loadBackups();
+      return;
+    }
+    JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
+  }
+
+  async function importBackup() {
+    const input = document.getElementById('backup-import-file');
+    const file = input.files && input.files[0];
+    if (!file) {
+      JG.toast('Sélectionne un fichier .zip', 'error');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await JG.api('/admin/api/backups/import', { method: 'POST', body: formData });
+    if (res && res.success) {
+      JG.toast(res.message || 'Sauvegarde importée', 'success');
+      input.value = '';
+      await loadBackups();
+      return;
+    }
+    JG.toast((res && res.message) || 'Import impossible', 'error');
+  }
+
+  window.downloadBackup = function (name) {
+    window.location.href = `/admin/api/backups/${encodeURIComponent(name)}/download`;
+  };
+
+  window.restoreBackup = async function (name) {
+    if (!confirm(`Préparer la restauration de ${name} ? Un redémarrage sera requis.`)) return;
+    const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' });
+    if (res && res.success) {
+      JG.toast('Restauration préparée. Redémarre JellyGate.', 'success');
+      return;
+    }
+    JG.toast((res && res.message) || 'Restauration impossible', 'error');
+  };
+
+  window.deleteBackup = async function (name) {
+    if (!confirm(`Supprimer définitivement ${name} ?`)) return;
+    const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (res && res.success) {
+      JG.toast('Sauvegarde supprimée', 'success');
+      await loadBackups();
+      return;
+    }
+    JG.toast((res && res.message) || 'Suppression impossible', 'error');
+  };
+
   // ── Init ────────────────────────────────────────────────────────────────
-  document.addEventListener('DOMContentLoaded', loadSettings);
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadSettings();
+    await loadBackups();
+    document.getElementById('backup-create-btn').addEventListener('click', createBackupNow);
+    document.getElementById('backup-import-btn').addEventListener('click', importBackup);
+  });
 </script>
 
 <style>

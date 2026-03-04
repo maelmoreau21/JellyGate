@@ -64,6 +64,24 @@ type SMTPConfig struct {
 	UseTLS   bool   `json:"use_tls"`  // Utiliser STARTTLS
 }
 
+// BackupConfig contient la configuration des sauvegardes automatiques.
+type BackupConfig struct {
+	Enabled        bool `json:"enabled"`
+	Hour           int  `json:"hour"`            // 0-23
+	Minute         int  `json:"minute"`          // 0-59
+	RetentionCount int  `json:"retention_count"` // Nombre de sauvegardes à conserver
+}
+
+// DefaultBackupConfig retourne une configuration backup par défaut.
+func DefaultBackupConfig() BackupConfig {
+	return BackupConfig{
+		Enabled:        false,
+		Hour:           3,
+		Minute:         0,
+		RetentionCount: 7,
+	}
+}
+
 // EmailTemplatesConfig contient les modèles de courriels personnalisés configurables (JFA-Go).
 type EmailTemplatesConfig struct {
 	Confirmation   string `json:"confirmation"`

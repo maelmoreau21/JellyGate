@@ -195,6 +195,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 
 	emailData := map[string]string{
 		"Username":  user.Username,
+		"ResetLink": resetURL,
 		"ResetURL":  resetURL,
 		"ResetCode": token,
 		"ExpiresIn": "15 minutes",

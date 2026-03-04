@@ -18,11 +18,20 @@ window.JG = window.JG || {};
  */
 JG.api = async function (url, opts = {}) {
     try {
-        const defaults = {
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'same-origin',
+        const isFormData = (typeof FormData !== 'undefined') && (opts.body instanceof FormData);
+
+        const mergedHeaders = {
+            ...(opts.headers || {}),
         };
-        const config = { ...defaults, ...opts };
+        if (!isFormData && !mergedHeaders['Content-Type']) {
+            mergedHeaders['Content-Type'] = 'application/json';
+        }
+
+        const config = {
+            credentials: 'same-origin',
+            ...opts,
+            headers: mergedHeaders,
+        };
 
         const resp = await fetch(url, config);
 
@@ -31,8 +40,35 @@ JG.api = async function (url, opts = {}) {
             return { success: false, message: 'Session expirée' };
         }
 
-        const data = await resp.json();
-        return data;
+        const contentType = (resp.headers.get('content-type') || '').toLowerCase();
+        const finalURL = (resp.url || '').toLowerCase();
+
+        if (resp.redirected && finalURL.includes('/admin/login')) {
+            window.location.href = '/admin/login';
+            return { success: false, message: 'Session expirée' };
+        }
+
+        if (!contentType.includes('application/json')) {
+            const payloadText = await resp.text();
+            return {
+                success: false,
+                message: resp.ok ? 'Réponse inattendue du serveur' : `Erreur HTTP ${resp.status}`,
+                status: resp.status,
+                raw: payloadText,
+            };
+        }
+
+        const payloadText = await resp.text();
+        try {
+            return JSON.parse(payloadText);
+        } catch {
+            return {
+                success: false,
+                message: 'Réponse JSON invalide du serveur',
+                status: resp.status,
+                raw: payloadText,
+            };
+        }
     } catch (err) {
         console.error('[JG.api]', url, err);
         return { success: false, message: 'Erreur réseau' };

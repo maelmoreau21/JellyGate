@@ -125,20 +125,26 @@
                     <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">Sélectionner les filtrés</button>
                 </div>
 
+                <div class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
+                    1) Sélectionne des utilisateurs · 2) Choisis une action · 3) Renseigne les champs demandés puis applique.
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <select id="bulk-action" class="jg-input md:col-span-2">
+                    <select id="bulk-action" class="jg-input md:col-span-2 appearance-none bg-right bg-no-repeat" title="Choisir une action de masse">
                         <option value="">Action de masse...</option>
                         <option value="send_email">Envoyer un courriel</option>
-                        <option value="jellyfin_policy">Modifier paramètres Jellyfin</option>
-                        <option value="set_parrainage">Activer/désactiver le parrainage</option>
+                        <option value="send_password_reset">Envoyer une réinitialisation de mot de passe</option>
                         <option value="set_expiry">Définir/supprimer une expiration</option>
+                        <option value="set_parrainage">Activer/désactiver le parrainage</option>
+                        <option value="jellyfin_policy">Modifier paramètres Jellyfin</option>
                         <option value="activate">Activer les comptes</option>
                         <option value="deactivate">Désactiver les comptes</option>
-                        <option value="send_password_reset">Envoyer une réinitialisation de mot de passe</option>
                         <option value="delete">Supprimer les utilisateurs</option>
                     </select>
                     <button id="bulk-apply" class="jg-btn">Appliquer</button>
                 </div>
+
+                <div id="bulk-help" class="hidden rounded-lg border border-blue-400/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-100"></div>
 
                 <div id="bulk-fields" class="hidden"></div>
             </div>
@@ -279,7 +285,10 @@
             document.getElementById('user-count').textContent = `${users.length} utilisateur(s) affiché(s) / ${allUsers.length}`;
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-slate-500 py-12">Aucun utilisateur</td></tr>';
+                const help = allUsers.length === 0
+                    ? 'Aucun utilisateur local. Clique sur “Sync Jellyfin” pour importer les comptes existants.'
+                    : 'Aucun utilisateur ne correspond aux filtres actuels.';
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center text-slate-500 py-12">${JG.esc(help)}</td></tr>`;
                 updateSelectionUI();
                 return;
             }
@@ -362,19 +371,35 @@
 
         function resetBulkFields() {
             const container = document.getElementById('bulk-fields');
+            const help = document.getElementById('bulk-help');
             const action = document.getElementById('bulk-action').value;
             if (!action) {
                 container.classList.add('hidden');
                 container.innerHTML = '';
+                help.classList.add('hidden');
+                help.innerHTML = '';
                 return;
             }
+
+            const helpTexts = {
+                send_email: "Envoie un email personnalisé à tous les utilisateurs sélectionnés disposant d'une adresse email.",
+                send_password_reset: "Génère et envoie un lien de réinitialisation de mot de passe pour chaque utilisateur sélectionné.",
+                set_expiry: "Définit une date d'expiration d'accès, ou supprime l'expiration si la case est cochée.",
+                set_parrainage: "Active ou désactive la capacité de créer des invitations pour les utilisateurs sélectionnés.",
+                jellyfin_policy: "Applique des restrictions Jellyfin (téléchargement, accès distant, sessions, bitrate).",
+                activate: "Réactive les comptes dans SQLite, LDAP et Jellyfin.",
+                deactivate: "Désactive les comptes dans SQLite, LDAP et Jellyfin.",
+                delete: "Supprime définitivement les comptes sélectionnés (action irréversible)."
+            };
+            help.classList.remove('hidden');
+            help.textContent = helpTexts[action] || "Action de masse sélectionnée.";
 
             container.classList.remove('hidden');
             if (action === 'send_email') {
                 container.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <input id="bulk-email-subject" class="jg-input" placeholder="Sujet du courriel">
-                        <input id="bulk-email-tooltips" class="jg-input" disabled value="Variables: {{.Username}} {{.Email}} {{.Actor}}">
+                        <input id="bulk-email-tooltips" class="jg-input" disabled value="Variables: {{ "{{" }}.Username{{ "}}" }} {{ "{{" }}.Email{{ "}}" }} {{ "{{" }}.Actor{{ "}}" }}">
                     </div>
                     <textarea id="bulk-email-body" class="jg-input mt-3 font-mono text-sm" rows="5" placeholder="Corps du courriel (template Go autorisé)"></textarea>
                 `;
@@ -394,6 +419,7 @@
             if (action === 'set_expiry') {
                 container.innerHTML = `
                     <div class="flex flex-wrap items-center gap-3">
+                        <label class="text-xs text-slate-300">Date d'expiration:</label>
                         <input type="datetime-local" id="bulk-expiry" class="jg-input max-w-xs">
                         <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                             <input type="checkbox" id="bulk-clear-expiry" class="form-checkbox">
@@ -431,6 +457,7 @@
             const res = await JG.api('/admin/api/users');
             if (!res.success) {
                 JG.toast(res.message || 'Erreur chargement', 'error');
+                document.getElementById('users-tbody').innerHTML = '<tr><td colspan="10" class="text-center text-red-300 py-12">Impossible de charger les utilisateurs. Vérifie ta session et recharge la page.</td></tr>';
                 return;
             }
             allUsers = res.data || [];
@@ -661,8 +688,7 @@
         if (!confirm("Voulez-vous forcer la synchronisation avec Jellyfin ? Les utilisateurs absents de la base locale seront importés.")) return;
 
         try {
-            const res = await fetch('/admin/api/users/sync', { method: 'POST' });
-            const data = await res.json();
+            const data = await JG.api('/admin/api/users/sync', { method: 'POST' });
             if (data.success) {
                 JG.toast(data.message || 'Synchronisation terminée', 'success');
                 setTimeout(() => window.location.reload(), 1000);
