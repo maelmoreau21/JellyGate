@@ -215,7 +215,7 @@ func main() {
 
 			// Gestion des invitations
 			r.Route("/invitations", func(r chi.Router) {
-				r.Get("/", handlePlaceholder("Liste des invitations"))
+				r.Get("/", adminHandler.InvitationsPage)
 				r.Post("/", handlePlaceholder("Créer une invitation"))
 				r.Delete("/{id}", handlePlaceholder("Supprimer une invitation"))
 			})
@@ -225,7 +225,7 @@ func main() {
 			r.Post("/settings", handlePlaceholder("Sauvegarder les paramètres"))
 
 			// Journal d'audit
-			r.Get("/logs", handlePlaceholder("Journal d'audit"))
+			r.Get("/logs", adminHandler.LogsPage)
 		}) // fin Group (routes protégées)
 	})
 

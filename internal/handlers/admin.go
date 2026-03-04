@@ -104,7 +104,10 @@ func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.AdminUsername = sess.Username
-	_ = h.renderer.Render(w, "admin/users.html", td)
+	if err := h.renderer.Render(w, "admin/users.html", td); err != nil {
+		slog.Error("Erreur rendu users page", "error", err)
+		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+	}
 }
 
 // SettingsPage affiche la page de configuration globale.
@@ -112,7 +115,32 @@ func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.AdminUsername = sess.Username
-	_ = h.renderer.Render(w, "admin/settings.html", td)
+	if err := h.renderer.Render(w, "admin/settings.html", td); err != nil {
+		slog.Error("Erreur rendu settings page", "error", err)
+		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+	}
+}
+
+// InvitationsPage affiche la page de gestion des invitations.
+func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.AdminUsername = sess.Username
+	if err := h.renderer.Render(w, "admin/invitations.html", td); err != nil {
+		slog.Error("Erreur rendu invitations page", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
+}
+
+// LogsPage affiche la page du journal d'audit.
+func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.AdminUsername = sess.Username
+	if err := h.renderer.Render(w, "admin/logs.html", td); err != nil {
+		slog.Error("Erreur rendu logs page", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
 }
 
 // ── GET /admin/api/users ────────────────────────────────────────────────────
