@@ -1,8 +1,6 @@
 services:
   jellygate:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/maelmoreau21/jellygate:latest
     container_name: jellygate
     restart: unless-stopped
     ports:
@@ -22,34 +20,6 @@ services:
       # ── Jellyfin ─────────────────────────────────────────────────────
       - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL est requis}
       - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:?❌ JELLYFIN_API_KEY est requis}
-
-      # ── LDAP / Synology Active Directory ─────────────────────────────
-      - LDAP_HOST=${LDAP_HOST:?❌ LDAP_HOST est requis}
-      - LDAP_PORT=${LDAP_PORT:-636}
-      - LDAP_USE_TLS=${LDAP_USE_TLS:-true}
-      - LDAP_SKIP_VERIFY=${LDAP_SKIP_VERIFY:-false}
-      - LDAP_BIND_DN=${LDAP_BIND_DN:?❌ LDAP_BIND_DN est requis}
-      - LDAP_BIND_PASSWORD=${LDAP_BIND_PASSWORD:?❌ LDAP_BIND_PASSWORD est requis}
-      - LDAP_BASE_DN=${LDAP_BASE_DN:?❌ LDAP_BASE_DN est requis}
-      - LDAP_USER_OU=${LDAP_USER_OU:-CN=Users}
-      - LDAP_USER_GROUP=${LDAP_USER_GROUP:-}
-      - LDAP_DOMAIN=${LDAP_DOMAIN:?❌ LDAP_DOMAIN est requis}
-
-      # ── SMTP ─────────────────────────────────────────────────────────
-      - SMTP_HOST=${SMTP_HOST:?❌ SMTP_HOST est requis}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_USERNAME=${SMTP_USERNAME:?❌ SMTP_USERNAME est requis}
-      - SMTP_PASSWORD=${SMTP_PASSWORD:?❌ SMTP_PASSWORD est requis}
-      - SMTP_FROM=${SMTP_FROM:?❌ SMTP_FROM est requis}
-      - SMTP_TLS=${SMTP_TLS:-true}
-
-      # ── Webhooks (optionnels) ────────────────────────────────────────
-      - WEBHOOK_DISCORD_URL=${WEBHOOK_DISCORD_URL:-}
-      - WEBHOOK_TELEGRAM_TOKEN=${WEBHOOK_TELEGRAM_TOKEN:-}
-      - WEBHOOK_TELEGRAM_CHAT_ID=${WEBHOOK_TELEGRAM_CHAT_ID:-}
-      - WEBHOOK_MATRIX_URL=${WEBHOOK_MATRIX_URL:-}
-      - WEBHOOK_MATRIX_ROOM_ID=${WEBHOOK_MATRIX_ROOM_ID:-}
-      - WEBHOOK_MATRIX_TOKEN=${WEBHOOK_MATRIX_TOKEN:-}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8097/"]
       interval: 30s

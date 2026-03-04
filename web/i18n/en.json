@@ -64,5 +64,9 @@
     "col_jellyfin": "Jellyfin",
     "col_invited_by": "Invited by",
     "col_created_at": "Date",
-    "col_actions": "Actions"
+    "col_actions": "Actions",
+    "settings_subheading": "Configure external services from this interface",
+    "settings_ldap_desc": "Automatically create accounts in Synology Active Directory",
+    "settings_smtp_desc": "Configure email sending (invitations, password reset)",
+    "settings_webhooks_desc": "Receive notifications when a user registers"
 }

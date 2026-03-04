@@ -94,6 +94,12 @@ func NewPasswordResetHandler(
 	}
 }
 
+// SetLDAPClient remplace le client LDAP (rechargement à chaud).
+func (h *PasswordResetHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
+
+// SetMailer remplace le mailer (rechargement à chaud).
+func (h *PasswordResetHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
+
 // ── GET /reset/ ─────────────────────────────────────────────────────────────
 
 // RequestPage affiche le formulaire de demande de réinitialisation.
@@ -296,7 +302,7 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 	var errors []string
 
 	// Reset LDAP (Active Directory)
-	if user.LdapDN != "" {
+	if h.ldClient != nil && user.LdapDN != "" {
 		if err := h.ldClient.ResetPassword(user.LdapDN, password); err != nil {
 			slog.Error("Erreur reset LDAP",
 				"dn", user.LdapDN,

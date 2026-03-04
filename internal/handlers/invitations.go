@@ -75,6 +75,12 @@ func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Clie
 	}
 }
 
+// SetLDAPClient remplace le client LDAP (rechargement à chaud).
+func (h *InvitationHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
+
+// SetNotifier remplace le notifier (rechargement à chaud).
+func (h *InvitationHandler) SetNotifier(n *notify.Notifier) { h.notifier = n }
+
 // ── GET /invite/{code} ──────────────────────────────────────────────────────
 
 // InvitePage affiche le formulaire d'inscription pour un code d'invitation donné.
@@ -179,21 +185,25 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	// ═══════════════════════════════════════════════════════════════════
 	// ÉTAPE 2 : Création du compte dans Synology AD (LDAP)
 	// ═══════════════════════════════════════════════════════════════════
-	slog.Info("🔐 Étape 2/5 : Création du compte LDAP", "username", form.Username)
+	var userDN string
+	if h.ldClient != nil {
+		slog.Info("🔐 Étape 2/5 : Création du compte LDAP", "username", form.Username)
 
-	userDN, err := h.ldClient.CreateUser(form.Username, form.DisplayName, form.Email, form.Password)
-	if err != nil {
-		slog.Error("❌ Étape 2/5 échouée : création LDAP",
-			"username", form.Username,
-			"error", err,
-		)
-		_ = h.db.LogAction("invite.ldap.failed", form.Username, code, err.Error())
-		http.Error(w, "Erreur lors de la création du compte (LDAP)", http.StatusInternalServerError)
-		return
-		// Pas de rollback nécessaire : rien n'a été créé avec succès
+		userDN, err = h.ldClient.CreateUser(form.Username, form.DisplayName, form.Email, form.Password)
+		if err != nil {
+			slog.Error("❌ Étape 2/5 échouée : création LDAP",
+				"username", form.Username,
+				"error", err,
+			)
+			_ = h.db.LogAction("invite.ldap.failed", form.Username, code, err.Error())
+			http.Error(w, "Erreur lors de la création du compte (LDAP)", http.StatusInternalServerError)
+			return
+		}
+
+		slog.Info("✅ Étape 2/5 terminée", "dn", userDN)
+	} else {
+		slog.Info("⏭️ Étape 2/5 ignorée (LDAP désactivé)")
 	}
-
-	slog.Info("✅ Étape 2/5 terminée", "dn", userDN)
 
 	// ═══════════════════════════════════════════════════════════════════
 	// ÉTAPE 3 : Création du compte dans Jellyfin + profil
@@ -208,16 +218,18 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		)
 
 		// ── ROLLBACK : Supprimer le compte LDAP créé à l'étape 2 ────
-		slog.Warn("🔄 Rollback : suppression du compte LDAP", "dn", userDN)
-		if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-			slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise",
-				"dn", userDN,
-				"rollback_error", rbErr,
-				"original_error", err,
-			)
-			_ = h.db.LogAction("invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
-		} else {
-			slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+		if h.ldClient != nil && userDN != "" {
+			slog.Warn("🔄 Rollback : suppression du compte LDAP", "dn", userDN)
+			if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
+				slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise",
+					"dn", userDN,
+					"rollback_error", rbErr,
+					"original_error", err,
+				)
+				_ = h.db.LogAction("invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
+			} else {
+				slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+			}
 		}
 
 		_ = h.db.LogAction("invite.jellyfin.failed", form.Username, code, err.Error())
@@ -263,14 +275,16 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		}
 
 		// Rollback LDAP
-		if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-			slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise",
-				"dn", userDN,
-				"rollback_error", rbErr,
-			)
-			_ = h.db.LogAction("invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
-		} else {
-			slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+		if h.ldClient != nil && userDN != "" {
+			if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
+				slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise",
+					"dn", userDN,
+					"rollback_error", rbErr,
+				)
+				_ = h.db.LogAction("invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
+			} else {
+				slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+			}
 		}
 
 		_ = h.db.LogAction("invite.sqlite.failed", form.Username, code, err.Error())

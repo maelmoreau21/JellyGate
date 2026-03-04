@@ -1,12 +1,12 @@
 // Package config gère le chargement et la validation de la configuration
 // de JellyGate à partir des variables d'environnement.
 //
-// Toutes les variables sont préfixées par leur catégorie :
-//   - JELLYGATE_*  : Application
+// Seules les variables essentielles au démarrage sont gérées ici :
+//   - JELLYGATE_*  : Application (port, URL, data, secret, langue)
 //   - JELLYFIN_*   : Connexion à Jellyfin
-//   - LDAP_*       : Connexion au Synology Active Directory
-//   - SMTP_*       : Envoi d'emails
-//   - WEBHOOK_*    : Notifications sortantes
+//
+// Les paramètres LDAP, SMTP et Webhooks sont désormais stockés dans SQLite
+// (table `settings`) et gérés via l'interface d'administration.
 package config
 
 import (
@@ -16,7 +16,8 @@ import (
 	"strings"
 )
 
-// Config contient toute la configuration de l'application.
+// Config contient la configuration chargée depuis les variables d'environnement.
+// Ne contient que les paramètres essentiels au démarrage de l'application.
 type Config struct {
 	// Application
 	Port        int    // Port d'écoute HTTP (défaut: 8097)
@@ -25,11 +26,8 @@ type Config struct {
 	SecretKey   string // Clé secrète pour sessions/tokens (min 32 chars)
 	DefaultLang string // Langue par défaut : "fr" ou "en"
 
-	// Services externes
+	// Jellyfin (seul service externe requis au démarrage)
 	Jellyfin JellyfinConfig
-	LDAP     LDAPConfig
-	SMTP     SMTPConfig
-	Webhooks WebhooksConfig
 }
 
 // JellyfinConfig contient les paramètres de connexion à Jellyfin.
@@ -38,62 +36,69 @@ type JellyfinConfig struct {
 	APIKey string // Clé API d'administration
 }
 
+// ── Types de configuration stockés en base (table settings) ─────────────────
+// Ces structs sont utilisées par database/settings.go et handlers/settings.go
+// pour sérialiser/désérialiser les paramètres depuis SQLite.
+
 // LDAPConfig contient les paramètres de connexion au Synology AD (LDAP/LDAPS).
 type LDAPConfig struct {
-	Host         string // Hostname du serveur LDAP
-	Port         int    // Port (défaut: 636 pour LDAPS)
-	UseTLS       bool   // Utiliser LDAPS (TLS)
-	SkipVerify   bool   // Ignorer la vérification du certificat TLS
-	BindDN       string // DN de l'utilisateur pour le bind
-	BindPassword string // Mot de passe de bind
-	BaseDN       string // Base DN de recherche
-	UserOU       string // OU pour la création des utilisateurs (défaut: CN=Users)
-	UserGroup    string // Groupe AD auquel ajouter les utilisateurs (optionnel)
-	Domain       string // Domaine AD (ex: home.lan) — pour userPrincipalName
+	Enabled      bool   `json:"enabled"`       // Intégration LDAP activée
+	Host         string `json:"host"`          // Hostname du serveur LDAP
+	Port         int    `json:"port"`          // Port (défaut: 636 pour LDAPS)
+	UseTLS       bool   `json:"use_tls"`       // Utiliser LDAPS (TLS)
+	SkipVerify   bool   `json:"skip_verify"`   // Ignorer la vérification du certificat TLS
+	BindDN       string `json:"bind_dn"`       // DN de l'utilisateur pour le bind
+	BindPassword string `json:"bind_password"` // Mot de passe de bind
+	BaseDN       string `json:"base_dn"`       // Base DN de recherche
+	UserOU       string `json:"user_ou"`       // OU pour la création des utilisateurs
+	UserGroup    string `json:"user_group"`    // Groupe AD (optionnel)
+	Domain       string `json:"domain"`        // Domaine AD (ex: home.lan)
 }
 
 // SMTPConfig contient les paramètres d'envoi d'emails.
 type SMTPConfig struct {
-	Host     string // Serveur SMTP
-	Port     int    // Port SMTP (défaut: 587)
-	Username string // Utilisateur SMTP
-	Password string // Mot de passe SMTP
-	From     string // Adresse expéditeur
-	UseTLS   bool   // Utiliser STARTTLS
+	Host     string `json:"host"`     // Serveur SMTP
+	Port     int    `json:"port"`     // Port SMTP (défaut: 587)
+	Username string `json:"username"` // Utilisateur SMTP
+	Password string `json:"password"` // Mot de passe SMTP
+	From     string `json:"from"`     // Adresse expéditeur
+	UseTLS   bool   `json:"use_tls"`  // Utiliser STARTTLS
 }
 
 // WebhooksConfig contient les paramètres des webhooks sortants (optionnels).
 type WebhooksConfig struct {
-	Discord  DiscordWebhook
-	Telegram TelegramWebhook
-	Matrix   MatrixWebhook
+	Discord  DiscordWebhook  `json:"discord"`
+	Telegram TelegramWebhook `json:"telegram"`
+	Matrix   MatrixWebhook   `json:"matrix"`
 }
 
 // DiscordWebhook contient la configuration du webhook Discord.
 type DiscordWebhook struct {
-	URL string // URL du webhook Discord
+	URL string `json:"url"`
 }
 
 // TelegramWebhook contient la configuration du bot Telegram.
 type TelegramWebhook struct {
-	Token  string // Token du bot Telegram
-	ChatID string // ID du chat Telegram
+	Token  string `json:"token"`
+	ChatID string `json:"chat_id"`
 }
 
 // MatrixWebhook contient la configuration de la connexion Matrix.
 type MatrixWebhook struct {
-	URL    string // URL du serveur Matrix
-	RoomID string // ID de la room Matrix
-	Token  string // Token d'accès Matrix
+	URL    string `json:"url"`
+	RoomID string `json:"room_id"`
+	Token  string `json:"token"`
 }
+
+// ── Chargement depuis l'environnement ───────────────────────────────────────
 
 // Load charge la configuration depuis les variables d'environnement,
 // applique les valeurs par défaut, et valide les champs requis.
 //
-// Retourne une erreur si un champ requis est manquant ou invalide.
+// Seuls les paramètres App + Jellyfin sont chargés ici.
+// LDAP, SMTP et Webhooks sont chargés depuis la base de données.
 func Load() (*Config, error) {
 	cfg := &Config{
-		// ── Valeurs par défaut ───────────────────────────────────────────
 		Port:        getEnvInt("JELLYGATE_PORT", 8097),
 		BaseURL:     getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
 		DataDir:     getEnv("JELLYGATE_DATA_DIR", "/data"),
@@ -104,46 +109,8 @@ func Load() (*Config, error) {
 			URL:    getEnv("JELLYFIN_URL", ""),
 			APIKey: getEnv("JELLYFIN_API_KEY", ""),
 		},
-
-		LDAP: LDAPConfig{
-			Host:         getEnv("LDAP_HOST", ""),
-			Port:         getEnvInt("LDAP_PORT", 636),
-			UseTLS:       getEnvBool("LDAP_USE_TLS", true),
-			SkipVerify:   getEnvBool("LDAP_SKIP_VERIFY", false),
-			BindDN:       getEnv("LDAP_BIND_DN", ""),
-			BindPassword: getEnv("LDAP_BIND_PASSWORD", ""),
-			BaseDN:       getEnv("LDAP_BASE_DN", ""),
-			UserOU:       getEnv("LDAP_USER_OU", "CN=Users"),
-			UserGroup:    getEnv("LDAP_USER_GROUP", ""),
-			Domain:       getEnv("LDAP_DOMAIN", ""),
-		},
-
-		SMTP: SMTPConfig{
-			Host:     getEnv("SMTP_HOST", ""),
-			Port:     getEnvInt("SMTP_PORT", 587),
-			Username: getEnv("SMTP_USERNAME", ""),
-			Password: getEnv("SMTP_PASSWORD", ""),
-			From:     getEnv("SMTP_FROM", ""),
-			UseTLS:   getEnvBool("SMTP_TLS", true),
-		},
-
-		Webhooks: WebhooksConfig{
-			Discord: DiscordWebhook{
-				URL: getEnv("WEBHOOK_DISCORD_URL", ""),
-			},
-			Telegram: TelegramWebhook{
-				Token:  getEnv("WEBHOOK_TELEGRAM_TOKEN", ""),
-				ChatID: getEnv("WEBHOOK_TELEGRAM_CHAT_ID", ""),
-			},
-			Matrix: MatrixWebhook{
-				URL:    getEnv("WEBHOOK_MATRIX_URL", ""),
-				RoomID: getEnv("WEBHOOK_MATRIX_ROOM_ID", ""),
-				Token:  getEnv("WEBHOOK_MATRIX_TOKEN", ""),
-			},
-		},
 	}
 
-	// ── Validation des champs requis ────────────────────────────────────
 	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("configuration invalide: %w", err)
 	}
@@ -172,37 +139,6 @@ func (c *Config) validate() error {
 	}
 	if c.Jellyfin.APIKey == "" {
 		errs = append(errs, "JELLYFIN_API_KEY est requis")
-	}
-
-	// LDAP
-	if c.LDAP.Host == "" {
-		errs = append(errs, "LDAP_HOST est requis")
-	}
-	if c.LDAP.BindDN == "" {
-		errs = append(errs, "LDAP_BIND_DN est requis")
-	}
-	if c.LDAP.BindPassword == "" {
-		errs = append(errs, "LDAP_BIND_PASSWORD est requis")
-	}
-	if c.LDAP.BaseDN == "" {
-		errs = append(errs, "LDAP_BASE_DN est requis")
-	}
-	if c.LDAP.Domain == "" {
-		errs = append(errs, "LDAP_DOMAIN est requis")
-	}
-
-	// SMTP
-	if c.SMTP.Host == "" {
-		errs = append(errs, "SMTP_HOST est requis")
-	}
-	if c.SMTP.Username == "" {
-		errs = append(errs, "SMTP_USERNAME est requis")
-	}
-	if c.SMTP.Password == "" {
-		errs = append(errs, "SMTP_PASSWORD est requis")
-	}
-	if c.SMTP.From == "" {
-		errs = append(errs, "SMTP_FROM est requis")
 	}
 
 	if len(errs) > 0 {

@@ -48,7 +48,6 @@ func main() {
 		"base_url", cfg.BaseURL,
 		"lang", cfg.DefaultLang,
 		"jellyfin_url", cfg.Jellyfin.URL,
-		"ldap_host", cfg.LDAP.Host,
 	)
 
 	// ── 3. Initialiser la base de données SQLite ────────────────────────────
@@ -60,32 +59,77 @@ func main() {
 	defer db.Close()
 	slog.Info("Base de données SQLite initialisée", "path", db.Path())
 
-	// ── 3b. Initialiser les clients de service ──────────────────────────────
+	// ── 3b. Initialiser les clients de service à partir des settings DB ──
 	jfClient := jellyfin.New(cfg.Jellyfin)
-	ldClient := jgldap.New(cfg.LDAP)
-	slog.Info("Clients Jellyfin et LDAP initialisés")
+	slog.Info("Client Jellyfin initialisé")
 
-	// ── 3b-2. Initialiser le service email ─────────────────────────────
-	mailer, err := mail.New(cfg.SMTP)
-	if err != nil {
-		slog.Error("Erreur d'initialisation du mailer", "error", err)
-		os.Exit(1)
-	}
-
-	// Vérifier la connexion SMTP au démarrage
-	if err := mailer.Ping(); err != nil {
-		slog.Warn("⚠️ Serveur SMTP injoignable (les emails ne fonctionneront pas)", "error", err)
-		// On ne quitte pas — l'application peut tourner sans email
+	// LDAP (optionnel — chargé depuis la base)
+	ldapCfg, _ := db.GetLDAPConfig()
+	var ldClient *jgldap.Client
+	if ldapCfg.Enabled {
+		ldClient = jgldap.New(ldapCfg)
+		slog.Info("Client LDAP initialisé", "host", ldapCfg.Host)
 	} else {
-		slog.Info("✅ Connexion SMTP vérifiée")
+		slog.Info("Intégration LDAP désactivée")
 	}
+
+	// SMTP (optionnel — chargé depuis la base)
+	smtpCfg, _ := db.GetSMTPConfig()
+	var mailer *mail.Mailer
+	if smtpCfg.Host != "" {
+		mailer, err = mail.New(smtpCfg)
+		if err != nil {
+			slog.Warn("⚠️ Erreur d'initialisation du mailer", "error", err)
+		} else if err := mailer.Ping(); err != nil {
+			slog.Warn("⚠️ Serveur SMTP injoignable", "error", err)
+		} else {
+			slog.Info("✅ Connexion SMTP vérifiée")
+		}
+	} else {
+		slog.Info("SMTP non configuré (emails désactivés)")
+	}
+
+	// Webhooks (optionnel — chargé depuis la base)
+	webhooksCfg, _ := db.GetWebhooksConfig()
+	notifier := notify.New(webhooksCfg)
 
 	// ── 3c. Initialiser les handlers ───────────────────────────────────────
 	authHandler := handlers.NewAuthHandler(cfg, db)
-	notifier := notify.New(cfg.Webhooks)
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, notifier)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer)
+	settingsHandler := handlers.NewSettingsHandler(db)
+
+	// Callbacks de rechargement à chaud
+	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
+		if c.Enabled {
+			ldClient = jgldap.New(c)
+			slog.Info("🔄 Client LDAP rechargé", "host", c.Host)
+		} else {
+			ldClient = nil
+			slog.Info("🔄 Intégration LDAP désactivée")
+		}
+		inviteHandler.SetLDAPClient(ldClient)
+		adminHandler.SetLDAPClient(ldClient)
+		resetHandler.SetLDAPClient(ldClient)
+	}
+	settingsHandler.OnSMTPReload = func(c config.SMTPConfig) {
+		if c.Host != "" {
+			newMailer, err := mail.New(c)
+			if err != nil {
+				slog.Warn("🔄 Erreur rechargement SMTP", "error", err)
+				return
+			}
+			mailer = newMailer
+			resetHandler.SetMailer(mailer)
+			slog.Info("🔄 Client SMTP rechargé", "host", c.Host)
+		}
+	}
+	settingsHandler.OnWebhooksReload = func(c config.WebhooksConfig) {
+		newNotifier := notify.New(c)
+		inviteHandler.SetNotifier(newNotifier)
+		slog.Info("🔄 Webhooks rechargés")
+	}
 
 	// ── 4. Configurer le routeur Chi ────────────────────────────────────────
 	r := chi.NewRouter()
@@ -143,6 +187,14 @@ func main() {
 				r.Post("/{id}/ban", handlePlaceholder("Bannir utilisateur"))
 				r.Delete("/{id}", adminHandler.DeleteUser)
 				r.Post("/{id}/extend", handlePlaceholder("Prolonger accès utilisateur"))
+			})
+
+			// API JSON de gestion des paramètres
+			r.Route("/api/settings", func(r chi.Router) {
+				r.Get("/", settingsHandler.GetAll)
+				r.Post("/ldap", settingsHandler.SaveLDAP)
+				r.Post("/smtp", settingsHandler.SaveSMTP)
+				r.Post("/webhooks", settingsHandler.SaveWebhooks)
 			})
 
 			// Gestion des invitations

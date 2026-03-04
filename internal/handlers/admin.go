@@ -79,6 +79,9 @@ func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, l
 	}
 }
 
+// SetLDAPClient remplace le client LDAP (rechargement à chaud).
+func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
+
 // ── GET /admin/api/users ────────────────────────────────────────────────────
 
 // ListUsers retourne la liste de tous les utilisateurs avec leurs statuts
@@ -216,7 +219,7 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// ── 2. Modifier dans Synology AD (LDAP) ─────────────────────────────
-	if ldapDN != "" {
+	if h.ldClient != nil && ldapDN != "" {
 		if newActive {
 			err = h.ldClient.EnableUser(ldapDN)
 		} else {
@@ -347,7 +350,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	var partialErrors []string
 
 	// ── 2. Supprimer de Synology AD (LDAP) ──────────────────────────────
-	if ldapDN != "" {
+	if h.ldClient != nil && ldapDN != "" {
 		if err := h.ldClient.DeleteUser(ldapDN); err != nil {
 			slog.Error("Erreur suppression LDAP (on continue)",
 				"dn", ldapDN,
