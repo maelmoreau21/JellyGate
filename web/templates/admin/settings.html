@@ -355,33 +355,66 @@
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-white/10">
           <h2 class="text-lg font-semibold text-white">Modèles de courriels (Templates)</h2>
-          <p class="text-sm text-slate-400">Personnalisez les messages envoyés automatiquement aux utilisateurs.</p>
+          <p class="text-sm text-slate-400">Personnalisez chaque situation d'envoi. Variables communes : {{ "{{" }}.Username{{ "}}" }}, {{ "{{" }}.Email{{ "}}" }}, {{ "{{" }}.InviteLink{{ "}}" }}, {{ "{{" }}.ResetLink{{ "}}" }}, {{ "{{" }}.ExpiryDate{{ "}}" }}, {{ "{{" }}.HelpURL{{ "}}" }}.</p>
         </div>
         <form id="form-email-templates" onsubmit="saveSettings('email-templates', event)">
           <div class="space-y-6">
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label class="jg-label" for="tpl-invitation">Invitation (Flux Libre)</label>
-                <textarea id="tpl-invitation" class="jg-input font-mono text-sm leading-relaxed" rows="5"></textarea>
-                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.InviteLink{{ "}}" }}</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-confirmation">Email de confirmation</label>
+                <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
-              <div>
-                <label class="jg-label" for="tpl-user-creation">Création Forcée (Flux B)</label>
-                <textarea id="tpl-user-creation" class="jg-input font-mono text-sm leading-relaxed" rows="5"></textarea>
-                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.Username{{ "}}" }}</p>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-expiry-reminder">Expiry reminder</label>
+                <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
-              <div>
-                <label class="jg-label" for="tpl-confirmation">Confirmation (Bienvenue)</label>
-                <textarea id="tpl-confirmation" class="jg-input font-mono text-sm leading-relaxed" rows="5"></textarea>
-                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.Username{{ "}}" }}</p>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-invitation">Courriel d'invitation</label>
+                <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
-              <div>
-                <label class="jg-label" for="tpl-password-reset">Réinitialisation Mot de passe</label>
-                <textarea id="tpl-password-reset" class="jg-input font-mono text-sm leading-relaxed"
-                  rows="5"></textarea>
-                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.Username{{ "}}" }}, {{ "{{" }}.ResetLink{{
-                  "}}" }}</p>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-invite-expiry">Expiration de l'invitation</label>
+                <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-password-reset">Réinitialisation du mot de passe</label>
+                <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-pre-signup-help">Pre-signup help card</label>
+                <textarea id="tpl-pre-signup-help" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-post-signup-help">Post-signup help card</label>
+                <textarea id="tpl-post-signup-help" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-user-creation">Création d'utilisateur</label>
+                <textarea id="tpl-user-creation" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-user-deletion">Suppression de l'utilisateur</label>
+                <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-user-disabled">Utilisateur désactivé</label>
+                <textarea id="tpl-user-disabled" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-user-enabled">Utilisateur activé</label>
+                <textarea id="tpl-user-enabled" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-user-expired">Utilisateur expiré</label>
+                <textarea id="tpl-user-expired" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-expiry-adjusted">Expiry adjusted</label>
+                <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-welcome">Bienvenue</label>
+                <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
             </div>
 
@@ -461,10 +494,20 @@
 
     // Modèles Email
     if (d.email_templates) {
-      document.getElementById('tpl-invitation').value = d.email_templates.invitation || '';
-      document.getElementById('tpl-user-creation').value = d.email_templates.user_creation || '';
       document.getElementById('tpl-confirmation').value = d.email_templates.confirmation || '';
+      document.getElementById('tpl-expiry-reminder').value = d.email_templates.expiry_reminder || '';
+      document.getElementById('tpl-invitation').value = d.email_templates.invitation || '';
+      document.getElementById('tpl-invite-expiry').value = d.email_templates.invite_expiry || '';
       document.getElementById('tpl-password-reset').value = d.email_templates.password_reset || '';
+      document.getElementById('tpl-pre-signup-help').value = d.email_templates.pre_signup_help || '';
+      document.getElementById('tpl-post-signup-help').value = d.email_templates.post_signup_help || '';
+      document.getElementById('tpl-user-creation').value = d.email_templates.user_creation || '';
+      document.getElementById('tpl-user-deletion').value = d.email_templates.user_deletion || '';
+      document.getElementById('tpl-user-disabled').value = d.email_templates.user_disabled || '';
+      document.getElementById('tpl-user-enabled').value = d.email_templates.user_enabled || '';
+      document.getElementById('tpl-user-expired').value = d.email_templates.user_expired || '';
+      document.getElementById('tpl-expiry-adjusted').value = d.email_templates.expiry_adjusted || '';
+      document.getElementById('tpl-welcome').value = d.email_templates.welcome || '';
     }
   }
 
@@ -516,10 +559,20 @@
       };
     } else if (section === 'email-templates') {
       body = {
-        invitation: document.getElementById('tpl-invitation').value,
-        user_creation: document.getElementById('tpl-user-creation').value,
         confirmation: document.getElementById('tpl-confirmation').value,
+        expiry_reminder: document.getElementById('tpl-expiry-reminder').value,
+        invitation: document.getElementById('tpl-invitation').value,
+        invite_expiry: document.getElementById('tpl-invite-expiry').value,
         password_reset: document.getElementById('tpl-password-reset').value,
+        pre_signup_help: document.getElementById('tpl-pre-signup-help').value,
+        post_signup_help: document.getElementById('tpl-post-signup-help').value,
+        user_creation: document.getElementById('tpl-user-creation').value,
+        user_deletion: document.getElementById('tpl-user-deletion').value,
+        user_disabled: document.getElementById('tpl-user-disabled').value,
+        user_enabled: document.getElementById('tpl-user-enabled').value,
+        user_expired: document.getElementById('tpl-user-expired').value,
+        expiry_adjusted: document.getElementById('tpl-expiry-adjusted').value,
+        welcome: document.getElementById('tpl-welcome').value,
       };
     }
 

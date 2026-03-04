@@ -4,7 +4,6 @@
 {{ define "title" }}{{ .T "users_title" }} — JellyGate{{ end }}
 
 {{ define "body" }}
-{{/* Réutiliser la sidebar du dashboard */}}
 <aside id="sidebar" class="jg-sidebar">
     <div class="jg-sidebar-logo">
         <svg viewBox="0 0 32 32" fill="none">
@@ -27,7 +26,6 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
         </a>
-        {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item active">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -35,8 +33,6 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_users" }}</span>
         </a>
-        {{ end }}
-        {{ if .CanInvite }}
         <a href="/admin/invitations" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -44,8 +40,6 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
         </a>
-        {{ end }}
-        {{ if .IsAdmin }}
         <a href="/admin/settings" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -61,7 +55,6 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
         </a>
-        {{ end }}
     </nav>
     <div class="jg-sidebar-footer">
         <form method="POST" action="/admin/logout">
@@ -76,69 +69,153 @@
     </div>
 </aside>
 
-{{/* ── Main content ────────────────────────────────────────────────────── */}}
 <main class="jg-main">
-    <div class="flex items-center justify-between mb-6">
-        <div>
-            <h1 class="text-2xl font-bold">{{ .T "users_heading" }}</h1>
-            <p class="text-sm text-slate-400">{{ .T "users_subheading" }}</p>
-        </div>
-        <div class="flex items-center gap-3">
-            <input type="text" id="search-users" class="jg-input" style="width:240px"
-                placeholder='{{ .T "users_search_placeholder" }}'>
+    <div class="flex flex-col gap-6">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold">{{ .T "users_heading" }}</h1>
+                <p class="text-sm text-slate-400">Édition rapide, recherche multi-critères et actions de masse.</p>
+            </div>
             <button onclick="syncUsers()" class="jg-btn jg-btn-ghost shadow-sm" title="Synchroniser avec Jellyfin">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Sync
+                Sync Jellyfin
             </button>
         </div>
-    </div>
 
-    {{/* Users table */}}
-    <div class="glass-card p-0 overflow-hidden">
-        <div class="jg-table-wrap">
-            <table class="jg-table">
-                <thead>
-                    <tr>
-                        <th>{{ .T "col_username" }}</th>
-                        <th>{{ .T "col_email" }}</th>
-                        <th>{{ .T "col_status" }}</th>
-                        <th>{{ .T "col_jellyfin" }}</th>
-                        <th>{{ .T "col_invited_by" }}</th>
-                        <th>Parrainage</th>
-                        <th>{{ .T "col_created_at" }}</th>
-                        <th class="text-right">{{ .T "col_actions" }}</th>
-                    </tr>
-                </thead>
-                <tbody id="users-tbody">
-                    <tr>
-                        <td colspan="7" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="glass-card p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+                <input type="text" id="search-users" class="jg-input xl:col-span-2" placeholder='{{ .T "users_search_placeholder" }}'>
+                <select id="filter-status" class="jg-input">
+                    <option value="all">Statut: Tous</option>
+                    <option value="active">Actifs</option>
+                    <option value="inactive">Inactifs</option>
+                    <option value="banned">Bannis</option>
+                </select>
+                <select id="filter-jellyfin" class="jg-input">
+                    <option value="all">Jellyfin: Tous</option>
+                    <option value="ok">Jellyfin OK</option>
+                    <option value="disabled">Jellyfin désactivé</option>
+                    <option value="missing">Jellyfin absent</option>
+                </select>
+                <select id="filter-invite" class="jg-input">
+                    <option value="all">Parrainage: Tous</option>
+                    <option value="enabled">Parrainage actif</option>
+                    <option value="disabled">Parrainage inactif</option>
+                </select>
+                <select id="filter-extra" class="jg-input">
+                    <option value="all">Filtres avancés</option>
+                    <option value="with-email">Avec email</option>
+                    <option value="without-email">Sans email</option>
+                    <option value="expiry-active">Expiration définie</option>
+                    <option value="expiry-expired">Déjà expiré</option>
+                    <option value="expiry-none">Sans expiration</option>
+                </select>
+            </div>
         </div>
-    </div>
 
-    {{/* User count */}}
-    <div class="mt-4 text-sm text-slate-500">
-        <span id="user-count"></span>
+        <div class="glass-card p-4" id="bulk-card">
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-between flex-wrap gap-3">
+                    <div class="text-sm text-slate-300">
+                        <span id="bulk-selected-count">0</span> utilisateur(s) sélectionné(s)
+                    </div>
+                    <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">Sélectionner les filtrés</button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <select id="bulk-action" class="jg-input md:col-span-2">
+                        <option value="">Action de masse...</option>
+                        <option value="send_email">Envoyer un courriel</option>
+                        <option value="jellyfin_policy">Modifier paramètres Jellyfin</option>
+                        <option value="set_parrainage">Activer/désactiver le parrainage</option>
+                        <option value="set_expiry">Définir/supprimer une expiration</option>
+                        <option value="activate">Activer les comptes</option>
+                        <option value="deactivate">Désactiver les comptes</option>
+                        <option value="send_password_reset">Envoyer une réinitialisation de mot de passe</option>
+                        <option value="delete">Supprimer les utilisateurs</option>
+                    </select>
+                    <button id="bulk-apply" class="jg-btn">Appliquer</button>
+                </div>
+
+                <div id="bulk-fields" class="hidden"></div>
+            </div>
+        </div>
+
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="jg-table-wrap">
+                <table class="jg-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="check-all" class="form-checkbox"></th>
+                            <th>{{ .T "col_username" }}</th>
+                            <th>{{ .T "col_email" }}</th>
+                            <th>{{ .T "col_status" }}</th>
+                            <th>{{ .T "col_jellyfin" }}</th>
+                            <th>{{ .T "col_invited_by" }}</th>
+                            <th>Parrainage</th>
+                            <th>Expiration</th>
+                            <th>{{ .T "col_created_at" }}</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody">
+                        <tr>
+                            <td colspan="10" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="text-sm text-slate-500">
+            <span id="user-count"></span>
+        </div>
     </div>
 </main>
 
-{{/* Confirm delete modal */}}
+<div id="edit-modal" class="modal-overlay" style="display:none">
+    <div class="glass-card modal-content" style="max-width:560px">
+        <h3 class="text-lg font-bold mb-4">Modifier l'utilisateur</h3>
+        <input type="hidden" id="edit-user-id">
+        <div class="space-y-4">
+            <div>
+                <label class="jg-label">Adresse email</label>
+                <input type="email" id="edit-email" class="jg-input" placeholder="nom@domaine.tld">
+            </div>
+            <div>
+                <label class="jg-label">Expiration du compte</label>
+                <input type="datetime-local" id="edit-expiry" class="jg-input">
+            </div>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="edit-clear-expiry" class="form-checkbox">
+                Supprimer la date d'expiration
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="edit-can-invite" class="form-checkbox">
+                Autoriser le parrainage
+            </label>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <button class="jg-btn jg-btn-ghost" onclick="JG.closeEditModal()">Annuler</button>
+            <button class="jg-btn" id="edit-save-btn">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
 <div id="delete-modal" class="modal-overlay" style="display:none">
     <div class="glass-card modal-content text-center">
         <svg class="w-12 h-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
-        <h3 class="text-lg font-bold mb-2" id="delete-modal-title">{{ .T "users_delete_confirm_title" }}</h3>
+        <h3 class="text-lg font-bold mb-2">Supprimer l'utilisateur</h3>
         <p class="text-sm text-slate-400 mb-6" id="delete-modal-text"></p>
         <div class="flex justify-center gap-3">
-            <button class="jg-btn jg-btn-ghost" onclick="JG.closeModal()">{{ .T "cancel" }}</button>
-            <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">{{ .T "users_delete_confirm" }}</button>
+            <button class="jg-btn jg-btn-ghost" onclick="JG.closeDeleteModal()">Annuler</button>
+            <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">Supprimer</button>
         </div>
     </div>
 </div>
@@ -148,165 +225,452 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         let allUsers = [];
+        let filteredUsers = [];
+        const selectedIds = new Set();
 
-        // Load users
-        function loadUsers() {
-            JG.api('/admin/api/users').then(res => {
-                if (!res.success) { JG.toast('Erreur chargement', 'error'); return; }
-                allUsers = res.data || [];
-                renderUsers(allUsers);
-            });
+        window.JG = window.JG || {};
+
+        function fmtDate(value) {
+            if (!value) return '—';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleString();
         }
 
-        // Render
+        function toDateTimeLocal(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            const pad = (n) => `${n}`.padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+        }
+
+        function userStatusBadge(user) {
+            if (user.is_banned) return '<span class="badge badge-danger">Banni</span>';
+            if (user.is_active) return '<span class="badge badge-success">Actif</span>';
+            return '<span class="badge badge-warning">Inactif</span>';
+        }
+
+        function jellyfinStatusBadge(user) {
+            if (!user.jellyfin_exists) return '<span class="badge badge-muted">Absent</span>';
+            if (user.jellyfin_disabled) return '<span class="badge badge-warning">Désactivé</span>';
+            return '<span class="badge badge-success">OK</span>';
+        }
+
+        function isExpired(user) {
+            if (!user.access_expires_at) return false;
+            const date = new Date(user.access_expires_at);
+            if (Number.isNaN(date.getTime())) return false;
+            return date.getTime() < Date.now();
+        }
+
+        function updateSelectionUI() {
+            document.getElementById('bulk-selected-count').textContent = selectedIds.size;
+            const checkAll = document.getElementById('check-all');
+            const selectable = filteredUsers.map(u => u.id);
+            const selectedVisible = selectable.filter(id => selectedIds.has(id)).length;
+            checkAll.checked = selectable.length > 0 && selectedVisible === selectable.length;
+            checkAll.indeterminate = selectedVisible > 0 && selectedVisible < selectable.length;
+        }
+
         function renderUsers(users) {
+            filteredUsers = users;
             const tbody = document.getElementById('users-tbody');
-            document.getElementById('user-count').textContent = users.length + ' utilisateur(s)';
+            document.getElementById('user-count').textContent = `${users.length} utilisateur(s) affiché(s) / ${allUsers.length}`;
 
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-12">Aucun utilisateur</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" class="text-center text-slate-500 py-12">Aucun utilisateur</td></tr>';
+                updateSelectionUI();
                 return;
             }
 
             tbody.innerHTML = users.map(u => {
-                const statusBadge = u.is_banned
-                    ? '<span class="badge badge-danger">Banni</span>'
-                    : u.is_active
-                        ? '<span class="badge badge-success">Actif</span>'
-                        : '<span class="badge badge-warning">Inactif</span>';
-
-                const jfBadge = u.jellyfin_exists
-                    ? (u.jellyfin_disabled
-                        ? '<span class="badge badge-warning">Désactivé</span>'
-                        : '<span class="badge badge-success">OK</span>')
-                    : '<span class="badge badge-muted">Absent</span>';
-
+                const checked = selectedIds.has(u.id) ? 'checked' : '';
                 const toggleLabel = u.is_active ? 'Désactiver' : 'Activer';
-                const toggleClass = u.is_active ? 'text-amber-400 hover:bg-amber-500/10' : 'text-emerald-400 hover:bg-emerald-500/10';
+                const expiry = u.access_expires_at ? fmtDate(u.access_expires_at) : '—';
+                const expiryClass = isExpired(u) ? 'text-red-300' : 'text-slate-400';
 
-                const canInviteToggle = `
-                    <label class="relative inline-flex items-center cursor-pointer mt-1" title="Autoriser à créer des invitations">
-                        <input type="checkbox" class="sr-only peer" ${u.can_invite ? 'checked' : ''} onchange="JG.toggleUserInvite(${u.id}, '${JG.esc(u.username)}')">
-                        <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-500"></div>
-                    </label>
-                `;
-
-                return `<tr data-user-id="${u.id}">
-        <td><span class="font-medium">${JG.esc(u.username)}</span></td>
-        <td class="text-slate-400">${JG.esc(u.email || '—')}</td>
-        <td>${statusBadge}</td>
-        <td>${jfBadge}</td>
-        <td class="text-slate-400">${JG.esc(u.invited_by || '—')}</td>
-        <td>${canInviteToggle}</td>
-        <td class="text-slate-500 text-sm">${JG.esc(u.created_at || '—')}</td>
-        <td class="text-right">
-          <div class="flex justify-end gap-1">
-            <button class="jg-btn jg-btn-sm ${toggleClass} bg-transparent border-0"
-                    onclick="JG.toggleUser(${u.id}, '${JG.esc(u.username)}')">
-              ${toggleLabel}
-            </button>
-            <button class="jg-btn jg-btn-sm jg-btn-danger"
-                    onclick="JG.confirmDelete(${u.id}, '${JG.esc(u.username)}')">
-              Supprimer
-            </button>
-          </div>
-        </td>
-      </tr>`;
+                return `<tr>
+                    <td><input type="checkbox" class="form-checkbox row-check" data-id="${u.id}" ${checked}></td>
+                    <td><span class="font-medium">${JG.esc(u.username)}</span></td>
+                    <td class="text-slate-300">${JG.esc(u.email || '—')}</td>
+                    <td>${userStatusBadge(u)}</td>
+                    <td>${jellyfinStatusBadge(u)}</td>
+                    <td class="text-slate-400">${JG.esc(u.invited_by || '—')}</td>
+                    <td>${u.can_invite ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-muted">Non</span>'}</td>
+                    <td class="${expiryClass}">${JG.esc(expiry)}</td>
+                    <td class="text-slate-500 text-sm">${JG.esc(fmtDate(u.created_at))}</td>
+                    <td class="text-right">
+                        <div class="flex justify-end gap-1 flex-wrap">
+                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-edit" data-id="${u.id}">Modifier</button>
+                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-reset" data-id="${u.id}">Reset</button>
+                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-toggle" data-id="${u.id}">${toggleLabel}</button>
+                            <button class="jg-btn jg-btn-sm jg-btn-danger action-delete" data-id="${u.id}">Supprimer</button>
+                        </div>
+                    </td>
+                </tr>`;
             }).join('');
+
+            updateSelectionUI();
         }
 
-        // Search filter
-        document.getElementById('search-users').addEventListener('input', (e) => {
-            const q = e.target.value.toLowerCase();
-            const filtered = allUsers.filter(u =>
-                u.username.toLowerCase().includes(q) ||
-                (u.email || '').toLowerCase().includes(q) ||
-                (u.invited_by || '').toLowerCase().includes(q)
-            );
-            renderUsers(filtered);
-        });
+        function applyFilters() {
+            const query = document.getElementById('search-users').value.trim().toLowerCase();
+            const status = document.getElementById('filter-status').value;
+            const jellyfin = document.getElementById('filter-jellyfin').value;
+            const invite = document.getElementById('filter-invite').value;
+            const extra = document.getElementById('filter-extra').value;
 
-        // Toggle user
-        window.JG = window.JG || {};
-        JG.toggleUser = async function (id, username) {
-            const res = await JG.api(`/admin/api/users/${id}/toggle`, { method: 'POST' });
-            if (res.success) {
-                JG.toast(`${username} ${res.data?.is_active ? 'activé' : 'désactivé'}`, 'success');
-                loadUsers();
-            } else {
-                JG.toast(res.message || 'Erreur', 'error');
+            const result = allUsers.filter(u => {
+                const textMatch = !query ||
+                    (u.username || '').toLowerCase().includes(query) ||
+                    (u.email || '').toLowerCase().includes(query) ||
+                    (u.invited_by || '').toLowerCase().includes(query);
+
+                const statusMatch =
+                    status === 'all' ||
+                    (status === 'active' && u.is_active && !u.is_banned) ||
+                    (status === 'inactive' && !u.is_active && !u.is_banned) ||
+                    (status === 'banned' && u.is_banned);
+
+                const jellyfinMatch =
+                    jellyfin === 'all' ||
+                    (jellyfin === 'ok' && u.jellyfin_exists && !u.jellyfin_disabled) ||
+                    (jellyfin === 'disabled' && u.jellyfin_exists && u.jellyfin_disabled) ||
+                    (jellyfin === 'missing' && !u.jellyfin_exists);
+
+                const inviteMatch =
+                    invite === 'all' ||
+                    (invite === 'enabled' && u.can_invite) ||
+                    (invite === 'disabled' && !u.can_invite);
+
+                const expired = isExpired(u);
+                const hasExpiry = !!u.access_expires_at;
+                const extraMatch =
+                    extra === 'all' ||
+                    (extra === 'with-email' && !!(u.email || '').trim()) ||
+                    (extra === 'without-email' && !(u.email || '').trim()) ||
+                    (extra === 'expiry-active' && hasExpiry) ||
+                    (extra === 'expiry-expired' && expired) ||
+                    (extra === 'expiry-none' && !hasExpiry);
+
+                return textMatch && statusMatch && jellyfinMatch && inviteMatch && extraMatch;
+            });
+
+            renderUsers(result);
+        }
+
+        function resetBulkFields() {
+            const container = document.getElementById('bulk-fields');
+            const action = document.getElementById('bulk-action').value;
+            if (!action) {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                return;
             }
+
+            container.classList.remove('hidden');
+            if (action === 'send_email') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input id="bulk-email-subject" class="jg-input" placeholder="Sujet du courriel">
+                        <input id="bulk-email-tooltips" class="jg-input" disabled value="Variables: {{.Username}} {{.Email}} {{.Actor}}">
+                    </div>
+                    <textarea id="bulk-email-body" class="jg-input mt-3 font-mono text-sm" rows="5" placeholder="Corps du courriel (template Go autorisé)"></textarea>
+                `;
+                return;
+            }
+
+            if (action === 'set_parrainage') {
+                container.innerHTML = `
+                    <select id="bulk-can-invite" class="jg-input max-w-xs">
+                        <option value="true">Activer le parrainage</option>
+                        <option value="false">Désactiver le parrainage</option>
+                    </select>
+                `;
+                return;
+            }
+
+            if (action === 'set_expiry') {
+                container.innerHTML = `
+                    <div class="flex flex-wrap items-center gap-3">
+                        <input type="datetime-local" id="bulk-expiry" class="jg-input max-w-xs">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" id="bulk-clear-expiry" class="form-checkbox">
+                            Supprimer la date d'expiration
+                        </label>
+                    </div>
+                `;
+                return;
+            }
+
+            if (action === 'jellyfin_policy') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
+                        <select id="bulk-jf-downloads" class="jg-input">
+                            <option value="">Téléchargement: inchangé</option>
+                            <option value="true">Téléchargement: autorisé</option>
+                            <option value="false">Téléchargement: interdit</option>
+                        </select>
+                        <select id="bulk-jf-remote" class="jg-input">
+                            <option value="">Accès distant: inchangé</option>
+                            <option value="true">Accès distant: autorisé</option>
+                            <option value="false">Accès distant: interdit</option>
+                        </select>
+                        <input type="number" id="bulk-jf-sessions" class="jg-input" min="0" placeholder="Sessions max (0 = illimité)">
+                        <input type="number" id="bulk-jf-bitrate" class="jg-input" min="0" placeholder="Bitrate max kbps (0 = illimité)">
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = '<p class="text-sm text-slate-400">Cette action ne nécessite pas de paramètres supplémentaires.</p>';
+        }
+
+        async function loadUsers() {
+            const res = await JG.api('/admin/api/users');
+            if (!res.success) {
+                JG.toast(res.message || 'Erreur chargement', 'error');
+                return;
+            }
+            allUsers = res.data || [];
+            applyFilters();
+        }
+
+        function getUserById(id) {
+            return allUsers.find(u => u.id === id);
+        }
+
+        JG.openEditModal = function (id) {
+            const user = getUserById(id);
+            if (!user) return;
+            document.getElementById('edit-user-id').value = user.id;
+            document.getElementById('edit-email').value = user.email || '';
+            document.getElementById('edit-expiry').value = toDateTimeLocal(user.access_expires_at || '');
+            document.getElementById('edit-clear-expiry').checked = false;
+            document.getElementById('edit-can-invite').checked = !!user.can_invite;
+            document.getElementById('edit-modal').style.display = '';
         };
 
-        // Toggle user invite permission
-        JG.toggleUserInvite = async function (id, username) {
-            const res = await JG.api(`/admin/api/users/${id}/invite-toggle`, { method: 'POST' });
-            if (res.success) {
-                JG.toast(res.message, 'success');
-                loadUsers();
-            } else {
-                JG.toast(res.message || 'Erreur', 'error');
-                loadUsers();
-            }
+        JG.closeEditModal = function () {
+            document.getElementById('edit-modal').style.display = 'none';
         };
 
-        // Delete user
         JG.confirmDelete = function (id, username) {
             document.getElementById('delete-modal-text').textContent =
-                `L'utilisateur "${username}" sera supprimé de l'AD, de Jellyfin et de la base de données. Cette action est irréversible.`;
+                `L'utilisateur "${username}" sera supprimé de l'AD, de Jellyfin et de la base. Cette action est irréversible.`;
             document.getElementById('delete-modal').style.display = '';
             document.getElementById('delete-confirm-btn').onclick = async () => {
-                JG.closeModal();
+                JG.closeDeleteModal();
                 const res = await JG.api(`/admin/api/users/${id}`, { method: 'DELETE' });
                 if (res.success) {
+                    selectedIds.delete(id);
                     JG.toast(`${username} supprimé`, 'success');
                     loadUsers();
                 } else {
-                    JG.toast(res.message || 'Erreur', 'error');
+                    JG.toast(res.message || 'Erreur suppression', 'error');
                 }
             };
         };
 
-        JG.closeModal = function () {
+        JG.closeDeleteModal = function () {
             document.getElementById('delete-modal').style.display = 'none';
         };
 
-        // Close modal on overlay click
-        document.getElementById('delete-modal').addEventListener('click', (e) => {
-            if (e.target === e.currentTarget) JG.closeModal();
+        document.getElementById('users-tbody').addEventListener('click', async (event) => {
+            const button = event.target.closest('button');
+            if (!button) return;
+            const id = Number(button.dataset.id);
+            const user = getUserById(id);
+            if (!user) return;
+
+            if (button.classList.contains('action-edit')) {
+                JG.openEditModal(id);
+                return;
+            }
+
+            if (button.classList.contains('action-reset')) {
+                const res = await JG.api(`/admin/api/users/${id}/password-reset/send`, { method: 'POST' });
+                if (res.success) JG.toast(`Lien de reset envoyé à ${user.username}`, 'success');
+                else JG.toast(res.message || 'Erreur reset', 'error');
+                return;
+            }
+
+            if (button.classList.contains('action-toggle')) {
+                const res = await JG.api(`/admin/api/users/${id}/toggle`, { method: 'POST' });
+                if (res.success) {
+                    JG.toast(res.message || 'Statut mis à jour', 'success');
+                    loadUsers();
+                } else {
+                    JG.toast(res.message || 'Erreur toggle', 'error');
+                }
+                return;
+            }
+
+            if (button.classList.contains('action-delete')) {
+                JG.confirmDelete(id, user.username);
+            }
         });
 
-        // Sidebar toggle
-        const toggle = document.getElementById('sidebar-toggle');
-        if (toggle) {
-            toggle.addEventListener('click', () => {
-                document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('users-tbody').addEventListener('change', (event) => {
+            const checkbox = event.target.closest('.row-check');
+            if (!checkbox) return;
+            const id = Number(checkbox.dataset.id);
+            if (checkbox.checked) selectedIds.add(id);
+            else selectedIds.delete(id);
+            updateSelectionUI();
+        });
+
+        document.getElementById('check-all').addEventListener('change', (event) => {
+            const checked = event.target.checked;
+            filteredUsers.forEach(u => {
+                if (checked) selectedIds.add(u.id);
+                else selectedIds.delete(u.id);
             });
-        }
+            renderUsers(filteredUsers);
+        });
+
+        document.getElementById('btn-select-filtered').addEventListener('click', () => {
+            filteredUsers.forEach(u => selectedIds.add(u.id));
+            renderUsers(filteredUsers);
+        });
+
+        document.getElementById('edit-save-btn').addEventListener('click', async () => {
+            const id = Number(document.getElementById('edit-user-id').value);
+            const payload = {
+                email: document.getElementById('edit-email').value.trim(),
+                can_invite: document.getElementById('edit-can-invite').checked,
+                access_expires_at: document.getElementById('edit-expiry').value,
+                clear_expiry: document.getElementById('edit-clear-expiry').checked,
+            };
+
+            const res = await JG.api(`/admin/api/users/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(payload),
+            });
+
+            if (res.success) {
+                JG.toast('Utilisateur mis à jour', 'success');
+                JG.closeEditModal();
+                loadUsers();
+            } else {
+                JG.toast(res.message || 'Erreur de mise à jour', 'error');
+            }
+        });
+
+        document.getElementById('bulk-action').addEventListener('change', resetBulkFields);
+
+        document.getElementById('bulk-apply').addEventListener('click', async () => {
+            const action = document.getElementById('bulk-action').value;
+            if (!action) {
+                JG.toast('Choisissez une action de masse', 'error');
+                return;
+            }
+            const userIDs = Array.from(selectedIds);
+            if (userIDs.length === 0) {
+                JG.toast('Aucun utilisateur sélectionné', 'error');
+                return;
+            }
+
+            const payload = { action, user_ids: userIDs };
+
+            if (action === 'send_email') {
+                payload.email_subject = (document.getElementById('bulk-email-subject')?.value || '').trim();
+                payload.email_body = (document.getElementById('bulk-email-body')?.value || '').trim();
+                if (!payload.email_subject || !payload.email_body) {
+                    JG.toast('Sujet et corps du courriel requis', 'error');
+                    return;
+                }
+            }
+
+            if (action === 'set_parrainage') {
+                payload.can_invite = (document.getElementById('bulk-can-invite')?.value || 'false') === 'true';
+            }
+
+            if (action === 'set_expiry') {
+                const clearExpiry = document.getElementById('bulk-clear-expiry')?.checked;
+                payload.clear_expiry = !!clearExpiry;
+                if (!clearExpiry) {
+                    const expiry = document.getElementById('bulk-expiry')?.value || '';
+                    if (!expiry) {
+                        JG.toast('Date d’expiration requise', 'error');
+                        return;
+                    }
+                    payload.access_expires_at = expiry;
+                }
+            }
+
+            if (action === 'jellyfin_policy') {
+                const downloads = document.getElementById('bulk-jf-downloads')?.value || '';
+                const remote = document.getElementById('bulk-jf-remote')?.value || '';
+                const sessionsRaw = document.getElementById('bulk-jf-sessions')?.value;
+                const bitrateRaw = document.getElementById('bulk-jf-bitrate')?.value;
+
+                const policy = {};
+                if (downloads) policy.enable_downloads = downloads === 'true';
+                if (remote) policy.enable_remote_access = remote === 'true';
+                if (sessionsRaw !== undefined && sessionsRaw !== '') policy.max_active_sessions = parseInt(sessionsRaw, 10);
+                if (bitrateRaw !== undefined && bitrateRaw !== '') policy.remote_bitrate_limit = parseInt(bitrateRaw, 10);
+
+                if (Object.keys(policy).length === 0) {
+                    JG.toast('Choisissez au moins un paramètre Jellyfin', 'error');
+                    return;
+                }
+                payload.jellyfin_policy = policy;
+            }
+
+            if (action === 'delete' && !confirm('Supprimer tous les utilisateurs sélectionnés ?')) {
+                return;
+            }
+
+            const res = await JG.api('/admin/api/users/bulk', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+
+            if (res.success) {
+                const success = res.data?.success || 0;
+                const total = res.data?.total || userIDs.length;
+                JG.toast(`Action terminée: ${success}/${total} succès`, success === total ? 'success' : 'info');
+                if (action === 'delete') {
+                    selectedIds.clear();
+                }
+                loadUsers();
+            } else {
+                JG.toast(res.message || 'Erreur action de masse', 'error');
+            }
+        });
+
+        ['search-users', 'filter-status', 'filter-jellyfin', 'filter-invite', 'filter-extra'].forEach(id => {
+            document.getElementById(id).addEventListener('input', applyFilters);
+            document.getElementById(id).addEventListener('change', applyFilters);
+        });
+
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target !== overlay) return;
+                JG.closeDeleteModal();
+                JG.closeEditModal();
+            });
+        });
 
         loadUsers();
     });
-</script>
 
-<script>
     async function syncUsers() {
-        if (!confirm("Voulez-vous forcer la synchronisation avec Jellyfin ? Les utilisateurs absents de la base locale (ex: administrateurs natifs) seront importés silencieusement.")) return;
+        if (!confirm("Voulez-vous forcer la synchronisation avec Jellyfin ? Les utilisateurs absents de la base locale seront importés.")) return;
 
         try {
-            const res = await fetch("/admin/api/users/sync", {
-                method: "POST"
-            });
+            const res = await fetch('/admin/api/users/sync', { method: 'POST' });
             const data = await res.json();
-
             if (data.success) {
-                JG.toast("success", data.message);
-                setTimeout(() => window.location.reload(), 1500);
+                JG.toast(data.message || 'Synchronisation terminée', 'success');
+                setTimeout(() => window.location.reload(), 1000);
             } else {
-                JG.toast("error", data.message || "Erreur de synchronisation");
+                JG.toast(data.message || 'Erreur de synchronisation', 'error');
             }
         } catch (err) {
-            console.error(err);
-            JG.toast("error", "Erreur réseau lors de la synchronisation");
+            JG.toast('Erreur réseau lors de la synchronisation', 'error');
         }
     }
 </script>

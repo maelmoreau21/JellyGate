@@ -103,7 +103,7 @@ func main() {
 
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
 	authHandler := handlers.NewAuthHandler(cfg, db, renderEngine)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, notifier, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, mailer, notifier, renderEngine)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db)
@@ -129,6 +129,7 @@ func main() {
 				return
 			}
 			mailer = newMailer
+			inviteHandler.SetMailer(mailer)
 			resetHandler.SetMailer(mailer)
 			adminHandler.SetMailer(mailer)
 			slog.Info("🔄 Client SMTP rechargé", "host", c.Host)
@@ -201,8 +202,11 @@ func main() {
 				r.Get("/users", adminHandler.UsersPage)
 				r.Route("/api/users", func(r chi.Router) {
 					r.Get("/", adminHandler.ListUsers)
+					r.Post("/bulk", adminHandler.BulkUsersAction)
 					r.Post("/sync", adminHandler.SyncJellyfinUsers)
+					r.Patch("/{id}", adminHandler.UpdateUser)
 					r.Post("/{id}/toggle", adminHandler.ToggleUser)
+					r.Post("/{id}/password-reset/send", adminHandler.SendUserPasswordReset)
 					r.Post("/{id}/invite-toggle", adminHandler.ToggleUserInvite)
 					r.Post("/{id}/ban", handlePlaceholder("Bannir utilisateur"))
 					r.Delete("/{id}", adminHandler.DeleteUser)
@@ -219,7 +223,7 @@ func main() {
 				})
 
 				r.Route("/api/logs", func(r chi.Router) {
-					r.Get("/", adminHandler.ListLogs)
+					r.Get("/", adminHandler.LogsAPI)
 				})
 
 				r.Get("/settings", adminHandler.SettingsPage)

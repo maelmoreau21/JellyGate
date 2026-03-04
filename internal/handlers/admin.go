@@ -21,6 +21,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -65,6 +66,42 @@ type APIResponse struct {
 	Errors  []string    `json:"errors,omitempty"`
 }
 
+type adminUserRecord struct {
+	ID              int64
+	Username        string
+	Email           string
+	JellyfinID      string
+	LdapDN          string
+	IsActive        bool
+	CanInvite       bool
+	AccessExpiresAt sql.NullString
+}
+
+type UpdateUserRequest struct {
+	Email           *string `json:"email"`
+	CanInvite       *bool   `json:"can_invite"`
+	AccessExpiresAt *string `json:"access_expires_at"`
+	ClearExpiry     bool    `json:"clear_expiry"`
+}
+
+type BulkJellyfinPolicyPatch struct {
+	EnableDownloads  *bool `json:"enable_downloads"`
+	EnableRemote     *bool `json:"enable_remote_access"`
+	MaxActiveSession *int  `json:"max_active_sessions"`
+	BitrateLimit     *int  `json:"remote_bitrate_limit"`
+}
+
+type BulkUsersActionRequest struct {
+	UserIDs         []int64                  `json:"user_ids"`
+	Action          string                   `json:"action"`
+	EmailSubject    string                   `json:"email_subject"`
+	EmailBody       string                   `json:"email_body"`
+	CanInvite       *bool                    `json:"can_invite"`
+	AccessExpiresAt *string                  `json:"access_expires_at"`
+	ClearExpiry     bool                     `json:"clear_expiry"`
+	JellyfinPolicy  *BulkJellyfinPolicyPatch `json:"jellyfin_policy"`
+}
+
 // ── Admin Handler ───────────────────────────────────────────────────────────
 
 // AdminHandler gère les endpoints d'administration.
@@ -95,6 +132,64 @@ func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 // SetMailer remplace le Mailer SMTP (rechargement à chaud).
 func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
+func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templateBody string, extra map[string]string) error {
+	if rec == nil {
+		return nil
+	}
+	if strings.TrimSpace(rec.Email) == "" {
+		return nil
+	}
+
+	data := map[string]string{
+		"Username": rec.Username,
+		"Email":    rec.Email,
+		"HelpURL":  h.cfg.BaseURL,
+	}
+	if rec.AccessExpiresAt.Valid {
+		if t, err := parseAccessExpiry(rec.AccessExpiresAt.String); err == nil {
+			data["ExpiryDate"] = emailTime(t)
+		}
+	}
+	for key, value := range extra {
+		data[key] = value
+	}
+
+	return sendTemplateIfConfigured(h.mailer, rec.Email, subject, templateBody, data)
+}
+
+func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey string, extra map[string]string) error {
+	emailCfg, err := h.db.GetEmailTemplatesConfig()
+	if err != nil {
+		return err
+	}
+
+	var subject, body string
+	switch templateKey {
+	case "user_enabled":
+		subject = "Compte réactivé — JellyGate"
+		body = emailCfg.UserEnabled
+	case "user_disabled":
+		subject = "Compte désactivé — JellyGate"
+		body = emailCfg.UserDisabled
+	case "user_deleted":
+		subject = "Compte supprimé — JellyGate"
+		body = emailCfg.UserDeletion
+	case "user_expired":
+		subject = "Compte expiré — JellyGate"
+		body = emailCfg.UserExpired
+	case "expiry_adjusted":
+		subject = "Expiration ajustée — JellyGate"
+		body = emailCfg.ExpiryAdjusted
+	case "expiry_reminder":
+		subject = "Rappel d'expiration — JellyGate"
+		body = emailCfg.ExpiryReminder
+	default:
+		return nil
+	}
+
+	return h.sendUserEventEmail(rec, subject, body, extra)
+}
+
 // ── Background Jobs ─────────────────────────────────────────────────────────
 
 // StartExpirationJob lance une routine en arrière-plan qui vérifie périodiquement
@@ -119,15 +214,63 @@ func (h *AdminHandler) StartExpirationJob(ctx context.Context) {
 
 func (h *AdminHandler) runExpirationCheck() {
 	slog.Debug("Lancement du job d'expiration automatique des utilisateurs...")
+	now := time.Now()
+	reminderWindow := now.Add(72 * time.Hour)
+
+	// Rappels d'expiration imminente
+	reminderRows, err := h.db.Conn().Query(`
+		SELECT id, username, email, access_expires_at
+		FROM users
+		WHERE is_active = 1
+		  AND access_expires_at IS NOT NULL
+		  AND access_expires_at >= ?
+		  AND access_expires_at <= ?
+	`, now, reminderWindow)
+	if err == nil {
+		for reminderRows.Next() {
+			var id int64
+			var username string
+			var email, expiryRaw sql.NullString
+			if err := reminderRows.Scan(&id, &username, &email, &expiryRaw); err != nil {
+				continue
+			}
+			if !email.Valid || strings.TrimSpace(email.String) == "" || !expiryRaw.Valid {
+				continue
+			}
+
+			var alreadySent int
+			_ = h.db.Conn().QueryRow(
+				`SELECT COUNT(1) FROM audit_log WHERE action = 'user.expiry_reminder.sent' AND target = ? AND details = ?`,
+				username,
+				expiryRaw.String,
+			).Scan(&alreadySent)
+			if alreadySent > 0 {
+				continue
+			}
+
+			rec := &adminUserRecord{
+				ID:              id,
+				Username:        username,
+				Email:           email.String,
+				AccessExpiresAt: expiryRaw,
+			}
+			if err := h.sendUserTemplateByKey(rec, "expiry_reminder", map[string]string{"ExpiryDate": expiryRaw.String}); err != nil {
+				slog.Error("Erreur envoi reminder d'expiration", "user", username, "error", err)
+				continue
+			}
+			_ = h.db.LogAction("user.expiry_reminder.sent", "system", username, expiryRaw.String)
+		}
+		reminderRows.Close()
+	}
 
 	// Rechercher les utilisateurs actifs dont access_expires_at est dépassé
 	rows, err := h.db.Conn().Query(`
-		SELECT id, username, jellyfin_id, ldap_dn 
+		SELECT id, username, email, jellyfin_id, ldap_dn, access_expires_at
 		FROM users 
 		WHERE is_active = 1 
 		AND access_expires_at IS NOT NULL 
 		AND access_expires_at < ?
-	`, time.Now())
+	`, now)
 	if err != nil {
 		slog.Error("Erreur SQL lors du job d'expiration", "error", err)
 		return
@@ -136,21 +279,27 @@ func (h *AdminHandler) runExpirationCheck() {
 	var usersToDisable []struct {
 		ID         int64
 		Username   string
+		Email      string
 		JellyfinID string
 		LdapDN     string
+		ExpiresAt  string
 	}
 
 	for rows.Next() {
 		var u struct {
 			ID         int64
 			Username   string
+			Email      string
 			JellyfinID string
 			LdapDN     string
+			ExpiresAt  string
 		}
-		var jfID, ldDN sql.NullString
-		if err := rows.Scan(&u.ID, &u.Username, &jfID, &ldDN); err == nil {
+		var email, jfID, ldDN, expiresAt sql.NullString
+		if err := rows.Scan(&u.ID, &u.Username, &email, &jfID, &ldDN, &expiresAt); err == nil {
+			u.Email = email.String
 			u.JellyfinID = jfID.String
 			u.LdapDN = ldDN.String
+			u.ExpiresAt = expiresAt.String
 			usersToDisable = append(usersToDisable, u)
 		}
 	}
@@ -184,6 +333,19 @@ func (h *AdminHandler) runExpirationCheck() {
 		}
 
 		h.db.LogAction("user.expired", "system", u.Username, "Le compte a atteint sa date d'expiration et a été désactivé.")
+
+		rec := &adminUserRecord{
+			ID:       u.ID,
+			Username: u.Username,
+			Email:    u.Email,
+			AccessExpiresAt: sql.NullString{
+				String: u.ExpiresAt,
+				Valid:  u.ExpiresAt != "",
+			},
+		}
+		if err := h.sendUserTemplateByKey(rec, "user_expired", map[string]string{"ExpiryDate": u.ExpiresAt}); err != nil {
+			slog.Error("Erreur envoi email user_expired", "user", u.Username, "error", err)
+		}
 	}
 }
 
@@ -287,49 +449,124 @@ type AuditLogResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// ListLogs retourne la liste des journaux d'audit (max 500).
-func (h *AdminHandler) ListLogs(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	slog.Info("Liste des journaux d'audit demandée", "admin", sess.Username)
+// ── GET /admin/api/logs ─────────────────────────────────────────────────────
 
-	rows, err := h.db.Conn().Query(
-		`SELECT id, action, actor, target, details, created_at 
-		 FROM audit_log ORDER BY created_at DESC LIMIT 500`)
+// LogsAPI retourne le journal d'audit en JSON avec pagination, recherche et tri.
+func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
+	// Récupérer les paramètres de pagination/recherche
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+	search := r.URL.Query().Get("search")
+	sortCol := r.URL.Query().Get("sort")
+	orderDir := r.URL.Query().Get("order")
+
+	// Valeurs par défaut
+	page := 1
+	limit := 50
+
+	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+		page = p
+	}
+	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+		limit = l
+	}
+	if limit > 500 { // Sécurité max
+		limit = 500
+	}
+
+	// Tri par défaut
+	if sortCol == "" {
+		sortCol = "created_at"
+	}
+	if orderDir == "" {
+		orderDir = "desc"
+	}
+
+	// Validation du tri pour éviter injections SQL
+	validCols := map[string]bool{"id": true, "action": true, "actor": true, "target": true, "created_at": true}
+	if !validCols[sortCol] {
+		sortCol = "created_at"
+	}
+	if orderDir != "asc" && orderDir != "desc" {
+		orderDir = "desc"
+	}
+
+	// Construction de la requête
+	var args []interface{}
+	whereClause := ""
+
+	if search != "" {
+		whereClause = "WHERE action LIKE ? OR actor LIKE ? OR target LIKE ? OR details LIKE ?"
+		searchTerm := "%" + search + "%"
+		args = append(args, searchTerm, searchTerm, searchTerm, searchTerm)
+	}
+
+	// 1. Compter le total des résultats
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM audit_log %s", whereClause)
+	err := h.db.Conn().QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
-		slog.Error("Erreur lecture des journaux d'audit", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur de lecture de la base de données",
-		})
+		slog.Error("Erreur comptage des logs", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture base de données"})
+		return
+	}
+
+	// 2. Récupérer les données avec Pagination
+	offset := (page - 1) * limit
+	query := fmt.Sprintf("SELECT id, action, actor, target, details, created_at FROM audit_log %s ORDER BY %s %s LIMIT ? OFFSET ?", whereClause, sortCol, orderDir)
+
+	// Ajouter limit et offset aux arguments existants
+	args = append(args, limit, offset)
+
+	rows, err := h.db.Conn().Query(query, args...)
+	if err != nil {
+		slog.Error("Erreur lecture table audit_log", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur traitement journaux"})
 		return
 	}
 	defer rows.Close()
 
-	var logs []AuditLogResponse
-	for rows.Next() {
-		var l AuditLogResponse
-		var actor, target, details sql.NullString
+	type LogEntry struct {
+		ID        int    `json:"id"`
+		Action    string `json:"action"`
+		Actor     string `json:"actor"`
+		Target    string `json:"target"`
+		Details   string `json:"details"`
+		CreatedAt string `json:"created_at"`
+	}
 
-		err := rows.Scan(
-			&l.ID, &l.Action, &actor, &target, &details, &l.CreatedAt,
-		)
-		if err != nil {
-			slog.Error("Erreur scan log", "error", err)
+	var logs []LogEntry
+	for rows.Next() {
+		var l LogEntry
+		if err := rows.Scan(&l.ID, &l.Action, &l.Actor, &l.Target, &l.Details, &l.CreatedAt); err != nil {
 			continue
 		}
-
-		l.Actor = actor.String
-		l.Target = target.String
-		l.Details = details.String
-
 		logs = append(logs, l)
 	}
 
-	slog.Info("Liste des journaux d'audit renvoyée", "count", len(logs))
+	// Toujours renvoyer un tableau vide plutôt que set null frontend
+	if logs == nil {
+		logs = make([]LogEntry, 0)
+	}
 
+	// Calculer le nombre de pages total
+	totalPages := total / limit
+	if total%limit != 0 {
+		totalPages++
+	}
+
+	// Envoi du JSON avec métadonnées de pagination
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Data:    logs,
+		Data: map[string]interface{}{
+			"logs": logs,
+			"meta": map[string]interface{}{
+				"total":       total,
+				"page":        page,
+				"limit":       limit,
+				"total_pages": totalPages,
+			},
+		},
 	})
 }
 
@@ -454,6 +691,564 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error) {
+	var rec adminUserRecord
+	var email, jellyfinID, ldapDN sql.NullString
+
+	err := h.db.Conn().QueryRow(
+		`SELECT id, username, email, jellyfin_id, ldap_dn, is_active, can_invite, access_expires_at
+		 FROM users WHERE id = ?`,
+		userID,
+	).Scan(
+		&rec.ID,
+		&rec.Username,
+		&email,
+		&jellyfinID,
+		&ldapDN,
+		&rec.IsActive,
+		&rec.CanInvite,
+		&rec.AccessExpiresAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	rec.Email = email.String
+	rec.JellyfinID = jellyfinID.String
+	rec.LdapDN = ldapDN.String
+
+	return &rec, nil
+}
+
+func parseAccessExpiry(raw string) (time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}, fmt.Errorf("date d'expiration vide")
+	}
+
+	formats := []string{time.RFC3339, "2006-01-02T15:04", "2006-01-02 15:04:05"}
+	for _, f := range formats {
+		if t, err := time.Parse(f, raw); err == nil {
+			return t, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("format de date invalide")
+}
+
+func (h *AdminHandler) applyJellyfinPolicyPatch(jellyfinID string, patch *BulkJellyfinPolicyPatch) error {
+	if patch == nil {
+		return fmt.Errorf("aucun patch Jellyfin fourni")
+	}
+	if jellyfinID == "" {
+		return fmt.Errorf("compte Jellyfin absent")
+	}
+
+	user, err := h.jfClient.GetUser(jellyfinID)
+	if err != nil {
+		return fmt.Errorf("impossible de lire la politique Jellyfin: %w", err)
+	}
+
+	policy := user.Policy
+	if patch.EnableDownloads != nil {
+		policy.EnableContentDownloading = *patch.EnableDownloads
+	}
+	if patch.EnableRemote != nil {
+		policy.EnableRemoteAccess = *patch.EnableRemote
+	}
+	if patch.MaxActiveSession != nil {
+		if *patch.MaxActiveSession < 0 {
+			return fmt.Errorf("max_active_sessions doit être >= 0")
+		}
+		policy.MaxActiveSessions = *patch.MaxActiveSession
+	}
+	if patch.BitrateLimit != nil {
+		if *patch.BitrateLimit < 0 {
+			return fmt.Errorf("remote_bitrate_limit doit être >= 0")
+		}
+		policy.RemoteClientBitrateLimit = *patch.BitrateLimit
+	}
+
+	if err := h.jfClient.SetUserPolicy(jellyfinID, policy); err != nil {
+		return fmt.Errorf("mise à jour de la politique Jellyfin: %w", err)
+	}
+
+	return nil
+}
+
+func (h *AdminHandler) setUserActiveState(rec *adminUserRecord, newActive bool, actor string) ([]string, error) {
+	var partialErrors []string
+
+	if h.ldClient != nil && rec.LdapDN != "" {
+		var err error
+		if newActive {
+			err = h.ldClient.EnableUser(rec.LdapDN)
+		} else {
+			err = h.ldClient.DisableUser(rec.LdapDN)
+		}
+		if err != nil {
+			partialErrors = append(partialErrors, fmt.Sprintf("LDAP: %s", err.Error()))
+		}
+	}
+
+	if rec.JellyfinID != "" {
+		var err error
+		if newActive {
+			err = h.jfClient.EnableUser(rec.JellyfinID)
+		} else {
+			err = h.jfClient.DisableUser(rec.JellyfinID)
+		}
+		if err != nil {
+			partialErrors = append(partialErrors, fmt.Sprintf("Jellyfin: %s", err.Error()))
+		}
+	}
+
+	_, err := h.db.Conn().Exec(
+		`UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?`,
+		newActive,
+		rec.ID,
+	)
+	if err != nil {
+		partialErrors = append(partialErrors, fmt.Sprintf("SQLite: %s", err.Error()))
+		return partialErrors, err
+	}
+
+	rec.IsActive = newActive
+	action := "user.enabled"
+	if !newActive {
+		action = "user.disabled"
+	}
+	_ = h.db.LogAction(action, actor, rec.Username, fmt.Sprintf(`{"user_id":%d,"errors":%d}`,
+		rec.ID, len(partialErrors)))
+
+	tplKey := "user_enabled"
+	if !newActive {
+		tplKey = "user_disabled"
+	}
+	if err := h.sendUserTemplateByKey(rec, tplKey, nil); err != nil {
+		partialErrors = append(partialErrors, fmt.Sprintf("Email: %s", err.Error()))
+	}
+
+	return partialErrors, nil
+}
+
+func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]string, error) {
+	var partialErrors []string
+
+	if h.ldClient != nil && rec.LdapDN != "" {
+		if err := h.ldClient.DeleteUser(rec.LdapDN); err != nil {
+			partialErrors = append(partialErrors, fmt.Sprintf("LDAP: %s", err.Error()))
+		}
+	}
+
+	if rec.JellyfinID != "" {
+		if err := h.jfClient.DeleteUser(rec.JellyfinID); err != nil {
+			partialErrors = append(partialErrors, fmt.Sprintf("Jellyfin: %s", err.Error()))
+		}
+	}
+
+	_, err := h.db.Conn().Exec(`DELETE FROM users WHERE id = ?`, rec.ID)
+	if err != nil {
+		partialErrors = append(partialErrors, fmt.Sprintf("SQLite: %s", err.Error()))
+		return partialErrors, err
+	}
+
+	_ = h.db.LogAction("user.deleted", actor, rec.Username, fmt.Sprintf(`{"user_id":%d,"errors":%d}`,
+		rec.ID, len(partialErrors)))
+
+	if err := h.sendUserTemplateByKey(rec, "user_deleted", nil); err != nil {
+		partialErrors = append(partialErrors, fmt.Sprintf("Email: %s", err.Error()))
+	}
+
+	return partialErrors, nil
+}
+
+func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor string) error {
+	if h.mailer == nil {
+		return fmt.Errorf("SMTP non configuré")
+	}
+	if strings.TrimSpace(rec.Email) == "" {
+		return fmt.Errorf("utilisateur sans email")
+	}
+
+	token, err := generateSecureToken(resetTokenLength)
+	if err != nil {
+		return fmt.Errorf("génération du token: %w", err)
+	}
+
+	expiresAt := time.Now().Add(resetTokenExpiry)
+	_, err = h.db.Conn().Exec(
+		`INSERT INTO password_resets (user_id, code, used, expires_at)
+		 VALUES (?, ?, 0, ?)`,
+		rec.ID,
+		token,
+		expiresAt.Format("2006-01-02 15:04:05"),
+	)
+	if err != nil {
+		return fmt.Errorf("insertion du token en base: %w", err)
+	}
+
+	resetURL := fmt.Sprintf("%s/reset/%s", strings.TrimRight(h.cfg.BaseURL, "/"), token)
+	mailCfg, _ := h.db.GetEmailTemplatesConfig()
+	tpl := mailCfg.PasswordReset
+	if tpl == "" {
+		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}"
+	}
+
+	data := map[string]string{
+		"Username":  rec.Username,
+		"ResetLink": resetURL,
+		"ResetURL":  resetURL,
+		"ResetCode": token,
+		"ExpiresIn": "15 minutes",
+	}
+
+	if err := h.mailer.SendTemplateString(rec.Email, "Réinitialisation de votre mot de passe — JellyGate", tpl, data); err != nil {
+		return fmt.Errorf("envoi de l'email: %w", err)
+	}
+
+	_ = h.db.LogAction("reset.sent.admin", actor, rec.Username, fmt.Sprintf(`{"user_id":%d}`, rec.ID))
+	return nil
+}
+
+// UpdateUser met à jour les informations éditables d'un utilisateur (email, parrainage, expiration).
+func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID utilisateur invalide"})
+		return
+	}
+
+	var req UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
+		return
+	}
+
+	rec, err := h.loadAdminUserByID(userID)
+	if err == sql.ErrNoRows {
+		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Utilisateur introuvable"})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture utilisateur"})
+		return
+	}
+
+	email := rec.Email
+	if req.Email != nil {
+		email = strings.TrimSpace(*req.Email)
+	}
+
+	canInvite := rec.CanInvite
+	if req.CanInvite != nil {
+		canInvite = *req.CanInvite
+	}
+
+	oldExpiry := ""
+	if rec.AccessExpiresAt.Valid {
+		oldExpiry = strings.TrimSpace(rec.AccessExpiresAt.String)
+	}
+
+	newExpiry := oldExpiry
+	var accessExpiresAt interface{}
+	if req.ClearExpiry {
+		accessExpiresAt = nil
+		newExpiry = ""
+	} else if req.AccessExpiresAt != nil {
+		raw := strings.TrimSpace(*req.AccessExpiresAt)
+		if raw == "" {
+			accessExpiresAt = nil
+			newExpiry = ""
+		} else {
+			exp, err := parseAccessExpiry(raw)
+			if err != nil {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Date d'expiration invalide"})
+				return
+			}
+			accessExpiresAt = exp
+			newExpiry = exp.Format("2006-01-02 15:04:05")
+		}
+	} else if rec.AccessExpiresAt.Valid {
+		accessExpiresAt = rec.AccessExpiresAt.String
+		newExpiry = strings.TrimSpace(rec.AccessExpiresAt.String)
+	}
+
+	_, err = h.db.Conn().Exec(
+		`UPDATE users
+		 SET email = ?, can_invite = ?, access_expires_at = ?, updated_at = datetime('now')
+		 WHERE id = ?`,
+		email,
+		canInvite,
+		accessExpiresAt,
+		userID,
+	)
+	if err != nil {
+		slog.Error("Erreur mise à jour utilisateur", "id", userID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise à jour"})
+		return
+	}
+
+	_ = h.db.LogAction("user.updated", sess.Username, rec.Username,
+		fmt.Sprintf(`{"user_id":%d,"email":"%s","can_invite":%t}`, userID, email, canInvite))
+
+	if oldExpiry != newExpiry {
+		rec.Email = email
+		rec.AccessExpiresAt = sql.NullString{String: newExpiry, Valid: newExpiry != ""}
+		if err := h.sendUserTemplateByKey(rec, "expiry_adjusted", map[string]string{"ExpiryDate": newExpiry}); err != nil {
+			slog.Error("Erreur envoi email expiry_adjusted", "user", rec.Username, "error", err)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Utilisateur mis à jour",
+		Data: map[string]interface{}{
+			"id":                userID,
+			"email":             email,
+			"can_invite":        canInvite,
+			"access_expires_at": accessExpiresAt,
+		},
+	})
+}
+
+// SendUserPasswordReset crée et envoie un lien de réinitialisation à l'utilisateur ciblé.
+func (h *AdminHandler) SendUserPasswordReset(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID utilisateur invalide"})
+		return
+	}
+
+	rec, err := h.loadAdminUserByID(userID)
+	if err == sql.ErrNoRows {
+		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Utilisateur introuvable"})
+		return
+	}
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture utilisateur"})
+		return
+	}
+
+	if err := h.sendPasswordResetForUser(rec, sess.Username); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Email de réinitialisation envoyé"})
+}
+
+// BulkUsersAction applique une action de masse sur les utilisateurs sélectionnés.
+func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+
+	var req BulkUsersActionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
+		return
+	}
+
+	if len(req.UserIDs) == 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun utilisateur sélectionné"})
+		return
+	}
+
+	action := strings.TrimSpace(req.Action)
+	if action == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Action manquante"})
+		return
+	}
+
+	results := make([]map[string]interface{}, 0, len(req.UserIDs))
+	successCount := 0
+
+	for _, userID := range req.UserIDs {
+		rec, err := h.loadAdminUserByID(userID)
+		if err != nil {
+			results = append(results, map[string]interface{}{
+				"id":      userID,
+				"success": false,
+				"message": "Utilisateur introuvable",
+			})
+			continue
+		}
+
+		entry := map[string]interface{}{
+			"id":       rec.ID,
+			"username": rec.Username,
+		}
+
+		switch action {
+		case "send_email":
+			if h.mailer == nil {
+				entry["success"] = false
+				entry["message"] = "SMTP non configuré"
+				break
+			}
+			subject := strings.TrimSpace(req.EmailSubject)
+			body := strings.TrimSpace(req.EmailBody)
+			if subject == "" || body == "" {
+				entry["success"] = false
+				entry["message"] = "Sujet/corps email requis"
+				break
+			}
+			if strings.TrimSpace(rec.Email) == "" {
+				entry["success"] = false
+				entry["message"] = "Utilisateur sans email"
+				break
+			}
+
+			err := h.mailer.SendTemplateString(rec.Email, subject, body, map[string]string{
+				"Username": rec.Username,
+				"Email":    rec.Email,
+				"Actor":    sess.Username,
+			})
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = err.Error()
+				break
+			}
+
+			_ = h.db.LogAction("user.bulk.email", sess.Username, rec.Username, subject)
+			entry["success"] = true
+			entry["message"] = "Email envoyé"
+
+		case "jellyfin_policy":
+			err := h.applyJellyfinPolicyPatch(rec.JellyfinID, req.JellyfinPolicy)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = err.Error()
+				break
+			}
+
+			_ = h.db.LogAction("user.bulk.jellyfin_policy", sess.Username, rec.Username, fmt.Sprintf(`{"user_id":%d}`, rec.ID))
+			entry["success"] = true
+			entry["message"] = "Paramètres Jellyfin mis à jour"
+
+		case "set_parrainage":
+			if req.CanInvite == nil {
+				entry["success"] = false
+				entry["message"] = "can_invite manquant"
+				break
+			}
+
+			_, err := h.db.Conn().Exec(`UPDATE users SET can_invite = ?, updated_at = datetime('now') WHERE id = ?`, *req.CanInvite, rec.ID)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = "Erreur SQLite"
+				break
+			}
+
+			_ = h.db.LogAction("user.bulk.can_invite", sess.Username, rec.Username, fmt.Sprintf(`{"can_invite":%t}`, *req.CanInvite))
+			entry["success"] = true
+			entry["message"] = "Parrainage mis à jour"
+
+		case "set_expiry":
+			var expiry interface{}
+			emailExpiryDate := "Aucune expiration"
+			if req.ClearExpiry {
+				expiry = nil
+			} else {
+				if req.AccessExpiresAt == nil || strings.TrimSpace(*req.AccessExpiresAt) == "" {
+					entry["success"] = false
+					entry["message"] = "Date d'expiration manquante"
+					break
+				}
+				exp, err := parseAccessExpiry(*req.AccessExpiresAt)
+				if err != nil {
+					entry["success"] = false
+					entry["message"] = "Date d'expiration invalide"
+					break
+				}
+				expiry = exp
+				emailExpiryDate = emailTime(exp)
+			}
+
+			_, err := h.db.Conn().Exec(`UPDATE users SET access_expires_at = ?, updated_at = datetime('now') WHERE id = ?`, expiry, rec.ID)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = "Erreur SQLite"
+				break
+			}
+
+			_ = h.db.LogAction("user.bulk.expiry", sess.Username, rec.Username, "")
+			if err := h.sendUserTemplateByKey(rec, "expiry_adjusted", map[string]string{"ExpiryDate": emailExpiryDate}); err != nil {
+				slog.Error("Erreur envoi email bulk expiry_adjusted", "user", rec.Username, "error", err)
+				entry["success"] = true
+				entry["message"] = "Expiration mise à jour (email non envoyé)"
+				break
+			}
+			entry["success"] = true
+			entry["message"] = "Expiration mise à jour"
+
+		case "activate", "deactivate":
+			newState := action == "activate"
+			partials, err := h.setUserActiveState(rec, newState, sess.Username)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = strings.Join(partials, " | ")
+				break
+			}
+
+			entry["success"] = true
+			if len(partials) > 0 {
+				entry["message"] = "Action appliquée avec erreurs partielles: " + strings.Join(partials, " | ")
+			} else if newState {
+				entry["message"] = "Utilisateur activé"
+			} else {
+				entry["message"] = "Utilisateur désactivé"
+			}
+
+		case "send_password_reset":
+			err := h.sendPasswordResetForUser(rec, sess.Username)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = err.Error()
+				break
+			}
+
+			entry["success"] = true
+			entry["message"] = "Lien de réinitialisation envoyé"
+
+		case "delete":
+			partials, err := h.deleteUserRecord(rec, sess.Username)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = strings.Join(partials, " | ")
+				break
+			}
+
+			entry["success"] = true
+			if len(partials) > 0 {
+				entry["message"] = "Supprimé avec erreurs partielles: " + strings.Join(partials, " | ")
+			} else {
+				entry["message"] = "Utilisateur supprimé"
+			}
+
+		default:
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Action de masse non supportée"})
+			return
+		}
+
+		if ok, _ := entry["success"].(bool); ok {
+			successCount++
+		}
+		results = append(results, entry)
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: fmt.Sprintf("Action de masse terminée: %d/%d succès", successCount, len(req.UserIDs)),
+		Data: map[string]interface{}{
+			"total":   len(req.UserIDs),
+			"success": successCount,
+			"results": results,
+		},
+	})
+}
+
 // ── POST /admin/api/users/{id}/toggle ───────────────────────────────────────
 
 // ToggleUser active ou désactive un utilisateur simultanément dans l'AD
@@ -469,13 +1264,7 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ── 1. Récupérer l'utilisateur depuis SQLite ────────────────────────
-	var username, jellyfinID, ldapDN string
-	var isActive bool
-	err = h.db.Conn().QueryRow(
-		`SELECT username, jellyfin_id, ldap_dn, is_active FROM users WHERE id = ?`, userID,
-	).Scan(&username, &jellyfinID, &ldapDN, &isActive)
-
+	rec, err := h.loadAdminUserByID(userID)
 	if err == sql.ErrNoRows {
 		writeJSON(w, http.StatusNotFound, APIResponse{
 			Success: false,
@@ -492,88 +1281,34 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Nouveau statut = inverse du statut actuel
-	newActive := !isActive
-	var partialErrors []string
+	newActive := !rec.IsActive
+	partialErrors, err := h.setUserActiveState(rec, newActive, sess.Username)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur lors de la mise à jour du statut utilisateur",
+			Errors:  partialErrors,
+			Data: map[string]interface{}{
+				"id":        rec.ID,
+				"username":  rec.Username,
+				"is_active": rec.IsActive,
+			},
+		})
+		return
+	}
+
 	action := "activé"
 	if !newActive {
 		action = "désactivé"
 	}
-
-	slog.Info("Toggle utilisateur",
-		"admin", sess.Username,
-		"user_id", userID,
-		"username", username,
-		"current_active", isActive,
-		"new_active", newActive,
-	)
-
-	// ── 2. Modifier dans l'Active Directory (LDAP) ─────────────────────────────
-	if h.ldClient != nil && ldapDN != "" {
-		if newActive {
-			err = h.ldClient.EnableUser(ldapDN)
-		} else {
-			err = h.ldClient.DisableUser(ldapDN)
-		}
-		if err != nil {
-			slog.Error("Erreur toggle LDAP",
-				"dn", ldapDN,
-				"action", action,
-				"error", err,
-			)
-			partialErrors = append(partialErrors, fmt.Sprintf("LDAP: %s", err.Error()))
-		} else {
-			slog.Info("LDAP toggle réussi", "dn", ldapDN, "action", action)
-		}
-	}
-
-	// ── 3. Modifier dans Jellyfin ───────────────────────────────────────
-	if jellyfinID != "" {
-		if newActive {
-			err = h.jfClient.EnableUser(jellyfinID)
-		} else {
-			err = h.jfClient.DisableUser(jellyfinID)
-		}
-		if err != nil {
-			slog.Error("Erreur toggle Jellyfin",
-				"jellyfin_id", jellyfinID,
-				"action", action,
-				"error", err,
-			)
-			partialErrors = append(partialErrors, fmt.Sprintf("Jellyfin: %s", err.Error()))
-		} else {
-			slog.Info("Jellyfin toggle réussi", "id", jellyfinID, "action", action)
-		}
-	}
-
-	// ── 4. Mettre à jour SQLite ─────────────────────────────────────────
-	_, err = h.db.Conn().Exec(
-		`UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?`,
-		newActive, userID,
-	)
-	if err != nil {
-		slog.Error("Erreur mise à jour SQLite pour toggle", "id", userID, "error", err)
-		partialErrors = append(partialErrors, fmt.Sprintf("SQLite: %s", err.Error()))
-	}
-
-	// ── 5. Audit log ────────────────────────────────────────────────────
-	_ = h.db.LogAction(
-		fmt.Sprintf("user.%s", action),
-		sess.Username,
-		username,
-		fmt.Sprintf(`{"user_id":%d,"jellyfin_id":"%s","ldap_dn":"%s","errors":%d}`,
-			userID, jellyfinID, ldapDN, len(partialErrors)),
-	)
-
-	// ── 6. Réponse ──────────────────────────────────────────────────────
 	if len(partialErrors) > 0 {
 		writeJSON(w, http.StatusOK, APIResponse{
 			Success: true,
 			Message: fmt.Sprintf("Utilisateur %s (avec %d erreur(s) partielle(s))", action, len(partialErrors)),
 			Errors:  partialErrors,
 			Data: map[string]interface{}{
-				"id":        userID,
-				"username":  username,
+				"id":        rec.ID,
+				"username":  rec.Username,
 				"is_active": newActive,
 			},
 		})
@@ -582,10 +1317,10 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: fmt.Sprintf("Utilisateur %q %s avec succès", username, action),
+		Message: fmt.Sprintf("Utilisateur %q %s avec succès", rec.Username, action),
 		Data: map[string]interface{}{
-			"id":        userID,
-			"username":  username,
+			"id":        rec.ID,
+			"username":  rec.Username,
 			"is_active": newActive,
 		},
 	})
@@ -715,12 +1450,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ── 1. Récupérer l'utilisateur depuis SQLite ────────────────────────
-	var username, jellyfinID, ldapDN string
-	err = h.db.Conn().QueryRow(
-		`SELECT username, jellyfin_id, ldap_dn FROM users WHERE id = ?`, userID,
-	).Scan(&username, &jellyfinID, &ldapDN)
-
+	rec, err := h.loadAdminUserByID(userID)
 	if err == sql.ErrNoRows {
 		writeJSON(w, http.StatusNotFound, APIResponse{
 			Success: false,
@@ -737,74 +1467,24 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Suppression d'utilisateur demandée",
-		"admin", sess.Username,
-		"user_id", userID,
-		"username", username,
-		"jellyfin_id", jellyfinID,
-		"ldap_dn", ldapDN,
-	)
-
-	var partialErrors []string
-
-	// ── 2. Supprimer de l'Active Directory (LDAP) ──────────────────────────────
-	if h.ldClient != nil && ldapDN != "" {
-		if err := h.ldClient.DeleteUser(ldapDN); err != nil {
-			slog.Error("Erreur suppression LDAP (on continue)",
-				"dn", ldapDN,
-				"error", err,
-			)
-			partialErrors = append(partialErrors, fmt.Sprintf("LDAP: %s", err.Error()))
-		} else {
-			slog.Info("Utilisateur supprimé de l'AD", "dn", ldapDN)
-		}
-	}
-
-	// ── 3. Supprimer de Jellyfin ────────────────────────────────────────
-	if jellyfinID != "" {
-		if err := h.jfClient.DeleteUser(jellyfinID); err != nil {
-			slog.Error("Erreur suppression Jellyfin (on continue)",
-				"jellyfin_id", jellyfinID,
-				"error", err,
-			)
-			partialErrors = append(partialErrors, fmt.Sprintf("Jellyfin: %s", err.Error()))
-		} else {
-			slog.Info("Utilisateur supprimé de Jellyfin", "id", jellyfinID)
-		}
-	}
-
-	// ── 4. Supprimer de SQLite ──────────────────────────────────────────
-	_, err = h.db.Conn().Exec(`DELETE FROM users WHERE id = ?`, userID)
+	partialErrors, err := h.deleteUserRecord(rec, sess.Username)
 	if err != nil {
-		slog.Error("Erreur suppression SQLite", "id", userID, "error", err)
-		partialErrors = append(partialErrors, fmt.Sprintf("SQLite: %s", err.Error()))
-	} else {
-		slog.Info("Utilisateur supprimé de SQLite", "id", userID)
-	}
-
-	// ── 5. Audit log ────────────────────────────────────────────────────
-	_ = h.db.LogAction(
-		"user.deleted",
-		sess.Username,
-		username,
-		fmt.Sprintf(`{"user_id":%d,"jellyfin_id":"%s","ldap_dn":"%s","partial_errors":%d}`,
-			userID, jellyfinID, ldapDN, len(partialErrors)),
-	)
-
-	// ── 6. Réponse ──────────────────────────────────────────────────────
-	if len(partialErrors) > 0 && err != nil {
-		// La suppression SQLite a échoué — c'est critique
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur lors de la suppression (voir les erreurs)",
+			Message: "Erreur lors de la suppression de l'utilisateur",
 			Errors:  partialErrors,
+			Data: map[string]interface{}{
+				"id":       rec.ID,
+				"username": rec.Username,
+				"deleted":  false,
+			},
 		})
 		return
 	}
 
-	msg := fmt.Sprintf("Utilisateur %q supprimé avec succès", username)
+	msg := fmt.Sprintf("Utilisateur %q supprimé avec succès", rec.Username)
 	if len(partialErrors) > 0 {
-		msg = fmt.Sprintf("Utilisateur %q supprimé de SQLite (avec %d erreur(s) sur les services externes)", username, len(partialErrors))
+		msg = fmt.Sprintf("Utilisateur %q supprimé avec %d erreur(s) partielle(s)", rec.Username, len(partialErrors))
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -812,8 +1492,8 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		Message: msg,
 		Errors:  partialErrors,
 		Data: map[string]interface{}{
-			"id":       userID,
-			"username": username,
+			"id":       rec.ID,
+			"username": rec.Username,
 			"deleted":  true,
 		},
 	})
@@ -928,18 +1608,27 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Générer code aléatoire (ici via crypt/rand classique, 12 caractères)
-	code := utilsGenerateToken(12)
+	code, err := generateSecureToken(12)
+	if err != nil {
+		slog.Error("Erreur génération token d'invitation", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de générer un code d'invitation"})
+		return
+	}
 
 	// Calculer expiration du lien
 	var expiresAt interface{}
-	if req.ExpiresAt != "" {
+	inviteExpiryDate := ""
+	if strings.TrimSpace(req.ExpiresAt) != "" {
 		// Le frontend enverra "yyyy-MM-ddThh:mm"
 		if parsed, err := time.Parse("2006-01-02T15:04", req.ExpiresAt); err == nil {
 			expiresAt = parsed
+			inviteExpiryDate = emailTime(parsed)
 		} else if parsed, err := time.Parse(time.RFC3339, req.ExpiresAt); err == nil {
 			expiresAt = parsed
+			inviteExpiryDate = emailTime(parsed)
 		} else {
 			expiresAt = req.ExpiresAt // fallback natif sqlite string
+			inviteExpiryDate = strings.TrimSpace(req.ExpiresAt)
 		}
 	}
 
@@ -955,7 +1644,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 	profileJSON, _ := json.Marshal(jfProfile)
 
-	_, err := h.db.Conn().Exec(
+	_, err = h.db.Conn().Exec(
 		`INSERT INTO invitations (code, label, max_uses, jellyfin_profile, expires_at, created_by)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		code, req.Label, req.MaxUses, string(profileJSON), expiresAt, sess.Username,
@@ -970,25 +1659,58 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	h.db.LogAction("invite.created", sess.Username, req.Label, fmt.Sprintf("Code: %s", code))
 
 	// Envoi SMTP si demandé
-	inviteURL := fmt.Sprintf("%s/invite/%s", h.cfg.Jellyfin.URL, code) // Normalement JellyGate public URL
-	if req.SendToEmail != "" {
+	baseURL := strings.TrimSpace(h.cfg.BaseURL)
+	if baseURL == "" {
+		baseURL = strings.TrimSpace(h.cfg.Jellyfin.URL)
+	}
+	inviteURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(baseURL, "/"), code)
+	sendToEmail := strings.TrimSpace(req.SendToEmail)
+	if sendToEmail != "" {
 		if h.mailer != nil {
-			go func() {
+			customMessage := strings.TrimSpace(req.EmailMessage)
+			inviteeName := strings.TrimSpace(req.ForcedUsername)
+			if inviteeName == "" {
+				inviteeName = "invité"
+			}
+
+			go func(recipient, username, expiryDate, customBody string) {
 				emailCfg, _ := h.db.GetEmailTemplatesConfig()
-				tpl := emailCfg.Invitation
-				if tpl == "" {
-					tpl = "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}"
+				combinedTemplate := joinTemplateSections(
+					emailCfg.Invitation,
+					emailCfg.InviteExpiry,
+					emailCfg.PreSignupHelp,
+				)
+
+				if strings.TrimSpace(customBody) != "" {
+					combinedTemplate = joinTemplateSections(combinedTemplate, "{{.Message}}")
+				}
+
+				if combinedTemplate == "" {
+					combinedTemplate = "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}"
 				}
 
 				emailData := map[string]string{
 					"InviteLink": inviteURL,
+					"InviteURL":  inviteURL,
+					"InviteCode": code,
+					"HelpURL":    strings.TrimRight(baseURL, "/"),
+					"Username":   username,
+				}
+				if expiryDate != "" {
+					emailData["ExpiryDate"] = expiryDate
+				} else {
+					emailData["ExpiryDate"] = "Non définie"
+				}
+				if strings.TrimSpace(customBody) != "" {
+					emailData["Message"] = customBody
 				}
 
-				errMail := h.mailer.SendTemplateString(req.SendToEmail, "Invitation à rejoindre JellyGate", tpl, emailData)
+				errMail := sendTemplateIfConfigured(h.mailer, recipient, "Invitation à rejoindre JellyGate", combinedTemplate, emailData)
 				if errMail != nil {
-					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", req.SendToEmail, "error", errMail)
+					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", recipient, "error", errMail)
+					_ = h.db.LogAction("invite.email.failed", sess.Username, code, errMail.Error())
 				}
-			}()
+			}(sendToEmail, inviteeName, inviteExpiryDate, customMessage)
 		} else {
 			slog.Warn("Option e-mail cochée pour l'invitation, mais le serveur SMTP n'est pas configuré.")
 		}
@@ -1055,15 +1777,4 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	if err := enc.Encode(data); err != nil {
 		slog.Error("Erreur d'encodage JSON", "error", err)
 	}
-}
-
-// utilsGenerateToken crée une chaîne aléatoire sûre pour les invitations
-func utilsGenerateToken(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, length)
-	// Fallback basique en attendant de le bouger ailleurs
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
-	}
-	return string(b)
 }

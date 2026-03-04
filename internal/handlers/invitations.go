@@ -27,6 +27,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
+	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
 	"github.com/maelmoreau21/JellyGate/internal/render"
@@ -63,17 +64,19 @@ type InvitationHandler struct {
 	db       *database.DB
 	jfClient *jellyfin.Client
 	ldClient *jgldap.Client
+	mailer   *mail.Mailer
 	notifier *notify.Notifier
 	renderer *render.Engine
 }
 
 // NewInvitationHandler crée un nouveau handler d'invitations.
-func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
+func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, m *mail.Mailer, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
 	return &InvitationHandler{
 		cfg:      cfg,
 		db:       db,
 		jfClient: jf,
 		ldClient: ld,
+		mailer:   m,
 		notifier: n,
 		renderer: renderer,
 	}
@@ -81,6 +84,9 @@ func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Clie
 
 // SetLDAPClient remplace le client LDAP (rechargement à chaud).
 func (h *InvitationHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
+
+// SetMailer remplace le mailer SMTP (rechargement à chaud).
+func (h *InvitationHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
 // SetNotifier remplace le notifier (rechargement à chaud).
 func (h *InvitationHandler) SetNotifier(n *notify.Notifier) { h.notifier = n }
@@ -319,7 +325,32 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		LdapDN:      userDN,
 	})
 
-	// TODO: Envoyer l'email de bienvenue à l'utilisateur
+	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
+		emailCfg, _ := h.db.GetEmailTemplatesConfig()
+		combinedTemplate := joinTemplateSections(
+			emailCfg.Welcome,
+			emailCfg.Confirmation,
+			emailCfg.PostSignupHelp,
+			emailCfg.UserCreation,
+		)
+
+		if combinedTemplate != "" {
+			emailData := map[string]string{
+				"Username":   form.Username,
+				"DisplayName": form.DisplayName,
+				"Email":      form.Email,
+				"InviteCode":  code,
+				"InviteLink":  strings.TrimRight(h.cfg.BaseURL, "/") + "/invite/" + code,
+				"HelpURL":     h.cfg.BaseURL,
+				"JellyfinURL": h.cfg.Jellyfin.URL,
+			}
+
+			if err := sendTemplateIfConfigured(h.mailer, form.Email, "Bienvenue sur JellyGate", combinedTemplate, emailData); err != nil {
+				slog.Error("Erreur envoi email post-inscription", "email", form.Email, "error", err)
+				_ = h.db.LogAction("invite.welcome_email.failed", form.Username, code, err.Error())
+			}
+		}
+	}
 
 	_ = h.db.LogAction("invite.used", form.Username, code,
 		fmt.Sprintf(`{"jellyfin_id":"%s","ldap_dn":"%s","email":"%s"}`, jfUser.ID, userDN, form.Email))
