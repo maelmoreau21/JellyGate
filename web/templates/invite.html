@@ -52,7 +52,8 @@
                     <label class="jg-label" for="username">{{ .T "field_username" }}</label>
                     <input type="text" id="username" name="username" class="jg-input"
                         placeholder='{{ .T "field_username_placeholder" }}' required pattern="[a-zA-Z0-9_-]+"
-                        minlength="3" maxlength="32" autocomplete="username">
+                        minlength="3" maxlength="32" autocomplete="username" {{ if .Data.ForcedUsername
+                        }}value="{{ .Data.ForcedUsername }}" readonly{{ end }}>
                     <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }}</p>
                 </div>
 
@@ -81,8 +82,9 @@
                 {{/* Password Confirm */}}
                 <div class="mb-6">
                     <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
-                    placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="8"
-                    autocomplete="new-password">
+                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
+                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="8"
+                        autocomplete="new-password">
                     <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
                 </div>
 

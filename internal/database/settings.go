@@ -21,6 +21,7 @@ const (
 	SettingLDAPConfig     = "ldap_config"     // JSON: config.LDAPConfig
 	SettingSMTPConfig     = "smtp_config"     // JSON: config.SMTPConfig
 	SettingWebhooksConfig = "webhooks_config" // JSON: config.WebhooksConfig
+	SettingEmailTemplates = "email_templates" // JSON: config.EmailTemplatesConfig
 	SettingDefaultLang    = "default_lang"    // Langue par défaut du serveur ("fr" ou "en")
 )
 
@@ -169,6 +170,37 @@ func (db *DB) SaveSMTPConfig(cfg config.SMTPConfig) error {
 		return fmt.Errorf("SaveSMTPConfig marshal: %w", err)
 	}
 	return db.SetSetting(SettingSMTPConfig, string(data))
+}
+
+// ── Emails Templates Config ─────────────────────────────────────────────────
+
+// GetEmailTemplatesConfig récupère la configuration des gabarits d'emails.
+func (db *DB) GetEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
+	cfg := config.DefaultEmailTemplates()
+
+	raw, err := db.GetSetting(SettingEmailTemplates)
+	if err != nil {
+		return cfg, err
+	}
+	if raw == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config EmailTemplates", "error", err)
+		return cfg, nil // Fallback silenceus sur defaults
+	}
+
+	return cfg, nil
+}
+
+// SaveEmailTemplatesConfig sauvegarde la configuration des gabarits.
+func (db *DB) SaveEmailTemplatesConfig(cfg config.EmailTemplatesConfig) error {
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SaveEmailTemplatesConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingEmailTemplates, string(data))
 }
 
 // ── Webhooks Config ─────────────────────────────────────────────────────────

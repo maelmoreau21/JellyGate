@@ -207,6 +207,10 @@ func (db *DB) migrate() error {
 		slog.Debug("Migration exécutée", "name", m.name, "duration", time.Since(start))
 	}
 
+	// Retro-compatibilité logic: Add can_invite to existing tables.
+	// We ignore the error since it will fail cleanly if the column already exists.
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN can_invite BOOLEAN NOT NULL DEFAULT 0`)
+
 	slog.Info("Migrations terminées", "count", len(migrations))
 	return nil
 }

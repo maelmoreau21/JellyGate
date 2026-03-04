@@ -43,10 +43,11 @@ func NewSettingsHandler(db *database.DB) *SettingsHandler {
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
-	DefaultLang string                `json:"default_lang"`
-	LDAP        config.LDAPConfig     `json:"ldap"`
-	SMTP        config.SMTPConfig     `json:"smtp"`
-	Webhooks    config.WebhooksConfig `json:"webhooks"`
+	DefaultLang    string                      `json:"default_lang"`
+	LDAP           config.LDAPConfig           `json:"ldap"`
+	SMTP           config.SMTPConfig           `json:"smtp"`
+	Webhooks       config.WebhooksConfig       `json:"webhooks"`
+	EmailTemplates config.EmailTemplatesConfig `json:"email_templates"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
@@ -100,13 +101,19 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		maskedSMTP.Password = "••••••••"
 	}
 
+	emailTemplatesCfg, err := h.db.GetEmailTemplatesConfig()
+	if err != nil {
+		slog.Error("Erreur lecture config Email Templates", "error", err)
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
-			DefaultLang: defaultLang,
-			LDAP:        maskedLDAP,
-			SMTP:        maskedSMTP,
-			Webhooks:    webhooksCfg,
+			DefaultLang:    defaultLang,
+			LDAP:           maskedLDAP,
+			SMTP:           maskedSMTP,
+			Webhooks:       webhooksCfg,
+			EmailTemplates: emailTemplatesCfg,
 		},
 	})
 }
@@ -287,5 +294,36 @@ func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Message: "Configuration Webhooks sauvegardée",
+	})
+}
+
+// ── POST /admin/api/settings/email-templates ────────────────────────────────
+
+// SaveEmailTemplates sauvegarde les modèles de courriels personnalisés.
+func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Request) {
+	var input config.EmailTemplatesConfig
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.db.SaveEmailTemplatesConfig(input); err != nil {
+		slog.Error("Erreur sauvegarde config Email Templates", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur de sauvegarde des modèles",
+		})
+		return
+	}
+
+	slog.Info("Configuration Email Templates sauvegardée")
+	_ = h.db.LogAction("settings.email_templates.saved", "", "", "")
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Modèles d'emails sauvegardés avec succès",
 	})
 }

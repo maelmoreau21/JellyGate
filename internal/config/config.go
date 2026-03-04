@@ -64,6 +64,28 @@ type SMTPConfig struct {
 	UseTLS   bool   `json:"use_tls"`  // Utiliser STARTTLS
 }
 
+// EmailTemplatesConfig contient les modèles de courriels personnalisés configurables (JFA-Go).
+type EmailTemplatesConfig struct {
+	Confirmation   string `json:"confirmation"`
+	ExpiryReminder string `json:"expiry_reminder"`
+	Invitation     string `json:"invitation"`
+	InviteExpiry   string `json:"invite_expiry"`
+	PasswordReset  string `json:"password_reset"`
+	UserCreation   string `json:"user_creation"`
+}
+
+// DefaultEmailTemplates retourne les traductions de base des modèles d'emails
+func DefaultEmailTemplates() EmailTemplatesConfig {
+	return EmailTemplatesConfig{
+		Confirmation:   "Bonjour {{.Username}},\n\nVotre inscription est confirmée.",
+		ExpiryReminder: "Bonjour {{.Username}},\n\nVotre compte expirera prochainement.",
+		Invitation:     "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}",
+		InviteExpiry:   "Attention, votre lien d'invitation va bientôt expirer.",
+		PasswordReset:  "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}",
+		UserCreation:   "Bonjour {{.Username}},\n\nVotre compte a été créé avec succès par un administrateur.",
+	}
+}
+
 // WebhooksConfig contient les paramètres des webhooks sortants (optionnels).
 type WebhooksConfig struct {
 	Discord  DiscordWebhook  `json:"discord"`

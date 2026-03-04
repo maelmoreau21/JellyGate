@@ -102,6 +102,17 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.Invitation = inv
 
+	// Analyser le profil pour vérifier si un username est forcé (Flux B)
+	if inv.JellyfinProfile != "" {
+		var profile jellyfin.InviteProfile
+		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &profile); err == nil && profile.ForcedUsername != "" {
+			if td.Data == nil {
+				td.Data = make(map[string]interface{})
+			}
+			td.Data["ForcedUsername"] = profile.ForcedUsername
+		}
+	}
+
 	if err := h.renderer.Render(w, "invite.html", td); err != nil {
 		slog.Error("Erreur rendu invitation page", "error", err)
 		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
@@ -170,6 +181,12 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			EnableDownload:     true,
 			EnableRemoteAccess: true,
 		}
+	}
+
+	// ── JFA-Go Flux B (Forced Username) ─────────────────────────
+	if profile.ForcedUsername != "" {
+		slog.Debug("Flux JFA-Go (Forced Username) détecté", "forced", profile.ForcedUsername, "submitted", form.Username)
+		form.Username = profile.ForcedUsername
 	}
 
 	slog.Info("✅ Étape 1/5 terminée", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))

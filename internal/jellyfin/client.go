@@ -59,11 +59,12 @@ type CreateUserRequest struct {
 
 // User représente un utilisateur Jellyfin (réponse API).
 type User struct {
-	ID                    string `json:"Id"`
-	Name                  string `json:"Name"`
-	HasPassword           bool   `json:"HasPassword"`
-	HasConfiguredPassword bool   `json:"HasConfiguredPassword"`
-	Policy                Policy `json:"Policy"`
+	ID                    string                 `json:"Id"`
+	Name                  string                 `json:"Name"`
+	HasPassword           bool                   `json:"HasPassword"`
+	HasConfiguredPassword bool                   `json:"HasConfiguredPassword"`
+	Policy                Policy                 `json:"Policy"`
+	Configuration         map[string]interface{} `json:"Configuration"`
 }
 
 // Policy représente la politique de droits d'un utilisateur Jellyfin.
@@ -110,6 +111,10 @@ type InviteProfile struct {
 	MaxSessions        int      `json:"max_sessions"`
 	BitrateLimit       int      `json:"bitrate_limit"`    // 0 = illimité
 	UserExpiryDays     int      `json:"user_expiry_days"` // 0 = illimité
+
+	// JFA-Go Features
+	ForcedUsername string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
+	TemplateUserID string `json:"template_user_id"` // Si fourni, clonage strict des droits de ce profil
 }
 
 // ── Opérations CRUD ─────────────────────────────────────────────────────────
@@ -249,6 +254,25 @@ func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error 
 	policy.EnableMediaPlayback = true
 	policy.EnableAudioPlaybackTranscoding = true
 	policy.EnableVideoPlaybackTranscoding = true
+
+	// Si un profil modèle est défini (Flux JFA-Go avancé), écraser avec la politique du modèle
+	if profile.TemplateUserID != "" {
+		slog.Debug("Clonage de la politique et configuration depuis le modèle Jellyfin", "template", profile.TemplateUserID, "target", userID)
+		templateUser, err := c.GetUser(profile.TemplateUserID)
+		if err == nil {
+			policy = templateUser.Policy
+			policy.IsAdministrator = false // Interdire formellement qu'un modèle leak des droits d'admin
+
+			// Le clonage de 'Configuration' complète du modèle peut se faire ici
+			// Ex: AudioLanguagePreference, SubtitleMode, etc.
+			reqBody, configErr := json.Marshal(templateUser.Configuration)
+			if configErr == nil {
+				_, _ = c.doRequest(http.MethodPost, fmt.Sprintf("/Users/%s/Configuration", userID), reqBody)
+			}
+		} else {
+			slog.Warn("Echec du chargement du profil modèle Jellyfin, application des droits restreints standards", "template", profile.TemplateUserID)
+		}
+	}
 
 	return c.SetUserPolicy(userID, policy)
 }

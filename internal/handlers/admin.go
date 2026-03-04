@@ -29,8 +29,8 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
+	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
-	"github.com/maelmoreau21/JellyGate/internal/notify"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
@@ -73,22 +73,27 @@ type AdminHandler struct {
 	db       *database.DB
 	jfClient *jellyfin.Client
 	ldClient *jgldap.Client
+	mailer   *mail.Mailer
 	renderer *render.Engine
 }
 
 // NewAdminHandler crée un nouveau handler d'administration.
-func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, renderer *render.Engine) *AdminHandler {
+func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
 	return &AdminHandler{
 		cfg:      cfg,
 		db:       db,
 		jfClient: jf,
 		ldClient: ld,
+		mailer:   m,
 		renderer: renderer,
 	}
 }
 
 // SetLDAPClient remplace le client LDAP (rechargement à chaud).
 func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
+
+// SetMailer remplace le Mailer SMTP (rechargement à chaud).
+func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
 // ── Background Jobs ─────────────────────────────────────────────────────────
 
@@ -900,6 +905,8 @@ type CreateInvitationRequest struct {
 	EmailMessage    string   `json:"email_message"`
 	Libraries       []string `json:"libraries"` // ID des bibliothèques Jellyfin
 	EnableDownloads bool     `json:"enable_downloads"`
+	ForcedUsername  string   `json:"forced_username"`
+	TemplateUserID  string   `json:"template_user_id"`
 }
 
 // CreateInvitation crée un nouveau lien d'invitation avec un jeton robuste et logiques complexes (JFA-GO).
@@ -943,6 +950,8 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		EnableDownload:     req.EnableDownloads,
 		EnableRemoteAccess: true,
 		UserExpiryDays:     req.UserExpiryDays,
+		ForcedUsername:     req.ForcedUsername,
+		TemplateUserID:     req.TemplateUserID,
 	}
 	profileJSON, _ := json.Marshal(jfProfile)
 
@@ -963,14 +972,26 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	// Envoi SMTP si demandé
 	inviteURL := fmt.Sprintf("%s/invite/%s", h.cfg.Jellyfin.URL, code) // Normalement JellyGate public URL
 	if req.SendToEmail != "" {
-		// Envoyer l'email
-		go func() {
-			smtpCfg, _ := h.db.GetSMTPConfig()
-			errMail := notify.SendInvitationEmail(&smtpCfg, req.SendToEmail, inviteURL, req.EmailMessage)
-			if errMail != nil {
-				slog.Error("Erreur d'envoi SMTP (Invitation)", "email", req.SendToEmail, "error", errMail)
-			}
-		}()
+		if h.mailer != nil {
+			go func() {
+				emailCfg, _ := h.db.GetEmailTemplatesConfig()
+				tpl := emailCfg.Invitation
+				if tpl == "" {
+					tpl = "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}"
+				}
+
+				emailData := map[string]string{
+					"InviteLink": inviteURL,
+				}
+
+				errMail := h.mailer.SendTemplateString(req.SendToEmail, "Invitation à rejoindre JellyGate", tpl, emailData)
+				if errMail != nil {
+					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", req.SendToEmail, "error", errMail)
+				}
+			}()
+		} else {
+			slog.Warn("Option e-mail cochée pour l'invitation, mais le serveur SMTP n'est pas configuré.")
+		}
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{

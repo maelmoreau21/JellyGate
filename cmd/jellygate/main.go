@@ -104,7 +104,7 @@ func main() {
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
 	authHandler := handlers.NewAuthHandler(cfg, db, renderEngine)
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, notifier, renderEngine)
-	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, renderEngine)
+	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db)
 
@@ -130,6 +130,7 @@ func main() {
 			}
 			mailer = newMailer
 			resetHandler.SetMailer(mailer)
+			adminHandler.SetMailer(mailer)
 			slog.Info("🔄 Client SMTP rechargé", "host", c.Host)
 		}
 	}
@@ -214,6 +215,7 @@ func main() {
 					r.Post("/ldap", settingsHandler.SaveLDAP)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
+					r.Post("/email-templates", settingsHandler.SaveEmailTemplates)
 				})
 
 				r.Route("/api/logs", func(r chi.Router) {

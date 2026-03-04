@@ -168,6 +168,59 @@ func (m *Mailer) SendMail(to, subject, templateName string, data interface{}) er
 	return nil
 }
 
+// ── SendTemplateString ──────────────────────────────────────────────────────
+
+// SendTemplateString rend et envoie un email à partir d'une chaîne de modèle dynamique (ex: depuis la base de données).
+// Les balises HTML sont supportées.
+func (m *Mailer) SendTemplateString(to, subject, tplString string, data interface{}) error {
+	if to == "" {
+		return fmt.Errorf("mail.SendTemplateString: adresse destinataire vide")
+	}
+
+	// 1. Rendre le template en mémoire (html/template)
+	tmpl, err := template.New("dynamic").Parse(tplString)
+	if err != nil {
+		return fmt.Errorf("mail.SendTemplateString: échec du parsing du modèle: %w", err)
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("mail.SendTemplateString: erreur de rendu: %w", err)
+	}
+	htmlBody := buf.String()
+
+	// 2. Construire le message
+	msg := gomail.NewMsg()
+
+	if err := msg.From(m.from); err != nil {
+		return fmt.Errorf("mail.SendTemplateString: adresse expéditeur invalide %q: %w", m.from, err)
+	}
+	if err := msg.To(to); err != nil {
+		return fmt.Errorf("mail.SendTemplateString: adresse destinataire invalide %q: %w", to, err)
+	}
+
+	msg.Subject(subject)
+	msg.SetMessageID()
+	msg.SetDate()
+	msg.SetBodyString(gomail.TypeTextHTML, htmlBody)
+
+	// 3. Envoyer
+	client, err := m.newClient()
+	if err != nil {
+		return fmt.Errorf("mail.SendTemplateString: %w", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := client.DialAndSendWithContext(ctx, msg); err != nil {
+		return fmt.Errorf("mail.SendTemplateString: échec d'envoi à %q — %w", to, err)
+	}
+
+	slog.Info("Email dynamique envoyé", "to", to, "subject", subject)
+	return nil
+}
+
 // ── SendRawHTML ──────────────────────────────────────────────────────────────
 
 // SendRawHTML envoie un email avec un corps HTML fourni directement

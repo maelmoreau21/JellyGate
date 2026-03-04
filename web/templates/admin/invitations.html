@@ -155,15 +155,29 @@
                 <div class="space-y-4">
                     <h3 class="text-lg font-semibold text-emerald-400 border-b border-white/10 pb-2">Paramètres de
                         Profil</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="jg-label">Nom d'utilisateur forcé (Flux B)</label>
+                            <input type="text" id="inv-forced-user" class="jg-input"
+                                placeholder="Laisser vide pour choix libre">
+                        </div>
+                        <div>
+                            <label class="jg-label">Cloner un profil Jellyfin</label>
+                            <select id="inv-template-user" class="jg-input">
+                                <option value="">Par défaut (Aucun)</option>
+                                {{/* Populé via JS (Dashboard) */}}
+                            </select>
+                        </div>
+                    </div>
                     <div>
-                        <label class="jg-label">Expiration du compte client (Jours, 0 = Jamais)</label>
+                        <label class="jg-label mt-2">Expiration du compte client (Jours, 0 = Jamais)</label>
                         <input type="number" id="inv-expires-user"
                             class="jg-input text-emerald-100 placeholder-emerald-800" min="0" value="0"
                             placeholder="Ex: 30 pour un accès mensuel">
                     </div>
                     <div>
                         <label class="jg-label flex items-center gap-2 cursor-pointer mt-6">
-                            <input type="checkbox" id="inv-dl"
+                            <input type="checkbox" id="inv-dl" checked
                                 class="rounded border-slate-600 bg-slate-800 text-purple-500 w-5 h-5 focus:ring-0 cursor-pointer">
                             <span class="text-slate-300">Autoriser le téléchargement direct des médias</span>
                         </label>
@@ -175,16 +189,11 @@
             <div class="space-y-4 mb-8">
                 <h3 class="text-lg font-semibold text-amber-400 border-b border-white/10 pb-2">Notification SMTP
                     Automatique</h3>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="jg-label">Envoyer à l'adresse e-mail (Optionnel)</label>
-                        <input type="email" id="inv-email" class="jg-input" placeholder="exemple@gmail.com">
-                    </div>
-                    <div>
-                        <label class="jg-label">Mot personnalisé</label>
-                        <textarea id="inv-message" class="jg-input" rows="2"
-                            placeholder="Salut ! Voici ton accès au serveur familial."></textarea>
-                    </div>
+                <div>
+                    <label class="jg-label">Envoyer à l'adresse e-mail (Optionnel)</label>
+                    <input type="email" id="inv-email" class="jg-input" placeholder="exemple@gmail.com">
+                    <p class="text-xs text-slate-500 mt-1">L'utilisateur recevra un mail de bienvenue avec ses
+                        instructions.</p>
                 </div>
             </div>
 
@@ -236,6 +245,17 @@
                 renderInvitations(allInvitations);
             } else {
                 JG.toast('Erreur de chargement', 'error');
+            }
+
+            // Charger les utilisateurs JF pour le select du clone de profil
+            const usersRes = await JG.api('/admin/api/users');
+            if (usersRes.success && usersRes.data) {
+                const select = document.getElementById('inv-template-user');
+                let options = `<option value="">Par défaut (Aucun)</option>`;
+                usersRes.data.forEach(u => {
+                    options += `<option value="${u.jellyfin_id}">${JG.esc(u.username)}</option>`;
+                });
+                select.innerHTML = options;
             }
         };
 
@@ -324,8 +344,10 @@
                 expires_at: document.getElementById('inv-expires-link').value || "",
                 user_expiry_days: parseInt(document.getElementById('inv-expires-user').value) || 0,
                 send_to_email: document.getElementById('inv-email').value,
-                email_message: document.getElementById('inv-message').value,
+                email_message: "", // Obsolète, géré par Moteur d'emails
                 enable_downloads: document.getElementById('inv-dl').checked,
+                forced_username: document.getElementById('inv-forced-user').value,
+                template_user_id: document.getElementById('inv-template-user').value,
                 libraries: [] // Pour la démo : Toutes les bibliothèques. JFA-GO utilise des select complexes.
             };
 

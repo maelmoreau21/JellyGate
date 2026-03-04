@@ -95,7 +95,7 @@
     </div>
 
     {{/* Password Reset Card (Visible par tous les utilisateurs) */}}
-    <div class="glass-card mb-8">
+    <div class="glass-card mb-8 p-6">
         <h2 class="text-xl font-bold mb-4">🔐 Mon Compte</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -215,7 +215,7 @@
         }
 
         // Load stats
-        { { if .IsAdmin } }
+        // {{ if .IsAdmin }}
         JG.api('/admin/api/users').then(res => {
             if (!res.success) return;
             const users = res.data || [];
@@ -243,7 +243,7 @@
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-8">Aucun utilisateur</td></tr>';
             }
         });
-        { { end } }
+        // {{ end }}
     });
 
     // Change Password function

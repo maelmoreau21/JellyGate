@@ -200,7 +200,13 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		"ExpiresIn": "15 minutes",
 	}
 
-	if err := h.mailer.SendMail(user.Email, "Réinitialisation de votre mot de passe — JellyGate", "password_reset", emailData); err != nil {
+	emailCfg, _ := h.db.GetEmailTemplatesConfig()
+	tpl := emailCfg.PasswordReset
+	if tpl == "" {
+		tpl = "Bonjour {{.Username}},\n\nVoici le lien pour réinitialiser votre mot de passe : {{.ResetURL}}"
+	}
+
+	if err := h.mailer.SendTemplateString(user.Email, "Réinitialisation de votre mot de passe — JellyGate", tpl, emailData); err != nil {
 		slog.Error("Erreur d'envoi de l'email de reset",
 			"to", user.Email,
 			"error", err,

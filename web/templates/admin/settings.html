@@ -110,6 +110,10 @@
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
         🔔 Webhooks
       </button>
+      <button onclick="switchTab('email-templates')" id="tab-email-templates"
+        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        📝 Modèles Email
+      </button>
     </div>
 
     {{/* ═══════════════════════════════════════════════════════════════ */}}
@@ -344,6 +348,51 @@
       </div>
     </div>
 
+    {{/* ═══════════════════════════════════════════════════════════════ */}}
+    {{/* TAB: Modèles Email */}}
+    {{/* ═══════════════════════════════════════════════════════════════ */}}
+    <div id="panel-email-templates" class="tab-panel hidden">
+      <div class="glass-card p-6 md:p-8">
+        <div class="mb-6 pb-4 border-b border-white/10">
+          <h2 class="text-lg font-semibold text-white">Modèles de courriels (Templates)</h2>
+          <p class="text-sm text-slate-400">Personnalisez les messages envoyés automatiquement aux utilisateurs.</p>
+        </div>
+        <form id="form-email-templates" onsubmit="saveSettings('email-templates', event)">
+          <div class="space-y-6">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="jg-label" for="tpl-invitation">Invitation (Flux Libre)</label>
+                <textarea id="tpl-invitation" class="jg-input font-mono text-sm leading-relaxed" rows="5"></textarea>
+                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.InviteLink{{ "}}" }}</p>
+              </div>
+              <div>
+                <label class="jg-label" for="tpl-user-creation">Création Forcée (Flux B)</label>
+                <textarea id="tpl-user-creation" class="jg-input font-mono text-sm leading-relaxed" rows="5"></textarea>
+                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.Username{{ "}}" }}</p>
+              </div>
+              <div>
+                <label class="jg-label" for="tpl-confirmation">Confirmation (Bienvenue)</label>
+                <textarea id="tpl-confirmation" class="jg-input font-mono text-sm leading-relaxed" rows="5"></textarea>
+                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.Username{{ "}}" }}</p>
+              </div>
+              <div>
+                <label class="jg-label" for="tpl-password-reset">Réinitialisation Mot de passe</label>
+                <textarea id="tpl-password-reset" class="jg-input font-mono text-sm leading-relaxed"
+                  rows="5"></textarea>
+                <p class="text-xs text-slate-500 mt-1">Variables : {{ "{{" }}.Username{{ "}}" }}, {{ "{{" }}.ResetLink{{
+                  "}}" }}</p>
+              </div>
+            </div>
+
+          </div>
+          <div class="mt-6 flex justify-end">
+            <button type="submit" class="btn-primary px-6 py-2.5">💾 Sauvegarder les modèles</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </div>
 </main>
 {{ end }}
@@ -409,6 +458,14 @@
     document.getElementById('wh-matrix-url').value = (d.webhooks.matrix && d.webhooks.matrix.url) || '';
     document.getElementById('wh-matrix-room').value = (d.webhooks.matrix && d.webhooks.matrix.room_id) || '';
     document.getElementById('wh-matrix-token').value = (d.webhooks.matrix && d.webhooks.matrix.token) || '';
+
+    // Modèles Email
+    if (d.email_templates) {
+      document.getElementById('tpl-invitation').value = d.email_templates.invitation || '';
+      document.getElementById('tpl-user-creation').value = d.email_templates.user_creation || '';
+      document.getElementById('tpl-confirmation').value = d.email_templates.confirmation || '';
+      document.getElementById('tpl-password-reset').value = d.email_templates.password_reset || '';
+    }
   }
 
   // ── Save settings to API ────────────────────────────────────────────────
@@ -456,6 +513,13 @@
           room_id: document.getElementById('wh-matrix-room').value,
           token: document.getElementById('wh-matrix-token').value,
         },
+      };
+    } else if (section === 'email-templates') {
+      body = {
+        invitation: document.getElementById('tpl-invitation').value,
+        user_creation: document.getElementById('tpl-user-creation').value,
+        confirmation: document.getElementById('tpl-confirmation').value,
+        password_reset: document.getElementById('tpl-password-reset').value,
       };
     }
 
