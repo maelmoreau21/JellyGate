@@ -4,7 +4,7 @@
 // La route POST /invite/{code} implémente un flux de création atomique :
 //
 //  1. Validation SQLite (code, expiration, quota)
-//  2. Création LDAP (Synology AD)
+//  2. Création LDAP (Active Directory)
 //  3. Création Jellyfin + application du profil
 //     → Rollback LDAP si échec
 //  4. Enregistrement SQLite (user + incrément used_count)
@@ -27,7 +27,9 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
+	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
+	"github.com/maelmoreau21/JellyGate/internal/render"
 )
 
 // ── Structures internes ─────────────────────────────────────────────────────
@@ -62,16 +64,18 @@ type InvitationHandler struct {
 	jfClient *jellyfin.Client
 	ldClient *jgldap.Client
 	notifier *notify.Notifier
+	renderer *render.Engine
 }
 
 // NewInvitationHandler crée un nouveau handler d'invitations.
-func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, n *notify.Notifier) *InvitationHandler {
+func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
 	return &InvitationHandler{
 		cfg:      cfg,
 		db:       db,
 		jfClient: jf,
 		ldClient: ld,
 		notifier: n,
+		renderer: renderer,
 	}
 }
 
@@ -95,25 +99,13 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Servir le vrai template HTML d'inscription
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"><title>JellyGate — Inscription</title></head>
-<body>
-<h1>Inscription — %s</h1>
-<p>Invitation : <code>%s</code> — %d/%d utilisations</p>
-<form method="POST" action="/invite/%s">
-  <label>Nom d'utilisateur : <input type="text" name="username" required pattern="[a-zA-Z0-9_-]+" minlength="3" maxlength="32"></label><br>
-  <label>Nom affiché : <input type="text" name="display_name" required maxlength="64"></label><br>
-  <label>Email : <input type="email" name="email"></label><br>
-  <label>Mot de passe : <input type="password" name="password" required minlength="8"></label><br>
-  <label>Confirmer : <input type="password" name="password_confirm" required minlength="8"></label><br>
-  <button type="submit">Créer mon compte</button>
-</form>
-</body>
-</html>`, inv.Label, inv.Code, inv.UsedCount, inv.MaxUses, inv.Code)
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.Invitation = inv
+
+	if err := h.renderer.Render(w, "invite.html", td); err != nil {
+		slog.Error("Erreur rendu invitation page", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
 }
 
 // ── POST /invite/{code} — FLUX ATOMIQUE ─────────────────────────────────────
@@ -183,7 +175,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	slog.Info("✅ Étape 1/5 terminée", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))
 
 	// ═══════════════════════════════════════════════════════════════════
-	// ÉTAPE 2 : Création du compte dans Synology AD (LDAP)
+	// ÉTAPE 2 : Création du compte dans l'Active Directory (LDAP)
 	// ═══════════════════════════════════════════════════════════════════
 	var userDN string
 	if h.ldClient != nil {
@@ -323,19 +315,14 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	)
 
 	// ── Réponse de succès ────────────────────────────────────────────────
-	// TODO: Servir le vrai template HTML de confirmation
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"><title>JellyGate — Inscription réussie</title></head>
-<body>
-<h1>✅ Compte créé avec succès !</h1>
-<p>Bienvenue <strong>%s</strong> !</p>
-<p>Votre compte a été créé dans Jellyfin et dans l'annuaire.</p>
-<p>Vous pouvez maintenant vous connecter à <a href="%s">Jellyfin</a> avec vos identifiants.</p>
-</body>
-</html>`, form.DisplayName, h.cfg.Jellyfin.URL)
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé avec succès dans Jellyfin et dans l'annuaire.", form.DisplayName)
+	td.Data["JellyfinURL"] = h.cfg.Jellyfin.URL
+
+	if err := h.renderer.Render(w, "invite.html", td); err != nil {
+		slog.Error("Erreur rendu invite success page", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
 }
 
 // ── Méthodes internes ───────────────────────────────────────────────────────

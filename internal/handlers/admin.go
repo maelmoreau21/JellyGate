@@ -251,7 +251,7 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 		"new_active", newActive,
 	)
 
-	// ── 2. Modifier dans Synology AD (LDAP) ─────────────────────────────
+	// ── 2. Modifier dans l'Active Directory (LDAP) ─────────────────────────────
 	if h.ldClient != nil && ldapDN != "" {
 		if newActive {
 			err = h.ldClient.EnableUser(ldapDN)
@@ -382,7 +382,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	var partialErrors []string
 
-	// ── 2. Supprimer de Synology AD (LDAP) ──────────────────────────────
+	// ── 2. Supprimer de l'Active Directory (LDAP) ──────────────────────────────
 	if h.ldClient != nil && ldapDN != "" {
 		if err := h.ldClient.DeleteUser(ldapDN); err != nil {
 			slog.Error("Erreur suppression LDAP (on continue)",

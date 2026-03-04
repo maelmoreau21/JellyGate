@@ -1,7 +1,7 @@
 // Package main est le point d'entrée de JellyGate.
 //
 // JellyGate est un gestionnaire d'invitations, de récupération de mots de passe
-// et d'utilisateurs pour Jellyfin/Emby avec intégration Synology Active Directory.
+// et d'utilisateurs pour Jellyfin/Emby avec intégration Active Directory (LDAP).
 package main
 
 import (
@@ -102,10 +102,10 @@ func main() {
 	slog.Info("Moteur de rendu HTML initialisé")
 
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
-	authHandler := handlers.NewAuthHandler(cfg, db)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, notifier)
+	authHandler := handlers.NewAuthHandler(cfg, db, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, notifier, renderEngine)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, renderEngine)
-	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer)
+	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db)
 
 	// Callbacks de rechargement à chaud

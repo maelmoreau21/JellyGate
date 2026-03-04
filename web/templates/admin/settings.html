@@ -39,7 +39,7 @@
       </div>
 
       {{/* ═══════════════════════════════════════════════════════════════ */}}
-      {{/* TAB: Général                                                  */}}
+      {{/* TAB: Général */}}
       {{/* ═══════════════════════════════════════════════════════════════ */}}
       <div id="panel-general" class="tab-panel">
         <div class="glass-card p-6 md:p-8">
@@ -70,7 +70,7 @@
       </div>
 
       {{/* ═══════════════════════════════════════════════════════════════ */}}
-      {{/* TAB: LDAP                                                      */}}
+      {{/* TAB: LDAP */}}
       {{/* ═══════════════════════════════════════════════════════════════ */}}
       <div id="panel-ldap" class="tab-panel hidden">
         <div class="glass-card p-6 md:p-8">
@@ -78,12 +78,14 @@
           {{/* Master Toggle */}}
           <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
             <div>
-              <h2 class="text-lg font-semibold text-white">Synology Active Directory</h2>
+              <h2 class="text-lg font-semibold text-white">Active Directory / LDAP</h2>
               <p class="text-sm text-slate-400">{{ .T "settings_ldap_desc" }}</p>
             </div>
             <label class="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" id="ldap-enabled" class="sr-only peer" onchange="toggleLDAPFields()">
-              <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500"></div>
+              <div
+                class="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500">
+              </div>
             </label>
           </div>
 
@@ -113,7 +115,8 @@
 
               <div>
                 <label class="form-label" for="ldap-bind-dn">Bind DN *</label>
-                <input type="text" id="ldap-bind-dn" class="form-input" placeholder="CN=admin,CN=Users,DC=example,DC=com">
+                <input type="text" id="ldap-bind-dn" class="form-input"
+                  placeholder="CN=admin,CN=Users,DC=example,DC=com">
               </div>
               <div>
                 <label class="form-label" for="ldap-bind-password">Bind Password *</label>
@@ -135,7 +138,8 @@
               </div>
               <div>
                 <label class="form-label" for="ldap-user-group">Groupe AD (optionnel)</label>
-                <input type="text" id="ldap-user-group" class="form-input" placeholder="CN=JellyfinUsers,CN=Users,DC=example,DC=com">
+                <input type="text" id="ldap-user-group" class="form-input"
+                  placeholder="CN=JellyfinUsers,CN=Users,DC=example,DC=com">
               </div>
             </div>
 
@@ -148,7 +152,7 @@
       </div>
 
       {{/* ═══════════════════════════════════════════════════════════════ */}}
-      {{/* TAB: SMTP                                                      */}}
+      {{/* TAB: SMTP */}}
       {{/* ═══════════════════════════════════════════════════════════════ */}}
       <div id="panel-smtp" class="tab-panel hidden">
         <div class="glass-card p-6 md:p-8">
@@ -201,7 +205,7 @@
       </div>
 
       {{/* ═══════════════════════════════════════════════════════════════ */}}
-      {{/* TAB: Webhooks                                                  */}}
+      {{/* TAB: Webhooks */}}
       {{/* ═══════════════════════════════════════════════════════════════ */}}
       <div id="panel-webhooks" class="tab-panel hidden">
         <div class="glass-card p-6 md:p-8">
@@ -218,7 +222,8 @@
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <h3 class="text-sm font-semibold text-purple-400 mb-3">🎮 Discord</h3>
                 <label class="form-label" for="wh-discord-url">Webhook URL</label>
-                <input type="url" id="wh-discord-url" class="form-input" placeholder="https://discord.com/api/webhooks/...">
+                <input type="url" id="wh-discord-url" class="form-input"
+                  placeholder="https://discord.com/api/webhooks/...">
               </div>
 
               {{/* Telegram */}}
@@ -274,137 +279,161 @@
 
 {{ define "scripts" }}
 <script>
-// ── Tab switching ───────────────────────────────────────────────────────
-function switchTab(name) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('panel-' + name).classList.remove('hidden');
-  document.getElementById('tab-' + name).classList.add('active');
-}
-
-// ── LDAP toggle ─────────────────────────────────────────────────────────
-function toggleLDAPFields() {
-  const enabled = document.getElementById('ldap-enabled').checked;
-  const fields = document.getElementById('ldap-fields');
-  if (enabled) {
-    fields.style.opacity = '1';
-    fields.style.pointerEvents = 'auto';
-  } else {
-    fields.style.opacity = '0.35';
-    fields.style.pointerEvents = 'none';
-  }
-}
-
-// ── Load settings from API ──────────────────────────────────────────────
-async function loadSettings() {
-  const res = await JG.api('/admin/api/settings');
-  if (!res || !res.success) return;
-  const d = res.data;
-
-  // Général
-  document.getElementById('default-lang').value = d.default_lang || 'fr';
-
-  // LDAP
-  document.getElementById('ldap-enabled').checked = d.ldap.enabled || false;
-  document.getElementById('ldap-host').value = d.ldap.host || '';
-  document.getElementById('ldap-port').value = d.ldap.port || 636;
-  document.getElementById('ldap-tls').checked = d.ldap.use_tls !== false;
-  document.getElementById('ldap-skip-verify').checked = d.ldap.skip_verify || false;
-  document.getElementById('ldap-bind-dn').value = d.ldap.bind_dn || '';
-  document.getElementById('ldap-bind-password').value = d.ldap.bind_password || '';
-  document.getElementById('ldap-base-dn').value = d.ldap.base_dn || '';
-  document.getElementById('ldap-user-ou').value = d.ldap.user_ou || 'CN=Users';
-  document.getElementById('ldap-domain').value = d.ldap.domain || '';
-  document.getElementById('ldap-user-group').value = d.ldap.user_group || '';
-  toggleLDAPFields();
-
-  // SMTP
-  document.getElementById('smtp-host').value = d.smtp.host || '';
-  document.getElementById('smtp-port').value = d.smtp.port || 587;
-  document.getElementById('smtp-username').value = d.smtp.username || '';
-  document.getElementById('smtp-password').value = d.smtp.password || '';
-  document.getElementById('smtp-from').value = d.smtp.from || '';
-  document.getElementById('smtp-tls').checked = d.smtp.use_tls !== false;
-
-  // Webhooks
-  document.getElementById('wh-discord-url').value = (d.webhooks.discord && d.webhooks.discord.url) || '';
-  document.getElementById('wh-telegram-token').value = (d.webhooks.telegram && d.webhooks.telegram.token) || '';
-  document.getElementById('wh-telegram-chat').value = (d.webhooks.telegram && d.webhooks.telegram.chat_id) || '';
-  document.getElementById('wh-matrix-url').value = (d.webhooks.matrix && d.webhooks.matrix.url) || '';
-  document.getElementById('wh-matrix-room').value = (d.webhooks.matrix && d.webhooks.matrix.room_id) || '';
-  document.getElementById('wh-matrix-token').value = (d.webhooks.matrix && d.webhooks.matrix.token) || '';
-}
-
-// ── Save settings to API ────────────────────────────────────────────────
-async function saveSettings(section, event) {
-  event.preventDefault();
-  let body = {};
-  let endpoint = '/admin/api/settings/' + section;
-
-  if (section === 'general') {
-    body = {
-      default_lang: document.getElementById('default-lang').value,
-    };
-  } else if (section === 'ldap') {
-    body = {
-      enabled: document.getElementById('ldap-enabled').checked,
-      host: document.getElementById('ldap-host').value,
-      port: parseInt(document.getElementById('ldap-port').value) || 636,
-      use_tls: document.getElementById('ldap-tls').checked,
-      skip_verify: document.getElementById('ldap-skip-verify').checked,
-      bind_dn: document.getElementById('ldap-bind-dn').value,
-      bind_password: document.getElementById('ldap-bind-password').value,
-      base_dn: document.getElementById('ldap-base-dn').value,
-      user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
-      domain: document.getElementById('ldap-domain').value,
-      user_group: document.getElementById('ldap-user-group').value,
-    };
-  } else if (section === 'smtp') {
-    body = {
-      host: document.getElementById('smtp-host').value,
-      port: parseInt(document.getElementById('smtp-port').value) || 587,
-      username: document.getElementById('smtp-username').value,
-      password: document.getElementById('smtp-password').value,
-      from: document.getElementById('smtp-from').value,
-      use_tls: document.getElementById('smtp-tls').checked,
-    };
-  } else if (section === 'webhooks') {
-    body = {
-      discord: { url: document.getElementById('wh-discord-url').value },
-      telegram: {
-        token: document.getElementById('wh-telegram-token').value,
-        chat_id: document.getElementById('wh-telegram-chat').value,
-      },
-      matrix: {
-        url: document.getElementById('wh-matrix-url').value,
-        room_id: document.getElementById('wh-matrix-room').value,
-        token: document.getElementById('wh-matrix-token').value,
-      },
-    };
+  // ── Tab switching ───────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('panel-' + name).classList.remove('hidden');
+    document.getElementById('tab-' + name).classList.add('active');
   }
 
-  const res = await JG.api(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  if (res && res.success) {
-    JG.toast(res.message || 'Configuration sauvegardée', 'success');
-  } else {
-    JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
+  // ── LDAP toggle ─────────────────────────────────────────────────────────
+  function toggleLDAPFields() {
+    const enabled = document.getElementById('ldap-enabled').checked;
+    const fields = document.getElementById('ldap-fields');
+    if (enabled) {
+      fields.style.opacity = '1';
+      fields.style.pointerEvents = 'auto';
+    } else {
+      fields.style.opacity = '0.35';
+      fields.style.pointerEvents = 'none';
+    }
   }
-}
 
-// ── Init ────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', loadSettings);
+  // ── Load settings from API ──────────────────────────────────────────────
+  async function loadSettings() {
+    const res = await JG.api('/admin/api/settings');
+    if (!res || !res.success) return;
+    const d = res.data;
+
+    // Général
+    document.getElementById('default-lang').value = d.default_lang || 'fr';
+
+    // LDAP
+    document.getElementById('ldap-enabled').checked = d.ldap.enabled || false;
+    document.getElementById('ldap-host').value = d.ldap.host || '';
+    document.getElementById('ldap-port').value = d.ldap.port || 636;
+    document.getElementById('ldap-tls').checked = d.ldap.use_tls !== false;
+    document.getElementById('ldap-skip-verify').checked = d.ldap.skip_verify || false;
+    document.getElementById('ldap-bind-dn').value = d.ldap.bind_dn || '';
+    document.getElementById('ldap-bind-password').value = d.ldap.bind_password || '';
+    document.getElementById('ldap-base-dn').value = d.ldap.base_dn || '';
+    document.getElementById('ldap-user-ou').value = d.ldap.user_ou || 'CN=Users';
+    document.getElementById('ldap-domain').value = d.ldap.domain || '';
+    document.getElementById('ldap-user-group').value = d.ldap.user_group || '';
+    toggleLDAPFields();
+
+    // SMTP
+    document.getElementById('smtp-host').value = d.smtp.host || '';
+    document.getElementById('smtp-port').value = d.smtp.port || 587;
+    document.getElementById('smtp-username').value = d.smtp.username || '';
+    document.getElementById('smtp-password').value = d.smtp.password || '';
+    document.getElementById('smtp-from').value = d.smtp.from || '';
+    document.getElementById('smtp-tls').checked = d.smtp.use_tls !== false;
+
+    // Webhooks
+    document.getElementById('wh-discord-url').value = (d.webhooks.discord && d.webhooks.discord.url) || '';
+    document.getElementById('wh-telegram-token').value = (d.webhooks.telegram && d.webhooks.telegram.token) || '';
+    document.getElementById('wh-telegram-chat').value = (d.webhooks.telegram && d.webhooks.telegram.chat_id) || '';
+    document.getElementById('wh-matrix-url').value = (d.webhooks.matrix && d.webhooks.matrix.url) || '';
+    document.getElementById('wh-matrix-room').value = (d.webhooks.matrix && d.webhooks.matrix.room_id) || '';
+    document.getElementById('wh-matrix-token').value = (d.webhooks.matrix && d.webhooks.matrix.token) || '';
+  }
+
+  // ── Save settings to API ────────────────────────────────────────────────
+  async function saveSettings(section, event) {
+    event.preventDefault();
+    let body = {};
+    let endpoint = '/admin/api/settings/' + section;
+
+    if (section === 'general') {
+      body = {
+        default_lang: document.getElementById('default-lang').value,
+      };
+    } else if (section === 'ldap') {
+      body = {
+        enabled: document.getElementById('ldap-enabled').checked,
+        host: document.getElementById('ldap-host').value,
+        port: parseInt(document.getElementById('ldap-port').value) || 636,
+        use_tls: document.getElementById('ldap-tls').checked,
+        skip_verify: document.getElementById('ldap-skip-verify').checked,
+        bind_dn: document.getElementById('ldap-bind-dn').value,
+        bind_password: document.getElementById('ldap-bind-password').value,
+        base_dn: document.getElementById('ldap-base-dn').value,
+        user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
+        domain: document.getElementById('ldap-domain').value,
+        user_group: document.getElementById('ldap-user-group').value,
+      };
+    } else if (section === 'smtp') {
+      body = {
+        host: document.getElementById('smtp-host').value,
+        port: parseInt(document.getElementById('smtp-port').value) || 587,
+        username: document.getElementById('smtp-username').value,
+        password: document.getElementById('smtp-password').value,
+        from: document.getElementById('smtp-from').value,
+        use_tls: document.getElementById('smtp-tls').checked,
+      };
+    } else if (section === 'webhooks') {
+      body = {
+        discord: { url: document.getElementById('wh-discord-url').value },
+        telegram: {
+          token: document.getElementById('wh-telegram-token').value,
+          chat_id: document.getElementById('wh-telegram-chat').value,
+        },
+        matrix: {
+          url: document.getElementById('wh-matrix-url').value,
+          room_id: document.getElementById('wh-matrix-room').value,
+          token: document.getElementById('wh-matrix-token').value,
+        },
+      };
+    }
+
+    const res = await JG.api(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (res && res.success) {
+      JG.toast(res.message || 'Configuration sauvegardée', 'success');
+    } else {
+      JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
+    }
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', loadSettings);
 </script>
 
 <style>
-  .tab-btn { color: rgb(148 163 184); background: transparent; }
-  .tab-btn:hover { color: rgb(226 232 240); background: rgba(255,255,255,0.05); }
-  .tab-btn.active { color: rgb(167 139 250); background: rgba(139,92,246,0.1); border-bottom: 2px solid rgb(139,92,246); }
-  .form-label { display: block; font-size: 0.8rem; font-weight: 500; color: rgb(148 163 184); margin-bottom: 0.35rem; }
-  .form-checkbox { width: 1rem; height: 1rem; accent-color: rgb(139,92,246); }
+  .tab-btn {
+    color: rgb(148 163 184);
+    background: transparent;
+  }
+
+  .tab-btn:hover {
+    color: rgb(226 232 240);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .tab-btn.active {
+    color: rgb(167 139 250);
+    background: rgba(139, 92, 246, 0.1);
+    border-bottom: 2px solid rgb(139, 92, 246);
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: rgb(148 163 184);
+    margin-bottom: 0.35rem;
+  }
+
+  .form-checkbox {
+    width: 1rem;
+    height: 1rem;
+    accent-color: rgb(139, 92, 246);
+  }
 </style>
 {{ end }}

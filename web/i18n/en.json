@@ -71,7 +71,7 @@
     "settings_general_desc": "Configure JellyGate global settings",
     "settings_default_lang": "Server default language",
     "settings_default_lang_help": "Language used when the user has no preference set",
-    "settings_ldap_desc": "Automatically create accounts in Synology Active Directory",
+    "settings_ldap_desc": "Automatically create accounts in Active Directory via LDAP",
     "settings_smtp_desc": "Configure email sending (invitations, password reset)",
     "settings_webhooks_desc": "Receive notifications when a user registers",
     "btn_save": "Save"

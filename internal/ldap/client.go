@@ -1,4 +1,4 @@
-// Package ldap fournit un client LDAPS pour interagir avec le Synology Active Directory.
+// Package ldap fournit un client LDAPS pour interagir avec Active Directory.
 //
 // Opérations supportées :
 //   - Connexion sécurisée LDAPS (port 636, TLS)
@@ -52,7 +52,7 @@ const (
 
 // ── Client ──────────────────────────────────────────────────────────────────
 
-// Client encapsule la connexion LDAPS au Synology Active Directory.
+// Client encapsule la connexion LDAPS à Active Directory.
 type Client struct {
 	cfg config.LDAPConfig
 }
@@ -102,7 +102,7 @@ func (c *Client) connect() (*goldap.Conn, error) {
 
 // ── Création d'utilisateur ──────────────────────────────────────────────────
 
-// CreateUser crée un nouvel utilisateur dans le Synology Active Directory.
+// CreateUser crée un nouvel utilisateur dans l'Active Directory.
 //
 // Paramètres :
 //   - username    : nom de connexion (sAMAccountName)
@@ -191,7 +191,7 @@ func (c *Client) CreateUser(username, displayName, email, password string) (stri
 
 // ── Suppression d'utilisateur ───────────────────────────────────────────────
 
-// DeleteUser supprime un utilisateur du Synology AD par son DN.
+// DeleteUser supprime un utilisateur de l'AD par son DN.
 //
 // Utilisé lors du rollback ou de la suppression admin.
 func (c *Client) DeleteUser(userDN string) error {

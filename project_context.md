@@ -9,7 +9,7 @@
 ## 1. Vision du projet
 
 **JellyGate** est un gestionnaire d'invitations, de récupération de mots de passe et d'utilisateurs pour **Jellyfin / Emby**, écrit entièrement en **Go**.
-Il remplace [jfa-go](https://github.com/hrfee/jfa-go) en intégrant nativement la création et la gestion des comptes dans un annuaire **Synology Active Directory (LDAP/LDAPS)**.
+Il remplace [jfa-go](https://github.com/hrfee/jfa-go) en intégrant nativement la création et la gestion des comptes dans un annuaire **Active Directory (LDAP/LDAPS)**.
 
 ### Objectifs principaux
 
@@ -17,7 +17,7 @@ Il remplace [jfa-go](https://github.com/hrfee/jfa-go) en intégrant nativement l
 |---|----------|--------|
 | 1 | Invitations avancées | Liens uniques, limites d'utilisation, expiration, profil par défaut |
 | 2 | Gestion utilisateurs | Dashboard admin : liste, activation/désactivation, ban, suppression (Jellyfin + AD) |
-| 3 | Récupération MDP | Réinitialisation via PIN / lien email → MAJ Jellyfin **ET** Synology AD (LDAPS) |
+| 3 | Récupération MDP | Réinitialisation via PIN / lien email → MAJ Jellyfin **ET** Active Directory (LDAPS) |
 | 4 | Notifications | SMTP complet + webhooks Discord / Telegram / Matrix |
 | 5 | Personnalisation UI | Messages d'accueil, CSS custom depuis l'admin |
 | 6 | i18n | Français (défaut) + Anglais via fichiers JSON |
@@ -40,13 +40,13 @@ Il remplace [jfa-go](https://github.com/hrfee/jfa-go) en intégrant nativement l
 │  │                                        │  │
 │  │  ┌──────────┐  ┌──────────────────┐   │  │
 │  │  │ SQLite   │  │ go-ldap/ldap     │   │  │
-│  │  │ (data)   │  │ (Synology AD)    │   │  │
+│  │  │ (data)   │  │ (Active Directory) │   │  │
 │  │  └──────────┘  └──────────────────┘   │  │
 │  └────────────────────────────────────────┘  │
 │                                              │
 │  Services externes :                         │
 │  • Jellyfin API REST                         │
-│  • Synology AD (LDAPS :636)                  │
+│  • Active Directory (LDAPS :636)             │
 │  • SMTP (email)                              │
 │  • Webhooks (Discord, Telegram, Matrix)      │
 └──────────────────────────────────────────────┘
@@ -89,7 +89,7 @@ JellyGate/
 │   ├── jellyfin/
 │   │   └── client.go            # Client API REST Jellyfin
 │   ├── ldap/
-│   │   └── client.go            # Client LDAP/LDAPS (Synology AD)
+│   │   └── client.go            # Client LDAP/LDAPS (Active Directory)
 │   ├── mail/
 │   │   └── mailer.go            # Service d'envoi d'emails
 │   ├── i18n/
@@ -260,11 +260,11 @@ JellyGate/
 | `JELLYFIN_URL` | *(requis)* | URL de l'instance Jellyfin |
 | `JELLYFIN_API_KEY` | *(requis)* | Clé API d'administration Jellyfin |
 
-### LDAP / Synology AD
+### LDAP / Active Directory
 
 | Variable | Défaut | Description |
 |----------|--------|-------------|
-| `LDAP_HOST` | *(requis)* | Hostname du serveur LDAP (Synology) |
+| `LDAP_HOST` | *(requis)* | Hostname du serveur LDAP (Active Directory) |
 | `LDAP_PORT` | `636` | Port LDAP (636 pour LDAPS) |
 | `LDAP_USE_TLS` | `true` | Utiliser LDAPS (TLS) |
 | `LDAP_SKIP_VERIFY` | `false` | Ignorer la vérification du certificat TLS |
@@ -315,7 +315,7 @@ Utilisateur soumet le formulaire d'invitation
              ▼
 ┌─────────────────────────────┐
 │ 2. Créer le compte dans     │  → sAMAccountName, userPrincipalName, displayName
-│    Synology AD (LDAPS:636)  │  → Mot de passe encodé UTF-16LE
+│    Active Directory (LDAPS:636)│  → Mot de passe encodé UTF-16LE
 └────────────┬────────────────┘
              │ OK
              ▼

@@ -33,6 +33,8 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
+	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
+	"github.com/maelmoreau21/JellyGate/internal/render"
 )
 
 // ── Constantes ──────────────────────────────────────────────────────────────
@@ -75,6 +77,7 @@ type PasswordResetHandler struct {
 	jfClient *jellyfin.Client
 	ldClient *jgldap.Client
 	mailer   *mail.Mailer
+	renderer *render.Engine
 }
 
 // NewPasswordResetHandler crée un nouveau handler de réinitialisation.
@@ -84,6 +87,7 @@ func NewPasswordResetHandler(
 	jf *jellyfin.Client,
 	ld *jgldap.Client,
 	m *mail.Mailer,
+	renderer *render.Engine,
 ) *PasswordResetHandler {
 	return &PasswordResetHandler{
 		cfg:      cfg,
@@ -91,6 +95,7 @@ func NewPasswordResetHandler(
 		jfClient: jf,
 		ldClient: ld,
 		mailer:   m,
+		renderer: renderer,
 	}
 }
 
@@ -104,19 +109,12 @@ func (h *PasswordResetHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
 // RequestPage affiche le formulaire de demande de réinitialisation.
 func (h *PasswordResetHandler) RequestPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"><title>JellyGate — Réinitialisation</title></head>
-<body>
-<h1>Réinitialisation du mot de passe</h1>
-<form method="POST" action="/reset/request">
-  <label>Email ou nom d'utilisateur : <input type="text" name="identifier" required></label><br>
-  <button type="submit">Envoyer le lien</button>
-</form>
-</body>
-</html>`)
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.ShowNewPasswordForm = false
+	if err := h.renderer.Render(w, "reset.html", td); err != nil {
+		slog.Error("Erreur rendu reset request", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
 }
 
 // ── POST /reset/request ─────────────────────────────────────────────────────
@@ -156,7 +154,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 			"error", err,
 		)
 		// On affiche quand même le message de succès (anti-énumération)
-		h.renderSuccessPage(w, successMsg)
+		h.renderSuccessPage(w, r, successMsg)
 		return
 	}
 
@@ -165,7 +163,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		slog.Warn("Utilisateur sans email, impossible d'envoyer le reset",
 			"username", user.Username,
 		)
-		h.renderSuccessPage(w, successMsg)
+		h.renderSuccessPage(w, r, successMsg)
 		return
 	}
 
@@ -215,7 +213,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 
 	_ = h.db.LogAction("reset.requested", user.Username, "", fmt.Sprintf("IP: %s", r.RemoteAddr))
 
-	h.renderSuccessPage(w, successMsg)
+	h.renderSuccessPage(w, r, successMsg)
 }
 
 // ── GET /reset/{code} ───────────────────────────────────────────────────────
@@ -232,20 +230,14 @@ func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"><title>JellyGate — Nouveau mot de passe</title></head>
-<body>
-<h1>Définir un nouveau mot de passe</h1>
-<form method="POST" action="/reset/%s">
-  <label>Nouveau mot de passe : <input type="password" name="password" required minlength="8"></label><br>
-  <label>Confirmer : <input type="password" name="password_confirm" required minlength="8"></label><br>
-  <button type="submit">Réinitialiser</button>
-</form>
-</body>
-</html>`, code)
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.ShowNewPasswordForm = true
+	td.ResetCode = code
+
+	if err := h.renderer.Render(w, "reset.html", td); err != nil {
+		slog.Error("Erreur rendu reset logic", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
 }
 
 // ── POST /reset/{code} ──────────────────────────────────────────────────────
@@ -373,17 +365,7 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 		msg = "Votre mot de passe a été partiellement réinitialisé. Contactez l'administrateur si le problème persiste."
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"><title>JellyGate — Mot de passe réinitialisé</title></head>
-<body>
-<h1>✅ %s</h1>
-<p>Vous pouvez maintenant vous connecter avec votre nouveau mot de passe.</p>
-<p><a href="%s">Se connecter à Jellyfin</a></p>
-</body>
-</html>`, msg, h.cfg.Jellyfin.URL)
+	h.renderSuccessPage(w, r, msg)
 }
 
 // ── Méthodes internes ───────────────────────────────────────────────────────
@@ -488,16 +470,11 @@ func generateSecureToken(length int) (string, error) {
 }
 
 // renderSuccessPage affiche une page de succès générique.
-func (h *PasswordResetHandler) renderSuccessPage(w http.ResponseWriter, message string) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"><title>JellyGate — Réinitialisation</title></head>
-<body>
-<h1>📧 Demande envoyée</h1>
-<p>%s</p>
-<p><a href="/reset">← Retour</a></p>
-</body>
-</html>`, message)
+func (h *PasswordResetHandler) renderSuccessPage(w http.ResponseWriter, r *http.Request, message string) {
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.SuccessMessage = message
+	if err := h.renderer.Render(w, "reset.html", td); err != nil {
+		slog.Error("Erreur rendu success page", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
 }

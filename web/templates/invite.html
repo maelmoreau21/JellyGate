@@ -26,6 +26,23 @@
             {{ end }}
         </div>
 
+        {{ if .SuccessMessage }}
+        {{/* Vue Succès */}}
+        <div class="glass-card p-8 text-center glow-accent">
+            <div class="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+            </div>
+            <h1 class="text-xl font-bold mb-3">{{ .T "success" }}</h1>
+            <p class="text-slate-300">{{ .SuccessMessage }}</p>
+            <div class="mt-8 space-y-4">
+                <a href="{{ .Data.JellyfinURL }}" class="jg-btn jg-btn-primary w-full shadow-lg shadow-purple-500/20">
+                    Se connecter à Jellyfin
+                </a>
+            </div>
+        </div>
+        {{ else }}
         {{/* Carte formulaire */}}
         <div class="glass-card p-8 glow-accent">
             <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate>
@@ -81,6 +98,7 @@
         <p class="text-center text-xs text-slate-600 mt-6">
             {{ .T "invite_footer" }}
         </p>
+        {{ end }}
     </div>
 </div>
 {{ end }}

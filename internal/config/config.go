@@ -20,11 +20,10 @@ import (
 // Ne contient que les paramètres essentiels au démarrage de l'application.
 type Config struct {
 	// Application
-	Port        int    // Port d'écoute HTTP (défaut: 8097)
-	BaseURL     string // URL de base publique
-	DataDir     string // Répertoire des données (SQLite, etc.)
-	SecretKey   string // Clé secrète pour sessions/tokens (min 32 chars)
-
+	Port      int    // Port d'écoute HTTP (défaut: 8097)
+	BaseURL   string // URL de base publique
+	DataDir   string // Répertoire des données (SQLite, etc.)
+	SecretKey string // Clé secrète pour sessions/tokens (min 32 chars)
 
 	// Jellyfin (seul service externe requis au démarrage)
 	Jellyfin JellyfinConfig
@@ -40,7 +39,7 @@ type JellyfinConfig struct {
 // Ces structs sont utilisées par database/settings.go et handlers/settings.go
 // pour sérialiser/désérialiser les paramètres depuis SQLite.
 
-// LDAPConfig contient les paramètres de connexion au Synology AD (LDAP/LDAPS).
+// LDAPConfig contient les paramètres de connexion à l'Active Directory (LDAP/LDAPS).
 type LDAPConfig struct {
 	Enabled      bool   `json:"enabled"`       // Intégration LDAP activée
 	Host         string `json:"host"`          // Hostname du serveur LDAP
@@ -99,11 +98,10 @@ type MatrixWebhook struct {
 // LDAP, SMTP et Webhooks sont chargés depuis la base de données.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:        getEnvInt("JELLYGATE_PORT", 8097),
-		BaseURL:     getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
-		DataDir:     getEnv("JELLYGATE_DATA_DIR", "/data"),
-		SecretKey:   getEnv("JELLYGATE_SECRET_KEY", ""),
-
+		Port:      getEnvInt("JELLYGATE_PORT", 8097),
+		BaseURL:   getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
+		DataDir:   getEnv("JELLYGATE_DATA_DIR", "/data"),
+		SecretKey: getEnv("JELLYGATE_SECRET_KEY", ""),
 
 		Jellyfin: JellyfinConfig{
 			URL:    getEnv("JELLYFIN_URL", ""),

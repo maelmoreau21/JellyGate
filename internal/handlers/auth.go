@@ -17,6 +17,8 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
+	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -44,32 +46,25 @@ type jellyfinAuthResponse struct {
 
 // AuthHandler gère les routes d'authentification admin.
 type AuthHandler struct {
-	cfg *config.Config
-	db  *database.DB
+	cfg      *config.Config
+	db       *database.DB
+	renderer *render.Engine
 }
 
 // NewAuthHandler crée un nouveau AuthHandler.
-func NewAuthHandler(cfg *config.Config, db *database.DB) *AuthHandler {
-	return &AuthHandler{cfg: cfg, db: db}
+func NewAuthHandler(cfg *config.Config, db *database.DB, renderer *render.Engine) *AuthHandler {
+	return &AuthHandler{cfg: cfg, db: db, renderer: renderer}
 }
 
 // LoginPage affiche la page de connexion admin (GET /admin/login).
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
-	// TODO: Servir le template HTML de login
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprint(w, `<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="utf-8"><title>JellyGate — Connexion</title></head>
-<body>
-<h1>JellyGate — Connexion Admin</h1>
-<form method="POST" action="/admin/login">
-  <label>Utilisateur : <input type="text" name="username" required></label><br>
-  <label>Mot de passe : <input type="password" name="password" required></label><br>
-  <button type="submit">Se connecter</button>
-</form>
-</body>
-</html>`)
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.Error = r.URL.Query().Get("error")
+
+	if err := h.renderer.Render(w, "admin/login.html", td); err != nil {
+		slog.Error("Erreur rendu login", "error", err)
+		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+	}
 }
 
 // LoginSubmit traite la soumission du formulaire de connexion (POST /admin/login).

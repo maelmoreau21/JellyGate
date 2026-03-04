@@ -10,7 +10,7 @@
 
 <p align="center">
   <strong>Gestionnaire d'invitations, de récupération de mots de passe et d'utilisateurs pour Jellyfin.</strong><br>
-  Alternative moderne à <a href="https://github.com/hrfee/jfa-go">jfa-go</a>, avec support natif de <strong>Synology Active Directory</strong> (LDAP).
+  Alternative moderne à <a href="https://github.com/hrfee/jfa-go">jfa-go</a>, avec support natif de <strong>Active Directory</strong> (LDAP).
 </p>
 
 ---
@@ -20,7 +20,7 @@
 | Fonctionnalité | Description |
 |---|---|
 | 🎫 **Invitations** | Liens d'invitation avec quotas, expiration et profils Jellyfin personnalisés |
-| 🔐 **Synology AD natif** | Création automatique des comptes dans l'annuaire LDAP/LDAPS (unicodePwd UTF-16LE) |
+| 🔐 **Active Directory natif** | Création automatique des comptes dans l'annuaire LDAP/LDAPS (unicodePwd UTF-16LE) |
 | 👥 **Gestion utilisateurs** | Dashboard admin : activation, désactivation, suppression (AD + Jellyfin + SQLite) |
 | 🔑 **Réinitialisation MDP** | Flux sécurisé par email avec reset simultané AD + Jellyfin |
 | 📨 **Notifications** | Discord, Telegram et Matrix en temps réel (webhooks asynchrones) |
@@ -36,7 +36,7 @@
 JellyGate
 │
 ├── Jellyfin (API REST) ←── Authentification admin + gestion utilisateurs
-├── Synology AD (LDAPS) ←── Création comptes + mots de passe (unicodePwd)
+├── Active Directory (LDAPS) ←── Création comptes + mots de passe (unicodePwd)
 ├── SQLite (local)      ←── Invitations, utilisateurs, logs, tokens
 ├── SMTP                ←── Emails transactionnels
 └── Webhooks            ←── Discord / Telegram / Matrix
@@ -48,7 +48,7 @@ JellyGate
 
 - Docker et Docker Compose installés
 - Un serveur **Jellyfin** accessible avec une **clé API**
-- Un **Synology NAS** avec Active Directory Server activé
+- Un serveur **Active Directory** 
 - Un serveur **SMTP** fonctionnel
 
 ### 2. Configuration
@@ -161,7 +161,7 @@ JellyGate/
 │   ├── database/          # SQLite (migrations, CRUD)
 │   ├── handlers/          # Handlers HTTP (auth, invitations, admin, reset)
 │   ├── jellyfin/          # Client API Jellyfin
-│   ├── ldap/              # Client LDAPS (Synology AD)
+│   ├── ldap/              # Client LDAPS (Active Directory)
 │   ├── mail/              # Client SMTP (go-mail)
 │   ├── middleware/        # Auth, i18n, rate limiting
 │   ├── notify/            # Webhooks (Discord, Telegram, Matrix)
