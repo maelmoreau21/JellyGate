@@ -163,8 +163,7 @@ func main() {
 	})
 
 	// Fichiers statiques
-	fileServer := http.FileServer(http.Dir("web/static"))
-	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
 	// Routes d'invitation (publiques)
 	r.Route("/invite", func(r chi.Router) {

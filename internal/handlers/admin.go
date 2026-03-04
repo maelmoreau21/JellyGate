@@ -93,7 +93,10 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.AdminUsername = sess.Username
-	_ = h.renderer.Render(w, "admin/dashboard.html", td)
+	if err := h.renderer.Render(w, "admin/dashboard.html", td); err != nil {
+		slog.Error("Erreur rendu dashboard", "error", err)
+		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+	}
 }
 
 // UsersPage affiche la page de gestion des utilisateurs.

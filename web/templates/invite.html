@@ -33,39 +33,39 @@
                 {{/* Username */}}
                 <div class="mb-5">
                     <label class="jg-label" for="username">{{ .T "field_username" }}</label>
-                    <input type="text" id="username" name="username" class="jg-input" placeholder="{{ .T "
-                        field_username_placeholder" }}" required pattern="[a-zA-Z0-9_-]+" minlength="3" maxlength="32"
-                        autocomplete="username">
+                    <input type="text" id="username" name="username" class="jg-input"
+                        placeholder='{{ .T "field_username_placeholder" }}' required pattern="[a-zA-Z0-9_-]+"
+                        minlength="3" maxlength="32" autocomplete="username">
                     <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }}</p>
                 </div>
 
                 {{/* Display Name */}}
                 <div class="mb-5">
                     <label class="jg-label" for="display_name">{{ .T "field_display_name" }}</label>
-                    <input type="text" id="display_name" name="display_name" class="jg-input" placeholder="{{ .T "
-                        field_display_name_placeholder" }}" maxlength="64" autocomplete="name">
+                    <input type="text" id="display_name" name="display_name" class="jg-input"
+                        placeholder='{{ .T "field_display_name_placeholder" }}' maxlength="64" autocomplete="name">
                 </div>
 
                 {{/* Email */}}
                 <div class="mb-5">
                     <label class="jg-label" for="email">{{ .T "field_email" }}</label>
-                    <input type="email" id="email" name="email" class="jg-input" placeholder="{{ .T "
-                        field_email_placeholder" }}" autocomplete="email">
+                    <input type="email" id="email" name="email" class="jg-input"
+                        placeholder='{{ .T "field_email_placeholder" }}' autocomplete="email">
                 </div>
 
                 {{/* Password */}}
                 <div class="mb-5">
                     <label class="jg-label" for="password">{{ .T "field_password" }}</label>
-                    <input type="password" id="password" name="password" class="jg-input" placeholder="{{ .T "
-                        field_password_placeholder" }}" required minlength="8" autocomplete="new-password">
+                    <input type="password" id="password" name="password" class="jg-input"
+                        placeholder='{{ .T "field_password_placeholder" }}' required minlength="8"
+                        autocomplete="new-password">
                 </div>
 
                 {{/* Password Confirm */}}
                 <div class="mb-6">
                     <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
-                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
-                        placeholder="{{ .T " field_password_confirm_placeholder" }}" required minlength="8"
-                        autocomplete="new-password">
+                    placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="8"
+                    autocomplete="new-password">
                     <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
                 </div>
 

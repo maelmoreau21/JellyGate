@@ -7,7 +7,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ block "title" . }}JellyGate{{ end }}</title>
-    <meta name="description" content="{{ block " meta_description" . }}{{ .T "app_description" }}{{ end }}">
+    <meta name="description" content='{{ block "meta_description" . }}{{ .T "app_description" }}{{ end }}'>
 
     {{/* Tailwind CSS via CDN */}}
     <script src="https://cdn.tailwindcss.com"></script>
