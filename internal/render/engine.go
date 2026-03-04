@@ -32,7 +32,7 @@ type Translations map[string]string
 // dans la langue courante, avec fallback sur le français.
 type TemplateData struct {
 	Lang    string
-	T       func(string) string
+	engine  *Engine
 	Data    map[string]interface{} // Données arbitraires
 	Error   string
 	Session interface{}
@@ -43,6 +43,14 @@ type TemplateData struct {
 	ShowNewPasswordForm bool
 	ResetCode           string
 	SuccessMessage      string
+}
+
+// T retourne la traduction pour la clé donnée, dans la langue de ce contexte.
+func (d *TemplateData) T(key string) string {
+	if d.engine != nil {
+		return d.engine.Translate(d.Lang, key)
+	}
+	return "[" + key + "]"
 }
 
 // ── Engine ──────────────────────────────────────────────────────────────────
@@ -153,11 +161,9 @@ func (e *Engine) Translate(lang, key string) string {
 // avec fallback sur le français.
 func (e *Engine) NewTemplateData(lang string) *TemplateData {
 	return &TemplateData{
-		Lang: lang,
-		T: func(key string) string {
-			return e.Translate(lang, key)
-		},
-		Data: make(map[string]interface{}),
+		Lang:   lang,
+		engine: e,
+		Data:   make(map[string]interface{}),
 	}
 }
 
