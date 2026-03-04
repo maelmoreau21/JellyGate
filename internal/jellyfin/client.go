@@ -35,8 +35,13 @@ type Client struct {
 
 // New crée un nouveau client Jellyfin à partir de la configuration.
 func New(cfg config.JellyfinConfig) *Client {
+	url := strings.TrimRight(cfg.URL, "/")
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
+
 	return &Client{
-		baseURL: strings.TrimRight(cfg.URL, "/"),
+		baseURL: url,
 		apiKey:  cfg.APIKey,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,

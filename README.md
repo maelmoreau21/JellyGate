@@ -130,7 +130,6 @@ Voir [`.env.example`](.env.example) pour la liste complète. Résumé :
 | `SMTP_PASSWORD` | ✅ | — | Mot de passe SMTP |
 | `SMTP_FROM` | ✅ | — | Adresse expéditeur |
 | `JELLYGATE_PORT` | ❌ | `8097` | Port d'écoute |
-| `JELLYGATE_DEFAULT_LANG` | ❌ | `fr` | Langue par défaut (fr/en) |
 | `LDAP_PORT` | ❌ | `636` | Port LDAPS |
 | `SMTP_PORT` | ❌ | `587` | Port SMTP |
 | `WEBHOOK_DISCORD_URL` | ❌ | — | Webhook Discord |

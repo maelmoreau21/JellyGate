@@ -27,6 +27,8 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
+	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
+	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -67,20 +69,48 @@ type AdminHandler struct {
 	db       *database.DB
 	jfClient *jellyfin.Client
 	ldClient *jgldap.Client
+	renderer *render.Engine
 }
 
 // NewAdminHandler crée un nouveau handler d'administration.
-func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client) *AdminHandler {
+func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, renderer *render.Engine) *AdminHandler {
 	return &AdminHandler{
 		cfg:      cfg,
 		db:       db,
 		jfClient: jf,
 		ldClient: ld,
+		renderer: renderer,
 	}
 }
 
 // SetLDAPClient remplace le client LDAP (rechargement à chaud).
 func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
+
+// ── Pages HTML ──────────────────────────────────────────────────────────────
+
+// DashboardPage affiche la page principale du tableau de bord.
+func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.AdminUsername = sess.Username
+	_ = h.renderer.Render(w, "admin/dashboard.html", td)
+}
+
+// UsersPage affiche la page de gestion des utilisateurs.
+func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.AdminUsername = sess.Username
+	_ = h.renderer.Render(w, "admin/users.html", td)
+}
+
+// SettingsPage affiche la page de configuration globale.
+func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.AdminUsername = sess.Username
+	_ = h.renderer.Render(w, "admin/settings.html", td)
+}
 
 // ── GET /admin/api/users ────────────────────────────────────────────────────
 

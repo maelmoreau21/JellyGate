@@ -66,7 +66,13 @@
     "col_created_at": "Date",
     "col_actions": "Actions",
     "settings_subheading": "Configurez les services externes depuis cette interface",
+    "settings_tab_general": "Général",
+    "settings_general_title": "Paramètres généraux",
+    "settings_general_desc": "Configurez les paramètres globaux de JellyGate",
+    "settings_default_lang": "Langue par défaut du serveur",
+    "settings_default_lang_help": "Langue utilisée lorsque l'utilisateur n'a pas de préférence définie",
     "settings_ldap_desc": "Créez automatiquement les comptes dans Synology Active Directory",
     "settings_smtp_desc": "Configurez l'envoi d'emails (invitations, réinitialisation MDP)",
-    "settings_webhooks_desc": "Recevez des notifications lors de l'inscription d'un utilisateur"
+    "settings_webhooks_desc": "Recevez des notifications lors de l'inscription d'un utilisateur",
+    "btn_save": "Sauvegarder"
 }

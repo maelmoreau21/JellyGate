@@ -26,6 +26,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
+	"github.com/maelmoreau21/JellyGate/internal/render"
 )
 
 func main() {
@@ -46,7 +47,6 @@ func main() {
 	slog.Info("Configuration chargée",
 		"port", cfg.Port,
 		"base_url", cfg.BaseURL,
-		"lang", cfg.DefaultLang,
 		"jellyfin_url", cfg.Jellyfin.URL,
 	)
 
@@ -93,10 +93,18 @@ func main() {
 	webhooksCfg, _ := db.GetWebhooksConfig()
 	notifier := notify.New(webhooksCfg)
 
-	// ── 3c. Initialiser les handlers ───────────────────────────────────────
+	// ── 3c. Initialiser le moteur de rendu HTML ────────────────────────────
+	renderEngine, err := render.NewEngine("web/templates", "web/i18n")
+	if err != nil {
+		slog.Error("Erreur d'initialisation du moteur de templates", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("Moteur de rendu HTML initialisé")
+
+	// ── 3d. Initialiser les handlers ───────────────────────────────────────
 	authHandler := handlers.NewAuthHandler(cfg, db)
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, notifier)
-	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient)
+	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer)
 	settingsHandler := handlers.NewSettingsHandler(db)
 
@@ -135,16 +143,24 @@ func main() {
 	r := chi.NewRouter()
 
 	// Middlewares globaux
-	r.Use(chimw.RequestID)                      // ID unique par requête
-	r.Use(chimw.RealIP)                         // IP réelle derrière proxy
-	r.Use(chimw.Logger)                         // Log de chaque requête
-	r.Use(chimw.Recoverer)                      // Récupération des panics
-	r.Use(chimw.Timeout(30 * time.Second))      // Timeout global 30s
-	r.Use(chimw.Compress(5))                    // Compression gzip
-	r.Use(jgmw.DetectLanguage(cfg.DefaultLang)) // Détection de langue (cookie → Accept-Language → défaut)
+	r.Use(chimw.RequestID)                 // ID unique par requête
+	r.Use(chimw.RealIP)                    // IP réelle derrière proxy
+	r.Use(chimw.Logger)                    // Log de chaque requête
+	r.Use(chimw.Recoverer)                 // Récupération des panics
+	r.Use(chimw.Timeout(30 * time.Second)) // Timeout global 30s
+	r.Use(chimw.Compress(5))               // Compression gzip
+	r.Use(jgmw.DetectLanguage(db))         // Détection de langue (cookie → Accept-Language → DB default_lang)
 
 	// ── Routes publiques ────────────────────────────────────────────────────
-	r.Get("/", handleHealthCheck)
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/admin/login", http.StatusFound)
+	})
+
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	})
 
 	// Fichiers statiques
 	fileServer := http.FileServer(http.Dir("web/static"))
@@ -175,10 +191,10 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(jgmw.RequireAuth(cfg.SecretKey))
 
-			r.Get("/", handlePlaceholder("Dashboard admin"))
+			r.Get("/", adminHandler.DashboardPage)
 
 			// Gestion des utilisateurs — pages HTML
-			r.Get("/users", handlePlaceholder("Page gestion utilisateurs"))
+			r.Get("/users", adminHandler.UsersPage)
 
 			// API JSON de gestion des utilisateurs
 			r.Route("/api/users", func(r chi.Router) {
@@ -192,6 +208,7 @@ func main() {
 			// API JSON de gestion des paramètres
 			r.Route("/api/settings", func(r chi.Router) {
 				r.Get("/", settingsHandler.GetAll)
+				r.Post("/general", settingsHandler.SaveGeneral)
 				r.Post("/ldap", settingsHandler.SaveLDAP)
 				r.Post("/smtp", settingsHandler.SaveSMTP)
 				r.Post("/webhooks", settingsHandler.SaveWebhooks)
@@ -205,7 +222,7 @@ func main() {
 			})
 
 			// Paramètres
-			r.Get("/settings", handlePlaceholder("Page des paramètres"))
+			r.Get("/settings", adminHandler.SettingsPage)
 			r.Post("/settings", handlePlaceholder("Sauvegarder les paramètres"))
 
 			// Journal d'audit

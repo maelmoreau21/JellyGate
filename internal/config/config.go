@@ -2,7 +2,7 @@
 // de JellyGate à partir des variables d'environnement.
 //
 // Seules les variables essentielles au démarrage sont gérées ici :
-//   - JELLYGATE_*  : Application (port, URL, data, secret, langue)
+//   - JELLYGATE_*  : Application (port, URL, data, secret)
 //   - JELLYFIN_*   : Connexion à Jellyfin
 //
 // Les paramètres LDAP, SMTP et Webhooks sont désormais stockés dans SQLite
@@ -24,7 +24,7 @@ type Config struct {
 	BaseURL     string // URL de base publique
 	DataDir     string // Répertoire des données (SQLite, etc.)
 	SecretKey   string // Clé secrète pour sessions/tokens (min 32 chars)
-	DefaultLang string // Langue par défaut : "fr" ou "en"
+
 
 	// Jellyfin (seul service externe requis au démarrage)
 	Jellyfin JellyfinConfig
@@ -103,7 +103,7 @@ func Load() (*Config, error) {
 		BaseURL:     getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
 		DataDir:     getEnv("JELLYGATE_DATA_DIR", "/data"),
 		SecretKey:   getEnv("JELLYGATE_SECRET_KEY", ""),
-		DefaultLang: getEnv("JELLYGATE_DEFAULT_LANG", "fr"),
+
 
 		Jellyfin: JellyfinConfig{
 			URL:    getEnv("JELLYFIN_URL", ""),
@@ -127,10 +127,6 @@ func (c *Config) validate() error {
 		errs = append(errs, "JELLYGATE_SECRET_KEY est requis")
 	} else if len(c.SecretKey) < 32 {
 		errs = append(errs, "JELLYGATE_SECRET_KEY doit faire au minimum 32 caractères")
-	}
-
-	if c.DefaultLang != "fr" && c.DefaultLang != "en" {
-		errs = append(errs, "JELLYGATE_DEFAULT_LANG doit être 'fr' ou 'en'")
 	}
 
 	// Jellyfin

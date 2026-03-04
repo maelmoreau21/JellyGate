@@ -66,7 +66,13 @@
     "col_created_at": "Date",
     "col_actions": "Actions",
     "settings_subheading": "Configure external services from this interface",
+    "settings_tab_general": "General",
+    "settings_general_title": "General Settings",
+    "settings_general_desc": "Configure JellyGate global settings",
+    "settings_default_lang": "Server default language",
+    "settings_default_lang_help": "Language used when the user has no preference set",
     "settings_ldap_desc": "Automatically create accounts in Synology Active Directory",
     "settings_smtp_desc": "Configure email sending (invitations, password reset)",
-    "settings_webhooks_desc": "Receive notifications when a user registers"
+    "settings_webhooks_desc": "Receive notifications when a user registers",
+    "btn_save": "Save"
 }

@@ -1,11 +1,12 @@
 // Package handlers — settings.go
 //
 // API REST pour la gestion des paramètres stockés en base (table settings).
-// Permet de lire et sauvegarder la configuration LDAP, SMTP et Webhooks
+// Permet de lire et sauvegarder la configuration générale, LDAP, SMTP et Webhooks
 // depuis l'interface d'administration.
 //
 // Routes :
 //   - GET  /admin/api/settings          → Récupérer toute la configuration
+//   - POST /admin/api/settings/general  → Sauvegarder les paramètres généraux (langue)
 //   - POST /admin/api/settings/ldap     → Sauvegarder la config LDAP
 //   - POST /admin/api/settings/smtp     → Sauvegarder la config SMTP
 //   - POST /admin/api/settings/webhooks → Sauvegarder la config Webhooks
@@ -42,15 +43,23 @@ func NewSettingsHandler(db *database.DB) *SettingsHandler {
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
-	LDAP     config.LDAPConfig     `json:"ldap"`
-	SMTP     config.SMTPConfig     `json:"smtp"`
-	Webhooks config.WebhooksConfig `json:"webhooks"`
+	DefaultLang string                `json:"default_lang"`
+	LDAP        config.LDAPConfig     `json:"ldap"`
+	SMTP        config.SMTPConfig     `json:"smtp"`
+	Webhooks    config.WebhooksConfig `json:"webhooks"`
+}
+
+// generalInput est le corps JSON attendu par SaveGeneral.
+type generalInput struct {
+	DefaultLang string `json:"default_lang"`
 }
 
 // ── GET /admin/api/settings ─────────────────────────────────────────────────
 
 // GetAll retourne toute la configuration stockée en base.
 func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	defaultLang := h.db.GetDefaultLang()
+
 	ldapCfg, err := h.db.GetLDAPConfig()
 	if err != nil {
 		slog.Error("Erreur lecture config LDAP", "error", err)
@@ -94,10 +103,51 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
-			LDAP:     maskedLDAP,
-			SMTP:     maskedSMTP,
-			Webhooks: webhooksCfg,
+			DefaultLang: defaultLang,
+			LDAP:        maskedLDAP,
+			SMTP:        maskedSMTP,
+			Webhooks:    webhooksCfg,
 		},
+	})
+}
+
+// ── POST /admin/api/settings/general ────────────────────────────────────────
+
+// SaveGeneral sauvegarde les paramètres généraux (langue par défaut).
+func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
+	var input generalInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	// Validation : seules "fr" et "en" sont acceptées
+	if input.DefaultLang != "fr" && input.DefaultLang != "en" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Langue invalide : doit être 'fr' ou 'en'",
+		})
+		return
+	}
+
+	if err := h.db.SetSetting(database.SettingDefaultLang, input.DefaultLang); err != nil {
+		slog.Error("Erreur sauvegarde default_lang", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur de sauvegarde",
+		})
+		return
+	}
+
+	slog.Info("Langue par défaut mise à jour", "lang", input.DefaultLang)
+	_ = h.db.LogAction("settings.general.saved", "", "", "default_lang="+input.DefaultLang)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Paramètres généraux sauvegardés",
 	})
 }
 

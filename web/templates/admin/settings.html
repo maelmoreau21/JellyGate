@@ -1,5 +1,5 @@
 {{/* settings.html — Page de configuration admin JellyGate */}}
-{{/* 3 onglets : LDAP, SMTP, Webhooks — Dark Theme + Glassmorphism */}}
+{{/* 4 onglets : Général, LDAP, SMTP, Webhooks — Dark Theme + Glassmorphism */}}
 {{ define "title" }}{{ .T "nav_settings" }} — JellyGate{{ end }}
 
 {{ define "body" }}
@@ -20,8 +20,12 @@
 
       {{/* ── Tabs ───────────────────────────────────────────────────────── */}}
       <div class="flex gap-2 mb-6 border-b border-white/10 pb-1">
-        <button onclick="switchTab('ldap')" id="tab-ldap"
+        <button onclick="switchTab('general')" id="tab-general"
           class="tab-btn active px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+          🌐 {{ .T "settings_tab_general" }}
+        </button>
+        <button onclick="switchTab('ldap')" id="tab-ldap"
+          class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
           🔐 LDAP
         </button>
         <button onclick="switchTab('smtp')" id="tab-smtp"
@@ -35,9 +39,40 @@
       </div>
 
       {{/* ═══════════════════════════════════════════════════════════════ */}}
+      {{/* TAB: Général                                                  */}}
+      {{/* ═══════════════════════════════════════════════════════════════ */}}
+      <div id="panel-general" class="tab-panel">
+        <div class="glass-card p-6 md:p-8">
+
+          <div class="mb-6 pb-4 border-b border-white/10">
+            <h2 class="text-lg font-semibold text-white">{{ .T "settings_general_title" }}</h2>
+            <p class="text-sm text-slate-400">{{ .T "settings_general_desc" }}</p>
+          </div>
+
+          <form id="form-general" onsubmit="saveSettings('general', event)">
+            <div class="space-y-4">
+              <div class="max-w-xs">
+                <label class="form-label" for="default-lang">{{ .T "settings_default_lang" }}</label>
+                <select id="default-lang" class="form-input">
+                  <option value="fr">🇫🇷 Français</option>
+                  <option value="en">🇬🇧 English</option>
+                </select>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_default_lang_help" }}</p>
+              </div>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+              <button type="submit" class="btn-primary px-6 py-2.5">💾 {{ .T "btn_save" }}</button>
+            </div>
+          </form>
+
+        </div>
+      </div>
+
+      {{/* ═══════════════════════════════════════════════════════════════ */}}
       {{/* TAB: LDAP                                                      */}}
       {{/* ═══════════════════════════════════════════════════════════════ */}}
-      <div id="panel-ldap" class="tab-panel">
+      <div id="panel-ldap" class="tab-panel hidden">
         <div class="glass-card p-6 md:p-8">
 
           {{/* Master Toggle */}}
@@ -266,6 +301,9 @@ async function loadSettings() {
   if (!res || !res.success) return;
   const d = res.data;
 
+  // Général
+  document.getElementById('default-lang').value = d.default_lang || 'fr';
+
   // LDAP
   document.getElementById('ldap-enabled').checked = d.ldap.enabled || false;
   document.getElementById('ldap-host').value = d.ldap.host || '';
@@ -303,7 +341,11 @@ async function saveSettings(section, event) {
   let body = {};
   let endpoint = '/admin/api/settings/' + section;
 
-  if (section === 'ldap') {
+  if (section === 'general') {
+    body = {
+      default_lang: document.getElementById('default-lang').value,
+    };
+  } else if (section === 'ldap') {
     body = {
       enabled: document.getElementById('ldap-enabled').checked,
       host: document.getElementById('ldap-host').value,

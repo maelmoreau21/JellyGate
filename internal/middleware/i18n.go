@@ -5,10 +5,10 @@
 // Ordre de priorité :
 //  1. Cookie "lang" (défini par le sélecteur UI)
 //  2. En-tête HTTP Accept-Language
-//  3. Variable JELLYGATE_DEFAULT_LANG (via config)
+//  3. Valeur default_lang lue depuis la table settings (via DefaultLangProvider)
 //
 // La langue détectée est injectée dans le contexte de la requête
-// et accessible via i18n.LangFromContext(ctx).
+// et accessible via middleware.LangFromContext(ctx).
 package middleware
 
 import (
@@ -43,17 +43,21 @@ func isSupported(lang string) bool {
 	return supportedLangs[strings.ToLower(lang)]
 }
 
+// ── Provider ────────────────────────────────────────────────────────────────
+
+// DefaultLangProvider fournit la langue par défaut du serveur.
+// Implémenté par database.DB via GetDefaultLang().
+type DefaultLangProvider interface {
+	GetDefaultLang() string
+}
+
 // ── Middleware ───────────────────────────────────────────────────────────────
 
 // DetectLanguage détermine la langue de l'utilisateur et l'injecte
 // dans le contexte de la requête.
 //
-// Priorité : cookie "lang" → Accept-Language → defaultLang.
-func DetectLanguage(defaultLang string) func(http.Handler) http.Handler {
-	if defaultLang == "" {
-		defaultLang = "fr"
-	}
-
+// Priorité : cookie "lang" → Accept-Language → provider.GetDefaultLang().
+func DetectLanguage(provider DefaultLangProvider) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			lang := ""
@@ -71,9 +75,12 @@ func DetectLanguage(defaultLang string) func(http.Handler) http.Handler {
 				lang = parseAcceptLanguage(r.Header.Get("Accept-Language"))
 			}
 
-			// 3. Default
+			// 3. Default (depuis la base de données)
 			if lang == "" {
-				lang = defaultLang
+				lang = provider.GetDefaultLang()
+				if !isSupported(lang) {
+					lang = "fr"
+				}
 			}
 
 			// Injecter dans le contexte

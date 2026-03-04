@@ -21,7 +21,18 @@ const (
 	SettingLDAPConfig     = "ldap_config"     // JSON: config.LDAPConfig
 	SettingSMTPConfig     = "smtp_config"     // JSON: config.SMTPConfig
 	SettingWebhooksConfig = "webhooks_config" // JSON: config.WebhooksConfig
+	SettingDefaultLang    = "default_lang"    // Langue par défaut du serveur ("fr" ou "en")
 )
+
+// GetDefaultLang retourne la langue par défaut du serveur.
+// Retourne "fr" si la clé n'existe pas ou en cas d'erreur.
+func (db *DB) GetDefaultLang() string {
+	val, err := db.GetSetting(SettingDefaultLang)
+	if err != nil || val == "" {
+		return "fr"
+	}
+	return val
+}
 
 // ── Get / Set générique ─────────────────────────────────────────────────────
 

@@ -252,7 +252,6 @@ JellyGate/
 | `JELLYGATE_BASE_URL` | `http://localhost:8097` | URL de base publique |
 | `JELLYGATE_DATA_DIR` | `/data` | Répertoire des données (SQLite, config) |
 | `JELLYGATE_SECRET_KEY` | *(requis)* | Clé secrète pour les sessions/tokens |
-| `JELLYGATE_DEFAULT_LANG` | `fr` | Langue par défaut (`fr` ou `en`) |
 
 ### Jellyfin
 
@@ -369,7 +368,7 @@ Utilisateur soumet le formulaire d'invitation
 | ✅ `docker-compose.yml` | **Terminé** | Port 8097, toutes les variables |
 | ✅ `Dockerfile` | **Terminé** | Multi-stage, pure Go (sans CGO) |
 | ✅ Squelette Go (cmd/internal) | **Terminé** | main.go + routeur Chi v5 |
-| ✅ Configuration (config.go) | **Refactorisé** | 7 env vars (App+JF), LDAP/SMTP/Webhooks en SQLite via UI admin |
+| ✅ Configuration (config.go) | **Refactorisé** | 4 env vars (App+JF), LDAP/SMTP/Webhooks en SQLite via UI admin |
 | ✅ Base de données (SQLite) | **Terminé** | modernc.org/sqlite + 6 tables + index |
 | ✅ Authentification admin | **Terminé** | Déléguée à Jellyfin + cookie HMAC |
 | ✅ Client Jellyfin | **Terminé** | CRUD users, policy, profils, reset MDP |
