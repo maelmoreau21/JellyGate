@@ -47,11 +47,13 @@ type UserResponse struct {
 	Username        string `json:"username"`
 	Email           string `json:"email"`
 	LdapDN          string `json:"ldap_dn"`
+	GroupName       string `json:"group_name"`
 	InvitedBy       string `json:"invited_by"`
 	IsActive        bool   `json:"is_active"`
 	IsBanned        bool   `json:"is_banned"`
 	CanInvite       bool   `json:"can_invite"`
 	AccessExpiresAt string `json:"access_expires_at,omitempty"` // ISO 8601
+	DeleteAt        string `json:"delete_at,omitempty"`
 	ExpiryAction    string `json:"expiry_action"`
 	DeleteAfterDays int    `json:"expiry_delete_after_days"`
 	ExpiredAt       string `json:"expired_at,omitempty"`
@@ -86,6 +88,7 @@ type adminUserRecord struct {
 	Email           string
 	JellyfinID      string
 	LdapDN          string
+	GroupName       string
 	ContactDiscord  string
 	ContactTelegram string
 	IsActive        bool
@@ -98,6 +101,7 @@ type adminUserRecord struct {
 	OptInTelegram   bool
 	ExpiryAction    string
 	DeleteAfterDays int
+	DeleteAt        sql.NullString
 	ExpiredAt       sql.NullString
 	AccessExpiresAt sql.NullString
 	CreatedAt       sql.NullString
@@ -105,6 +109,7 @@ type adminUserRecord struct {
 
 type UpdateUserRequest struct {
 	Email           *string `json:"email"`
+	GroupName       *string `json:"group_name"`
 	CanInvite       *bool   `json:"can_invite"`
 	AccessExpiresAt *string `json:"access_expires_at"`
 	ClearExpiry     bool    `json:"clear_expiry"`
@@ -409,6 +414,40 @@ func (h *AdminHandler) runExpirationCheck() {
 			_ = h.db.LogAction("user.expiry_reminder.sent", "system", username, details)
 		}
 		reminderRows.Close()
+	}
+
+	// Suppression planifiee (simple): delete_at atteint.
+	deleteRows, err := h.db.Conn().Query(`
+		SELECT id, username
+		FROM users
+		WHERE delete_at IS NOT NULL
+		  AND delete_at < ?
+	`, now)
+	if err == nil {
+		for deleteRows.Next() {
+			var id int64
+			var username string
+			if err := deleteRows.Scan(&id, &username); err != nil {
+				continue
+			}
+
+			rec, err := h.loadAdminUserByID(id)
+			if err != nil {
+				continue
+			}
+
+			partials, err := h.deleteUserRecord(rec, "system")
+			if err != nil {
+				slog.Error("Erreur suppression planifiee", "user", username, "error", err, "partials", partials)
+				continue
+			}
+			if len(partials) > 0 {
+				slog.Warn("Suppression planifiee avec erreurs partielles", "user", username, "partials", partials)
+			}
+
+			_ = h.db.LogAction("user.expired.deleted", "system", username, "Suppression planifiee (delete_at)")
+		}
+		deleteRows.Close()
 	}
 
 	// Rechercher les utilisateurs actifs dont access_expires_at est dépassé.
@@ -1095,7 +1134,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	// ── 1. Récupérer les utilisateurs depuis SQLite ─────────────────────
 	rows, err := h.db.Conn().Query(
 		`SELECT id, jellyfin_id, username, email, ldap_dn, invited_by,
-		        is_active, is_banned, can_invite, access_expires_at,
+		        group_name, is_active, is_banned, can_invite, access_expires_at, delete_at,
 		        expiry_action, expiry_delete_after_days, expired_at,
 		        created_at, updated_at
 		 FROM users ORDER BY created_at DESC`)
@@ -1112,13 +1151,13 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var users []UserResponse
 	for rows.Next() {
 		var u UserResponse
-		var jellyfinID, email, ldapDN, invitedBy sql.NullString
-		var accessExpiresAt, expiryAction, expiredAt, createdAt, updatedAt sql.NullString
+		var jellyfinID, email, ldapDN, invitedBy, groupName sql.NullString
+		var accessExpiresAt, deleteAt, expiryAction, expiredAt, createdAt, updatedAt sql.NullString
 		var deleteAfterDays sql.NullInt64
 
 		err := rows.Scan(
-			&u.ID, &jellyfinID, &u.Username, &email, &ldapDN, &invitedBy,
-			&u.IsActive, &u.IsBanned, &u.CanInvite, &accessExpiresAt,
+			&u.ID, &jellyfinID, &u.Username, &email, &ldapDN, &invitedBy, &groupName,
+			&u.IsActive, &u.IsBanned, &u.CanInvite, &accessExpiresAt, &deleteAt,
 			&expiryAction, &deleteAfterDays, &expiredAt,
 			&createdAt, &updatedAt,
 		)
@@ -1131,7 +1170,9 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		u.Email = email.String
 		u.LdapDN = ldapDN.String
 		u.InvitedBy = invitedBy.String
+		u.GroupName = groupName.String
 		u.AccessExpiresAt = accessExpiresAt.String
+		u.DeleteAt = deleteAt.String
 		u.ExpiryAction = normalizeExpiryAction(expiryAction.String)
 		if deleteAfterDays.Valid {
 			u.DeleteAfterDays = int(deleteAfterDays.Int64)
@@ -1280,15 +1321,15 @@ func (h *AdminHandler) UserTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error) {
 	var rec adminUserRecord
-	var email, jellyfinID, ldapDN, discordContact, telegramContact sql.NullString
+	var email, jellyfinID, ldapDN, groupName, discordContact, telegramContact sql.NullString
 
 	err := h.db.Conn().QueryRow(
-		`SELECT id, username, email, jellyfin_id, ldap_dn, is_active, can_invite,
+		`SELECT id, username, email, jellyfin_id, ldap_dn, group_name, is_active, can_invite,
 		        contact_discord, contact_telegram,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram,
 		        expiry_action, expiry_delete_after_days, expired_at,
-		        access_expires_at, created_at
+		        access_expires_at, delete_at, created_at
 		 FROM users WHERE id = ?`,
 		userID,
 	).Scan(
@@ -1297,6 +1338,7 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		&email,
 		&jellyfinID,
 		&ldapDN,
+		&groupName,
 		&rec.IsActive,
 		&rec.CanInvite,
 		&discordContact,
@@ -1311,6 +1353,7 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		&rec.DeleteAfterDays,
 		&rec.ExpiredAt,
 		&rec.AccessExpiresAt,
+		&rec.DeleteAt,
 		&rec.CreatedAt,
 	)
 	if err != nil {
@@ -1320,6 +1363,7 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 	rec.Email = email.String
 	rec.JellyfinID = jellyfinID.String
 	rec.LdapDN = ldapDN.String
+	rec.GroupName = groupName.String
 	rec.ContactDiscord = discordContact.String
 	rec.ContactTelegram = telegramContact.String
 
@@ -1505,6 +1549,56 @@ func (h *AdminHandler) getJellyfinPresetByID(presetID string) (*config.JellyfinP
 	return nil, fmt.Errorf("preset introuvable")
 }
 
+func (h *AdminHandler) applyGroupMappingToUser(rec *adminUserRecord, groupName string) error {
+	if rec == nil {
+		return nil
+	}
+	groupName = strings.TrimSpace(groupName)
+	if groupName == "" {
+		return nil
+	}
+
+	mappings, err := h.db.GetGroupPolicyMappings()
+	if err != nil {
+		return err
+	}
+
+	var mapping *config.GroupPolicyMapping
+	for i := range mappings {
+		if strings.EqualFold(strings.TrimSpace(mappings[i].GroupName), groupName) {
+			mapping = &mappings[i]
+			break
+		}
+	}
+	if mapping == nil {
+		return nil
+	}
+
+	preset, err := h.getJellyfinPresetByID(mapping.PolicyPresetID)
+	if err != nil {
+		return err
+	}
+
+	patch := &BulkJellyfinPolicyPatch{
+		EnableDownloads:  &preset.EnableDownload,
+		EnableRemote:     &preset.EnableRemoteAccess,
+		MaxActiveSession: &preset.MaxSessions,
+		BitrateLimit:     &preset.BitrateLimit,
+	}
+
+	if err := h.applyJellyfinPolicyPatch(rec.JellyfinID, patch); err != nil {
+		return err
+	}
+
+	if mapping.Source == "ldap" && h.ldClient != nil && strings.TrimSpace(rec.LdapDN) != "" && strings.TrimSpace(mapping.LDAPGroupDN) != "" {
+		if err := h.ldClient.AddUserToGroup(rec.LdapDN, mapping.LDAPGroupDN); err != nil {
+			return fmt.Errorf("assignation groupe ldap: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (h *AdminHandler) setUserActiveState(rec *adminUserRecord, newActive bool, actor string) ([]string, error) {
 	var partialErrors []string
 
@@ -1675,6 +1769,11 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		canInvite = *req.CanInvite
 	}
 
+	groupName := strings.TrimSpace(rec.GroupName)
+	if req.GroupName != nil {
+		groupName = strings.TrimSpace(*req.GroupName)
+	}
+
 	oldExpiry := ""
 	if rec.AccessExpiresAt.Valid {
 		oldExpiry = strings.TrimSpace(rec.AccessExpiresAt.String)
@@ -1706,9 +1805,10 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.db.Conn().Exec(
 		`UPDATE users
-		 SET email = ?, can_invite = ?, access_expires_at = ?, updated_at = datetime('now')
+		 SET email = ?, group_name = ?, can_invite = ?, access_expires_at = ?, updated_at = datetime('now')
 		 WHERE id = ?`,
 		email,
+		groupName,
 		canInvite,
 		accessExpiresAt,
 		userID,
@@ -1720,7 +1820,15 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.db.LogAction("user.updated", sess.Username, rec.Username,
-		fmt.Sprintf(`{"user_id":%d,"email":"%s","can_invite":%t}`, userID, email, canInvite))
+		fmt.Sprintf(`{"user_id":%d,"email":"%s","group_name":"%s","can_invite":%t}`, userID, email, groupName, canInvite))
+
+	if req.GroupName != nil {
+		rec.GroupName = groupName
+		if err := h.applyGroupMappingToUser(rec, groupName); err != nil {
+			slog.Warn("Application mapping groupe echouee", "user", rec.Username, "group", groupName, "error", err)
+			_ = h.db.LogAction("user.group_mapping.failed", sess.Username, rec.Username, err.Error())
+		}
+	}
 
 	if oldExpiry != newExpiry {
 		rec.Email = email
@@ -1736,6 +1844,7 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"id":                userID,
 			"email":             email,
+			"group_name":        groupName,
 			"can_invite":        canInvite,
 			"access_expires_at": accessExpiresAt,
 		},
@@ -2332,24 +2441,26 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 
 // CreateInvitationRequest payload pour la création d'invitation
 type CreateInvitationRequest struct {
-	Label           string   `json:"label"`
-	MaxUses         int      `json:"max_uses"`         // 0 = illimité
-	ExpiresAt       string   `json:"expires_at"`       // Date précise, exemple "2026-10-05T12:00"
-	UserExpiryDays  int      `json:"user_expiry_days"` // Expiration finale du compte client (jours)
-	SendToEmail     string   `json:"send_to_email"`    // Si renseigné, un e-mail partira par SMTP
-	EmailMessage    string   `json:"email_message"`
-	Libraries       []string `json:"libraries"` // ID des bibliothèques Jellyfin
-	EnableDownloads bool     `json:"enable_downloads"`
-	PolicyPresetID  string   `json:"policy_preset_id"`
-	ForcedUsername  string   `json:"forced_username"`
-	TemplateUserID  string   `json:"template_user_id"`
-	PasswordMinLen  *int     `json:"password_min_length"`
-	RequireUpper    *bool    `json:"password_require_upper"`
-	RequireLower    *bool    `json:"password_require_lower"`
-	RequireDigit    *bool    `json:"password_require_digit"`
-	RequireSpecial  *bool    `json:"password_require_special"`
-	ExpiryAction    string   `json:"expiry_action"`
-	DeleteAfterDays *int     `json:"delete_after_days"`
+	Label            string   `json:"label"`
+	MaxUses          int      `json:"max_uses"`         // 0 = illimité
+	ExpiresAt        string   `json:"expires_at"`       // Date précise, exemple "2026-10-05T12:00"
+	UserExpiryDays   int      `json:"user_expiry_days"` // Expiration finale du compte client (jours)
+	DisableAfterDays int      `json:"disable_after_days"`
+	SendToEmail      string   `json:"send_to_email"` // Si renseigné, un e-mail partira par SMTP
+	EmailMessage     string   `json:"email_message"`
+	Libraries        []string `json:"libraries"` // ID des bibliothèques Jellyfin
+	EnableDownloads  bool     `json:"enable_downloads"`
+	PolicyPresetID   string   `json:"policy_preset_id"`
+	GroupName        string   `json:"group_name"`
+	ForcedUsername   string   `json:"forced_username"`
+	TemplateUserID   string   `json:"template_user_id"`
+	PasswordMinLen   *int     `json:"password_min_length"`
+	RequireUpper     *bool    `json:"password_require_upper"`
+	RequireLower     *bool    `json:"password_require_lower"`
+	RequireDigit     *bool    `json:"password_require_digit"`
+	RequireSpecial   *bool    `json:"password_require_special"`
+	ExpiryAction     string   `json:"expiry_action"`
+	DeleteAfterDays  *int     `json:"delete_after_days"`
 }
 
 // CreateInvitation crée un nouveau lien d'invitation avec un jeton robuste et logiques complexes (JFA-GO).
@@ -2402,10 +2513,16 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		EnableDownload:     req.EnableDownloads,
 		EnableRemoteAccess: true,
 		UserExpiryDays:     req.UserExpiryDays,
+		DisableAfterDays:   req.DisableAfterDays,
+		GroupName:          strings.TrimSpace(req.GroupName),
 		ForcedUsername:     req.ForcedUsername,
 		TemplateUserID:     req.TemplateUserID,
 		PasswordMinLength:  8,
 		ExpiryAction:       "disable",
+	}
+
+	if jfProfile.DisableAfterDays <= 0 {
+		jfProfile.DisableAfterDays = jfProfile.UserExpiryDays
 	}
 
 	if strings.TrimSpace(req.PolicyPresetID) != "" {
@@ -2429,6 +2546,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		jfProfile.PasswordRequireLower = preset.RequireLower
 		jfProfile.PasswordRequireDigit = preset.RequireDigit
 		jfProfile.PasswordRequireSpecial = preset.RequireSpecial
+		jfProfile.DisableAfterDays = preset.DisableAfterDays
 		jfProfile.ExpiryAction = normalizeExpiryAction(preset.ExpiryAction)
 		jfProfile.DeleteAfterDays = preset.DeleteAfterDays
 	}
@@ -2454,12 +2572,16 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	if req.DeleteAfterDays != nil && *req.DeleteAfterDays >= 0 {
 		jfProfile.DeleteAfterDays = *req.DeleteAfterDays
 	}
+	if req.DisableAfterDays > 0 {
+		jfProfile.DisableAfterDays = req.DisableAfterDays
+	}
+	if req.UserExpiryDays > 0 {
+		jfProfile.DisableAfterDays = req.UserExpiryDays
+	}
+	jfProfile.UserExpiryDays = jfProfile.DisableAfterDays
 
 	if jfProfile.PasswordMinLength <= 0 {
 		jfProfile.PasswordMinLength = 8
-	}
-	if jfProfile.ExpiryAction != "disable_then_delete" {
-		jfProfile.DeleteAfterDays = 0
 	}
 
 	profileJSON, _ := json.Marshal(jfProfile)

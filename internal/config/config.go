@@ -27,12 +27,23 @@ type Config struct {
 
 	// Jellyfin (seul service externe requis au démarrage)
 	Jellyfin JellyfinConfig
+
+	// Intégrations tierces optionnelles (provisionnement compte)
+	ThirdParty ThirdPartyConfig
 }
 
 // JellyfinConfig contient les paramètres de connexion à Jellyfin.
 type JellyfinConfig struct {
 	URL    string // URL de l'instance Jellyfin (ex: http://jellyfin:8096)
 	APIKey string // Clé API d'administration
+}
+
+// ThirdPartyConfig contient les paramètres optionnels pour Jellyseerr/Ombi.
+type ThirdPartyConfig struct {
+	JellyseerrURL    string
+	JellyseerrAPIKey string
+	OmbiURL          string
+	OmbiAPIKey       string
 }
 
 // ── Types de configuration stockés en base (table settings) ─────────────────
@@ -147,8 +158,17 @@ type JellyfinPolicyPreset struct {
 	RequireLower       bool     `json:"require_lower"`
 	RequireDigit       bool     `json:"require_digit"`
 	RequireSpecial     bool     `json:"require_special"`
+	DisableAfterDays   int      `json:"disable_after_days"`
 	ExpiryAction       string   `json:"expiry_action"`
 	DeleteAfterDays    int      `json:"delete_after_days"`
+}
+
+// GroupPolicyMapping lie un groupe (interne ou LDAP) à un preset Jellyfin.
+type GroupPolicyMapping struct {
+	GroupName      string `json:"group_name"`
+	Source         string `json:"source"` // internal|ldap
+	LDAPGroupDN    string `json:"ldap_group_dn"`
+	PolicyPresetID string `json:"policy_preset_id"`
 }
 
 // DefaultJellyfinPolicyPresets retourne un ensemble de presets initiaux.
@@ -164,7 +184,9 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			MaxSessions:        0,
 			BitrateLimit:       0,
 			PasswordMinLength:  8,
+			DisableAfterDays:   0,
 			ExpiryAction:       "disable",
+			DeleteAfterDays:    0,
 		},
 		{
 			ID:                 "limited",
@@ -177,7 +199,9 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			BitrateLimit:       4000,
 			PasswordMinLength:  10,
 			RequireDigit:       true,
+			DisableAfterDays:   0,
 			ExpiryAction:       "disable",
+			DeleteAfterDays:    0,
 		},
 	}
 }
@@ -224,6 +248,13 @@ func Load() (*Config, error) {
 		Jellyfin: JellyfinConfig{
 			URL:    getEnv("JELLYFIN_URL", ""),
 			APIKey: getEnv("JELLYFIN_API_KEY", ""),
+		},
+
+		ThirdParty: ThirdPartyConfig{
+			JellyseerrURL:    strings.TrimSpace(getEnv("JELLYSEERR_URL", "")),
+			JellyseerrAPIKey: strings.TrimSpace(getEnv("JELLYSEERR_API_KEY", "")),
+			OmbiURL:          strings.TrimSpace(getEnv("OMBI_URL", "")),
+			OmbiAPIKey:       strings.TrimSpace(getEnv("OMBI_API_KEY", "")),
 		},
 	}
 

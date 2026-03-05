@@ -82,11 +82,40 @@
                             <th>Remote</th>
                             <th>Sessions</th>
                             <th>Bitrate</th>
+                            <th>Disable (j)</th>
+                            <th>Delete (j)</th>
                             <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="presets-body">
-                        <tr><td colspan="7" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                        <tr><td colspan="9" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="glass-card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold">Mapping de groupes</h2>
+                <div class="flex gap-2">
+                    <button id="btn-group-map-add" class="jg-btn jg-btn-ghost jg-btn-sm">Ajouter</button>
+                    <button id="btn-group-map-save" class="jg-btn jg-btn-sm">Sauvegarder</button>
+                </div>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">Lie un groupe interne/LDAP a un preset Jellyfin. Lorsqu'un utilisateur est assigne a ce groupe, le preset est applique automatiquement.</p>
+            <div class="jg-table-wrap">
+                <table class="jg-table">
+                    <thead>
+                        <tr>
+                            <th>Groupe</th>
+                            <th>Source</th>
+                            <th>DN LDAP (optionnel)</th>
+                            <th>Preset cible</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="group-mappings-body">
+                        <tr><td colspan="5" class="text-center text-slate-500 py-8">Chargement...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -138,6 +167,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let presets = [];
+    let groupMappings = [];
     let tasks = [];
 
     function presetRow(p, idx) {
@@ -148,6 +178,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="checkbox" class="form-checkbox" data-p="${idx}" data-k="enable_remote_access" ${p.enable_remote_access ? 'checked' : ''}></td>
             <td><input type="number" class="jg-input" data-p="${idx}" data-k="max_sessions" value="${Number.isInteger(p.max_sessions) ? p.max_sessions : 0}"></td>
             <td><input type="number" class="jg-input" data-p="${idx}" data-k="bitrate_limit" value="${Number.isInteger(p.bitrate_limit) ? p.bitrate_limit : 0}"></td>
+            <td><input type="number" class="jg-input" data-p="${idx}" data-k="disable_after_days" min="0" value="${Number.isInteger(p.disable_after_days) ? p.disable_after_days : 0}"></td>
+            <td><input type="number" class="jg-input" data-p="${idx}" data-k="delete_after_days" min="0" value="${Number.isInteger(p.delete_after_days) ? p.delete_after_days : 0}"></td>
             <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="preset-delete" data-index="${idx}">Supprimer</button></td>
         </tr>`;
     }
@@ -155,10 +187,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderPresets() {
         const tbody = document.getElementById('presets-body');
         if (!presets.length) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">Aucun preset.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-slate-500 py-8">Aucun preset.</td></tr>';
             return;
         }
         tbody.innerHTML = presets.map((p, idx) => presetRow(p, idx)).join('');
+
+        // Les options de presets doivent suivre les modifications locales.
+        renderGroupMappings();
     }
 
     async function loadPresets() {
@@ -195,11 +230,80 @@ document.addEventListener('DOMContentLoaded', () => {
                 require_lower: !!existing.require_lower,
                 require_digit: !!existing.require_digit,
                 require_special: !!existing.require_special,
+                disable_after_days: parseInt(read('disable_after_days')?.value || '0', 10) || 0,
                 expiry_action: existing.expiry_action || 'disable',
-                delete_after_days: Number.isInteger(existing.delete_after_days) ? existing.delete_after_days : 0,
+                delete_after_days: parseInt(read('delete_after_days')?.value || '0', 10) || 0,
             });
         });
         return next;
+    }
+
+    function groupPresetOptions(selectedID) {
+        const options = ['<option value="">Selectionner...</option>'];
+        presets.forEach(p => {
+            const value = JG.esc(p.id || '');
+            const selected = (p.id || '') === (selectedID || '') ? 'selected' : '';
+            options.push(`<option value="${value}" ${selected}>${JG.esc(p.name || p.id || '')}</option>`);
+        });
+        return options.join('');
+    }
+
+    function groupMappingRow(m, idx) {
+        return `<tr>
+            <td><input class="jg-input" data-g="${idx}" data-k="group_name" value="${JG.esc(m.group_name || '')}" placeholder="Enfants"></td>
+            <td>
+                <select class="jg-input" data-g="${idx}" data-k="source">
+                    <option value="internal" ${(m.source || 'internal') === 'internal' ? 'selected' : ''}>internal</option>
+                    <option value="ldap" ${(m.source || '') === 'ldap' ? 'selected' : ''}>ldap</option>
+                </select>
+            </td>
+            <td><input class="jg-input" data-g="${idx}" data-k="ldap_group_dn" value="${JG.esc(m.ldap_group_dn || '')}" placeholder="CN=Enfants,CN=Users,DC=home,DC=lan"></td>
+            <td>
+                <select class="jg-input" data-g="${idx}" data-k="policy_preset_id">
+                    ${groupPresetOptions(m.policy_preset_id || '')}
+                </select>
+            </td>
+            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="group-map-delete" data-index="${idx}">Supprimer</button></td>
+        </tr>`;
+    }
+
+    function renderGroupMappings() {
+        const tbody = document.getElementById('group-mappings-body');
+        if (!groupMappings.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-500 py-8">Aucun mapping de groupe.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = groupMappings.map((m, idx) => groupMappingRow(m, idx)).join('');
+    }
+
+    function collectGroupMappingsFromUI() {
+        const rows = document.querySelectorAll('#group-mappings-body tr');
+        const next = [];
+        rows.forEach((_, idx) => {
+            const read = (k) => document.querySelector(`[data-g="${idx}"][data-k="${k}"]`);
+            const groupName = (read('group_name')?.value || '').trim();
+            const source = (read('source')?.value || 'internal').trim();
+            const ldapGroupDN = (read('ldap_group_dn')?.value || '').trim();
+            const policyPresetID = (read('policy_preset_id')?.value || '').trim();
+            if (!groupName || !policyPresetID) return;
+            next.push({
+                group_name: groupName,
+                source: source === 'ldap' ? 'ldap' : 'internal',
+                ldap_group_dn: ldapGroupDN,
+                policy_preset_id: policyPresetID,
+            });
+        });
+        return next;
+    }
+
+    async function loadGroupMappings() {
+        const res = await JG.api('/admin/api/automation/group-mappings');
+        if (!res.success) {
+            JG.toast(res.message || 'Erreur mappings de groupes', 'error');
+            return;
+        }
+        groupMappings = Array.isArray(res.data) ? res.data : [];
+        renderGroupMappings();
     }
 
     function renderTasks() {
@@ -249,6 +353,7 @@ document.addEventListener('DOMContentLoaded', () => {
             require_lower: false,
             require_digit: false,
             require_special: false,
+            disable_after_days: 0,
             expiry_action: 'disable',
             delete_after_days: 0,
         });
@@ -277,6 +382,40 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!Number.isInteger(index) || index < 0) return;
         presets.splice(index, 1);
         renderPresets();
+    });
+
+    document.getElementById('btn-group-map-add').addEventListener('click', () => {
+        groupMappings.push({
+            group_name: '',
+            source: 'internal',
+            ldap_group_dn: '',
+            policy_preset_id: presets[0]?.id || '',
+        });
+        renderGroupMappings();
+    });
+
+    document.getElementById('btn-group-map-save').addEventListener('click', async () => {
+        const payload = collectGroupMappingsFromUI();
+        const res = await JG.api('/admin/api/automation/group-mappings', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+        if (!res.success) {
+            JG.toast(res.message || 'Sauvegarde mappings impossible', 'error');
+            return;
+        }
+        JG.toast('Mappings de groupes sauvegardes', 'success');
+        await loadGroupMappings();
+    });
+
+    document.getElementById('group-mappings-body').addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (button.dataset.action !== 'group-map-delete') return;
+        const index = parseInt(button.dataset.index || '-1', 10);
+        if (!Number.isInteger(index) || index < 0) return;
+        groupMappings.splice(index, 1);
+        renderGroupMappings();
     });
 
     document.getElementById('task-create-form').addEventListener('submit', async (event) => {
@@ -362,8 +501,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    loadPresets();
-    loadTasks();
+    (async () => {
+        await loadPresets();
+        await loadGroupMappings();
+        await loadTasks();
+    })();
 });
 </script>
 {{ end }}

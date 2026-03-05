@@ -22,6 +22,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/handlers"
+	"github.com/maelmoreau21/JellyGate/internal/integrations"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
@@ -98,6 +99,7 @@ func main() {
 	// Webhooks (optionnel — chargé depuis la base)
 	webhooksCfg, _ := db.GetWebhooksConfig()
 	notifier := notify.New(webhooksCfg)
+	provisioner := integrations.New(cfg.ThirdParty)
 
 	// ── 3c. Initialiser le moteur de rendu HTML ────────────────────────────
 	renderEngine, err := render.NewEngine("web/templates", "web/i18n")
@@ -109,7 +111,7 @@ func main() {
 
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
 	authHandler := handlers.NewAuthHandler(cfg, db, renderEngine)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, mailer, notifier, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, provisioner, mailer, notifier, renderEngine)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db)
@@ -254,6 +256,10 @@ func main() {
 					r.Route("/presets", func(r chi.Router) {
 						r.Get("/", automationHandler.ListPresets)
 						r.Post("/", automationHandler.SavePresets)
+					})
+					r.Route("/group-mappings", func(r chi.Router) {
+						r.Get("/", automationHandler.ListGroupMappings)
+						r.Post("/", automationHandler.SaveGroupMappings)
 					})
 					r.Route("/tasks", func(r chi.Router) {
 						r.Get("/", automationHandler.ListTasks)

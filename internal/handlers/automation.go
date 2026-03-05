@@ -80,6 +80,65 @@ func (h *AutomationHandler) SavePresets(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Presets sauvegardes"})
 }
 
+func (h *AutomationHandler) ListGroupMappings(w http.ResponseWriter, r *http.Request) {
+	mappings, err := h.db.GetGroupPolicyMappings()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture mappings de groupes"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: mappings})
+}
+
+func (h *AutomationHandler) SaveGroupMappings(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	if sess == nil || !sess.IsAdmin {
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
+		return
+	}
+
+	var mappings []config.GroupPolicyMapping
+	if err := json.NewDecoder(r.Body).Decode(&mappings); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide"})
+		return
+	}
+
+	presets, err := h.db.GetJellyfinPolicyPresets()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de lire les presets"})
+		return
+	}
+
+	presetIndex := make(map[string]struct{}, len(presets))
+	for i := range presets {
+		presetIndex[strings.TrimSpace(strings.ToLower(presets[i].ID))] = struct{}{}
+	}
+
+	for i := range mappings {
+		mappings[i].GroupName = strings.TrimSpace(mappings[i].GroupName)
+		mappings[i].PolicyPresetID = strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
+		mappings[i].Source = strings.TrimSpace(strings.ToLower(mappings[i].Source))
+		if mappings[i].Source != "ldap" {
+			mappings[i].Source = "internal"
+		}
+		if mappings[i].GroupName == "" || mappings[i].PolicyPresetID == "" {
+			continue
+		}
+		if _, ok := presetIndex[mappings[i].PolicyPresetID]; !ok {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Un mapping référence un preset introuvable"})
+			return
+		}
+	}
+
+	if err := h.db.SaveGroupPolicyMappings(mappings); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Sauvegarde mappings impossible"})
+		return
+	}
+
+	_ = h.db.LogAction("automation.group_mappings.saved", sess.Username, "group_mappings", strconv.Itoa(len(mappings)))
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Mappings de groupes sauvegardes"})
+}
+
 func (h *AutomationHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.db.Conn().Query(
 		`SELECT id, name, task_type, enabled, hour, minute, payload, last_run_at, created_by, created_at, updated_at

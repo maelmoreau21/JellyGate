@@ -207,6 +207,7 @@
                             <th>{{ .T "col_status" }}</th>
                             <th>{{ .T "col_jellyfin" }}</th>
                             <th>{{ .T "col_invited_by" }}</th>
+                            <th>Groupe</th>
                             <th>Parrainage</th>
                             <th>Expiration</th>
                             <th>{{ .T "col_created_at" }}</th>
@@ -215,7 +216,7 @@
                     </thead>
                     <tbody id="users-tbody">
                         <tr>
-                            <td colspan="10" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
+                            <td colspan="11" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
                         </tr>
                     </tbody>
                 </table>
@@ -236,6 +237,10 @@
             <div>
                 <label class="jg-label">Adresse email</label>
                 <input type="email" id="edit-email" class="jg-input" placeholder="nom@domaine.tld">
+            </div>
+            <div>
+                <label class="jg-label">Groupe</label>
+                <input type="text" id="edit-group-name" class="jg-input" placeholder="Ex: Enfants">
             </div>
             <div>
                 <label class="jg-label">Expiration du compte</label>
@@ -387,7 +392,7 @@
                 const help = allUsers.length === 0
                     ? 'Aucun utilisateur local. Clique sur “Sync Jellyfin” pour importer les comptes existants.'
                     : 'Aucun utilisateur ne correspond aux filtres actuels.';
-                tbody.innerHTML = `<tr><td colspan="10" class="text-center text-slate-500 py-12">${JG.esc(help)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-slate-500 py-12">${JG.esc(help)}</td></tr>`;
                 updateSelectionUI();
                 return;
             }
@@ -405,6 +410,7 @@
                     <td>${userStatusBadge(u)}</td>
                     <td>${jellyfinStatusBadge(u)}</td>
                     <td class="text-slate-400">${JG.esc(u.invited_by || '—')}</td>
+                    <td class="text-slate-300">${JG.esc(u.group_name || '—')}</td>
                     <td>${u.can_invite ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-muted">Non</span>'}</td>
                     <td class="${expiryClass}">${JG.esc(expiry)}</td>
                     <td class="text-slate-500 text-sm">${JG.esc(fmtDate(u.created_at))}</td>
@@ -434,6 +440,7 @@
                 const textMatch = !query ||
                     (u.username || '').toLowerCase().includes(query) ||
                     (u.email || '').toLowerCase().includes(query) ||
+                    (u.group_name || '').toLowerCase().includes(query) ||
                     (u.invited_by || '').toLowerCase().includes(query);
 
                 const statusMatch =
@@ -692,7 +699,7 @@
             const res = await JG.api('/admin/api/users');
             if (!res.success) {
                 JG.toast(res.message || 'Erreur chargement', 'error');
-                document.getElementById('users-tbody').innerHTML = '<tr><td colspan="10" class="text-center text-red-300 py-12">Impossible de charger les utilisateurs. Vérifie ta session et recharge la page.</td></tr>';
+                document.getElementById('users-tbody').innerHTML = '<tr><td colspan="11" class="text-center text-red-300 py-12">Impossible de charger les utilisateurs. Vérifie ta session et recharge la page.</td></tr>';
                 return;
             }
             allUsers = res.data || [];
@@ -759,6 +766,7 @@
             if (!user) return;
             document.getElementById('edit-user-id').value = user.id;
             document.getElementById('edit-email').value = user.email || '';
+            document.getElementById('edit-group-name').value = user.group_name || '';
             document.getElementById('edit-expiry').value = toDateTimeLocal(user.access_expires_at || '');
             document.getElementById('edit-clear-expiry').checked = false;
             document.getElementById('edit-can-invite').checked = !!user.can_invite;
@@ -878,6 +886,7 @@
             const id = Number(document.getElementById('edit-user-id').value);
             const payload = {
                 email: document.getElementById('edit-email').value.trim(),
+                group_name: document.getElementById('edit-group-name').value.trim(),
                 can_invite: document.getElementById('edit-can-invite').checked,
                 access_expires_at: document.getElementById('edit-expiry').value,
                 clear_expiry: document.getElementById('edit-clear-expiry').checked,

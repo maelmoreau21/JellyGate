@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log/slog"
+	"strings"
 	"unicode/utf16"
 
 	goldap "github.com/go-ldap/ldap/v3"
@@ -361,6 +362,39 @@ func (c *Client) addToGroup(conn *goldap.Conn, userDN string) error {
 	}
 
 	slog.Info("Utilisateur ajouté au groupe AD", "user_dn", userDN, "group", c.cfg.UserGroup)
+	return nil
+}
+
+// AddUserToGroup ajoute un utilisateur à un groupe AD spécifique.
+// groupRef peut être un DN complet (CN=...,DC=...) ou un nom simple de groupe.
+func (c *Client) AddUserToGroup(userDN, groupRef string) error {
+	userDN = strings.TrimSpace(userDN)
+	groupRef = strings.TrimSpace(groupRef)
+	if userDN == "" {
+		return fmt.Errorf("ldap.AddUserToGroup: userDN vide")
+	}
+	if groupRef == "" {
+		return fmt.Errorf("ldap.AddUserToGroup: groupe vide")
+	}
+
+	conn, err := c.connect()
+	if err != nil {
+		return fmt.Errorf("ldap.AddUserToGroup: %w", err)
+	}
+	defer conn.Close()
+
+	groupDN := groupRef
+	if !strings.Contains(strings.ToLower(groupRef), "dc=") {
+		groupDN = fmt.Sprintf("CN=%s,%s,%s", groupRef, c.cfg.UserOU, c.cfg.BaseDN)
+	}
+
+	modReq := goldap.NewModifyRequest(groupDN, nil)
+	modReq.Add("member", []string{userDN})
+	if err := conn.Modify(modReq); err != nil {
+		return fmt.Errorf("ldap.AddUserToGroup: échec de l'ajout de %q au groupe %q: %w", userDN, groupDN, err)
+	}
+
+	slog.Info("Utilisateur ajouté au groupe AD (manuel)", "user_dn", userDN, "group_dn", groupDN)
 	return nil
 }
 

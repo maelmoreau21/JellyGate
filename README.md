@@ -113,31 +113,69 @@ docker compose up -d
 
 ## ⚙️ Variables d'environnement
 
-Voir [`.env.example`](.env.example) pour la liste complète. Résumé :
+Voir [`.env.example`](.env.example) pour la liste complète.
+
+> LDAP, SMTP et Webhooks se configurent désormais dans l'interface admin (stockage SQLite), pas via `.env`.
 
 | Variable | Requis | Défaut | Description |
 |---|---|---|---|
 | `JELLYGATE_SECRET_KEY` | ✅ | — | Clé de signature des sessions (min. 32 car.) |
 | `JELLYFIN_URL` | ✅ | — | URL du serveur Jellyfin |
 | `JELLYFIN_API_KEY` | ✅ | — | Clé API Jellyfin |
-| `LDAP_HOST` | ✅ | — | Hostname du serveur LDAP |
-| `LDAP_BIND_DN` | ✅ | — | DN du compte de service |
-| `LDAP_BIND_PASSWORD` | ✅ | — | Mot de passe du compte de service |
-| `LDAP_BASE_DN` | ✅ | — | Base DN de l'annuaire |
-| `LDAP_DOMAIN` | ✅ | — | Domaine AD (ex: example.com) |
-| `SMTP_HOST` | ✅ | — | Serveur SMTP |
-| `SMTP_USERNAME` | ✅ | — | Utilisateur SMTP |
-| `SMTP_PASSWORD` | ✅ | — | Mot de passe SMTP |
-| `SMTP_FROM` | ✅ | — | Adresse expéditeur |
 | `JELLYGATE_PORT` | ❌ | `8097` | Port d'écoute |
-| `LDAP_PORT` | ❌ | `636` | Port LDAPS |
-| `SMTP_PORT` | ❌ | `587` | Port SMTP |
-| `WEBHOOK_DISCORD_URL` | ❌ | — | Webhook Discord |
-| `WEBHOOK_TELEGRAM_TOKEN` | ❌ | — | Token bot Telegram |
-| `WEBHOOK_TELEGRAM_CHAT_ID` | ❌ | — | Chat ID Telegram |
-| `WEBHOOK_MATRIX_URL` | ❌ | — | URL homeserver Matrix |
-| `WEBHOOK_MATRIX_ROOM_ID` | ❌ | — | Room ID Matrix |
-| `WEBHOOK_MATRIX_TOKEN` | ❌ | — | Access token Matrix |
+| `JELLYGATE_BASE_URL` | ❌ | `http://localhost:8097` | URL publique JellyGate |
+| `JELLYGATE_DATA_DIR` | ❌ | `/data` | Dossier de persistance |
+| `JELLYGATE_DEFAULT_LANG` | ❌ | `fr` | Langue par défaut (`fr`/`en`) |
+| `JELLYSEERR_URL` | ❌ | — | URL Jellyseerr (provisionnement automatique) |
+| `JELLYSEERR_API_KEY` | ❌ | — | Clé API Jellyseerr |
+| `OMBI_URL` | ❌ | — | URL Ombi (provisionnement automatique) |
+| `OMBI_API_KEY` | ❌ | — | Clé API Ombi |
+
+## 🏠 Mode Home Server (Groupes + Expiration + Provisioning)
+
+### 1. Activer Jellyseerr/Ombi (optionnel)
+
+Ajoutez dans `.env` au moins un couple URL + API key :
+
+```bash
+JELLYSEERR_URL=http://jellyseerr:5055
+JELLYSEERR_API_KEY=...
+
+# ou
+OMBI_URL=http://ombi:3579
+OMBI_API_KEY=...
+```
+
+Si ces variables sont absentes, l'inscription continue normalement sans provisioning tiers.
+
+### 2. Configurer les presets et mappings de groupes
+
+1. Ouvrez `Admin > Automatisation`.
+2. Créez/éditez un preset Jellyfin (bibliothèques, remote access, bitrate, etc.).
+3. Renseignez au besoin `disable_after_days` et `delete_after_days`.
+4. Dans `Mapping de groupes`, liez un `group_name` à un `policy_preset_id`.
+5. Pour une source LDAP, renseignez aussi le DN du groupe LDAP.
+
+### 3. Créer une invitation alignée sur le groupe
+
+Dans `Admin > Invitations`, renseignez :
+
+- `group_name` (ex: `famille`, `amis`, `kids`)
+- `disable_after_days` (désactivation auto)
+- `delete_after_days` (suppression auto)
+
+À la validation de l'invitation, JellyGate applique le preset mappé, enregistre les dates d'expiration, et provisionne Jellyseerr/Ombi si activé.
+
+## 🧪 Test E2E (5 minutes)
+
+1. Définissez un mapping `kids -> limited` dans `Admin > Automatisation`.
+2. Créez une invitation avec `group_name=kids`, `disable_after_days=2`, `delete_after_days=5`.
+3. Inscrivez un compte test via le lien d'invitation.
+4. Vérifiez dans `Admin > Utilisateurs` : colonne groupe = `kids`.
+5. Vérifiez dans Jellyfin : la policy du compte correspond au preset `limited`.
+6. Vérifiez les logs admin : présence de l'action `invite.integration.provisioned` si Jellyseerr/Ombi est configuré.
+
+Résultat attendu : utilisateur créé et mappé correctement, expiration planifiée, provisioning tiers effectué sans bloquer le flux d'inscription.
 
 ## 🛠️ Stack technique
 

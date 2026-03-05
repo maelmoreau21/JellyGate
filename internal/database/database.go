@@ -127,11 +127,13 @@ func (db *DB) migrate() error {
 				username          TEXT    UNIQUE NOT NULL,
 				email             TEXT,
 				ldap_dn           TEXT,
+				group_name        TEXT    NOT NULL DEFAULT '',
 				invited_by        TEXT,
 				is_active         BOOLEAN NOT NULL DEFAULT 1,
 				is_banned         BOOLEAN NOT NULL DEFAULT 0,
 				can_invite        BOOLEAN NOT NULL DEFAULT 0,
 				access_expires_at DATETIME,
+				delete_at         DATETIME,
 				expiry_action     TEXT    NOT NULL DEFAULT 'disable',
 				expiry_delete_after_days INTEGER NOT NULL DEFAULT 0,
 				expired_at        DATETIME,
@@ -271,6 +273,8 @@ func (db *DB) migrate() error {
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_email BOOLEAN NOT NULL DEFAULT 1`)
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_discord BOOLEAN NOT NULL DEFAULT 0`)
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_telegram BOOLEAN NOT NULL DEFAULT 0`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN group_name TEXT NOT NULL DEFAULT ''`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN delete_at DATETIME`)
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_action TEXT NOT NULL DEFAULT 'disable'`)
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`)
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expired_at DATETIME`)

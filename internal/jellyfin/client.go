@@ -111,8 +111,10 @@ type InviteProfile struct {
 	MaxSessions        int      `json:"max_sessions"`
 	BitrateLimit       int      `json:"bitrate_limit"`    // 0 = illimité
 	UserExpiryDays     int      `json:"user_expiry_days"` // 0 = illimité
-	ExpiryAction       string   `json:"expiry_action"`    // disable|delete|disable_then_delete
+	DisableAfterDays   int      `json:"disable_after_days"`
+	ExpiryAction       string   `json:"expiry_action"` // disable|delete|disable_then_delete
 	DeleteAfterDays    int      `json:"delete_after_days"`
+	GroupName          string   `json:"group_name"`
 
 	PasswordMinLength      int  `json:"password_min_length"`
 	PasswordRequireUpper   bool `json:"password_require_upper"`

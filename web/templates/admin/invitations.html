@@ -193,10 +193,14 @@
                         </div>
                     </div>
                     <div>
-                        <label class="jg-label mt-2">Expiration du compte client (Jours, 0 = Jamais)</label>
-                        <input type="number" id="inv-expires-user"
+                        <label class="jg-label mt-2">Groupe utilisateur (optionnel)</label>
+                        <input type="text" id="inv-group-name" class="jg-input" placeholder="Ex: Enfants">
+                    </div>
+                    <div>
+                        <label class="jg-label mt-2">Desactiver le compte apres (jours, 0 = jamais)</label>
+                        <input type="number" id="inv-disable-after"
                             class="jg-input text-emerald-100 placeholder-emerald-800" min="0" value="0"
-                            placeholder="Ex: 30 pour un accès mensuel">
+                            placeholder="Ex: 30">
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -204,12 +208,8 @@
                             <input type="number" id="inv-pw-min" class="jg-input" min="0" value="8">
                         </div>
                         <div>
-                            <label class="jg-label">Action a l'expiration</label>
-                            <select id="inv-expiry-action" class="jg-input">
-                                <option value="disable">Desactiver le compte</option>
-                                <option value="delete">Supprimer le compte</option>
-                                <option value="disable_then_delete">Desactiver puis supprimer</option>
-                            </select>
+                            <label class="jg-label">Supprimer le compte apres (jours, 0 = jamais)</label>
+                            <input type="number" id="inv-delete-after" class="jg-input" min="0" value="0">
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
@@ -229,11 +229,6 @@
                             <input type="checkbox" id="inv-pw-special" class="rounded border-slate-600 bg-slate-800 text-purple-500 w-4 h-4 focus:ring-0 cursor-pointer">
                             <span class="text-slate-300">Caractere special requis</span>
                         </label>
-                    </div>
-                    <div>
-                        <label class="jg-label">Suppression differee apres expiration (jours)</label>
-                        <input type="number" id="inv-delete-after" class="jg-input" min="0" value="0">
-                        <p class="text-xs text-slate-500 mt-1">Utilise uniquement le mode "Desactiver puis supprimer".</p>
                     </div>
                     <div>
                         <label class="jg-label flex items-center gap-2 cursor-pointer mt-6">
@@ -295,15 +290,6 @@
             return window.location.origin;
         }
 
-        function syncDeleteAfterState() {
-            const action = document.getElementById('inv-expiry-action').value;
-            const deleteAfter = document.getElementById('inv-delete-after');
-            deleteAfter.disabled = action !== 'disable_then_delete';
-            if (action !== 'disable_then_delete') {
-                deleteAfter.value = '0';
-            }
-        }
-
         function applyPresetPolicy(presetId) {
             const preset = allPresets.find(p => p.id === presetId);
             if (!preset) {
@@ -317,11 +303,12 @@
             document.getElementById('inv-pw-lower').checked = !!preset.require_lower;
             document.getElementById('inv-pw-digit').checked = !!preset.require_digit;
             document.getElementById('inv-pw-special').checked = !!preset.require_special;
-            document.getElementById('inv-expiry-action').value = preset.expiry_action || 'disable';
+            document.getElementById('inv-disable-after').value = Number.isInteger(preset.disable_after_days)
+                ? preset.disable_after_days
+                : 0;
             document.getElementById('inv-delete-after').value = Number.isInteger(preset.delete_after_days)
                 ? preset.delete_after_days
                 : 0;
-            syncDeleteAfterState();
         }
 
         // Charger les invitations
@@ -370,14 +357,13 @@
 
                 // Expiration Utilisateur depuis le JSON Profile
                 const rawProfile = inv.jellyfin_profile || {};
-                const userExpiry = rawProfile.user_expiry_days > 0
-                    ? `${rawProfile.user_expiry_days} jours`
-                    : 'Illimité';
-                const expiryAction = rawProfile.expiry_action || 'disable';
+                const disableAfter = Number(rawProfile.disable_after_days || rawProfile.user_expiry_days || 0);
                 const deleteAfter = Number(rawProfile.delete_after_days || 0);
-                const expiryPolicy = expiryAction === 'disable_then_delete'
-                    ? `disable puis delete (+${deleteAfter}j)`
-                    : expiryAction;
+                const groupName = (rawProfile.group_name || '').trim();
+                const userExpiry = disableAfter > 0
+                    ? `disable a ${disableAfter} jours`
+                    : 'Illimité';
+                const deleteLabel = deleteAfter > 0 ? `delete a ${deleteAfter} jours` : 'pas de suppression planifiee';
                 const pwRules = [];
                 if (Number(rawProfile.password_min_length || 0) > 0) pwRules.push(`min ${rawProfile.password_min_length}`);
                 if (rawProfile.password_require_upper) pwRules.push('MAJ');
@@ -385,7 +371,8 @@
                 if (rawProfile.password_require_digit) pwRules.push('chiffre');
                 if (rawProfile.password_require_special) pwRules.push('special');
                 const policyLabel = pwRules.length > 0 ? pwRules.join(', ') : 'defaut';
-                const userExp = `<div>${JG.esc(userExpiry)}</div><div class="text-xs text-slate-500">${JG.esc(expiryPolicy)} · ${JG.esc(policyLabel)}</div>`;
+                const groupLabel = groupName ? `groupe: ${groupName}` : 'sans groupe';
+                const userExp = `<div>${JG.esc(userExpiry)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)} · ${JG.esc(policyLabel)}</div>`;
 
                 const usesStr = inv.max_uses > 0 ? `${inv.used_count} / ${inv.max_uses}` : `${inv.used_count} / ∞`;
 
@@ -437,7 +424,6 @@
 
         // Modales de création
         JG.openCreateModal = function () {
-            syncDeleteAfterState();
             document.getElementById('create-modal').style.display = '';
         }
 
@@ -445,9 +431,8 @@
             document.getElementById('create-modal').style.display = 'none';
             document.getElementById('create-form').reset();
             document.getElementById('inv-pw-min').value = '8';
-            document.getElementById('inv-expiry-action').value = 'disable';
+            document.getElementById('inv-disable-after').value = '0';
             document.getElementById('inv-delete-after').value = '0';
-            syncDeleteAfterState();
         }
 
         JG.submitCreate = async function (e) {
@@ -460,11 +445,13 @@
                 label: document.getElementById('inv-label').value,
                 max_uses: parseInt(document.getElementById('inv-uses').value) || 0,
                 expires_at: document.getElementById('inv-expires-link').value || "",
-                user_expiry_days: parseInt(document.getElementById('inv-expires-user').value) || 0,
+                user_expiry_days: parseInt(document.getElementById('inv-disable-after').value) || 0,
+                disable_after_days: parseInt(document.getElementById('inv-disable-after').value) || 0,
                 send_to_email: document.getElementById('inv-email').value,
                 email_message: "", // Obsolète, géré par Moteur d'emails
                 enable_downloads: document.getElementById('inv-dl').checked,
                 policy_preset_id: document.getElementById('inv-policy-preset').value,
+                group_name: document.getElementById('inv-group-name').value,
                 forced_username: document.getElementById('inv-forced-user').value,
                 template_user_id: document.getElementById('inv-template-user').value,
                 password_min_length: parseInt(document.getElementById('inv-pw-min').value, 10) || 0,
@@ -472,7 +459,6 @@
                 password_require_lower: document.getElementById('inv-pw-lower').checked,
                 password_require_digit: document.getElementById('inv-pw-digit').checked,
                 password_require_special: document.getElementById('inv-pw-special').checked,
-                expiry_action: document.getElementById('inv-expiry-action').value,
                 delete_after_days: parseInt(document.getElementById('inv-delete-after').value, 10) || 0,
                 libraries: [] // Pour la démo : Toutes les bibliothèques. JFA-GO utilise des select complexes.
             };
@@ -512,10 +498,6 @@
             }
             applyPresetPolicy(presetID);
         });
-
-        document.getElementById('inv-expiry-action').addEventListener('change', syncDeleteAfterState);
-
-        syncDeleteAfterState();
 
         JG.loadInvitations();
     });

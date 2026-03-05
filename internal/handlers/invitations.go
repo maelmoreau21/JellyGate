@@ -25,6 +25,7 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	"github.com/maelmoreau21/JellyGate/internal/integrations"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
@@ -60,25 +61,27 @@ type inviteFormData struct {
 
 // InvitationHandler gère les routes liées aux invitations.
 type InvitationHandler struct {
-	cfg      *config.Config
-	db       *database.DB
-	jfClient *jellyfin.Client
-	ldClient *jgldap.Client
-	mailer   *mail.Mailer
-	notifier *notify.Notifier
-	renderer *render.Engine
+	cfg         *config.Config
+	db          *database.DB
+	jfClient    *jellyfin.Client
+	ldClient    *jgldap.Client
+	provisioner *integrations.Client
+	mailer      *mail.Mailer
+	notifier    *notify.Notifier
+	renderer    *render.Engine
 }
 
 // NewInvitationHandler crée un nouveau handler d'invitations.
-func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, m *mail.Mailer, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
+func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, provisioner *integrations.Client, m *mail.Mailer, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
 	return &InvitationHandler{
-		cfg:      cfg,
-		db:       db,
-		jfClient: jf,
-		ldClient: ld,
-		mailer:   m,
-		notifier: n,
-		renderer: renderer,
+		cfg:         cfg,
+		db:          db,
+		jfClient:    jf,
+		ldClient:    ld,
+		provisioner: provisioner,
+		mailer:      m,
+		notifier:    n,
+		renderer:    renderer,
 	}
 }
 
@@ -284,6 +287,15 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		_ = h.db.LogAction("invite.profile.failed", form.Username, jfUser.ID, err.Error())
 	}
 
+	if err := h.applyGroupPolicyFromProfile(profile, jfUser.ID, userDN); err != nil {
+		slog.Warn("Erreur application mapping de groupe (non-bloquant)",
+			"group", strings.TrimSpace(profile.GroupName),
+			"jellyfin_id", jfUser.ID,
+			"error", err,
+		)
+		_ = h.db.LogAction("invite.group_mapping.failed", form.Username, jfUser.ID, err.Error())
+	}
+
 	slog.Info("✅ Étape 3/5 terminée", "jellyfin_id", jfUser.ID)
 
 	// ═══════════════════════════════════════════════════════════════════
@@ -371,6 +383,15 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 				slog.Error("Erreur envoi email post-inscription", "email", form.Email, "error", err)
 				_ = h.db.LogAction("invite.welcome_email.failed", form.Username, code, err.Error())
 			}
+		}
+	}
+
+	if h.provisioner != nil && h.provisioner.IsEnabled() {
+		if err := h.provisioner.ProvisionUser(form.Username, form.Password, form.Email); err != nil {
+			slog.Warn("Provisioning compte tiers échoué", "username", form.Username, "error", err)
+			_ = h.db.LogAction("invite.integration.failed", form.Username, code, err.Error())
+		} else {
+			_ = h.db.LogAction("invite.integration.provisioned", form.Username, code, "Jellyseerr/Ombi")
 		}
 	}
 
@@ -565,31 +586,41 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	}
 	defer tx.Rollback() // No-op si Commit() a été appelé
 
-	// Parsing du profil JSON pour récupérer UserExpiryDays
-	var userExpiryDays int
+	// Parsing du profil JSON pour récupérer les politiques d'expiration et groupe.
+	var disableAfterDays int
 	expiryAction := "disable"
 	deleteAfterDays := 0
+	groupName := ""
 	if inv.JellyfinProfile != "" {
 		var pf jellyfin.InviteProfile
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &pf); err == nil {
-			userExpiryDays = pf.UserExpiryDays
+			disableAfterDays = pf.DisableAfterDays
+			if disableAfterDays <= 0 {
+				disableAfterDays = pf.UserExpiryDays
+			}
 			expiryAction = normalizeExpiryAction(pf.ExpiryAction)
-			if expiryAction == "disable_then_delete" && pf.DeleteAfterDays > 0 {
+			if pf.DeleteAfterDays > 0 {
 				deleteAfterDays = pf.DeleteAfterDays
 			}
+			groupName = strings.TrimSpace(pf.GroupName)
 		}
 	}
 
 	var accessExpiresAt interface{}
-	if userExpiryDays > 0 {
-		accessExpiresAt = time.Now().AddDate(0, 0, userExpiryDays)
+	if disableAfterDays > 0 {
+		accessExpiresAt = time.Now().AddDate(0, 0, disableAfterDays)
+	}
+
+	var deleteAt interface{}
+	if deleteAfterDays > 0 {
+		deleteAt = time.Now().AddDate(0, 0, deleteAfterDays)
 	}
 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, invited_by, is_active, is_banned, access_expires_at, expiry_action, expiry_delete_after_days, expired_at)
-		 VALUES (?, ?, ?, ?, ?, 1, 0, ?, ?, ?, NULL)`,
-		jellyfinID, form.Username, form.Email, ldapDN, inv.Code, accessExpiresAt, expiryAction, deleteAfterDays,
+		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, invited_by, is_active, is_banned, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at)
+		 VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?, NULL)`,
+		jellyfinID, form.Username, form.Email, ldapDN, groupName, inv.Code, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)
@@ -620,6 +651,75 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		"ldap_dn", ldapDN,
 		"invitation_id", inv.ID,
 	)
+
+	return nil
+}
+
+func (h *InvitationHandler) applyGroupPolicyFromProfile(profile jellyfin.InviteProfile, jellyfinID, userDN string) error {
+	groupName := strings.TrimSpace(profile.GroupName)
+	if groupName == "" || strings.TrimSpace(jellyfinID) == "" {
+		return nil
+	}
+
+	mappings, err := h.db.GetGroupPolicyMappings()
+	if err != nil {
+		return err
+	}
+
+	var mapping *config.GroupPolicyMapping
+	for i := range mappings {
+		if strings.EqualFold(strings.TrimSpace(mappings[i].GroupName), groupName) {
+			mapping = &mappings[i]
+			break
+		}
+	}
+	if mapping == nil {
+		return nil
+	}
+
+	presetID := strings.TrimSpace(strings.ToLower(mapping.PolicyPresetID))
+	if presetID == "" {
+		return nil
+	}
+
+	presets, err := h.db.GetJellyfinPolicyPresets()
+	if err != nil {
+		return err
+	}
+
+	var preset *config.JellyfinPolicyPreset
+	for i := range presets {
+		if strings.TrimSpace(strings.ToLower(presets[i].ID)) == presetID {
+			preset = &presets[i]
+			break
+		}
+	}
+	if preset == nil {
+		return fmt.Errorf("preset %q introuvable pour groupe %q", presetID, groupName)
+	}
+
+	user, err := h.jfClient.GetUser(jellyfinID)
+	if err != nil {
+		return fmt.Errorf("lecture utilisateur jellyfin: %w", err)
+	}
+
+	policy := user.Policy
+	policy.EnableAllFolders = preset.EnableAllFolders
+	policy.EnabledFolders = preset.EnabledFolderIDs
+	policy.EnableContentDownloading = preset.EnableDownload
+	policy.EnableRemoteAccess = preset.EnableRemoteAccess
+	policy.MaxActiveSessions = preset.MaxSessions
+	policy.RemoteClientBitrateLimit = preset.BitrateLimit
+
+	if err := h.jfClient.SetUserPolicy(jellyfinID, policy); err != nil {
+		return fmt.Errorf("application policy jellyfin: %w", err)
+	}
+
+	if mapping.Source == "ldap" && h.ldClient != nil && strings.TrimSpace(userDN) != "" && strings.TrimSpace(mapping.LDAPGroupDN) != "" {
+		if err := h.ldClient.AddUserToGroup(userDN, mapping.LDAPGroupDN); err != nil {
+			return fmt.Errorf("assignation groupe ldap: %w", err)
+		}
+	}
 
 	return nil
 }

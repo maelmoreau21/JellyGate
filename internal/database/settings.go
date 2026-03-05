@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
@@ -24,6 +25,7 @@ const (
 	SettingEmailTemplates  = "email_templates"  // JSON: config.EmailTemplatesConfig
 	SettingBackupConfig    = "backup_config"    // JSON: config.BackupConfig
 	SettingJellyfinPresets = "jellyfin_presets" // JSON: []config.JellyfinPolicyPreset
+	SettingGroupMappings   = "group_mappings"   // JSON: []config.GroupPolicyMapping
 	SettingBackupLastRun   = "backup_last_run"  // Date locale YYYY-MM-DD
 	SettingDefaultLang     = "default_lang"     // Langue par défaut du serveur ("fr" ou "en")
 )
@@ -318,6 +320,15 @@ func (db *DB) SaveJellyfinPolicyPresets(presets []config.JellyfinPolicyPreset) e
 		if presets[i].BitrateLimit < 0 {
 			presets[i].BitrateLimit = 0
 		}
+		if presets[i].PasswordMinLength < 0 {
+			presets[i].PasswordMinLength = 0
+		}
+		if presets[i].DisableAfterDays < 0 {
+			presets[i].DisableAfterDays = 0
+		}
+		if presets[i].DeleteAfterDays < 0 {
+			presets[i].DeleteAfterDays = 0
+		}
 	}
 
 	data, err := json.Marshal(presets)
@@ -325,6 +336,77 @@ func (db *DB) SaveJellyfinPolicyPresets(presets []config.JellyfinPolicyPreset) e
 		return fmt.Errorf("SaveJellyfinPolicyPresets marshal: %w", err)
 	}
 	return db.SetSetting(SettingJellyfinPresets, string(data))
+}
+
+// GetGroupPolicyMappings récupère les mappings groupe -> preset.
+func (db *DB) GetGroupPolicyMappings() ([]config.GroupPolicyMapping, error) {
+	raw, err := db.GetSetting(SettingGroupMappings)
+	if err != nil {
+		return []config.GroupPolicyMapping{}, err
+	}
+	if strings.TrimSpace(raw) == "" {
+		return []config.GroupPolicyMapping{}, nil
+	}
+
+	var mappings []config.GroupPolicyMapping
+	if err := json.Unmarshal([]byte(raw), &mappings); err != nil {
+		slog.Warn("Erreur de parsing de la config GroupMappings", "error", err)
+		return []config.GroupPolicyMapping{}, nil
+	}
+
+	normalized := make([]config.GroupPolicyMapping, 0, len(mappings))
+	for i := range mappings {
+		groupName := strings.TrimSpace(mappings[i].GroupName)
+		presetID := strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
+		if groupName == "" || presetID == "" {
+			continue
+		}
+
+		source := strings.TrimSpace(strings.ToLower(mappings[i].Source))
+		if source != "ldap" {
+			source = "internal"
+		}
+
+		normalized = append(normalized, config.GroupPolicyMapping{
+			GroupName:      groupName,
+			Source:         source,
+			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
+			PolicyPresetID: presetID,
+		})
+	}
+
+	return normalized, nil
+}
+
+// SaveGroupPolicyMappings sauvegarde les mappings groupe -> preset.
+func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) error {
+	normalized := make([]config.GroupPolicyMapping, 0, len(mappings))
+	for i := range mappings {
+		groupName := strings.TrimSpace(mappings[i].GroupName)
+		presetID := strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
+		if groupName == "" || presetID == "" {
+			continue
+		}
+
+		source := strings.TrimSpace(strings.ToLower(mappings[i].Source))
+		if source != "ldap" {
+			source = "internal"
+		}
+
+		normalized = append(normalized, config.GroupPolicyMapping{
+			GroupName:      groupName,
+			Source:         source,
+			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
+			PolicyPresetID: presetID,
+		})
+	}
+
+	data, err := json.Marshal(normalized)
+	if err != nil {
+		return fmt.Errorf("SaveGroupPolicyMappings marshal: %w", err)
+	}
+
+	return db.SetSetting(SettingGroupMappings, string(data))
 }
 
 // ── Webhooks Config ─────────────────────────────────────────────────────────
