@@ -2408,6 +2408,21 @@ type InvitationResponse struct {
 	CreatedAt       string                 `json:"created_at"`
 }
 
+func anyToDateString(v interface{}) string {
+	switch val := v.(type) {
+	case nil:
+		return ""
+	case time.Time:
+		return val.Format(time.RFC3339)
+	case []byte:
+		return strings.TrimSpace(string(val))
+	case string:
+		return strings.TrimSpace(val)
+	default:
+		return strings.TrimSpace(fmt.Sprint(val))
+	}
+}
+
 // ListInvitations retourne toutes les invitations SQLite.
 func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
@@ -2437,11 +2452,13 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	var invs []InvitationResponse
 	for rows.Next() {
 		var i InvitationResponse
-		var label, profile, expiresAt, createdBy sql.NullString
+		var label, profile, createdBy sql.NullString
+		var rawExpiresAt interface{}
+		var rawCreatedAt interface{}
 
 		err := rows.Scan(
 			&i.ID, &i.Code, &label, &i.MaxUses, &i.UsedCount,
-			&profile, &expiresAt, &createdBy, &i.CreatedAt,
+			&profile, &rawExpiresAt, &createdBy, &rawCreatedAt,
 		)
 		if err != nil {
 			slog.Error("Erreur scan invitation", "error", err)
@@ -2449,8 +2466,9 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		}
 
 		i.Label = label.String
-		i.ExpiresAt = expiresAt.String
+		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedBy = createdBy.String
+		i.CreatedAt = anyToDateString(rawCreatedAt)
 
 		if profile.String != "" {
 			var p map[string]interface{}

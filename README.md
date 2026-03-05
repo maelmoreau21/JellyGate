@@ -1,10 +1,5 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=flat-square&logo=go" alt="Go">
-  <img src="https://img.shields.io/github/v/release/maelmoreau21/JellyGate?style=flat-square&color=8b5cf6" alt="Release">
-  <img src="https://img.shields.io/badge/Docker-Multi--arch-2496ED?style=flat-square&logo=docker" alt="Docker">
-  <img src="https://img.shields.io/badge/Platforms-amd64%20%7C%20arm64-informational?style=flat-square" alt="Platforms">
-  <img src="https://img.shields.io/github/license/maelmoreau21/JellyGate?style=flat-square" alt="License">
-</p>
+[![Docker Build](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml)
+[![GHCR Image](https://img.shields.io/badge/GHCR-ghcr.io%2Fmaelmoreau21%2Fjellygate-blue?logo=github)](https://ghcr.io/maelmoreau21/jellygate)
 
 <h1 align="center">🎬 JellyGate</h1>
 

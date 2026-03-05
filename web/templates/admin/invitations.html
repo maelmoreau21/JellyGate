@@ -123,7 +123,6 @@
                 <thead>
                     <tr>
                         <th>Lien / Code</th>
-                        <th>Note</th>
                         <th>Utilisations</th>
                         <th>Expire le (Lien)</th>
                         <th>Expiration Profil</th>
@@ -133,7 +132,7 @@
                 </thead>
                 <tbody id="invites-tbody">
                     <tr>
-                        <td colspan="7" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
+                        <td colspan="6" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
                     </tr>
                 </tbody>
             </table>
@@ -156,10 +155,6 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
                     <h3 class="text-lg font-semibold text-purple-300 border-b border-white/10 pb-2">1) Paramètres du lien</h3>
-                    <div>
-                        <label class="jg-label">Note / Nom (Usage interne)</label>
-                        <input type="text" id="inv-label" class="jg-input" placeholder="Ex: Famille Durand">
-                    </div>
                     <div>
                         <label class="jg-label">Utilisations maximales (0 = Illimité)</label>
                         <input type="number" id="inv-uses" class="jg-input" min="0" value="1">
@@ -191,10 +186,6 @@
                                 {{/* Populé via JS (Dashboard) */}}
                             </select>
                         </div>
-                    </div>
-                    <div>
-                        <label class="jg-label mt-2">Groupe utilisateur (optionnel)</label>
-                        <input type="text" id="inv-group-name" class="jg-input" placeholder="Ex: Enfants">
                     </div>
                     <div>
                         <label class="jg-label mt-2">Desactiver le compte apres (jours, 0 = jamais)</label>
@@ -368,7 +359,7 @@
         function renderInvitations(list) {
             const tbody = document.getElementById('invites-tbody');
             if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-12">Aucune invitation active.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-12">Aucune invitation active.</td></tr>';
                 return;
             }
 
@@ -398,7 +389,7 @@
                     pwRules.push(`user ${unMin || 3}-${unMax || 32}`);
                 }
                 const policyLabel = pwRules.length > 0 ? pwRules.join(', ') : 'defaut';
-                const groupLabel = groupName ? `groupe: ${groupName}` : 'sans groupe';
+                const groupLabel = groupName ? `groupe: ${groupName}` : 'groupe LDAP par défaut';
                 const userExp = `<div>${JG.esc(userExpiry)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)} · ${JG.esc(policyLabel)}</div>`;
 
                 const usesStr = inv.max_uses > 0 ? `${inv.used_count} / ${inv.max_uses}` : `${inv.used_count} / ∞`;
@@ -416,8 +407,7 @@
                             </button>
                         </div>
                     </td>
-                    <td class="font-medium">${JG.esc(inv.label || '—')} ${overBadge}</td>
-                    <td class="font-mono text-sm">${usesStr}</td>
+                    <td class="font-mono text-sm">${usesStr} ${overBadge}</td>
                     <td class="text-sm text-slate-400">${expDate}</td>
                     <td class="text-sm border-l border-white/5 pl-2">${userExp}</td>
                     <td class="text-sm text-slate-400">SMTP Manuel</td>
@@ -472,7 +462,7 @@
             btn.innerHTML = '<span class="spinner"></span>';
 
             const payload = {
-                label: document.getElementById('inv-label').value,
+                label: "",
                 max_uses: parseInt(document.getElementById('inv-uses').value) || 0,
                 expires_at: document.getElementById('inv-expires-link').value || "",
                 user_expiry_days: parseInt(document.getElementById('inv-disable-after').value) || 0,
@@ -481,7 +471,7 @@
                 email_message: "", // Obsolète, géré par Moteur d'emails
                 enable_downloads: document.getElementById('inv-dl').checked,
                 policy_preset_id: document.getElementById('inv-policy-preset').value,
-                group_name: document.getElementById('inv-group-name').value,
+                group_name: "",
                 forced_username: document.getElementById('inv-forced-user').value,
                 template_user_id: document.getElementById('inv-template-user').value,
                 username_min_length: parseInt(document.getElementById('inv-user-min').value, 10) || 0,

@@ -39,6 +39,32 @@ body {
     overflow-x: hidden;
 }
 
+/* ── Scrollbars ─────────────────────────────────────────────────────────── */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(167, 139, 250, 0.65) rgba(15, 23, 42, 0.65);
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(17, 24, 39, 0.9));
+    border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(139, 92, 246, 0.92), rgba(6, 182, 212, 0.9));
+    border-radius: 999px;
+    border: 2px solid rgba(15, 23, 42, 0.8);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(167, 139, 250, 1), rgba(34, 211, 238, 0.95));
+}
+
 /* ── Glassmorphism card ──────────────────────────────────────────────────── */
 .glass-card {
     background: var(--jg-bg-card);
@@ -110,6 +136,16 @@ select.jg-input {
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
     padding-right: 2.2rem;
+}
+
+select.jg-input option {
+    color: #e2e8f0;
+    background: #141b2e;
+}
+
+select.jg-input optgroup {
+    color: #cbd5e1;
+    background: #0f172a;
 }
 
 .jg-lang-select {
