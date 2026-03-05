@@ -87,6 +87,9 @@ type EmailTemplatesConfig struct {
 	Confirmation             string `json:"confirmation"`
 	ExpiryReminder           string `json:"expiry_reminder"`
 	ExpiryReminderDays       int    `json:"expiry_reminder_days"`
+	ExpiryReminder14         string `json:"expiry_reminder_14"`
+	ExpiryReminder7          string `json:"expiry_reminder_7"`
+	ExpiryReminder1          string `json:"expiry_reminder_1"`
 	Invitation               string `json:"invitation"`
 	InviteExpiry             string `json:"invite_expiry"`
 	PasswordReset            string `json:"password_reset"`
@@ -108,6 +111,9 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 		Confirmation:             "Bonjour {{.Username}},\n\nVotre inscription est confirmée.",
 		ExpiryReminder:           "Bonjour {{.Username}},\n\nVotre compte expirera prochainement.",
 		ExpiryReminderDays:       3,
+		ExpiryReminder14:         "Bonjour {{.Username}},\n\nRappel: votre compte expirera dans 14 jours ({{.ExpiryDate}}).",
+		ExpiryReminder7:          "Bonjour {{.Username}},\n\nRappel: votre compte expirera dans 7 jours ({{.ExpiryDate}}).",
+		ExpiryReminder1:          "Bonjour {{.Username}},\n\nRappel important: votre compte expire demain ({{.ExpiryDate}}).",
 		Invitation:               "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}",
 		InviteExpiry:             "Bonjour {{.Username}},\n\nVotre lien d'invitation va expirer le {{.ExpiryDate}}.",
 		PasswordReset:            "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}",
@@ -121,6 +127,46 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 		UserExpired:              "Bonjour {{.Username}},\n\nVotre accès a expiré et votre compte a été désactivé.",
 		ExpiryAdjusted:           "Bonjour {{.Username}},\n\nLa date d'expiration de votre accès a été mise à jour : {{.ExpiryDate}}.",
 		Welcome:                  "Bienvenue {{.Username}} ! Votre compte JellyGate est prêt.",
+	}
+}
+
+// JellyfinPolicyPreset décrit un preset réutilisable pour les politiques Jellyfin.
+type JellyfinPolicyPreset struct {
+	ID                 string   `json:"id"`
+	Name               string   `json:"name"`
+	Description        string   `json:"description"`
+	EnableAllFolders   bool     `json:"enable_all_folders"`
+	EnabledFolderIDs   []string `json:"enabled_folder_ids"`
+	EnableDownload     bool     `json:"enable_download"`
+	EnableRemoteAccess bool     `json:"enable_remote_access"`
+	MaxSessions        int      `json:"max_sessions"`
+	BitrateLimit       int      `json:"bitrate_limit"`
+	TemplateUserID     string   `json:"template_user_id"`
+}
+
+// DefaultJellyfinPolicyPresets retourne un ensemble de presets initiaux.
+func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
+	return []JellyfinPolicyPreset{
+		{
+			ID:                 "standard",
+			Name:               "Standard",
+			Description:        "Profil par defaut: acces distant actif, telechargement actif.",
+			EnableAllFolders:   true,
+			EnableDownload:     true,
+			EnableRemoteAccess: true,
+			MaxSessions:        0,
+			BitrateLimit:       0,
+		},
+		{
+			ID:                 "limited",
+			Name:               "Limite",
+			Description:        "Profil restreint: telechargement coupe, 2 sessions max.",
+			EnableAllFolders:   true,
+			EnableDownload:     false,
+			EnableRemoteAccess: true,
+			MaxSessions:        2,
+			BitrateLimit:       4000,
+		},
 	}
 }
 

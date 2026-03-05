@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -72,11 +73,16 @@ type adminUserRecord struct {
 	Email           string
 	JellyfinID      string
 	LdapDN          string
+	ContactDiscord  string
+	ContactTelegram string
 	IsActive        bool
 	CanInvite       bool
 	PreferredLang   string
 	NotifyExpiry    bool
 	NotifyEvents    bool
+	OptInEmail      bool
+	OptInDiscord    bool
+	OptInTelegram   bool
 	AccessExpiresAt sql.NullString
 }
 
@@ -89,9 +95,14 @@ type UpdateUserRequest struct {
 
 type UpdateMyAccountRequest struct {
 	Email                *string `json:"email"`
+	ContactDiscord       *string `json:"contact_discord"`
+	ContactTelegram      *string `json:"contact_telegram"`
 	PreferredLang        *string `json:"preferred_lang"`
 	NotifyExpiryReminder *bool   `json:"notify_expiry_reminder"`
 	NotifyAccountEvents  *bool   `json:"notify_account_events"`
+	OptInEmail           *bool   `json:"opt_in_email"`
+	OptInDiscord         *bool   `json:"opt_in_discord"`
+	OptInTelegram        *bool   `json:"opt_in_telegram"`
 }
 
 type BulkJellyfinPolicyPatch struct {
@@ -104,6 +115,7 @@ type BulkJellyfinPolicyPatch struct {
 type BulkUsersActionRequest struct {
 	UserIDs         []int64                  `json:"user_ids"`
 	Action          string                   `json:"action"`
+	PolicyPresetID  string                   `json:"policy_preset_id"`
 	EmailSubject    string                   `json:"email_subject"`
 	EmailBody       string                   `json:"email_body"`
 	CanInvite       *bool                    `json:"can_invite"`
@@ -230,6 +242,33 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 	return h.sendUserEventEmail(rec, subject, body, extra)
 }
 
+func containsInt(values []int, target int) bool {
+	for _, v := range values {
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
+func chooseExpiryReminderTemplate(cfg config.EmailTemplatesConfig, stageDays int) string {
+	switch stageDays {
+	case 14:
+		if strings.TrimSpace(cfg.ExpiryReminder14) != "" {
+			return cfg.ExpiryReminder14
+		}
+	case 7:
+		if strings.TrimSpace(cfg.ExpiryReminder7) != "" {
+			return cfg.ExpiryReminder7
+		}
+	case 1:
+		if strings.TrimSpace(cfg.ExpiryReminder1) != "" {
+			return cfg.ExpiryReminder1
+		}
+	}
+	return cfg.ExpiryReminder
+}
+
 // ── Background Jobs ─────────────────────────────────────────────────────────
 
 // StartExpirationJob lance une routine en arrière-plan qui vérifie périodiquement
@@ -256,13 +295,20 @@ func (h *AdminHandler) runExpirationCheck() {
 	slog.Debug("Lancement du job d'expiration automatique des utilisateurs...")
 	now := time.Now()
 
-	reminderDays := 3
-	if emailCfg, err := h.db.GetEmailTemplatesConfig(); err == nil {
-		if emailCfg.ExpiryReminderDays > 0 {
-			reminderDays = emailCfg.ExpiryReminderDays
+	emailCfg, _ := h.db.GetEmailTemplatesConfig()
+	reminderStages := []int{14, 7, 1}
+	if emailCfg.ExpiryReminderDays > 0 && !containsInt(reminderStages, emailCfg.ExpiryReminderDays) {
+		reminderStages = append(reminderStages, emailCfg.ExpiryReminderDays)
+	}
+
+	maxStage := 1
+	for _, stage := range reminderStages {
+		if stage > maxStage {
+			maxStage = stage
 		}
 	}
-	reminderWindow := now.Add(time.Duration(reminderDays) * 24 * time.Hour)
+
+	reminderWindow := now.Add(time.Duration(maxStage+1) * 24 * time.Hour)
 
 	// Rappels d'expiration imminente
 	reminderRows, err := h.db.Conn().Query(`
@@ -289,11 +335,30 @@ func (h *AdminHandler) runExpirationCheck() {
 				continue
 			}
 
+			expiryTime, err := parseAccessExpiry(expiryRaw.String)
+			if err != nil {
+				continue
+			}
+			hoursLeft := expiryTime.Sub(now).Hours()
+			if hoursLeft <= 0 {
+				continue
+			}
+
+			stageDays := int(math.Ceil(hoursLeft / 24.0))
+			if stageDays < 1 || !containsInt(reminderStages, stageDays) {
+				continue
+			}
+			if !h.canSendUserTemplate(id, "expiry_reminder") {
+				continue
+			}
+
+			details := fmt.Sprintf("stage=%d|expiry=%s", stageDays, expiryRaw.String)
+
 			var alreadySent int
 			_ = h.db.Conn().QueryRow(
 				`SELECT COUNT(1) FROM audit_log WHERE action = 'user.expiry_reminder.sent' AND target = ? AND details = ?`,
 				username,
-				expiryRaw.String,
+				details,
 			).Scan(&alreadySent)
 			if alreadySent > 0 {
 				continue
@@ -305,11 +370,16 @@ func (h *AdminHandler) runExpirationCheck() {
 				Email:           email.String,
 				AccessExpiresAt: expiryRaw,
 			}
-			if err := h.sendUserTemplateByKey(rec, "expiry_reminder", map[string]string{"ExpiryDate": expiryRaw.String}); err != nil {
+			templateBody := chooseExpiryReminderTemplate(emailCfg, stageDays)
+			subject := fmt.Sprintf("Rappel d'expiration J-%d — JellyGate", stageDays)
+			if err := h.sendUserEventEmail(rec, subject, templateBody, map[string]string{
+				"ExpiryDate":    emailTime(expiryTime),
+				"ReminderStage": fmt.Sprintf("J-%d", stageDays),
+			}); err != nil {
 				slog.Error("Erreur envoi reminder d'expiration", "user", username, "error", err)
 				continue
 			}
-			_ = h.db.LogAction("user.expiry_reminder.sent", "system", username, expiryRaw.String)
+			_ = h.db.LogAction("user.expiry_reminder.sent", "system", username, details)
 		}
 		reminderRows.Close()
 	}
@@ -480,18 +550,39 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	var (
 		id              int64
 		email           sql.NullString
+		contactDiscord  sql.NullString
+		contactTelegram sql.NullString
 		preferredLang   string
 		notifyExpiry    bool
 		notifyEvents    bool
+		optInEmail      bool
+		optInDiscord    bool
+		optInTelegram   bool
 		accessExpiresAt sql.NullString
 		createdAt       sql.NullString
 	)
 
 	err := h.db.Conn().QueryRow(
-		`SELECT id, email, preferred_lang, notify_expiry_reminder, notify_account_events, access_expires_at, created_at
+		`SELECT id, email, contact_discord, contact_telegram,
+		        preferred_lang, notify_expiry_reminder, notify_account_events,
+		        opt_in_email, opt_in_discord, opt_in_telegram,
+		        access_expires_at, created_at
 		 FROM users WHERE jellyfin_id = ?`,
 		sess.UserID,
-	).Scan(&id, &email, &preferredLang, &notifyExpiry, &notifyEvents, &accessExpiresAt, &createdAt)
+	).Scan(
+		&id,
+		&email,
+		&contactDiscord,
+		&contactTelegram,
+		&preferredLang,
+		&notifyExpiry,
+		&notifyEvents,
+		&optInEmail,
+		&optInDiscord,
+		&optInTelegram,
+		&accessExpiresAt,
+		&createdAt,
+	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture du profil"})
 		return
@@ -507,9 +598,14 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 			"id":                     id,
 			"username":               sess.Username,
 			"email":                  email.String,
+			"contact_discord":        contactDiscord.String,
+			"contact_telegram":       contactTelegram.String,
 			"preferred_lang":         preferredLang,
 			"notify_expiry_reminder": notifyExpiry,
 			"notify_account_events":  notifyEvents,
+			"opt_in_email":           optInEmail,
+			"opt_in_discord":         optInDiscord,
+			"opt_in_telegram":        optInTelegram,
 			"is_admin":               sess.IsAdmin,
 			"access_expires_at":      accessExpiresAt.String,
 			"created_at":             createdAt.String,
@@ -532,16 +628,33 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		currentEmail  sql.NullString
-		preferredLang string
-		notifyExpiry  bool
-		notifyEvents  bool
+		currentEmail    sql.NullString
+		currentDiscord  sql.NullString
+		currentTelegram sql.NullString
+		preferredLang   string
+		notifyExpiry    bool
+		notifyEvents    bool
+		optInEmail      bool
+		optInDiscord    bool
+		optInTelegram   bool
 	)
 	err := h.db.Conn().QueryRow(
-		`SELECT email, preferred_lang, notify_expiry_reminder, notify_account_events
+		`SELECT email, contact_discord, contact_telegram,
+		        preferred_lang, notify_expiry_reminder, notify_account_events,
+		        opt_in_email, opt_in_discord, opt_in_telegram
 		 FROM users WHERE jellyfin_id = ?`,
 		sess.UserID,
-	).Scan(&currentEmail, &preferredLang, &notifyExpiry, &notifyEvents)
+	).Scan(
+		&currentEmail,
+		&currentDiscord,
+		&currentTelegram,
+		&preferredLang,
+		&notifyExpiry,
+		&notifyEvents,
+		&optInEmail,
+		&optInDiscord,
+		&optInTelegram,
+	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture des préférences"})
 		return
@@ -550,6 +663,14 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	newEmail := strings.TrimSpace(currentEmail.String)
 	if req.Email != nil {
 		newEmail = strings.TrimSpace(*req.Email)
+	}
+	newDiscord := strings.TrimSpace(currentDiscord.String)
+	if req.ContactDiscord != nil {
+		newDiscord = strings.TrimSpace(*req.ContactDiscord)
+	}
+	newTelegram := strings.TrimSpace(currentTelegram.String)
+	if req.ContactTelegram != nil {
+		newTelegram = strings.TrimSpace(*req.ContactTelegram)
 	}
 
 	newPreferredLang := strings.TrimSpace(preferredLang)
@@ -572,14 +693,35 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		newNotifyEvents = *req.NotifyAccountEvents
 	}
 
+	newOptInEmail := optInEmail
+	if req.OptInEmail != nil {
+		newOptInEmail = *req.OptInEmail
+	}
+	newOptInDiscord := optInDiscord
+	if req.OptInDiscord != nil {
+		newOptInDiscord = *req.OptInDiscord
+	}
+	newOptInTelegram := optInTelegram
+	if req.OptInTelegram != nil {
+		newOptInTelegram = *req.OptInTelegram
+	}
+
 	_, err = h.db.Conn().Exec(
 		`UPDATE users
-		 SET email = ?, preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?, updated_at = datetime('now')
+		 SET email = ?, contact_discord = ?, contact_telegram = ?,
+		     preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
+		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?,
+		     updated_at = datetime('now')
 		 WHERE jellyfin_id = ?`,
 		newEmail,
+		newDiscord,
+		newTelegram,
 		newPreferredLang,
 		newNotifyExpiry,
 		newNotifyEvents,
+		newOptInEmail,
+		newOptInDiscord,
+		newOptInTelegram,
 		sess.UserID,
 	)
 	if err != nil {
@@ -591,10 +733,13 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		"user.profile.updated",
 		sess.Username,
 		sess.Username,
-		fmt.Sprintf(`{"preferred_lang":"%s","notify_expiry":%t,"notify_events":%t}`,
+		fmt.Sprintf(`{"preferred_lang":"%s","notify_expiry":%t,"notify_events":%t,"opt_in_email":%t,"opt_in_discord":%t,"opt_in_telegram":%t}`,
 			newPreferredLang,
 			newNotifyExpiry,
 			newNotifyEvents,
+			newOptInEmail,
+			newOptInDiscord,
+			newOptInTelegram,
 		),
 	)
 
@@ -603,9 +748,14 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		Message: "Profil mis à jour",
 		Data: map[string]interface{}{
 			"email":                  newEmail,
+			"contact_discord":        newDiscord,
+			"contact_telegram":       newTelegram,
 			"preferred_lang":         newPreferredLang,
 			"notify_expiry_reminder": newNotifyExpiry,
 			"notify_account_events":  newNotifyEvents,
+			"opt_in_email":           newOptInEmail,
+			"opt_in_discord":         newOptInDiscord,
+			"opt_in_telegram":        newOptInTelegram,
 		},
 	})
 }
@@ -931,11 +1081,14 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error) {
 	var rec adminUserRecord
-	var email, jellyfinID, ldapDN sql.NullString
+	var email, jellyfinID, ldapDN, discordContact, telegramContact sql.NullString
 
 	err := h.db.Conn().QueryRow(
 		`SELECT id, username, email, jellyfin_id, ldap_dn, is_active, can_invite,
-		        preferred_lang, notify_expiry_reminder, notify_account_events, access_expires_at
+		        contact_discord, contact_telegram,
+		        preferred_lang, notify_expiry_reminder, notify_account_events,
+		        opt_in_email, opt_in_discord, opt_in_telegram,
+		        access_expires_at
 		 FROM users WHERE id = ?`,
 		userID,
 	).Scan(
@@ -946,9 +1099,14 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		&ldapDN,
 		&rec.IsActive,
 		&rec.CanInvite,
+		&discordContact,
+		&telegramContact,
 		&rec.PreferredLang,
 		&rec.NotifyExpiry,
 		&rec.NotifyEvents,
+		&rec.OptInEmail,
+		&rec.OptInDiscord,
+		&rec.OptInTelegram,
 		&rec.AccessExpiresAt,
 	)
 	if err != nil {
@@ -958,6 +1116,8 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 	rec.Email = email.String
 	rec.JellyfinID = jellyfinID.String
 	rec.LdapDN = ldapDN.String
+	rec.ContactDiscord = discordContact.String
+	rec.ContactTelegram = telegramContact.String
 
 	return &rec, nil
 }
@@ -1016,6 +1176,26 @@ func (h *AdminHandler) applyJellyfinPolicyPatch(jellyfinID string, patch *BulkJe
 	}
 
 	return nil
+}
+
+func (h *AdminHandler) getJellyfinPresetByID(presetID string) (*config.JellyfinPolicyPreset, error) {
+	presetID = strings.TrimSpace(strings.ToLower(presetID))
+	if presetID == "" {
+		return nil, fmt.Errorf("preset manquant")
+	}
+
+	presets, err := h.db.GetJellyfinPolicyPresets()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range presets {
+		if strings.TrimSpace(strings.ToLower(presets[i].ID)) == presetID {
+			return &presets[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("preset introuvable")
 }
 
 func (h *AdminHandler) setUserActiveState(rec *adminUserRecord, newActive bool, actor string) ([]string, error) {
@@ -1368,6 +1548,32 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			_ = h.db.LogAction("user.bulk.jellyfin_policy", sess.Username, rec.Username, fmt.Sprintf(`{"user_id":%d}`, rec.ID))
 			entry["success"] = true
 			entry["message"] = "Paramètres Jellyfin mis à jour"
+
+		case "apply_preset":
+			preset, err := h.getJellyfinPresetByID(req.PolicyPresetID)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = err.Error()
+				break
+			}
+
+			patch := &BulkJellyfinPolicyPatch{
+				EnableDownloads:  &preset.EnableDownload,
+				EnableRemote:     &preset.EnableRemoteAccess,
+				MaxActiveSession: &preset.MaxSessions,
+				BitrateLimit:     &preset.BitrateLimit,
+			}
+
+			err = h.applyJellyfinPolicyPatch(rec.JellyfinID, patch)
+			if err != nil {
+				entry["success"] = false
+				entry["message"] = err.Error()
+				break
+			}
+
+			_ = h.db.LogAction("user.bulk.apply_preset", sess.Username, rec.Username, preset.ID)
+			entry["success"] = true
+			entry["message"] = "Preset Jellyfin appliqué"
 
 		case "set_parrainage":
 			if req.CanInvite == nil {
@@ -1827,6 +2033,7 @@ type CreateInvitationRequest struct {
 	EmailMessage    string   `json:"email_message"`
 	Libraries       []string `json:"libraries"` // ID des bibliothèques Jellyfin
 	EnableDownloads bool     `json:"enable_downloads"`
+	PolicyPresetID  string   `json:"policy_preset_id"`
 	ForcedUsername  string   `json:"forced_username"`
 	TemplateUserID  string   `json:"template_user_id"`
 }
@@ -1884,6 +2091,25 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		ForcedUsername:     req.ForcedUsername,
 		TemplateUserID:     req.TemplateUserID,
 	}
+
+	if strings.TrimSpace(req.PolicyPresetID) != "" {
+		preset, err := h.getJellyfinPresetByID(req.PolicyPresetID)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Preset Jellyfin introuvable"})
+			return
+		}
+
+		jfProfile.EnableAllFolders = preset.EnableAllFolders
+		jfProfile.EnabledFolderIDs = preset.EnabledFolderIDs
+		jfProfile.EnableDownload = preset.EnableDownload
+		jfProfile.EnableRemoteAccess = preset.EnableRemoteAccess
+		jfProfile.MaxSessions = preset.MaxSessions
+		jfProfile.BitrateLimit = preset.BitrateLimit
+		if strings.TrimSpace(jfProfile.TemplateUserID) == "" {
+			jfProfile.TemplateUserID = strings.TrimSpace(preset.TemplateUserID)
+		}
+	}
+
 	profileJSON, _ := json.Marshal(jfProfile)
 
 	_, err = h.db.Conn().Exec(

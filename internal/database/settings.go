@@ -18,13 +18,14 @@ import (
 // ── Clés de settings ────────────────────────────────────────────────────────
 
 const (
-	SettingLDAPConfig     = "ldap_config"     // JSON: config.LDAPConfig
-	SettingSMTPConfig     = "smtp_config"     // JSON: config.SMTPConfig
-	SettingWebhooksConfig = "webhooks_config" // JSON: config.WebhooksConfig
-	SettingEmailTemplates = "email_templates" // JSON: config.EmailTemplatesConfig
-	SettingBackupConfig   = "backup_config"   // JSON: config.BackupConfig
-	SettingBackupLastRun  = "backup_last_run" // Date locale YYYY-MM-DD
-	SettingDefaultLang    = "default_lang"    // Langue par défaut du serveur ("fr" ou "en")
+	SettingLDAPConfig      = "ldap_config"      // JSON: config.LDAPConfig
+	SettingSMTPConfig      = "smtp_config"      // JSON: config.SMTPConfig
+	SettingWebhooksConfig  = "webhooks_config"  // JSON: config.WebhooksConfig
+	SettingEmailTemplates  = "email_templates"  // JSON: config.EmailTemplatesConfig
+	SettingBackupConfig    = "backup_config"    // JSON: config.BackupConfig
+	SettingJellyfinPresets = "jellyfin_presets" // JSON: []config.JellyfinPolicyPreset
+	SettingBackupLastRun   = "backup_last_run"  // Date locale YYYY-MM-DD
+	SettingDefaultLang     = "default_lang"     // Langue par défaut du serveur ("fr" ou "en")
 )
 
 // GetDefaultLang retourne la langue par défaut du serveur.
@@ -266,6 +267,64 @@ func (db *DB) SaveEmailTemplatesConfig(cfg config.EmailTemplatesConfig) error {
 		return fmt.Errorf("SaveEmailTemplatesConfig marshal: %w", err)
 	}
 	return db.SetSetting(SettingEmailTemplates, string(data))
+}
+
+// ── Jellyfin Presets Config ───────────────────────────────────────────────
+
+// GetJellyfinPolicyPresets récupère les presets de politique Jellyfin.
+func (db *DB) GetJellyfinPolicyPresets() ([]config.JellyfinPolicyPreset, error) {
+	defaults := config.DefaultJellyfinPolicyPresets()
+
+	raw, err := db.GetSetting(SettingJellyfinPresets)
+	if err != nil {
+		return defaults, err
+	}
+	if raw == "" {
+		return defaults, nil
+	}
+
+	var presets []config.JellyfinPolicyPreset
+	if err := json.Unmarshal([]byte(raw), &presets); err != nil {
+		slog.Warn("Erreur de parsing de la config JellyfinPresets", "error", err)
+		return defaults, nil
+	}
+
+	if len(presets) == 0 {
+		return defaults, nil
+	}
+
+	for i := range presets {
+		if presets[i].ID == "" {
+			presets[i].ID = fmt.Sprintf("preset-%d", i+1)
+		}
+	}
+
+	return presets, nil
+}
+
+// SaveJellyfinPolicyPresets sauvegarde les presets de politique Jellyfin.
+func (db *DB) SaveJellyfinPolicyPresets(presets []config.JellyfinPolicyPreset) error {
+	if len(presets) == 0 {
+		presets = config.DefaultJellyfinPolicyPresets()
+	}
+
+	for i := range presets {
+		if presets[i].ID == "" {
+			presets[i].ID = fmt.Sprintf("preset-%d", i+1)
+		}
+		if presets[i].MaxSessions < 0 {
+			presets[i].MaxSessions = 0
+		}
+		if presets[i].BitrateLimit < 0 {
+			presets[i].BitrateLimit = 0
+		}
+	}
+
+	data, err := json.Marshal(presets)
+	if err != nil {
+		return fmt.Errorf("SaveJellyfinPolicyPresets marshal: %w", err)
+	}
+	return db.SetSetting(SettingJellyfinPresets, string(data))
 }
 
 // ── Webhooks Config ─────────────────────────────────────────────────────────

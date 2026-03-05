@@ -197,6 +197,56 @@ func (db *DB) migrate() error {
 			name: "index_audit_log_created_at",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)`,
 		},
+		{
+			name: "create_user_messages",
+			sql: `CREATE TABLE IF NOT EXISTS user_messages (
+				id              INTEGER PRIMARY KEY AUTOINCREMENT,
+				title           TEXT NOT NULL,
+				body            TEXT NOT NULL,
+				created_by      TEXT,
+				target_group    TEXT NOT NULL DEFAULT 'all',
+				target_user_ids TEXT NOT NULL DEFAULT '',
+				channels        TEXT NOT NULL DEFAULT 'in_app',
+				is_campaign     BOOLEAN NOT NULL DEFAULT 0,
+				starts_at       DATETIME,
+				ends_at         DATETIME,
+				sent_at         DATETIME,
+				created_at      DATETIME NOT NULL DEFAULT (datetime('now'))
+			)`,
+		},
+		{
+			name: "create_user_message_reads",
+			sql: `CREATE TABLE IF NOT EXISTS user_message_reads (
+				message_id  INTEGER NOT NULL REFERENCES user_messages(id) ON DELETE CASCADE,
+				user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				read_at     DATETIME NOT NULL DEFAULT (datetime('now')),
+				PRIMARY KEY (message_id, user_id)
+			)`,
+		},
+		{
+			name: "create_scheduled_tasks",
+			sql: `CREATE TABLE IF NOT EXISTS scheduled_tasks (
+				id          INTEGER PRIMARY KEY AUTOINCREMENT,
+				name        TEXT NOT NULL,
+				task_type   TEXT NOT NULL,
+				enabled     BOOLEAN NOT NULL DEFAULT 1,
+				hour        INTEGER NOT NULL DEFAULT 3,
+				minute      INTEGER NOT NULL DEFAULT 0,
+				payload     TEXT,
+				last_run_at DATETIME,
+				created_by  TEXT,
+				created_at  DATETIME NOT NULL DEFAULT (datetime('now')),
+				updated_at  DATETIME NOT NULL DEFAULT (datetime('now'))
+			)`,
+		},
+		{
+			name: "index_user_messages_created_at",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_user_messages_created_at ON user_messages(created_at)`,
+		},
+		{
+			name: "index_scheduled_tasks_enabled",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_scheduled_tasks_enabled ON scheduled_tasks(enabled, hour, minute)`,
+		},
 	}
 
 	for _, m := range migrations {
@@ -213,6 +263,11 @@ func (db *DB) migrate() error {
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN preferred_lang TEXT NOT NULL DEFAULT ''`)
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN notify_expiry_reminder BOOLEAN NOT NULL DEFAULT 1`)
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN notify_account_events BOOLEAN NOT NULL DEFAULT 1`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN contact_discord TEXT NOT NULL DEFAULT ''`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN contact_telegram TEXT NOT NULL DEFAULT ''`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_email BOOLEAN NOT NULL DEFAULT 1`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_discord BOOLEAN NOT NULL DEFAULT 0`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_telegram BOOLEAN NOT NULL DEFAULT 0`)
 
 	slog.Info("Migrations terminées", "count", len(migrations))
 	return nil

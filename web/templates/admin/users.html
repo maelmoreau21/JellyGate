@@ -40,6 +40,19 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_users" }}</span>
         </a>
+        <a href="/admin/messages" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
+            </svg>
+            <span class="jg-nav-label">Messages</span>
+        </a>
+        <a href="/admin/automation" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span class="jg-nav-label">Automation</span>
+        </a>
         <a href="/admin/invitations" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -165,6 +178,7 @@
                         <option value="set_expiry">Définir/supprimer une expiration</option>
                         <option value="set_parrainage">Activer/désactiver le parrainage</option>
                         <option value="jellyfin_policy">Modifier paramètres Jellyfin</option>
+                        <option value="apply_preset">Appliquer un preset Jellyfin</option>
                         <option value="activate">Activer les comptes</option>
                         <option value="deactivate">Désactiver les comptes</option>
                         <option value="delete">Supprimer les utilisateurs</option>
@@ -264,6 +278,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         let allUsers = [];
         let filteredUsers = [];
+        let jellyfinPresets = [];
         const selectedIds = new Set();
         const bulkActionMeta = {
             send_email: {
@@ -285,6 +300,10 @@
             jellyfin_policy: {
                 label: 'Modifier politique Jellyfin',
                 help: "Applique des restrictions Jellyfin (telechargement, acces distant, sessions, bitrate).",
+            },
+            apply_preset: {
+                label: 'Appliquer preset Jellyfin',
+                help: "Applique une politique Jellyfin predefinie a tous les utilisateurs selectionnes.",
             },
             activate: {
                 label: 'Activer les comptes',
@@ -476,6 +495,10 @@
                 payload.jellyfin_policy = policy;
             }
 
+            if (action === 'apply_preset') {
+                payload.policy_preset_id = (document.getElementById('bulk-jf-preset')?.value || '').trim();
+            }
+
             return payload;
         }
 
@@ -497,6 +520,10 @@
                 if (Number.isNaN(policy.max_active_sessions) || Number.isNaN(policy.remote_bitrate_limit)) {
                     return 'Valeurs numeriques Jellyfin invalides';
                 }
+            }
+
+            if (action === 'apply_preset' && !payload.policy_preset_id) {
+                return 'Selectionne un preset Jellyfin';
             }
 
             return '';
@@ -614,6 +641,17 @@
                         <input type="number" id="bulk-jf-bitrate" class="jg-input" min="0" placeholder="Bitrate max kbps (0 = illimite)">
                     </div>
                 `;
+            } else if (action === 'apply_preset') {
+                const options = jellyfinPresets.map(p => `<option value="${JG.esc(p.id)}">${JG.esc(p.name)}</option>`).join('');
+                container.innerHTML = `
+                    <div class="max-w-lg">
+                        <label class="jg-label" for="bulk-jf-preset">Preset Jellyfin</label>
+                        <select id="bulk-jf-preset" class="jg-input">
+                            <option value="">Selectionner un preset...</option>
+                            ${options}
+                        </select>
+                    </div>
+                `;
             } else {
                 container.innerHTML = '<p class="text-sm text-slate-400">Cette action ne necessite pas de parametres supplementaires.</p>';
             }
@@ -645,6 +683,15 @@
             }
             allUsers = res.data || [];
             applyFilters();
+        }
+
+        async function loadPresets() {
+            const res = await JG.api('/admin/api/automation/presets');
+            if (!res.success) {
+                jellyfinPresets = [];
+                return;
+            }
+            jellyfinPresets = Array.isArray(res.data) ? res.data : [];
         }
 
         function getUserById(id) {
@@ -829,8 +876,11 @@
             });
         }
 
-        resetBulkFields();
-        loadUsers();
+        (async () => {
+            await loadPresets();
+            resetBulkFields();
+            await loadUsers();
+        })();
     });
 
     async function syncUsers() {

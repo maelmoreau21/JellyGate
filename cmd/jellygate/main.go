@@ -28,6 +28,7 @@ import (
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
 	"github.com/maelmoreau21/JellyGate/internal/render"
+	"github.com/maelmoreau21/JellyGate/internal/scheduler"
 )
 
 func main() {
@@ -114,6 +115,8 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(db)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService)
+	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer)
+	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService)
 
 	// Callbacks de rechargement à chaud
 	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
@@ -139,6 +142,7 @@ func main() {
 			inviteHandler.SetMailer(mailer)
 			resetHandler.SetMailer(mailer)
 			adminHandler.SetMailer(mailer)
+			schedulerService.SetMailer(mailer)
 			slog.Info("🔄 Client SMTP rechargé", "host", c.Host)
 		}
 	}
@@ -208,6 +212,7 @@ func main() {
 				r.Use(jgmw.RequireAdminAuth())
 
 				r.Get("/users", adminHandler.UsersPage)
+				r.Get("/automation", automationHandler.AutomationPage)
 				r.Route("/api/users", func(r chi.Router) {
 					r.Get("/", adminHandler.ListUsers)
 					r.Post("/bulk", adminHandler.BulkUsersAction)
@@ -244,6 +249,20 @@ func main() {
 					r.Get("/", adminHandler.LogsAPI)
 				})
 
+				r.Route("/api/automation", func(r chi.Router) {
+					r.Route("/presets", func(r chi.Router) {
+						r.Get("/", automationHandler.ListPresets)
+						r.Post("/", automationHandler.SavePresets)
+					})
+					r.Route("/tasks", func(r chi.Router) {
+						r.Get("/", automationHandler.ListTasks)
+						r.Post("/", automationHandler.CreateTask)
+						r.Patch("/{id}", automationHandler.UpdateTask)
+						r.Delete("/{id}", automationHandler.DeleteTask)
+						r.Post("/{id}/run", automationHandler.RunTaskNow)
+					})
+				})
+
 				r.Get("/settings", adminHandler.SettingsPage)
 				r.Post("/settings", handlePlaceholder("Sauvegarder les paramètres"))
 
@@ -258,6 +277,14 @@ func main() {
 				r.Get("/", adminHandler.ListInvitations)
 				r.Post("/", adminHandler.CreateInvitation)
 				r.Delete("/{id}", adminHandler.DeleteInvitation)
+			})
+
+			r.Get("/messages", adminHandler.MessagesPage)
+			r.Route("/api/messages", func(r chi.Router) {
+				r.Get("/", adminHandler.ListMessages)
+				r.Post("/", adminHandler.CreateMessage)
+				r.Delete("/{id}", adminHandler.DeleteMessage)
+				r.Post("/{id}/read", adminHandler.MarkMessageRead)
 			})
 
 			// ── Route de profil (Changement MDP, par tout le monde) ─────────
@@ -275,6 +302,7 @@ func main() {
 	defer cancelMain()
 	adminHandler.StartExpirationJob(ctx)
 	backupService.StartScheduler(ctx)
+	schedulerService.Start(ctx)
 
 	// ── 5. Démarrer le serveur HTTP ─────────────────────────────────────────
 	addr := fmt.Sprintf(":%d", cfg.Port)

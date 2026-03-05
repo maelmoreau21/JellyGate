@@ -1,0 +1,353 @@
+{{/* automation.html — Presets & scheduler */}}
+{{ template "layouts/base.html" . }}
+
+{{ define "title" }}Automation — JellyGate{{ end }}
+
+{{ define "body" }}
+<aside id="sidebar" class="jg-sidebar">
+    <div class="jg-sidebar-logo">
+        <svg viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="14" fill="url(#grd)" />
+            <defs>
+                <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
+                    <stop stop-color="#8b5cf6" />
+                    <stop offset="1" stop-color="#6366f1" />
+                </linearGradient>
+            </defs>
+            <path d="M10 22V10l12 6-12 6z" fill="#fff" />
+        </svg>
+        <span>JellyGate</span>
+    </div>
+    <nav class="jg-nav">
+        <a href="/admin/" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+            <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
+        </a>
+        <a href="/admin/my-account" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+            <span class="jg-nav-label">My Account</span>
+        </a>
+        <a href="/admin/messages" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" /></svg>
+            <span class="jg-nav-label">Messages</span>
+        </a>
+        <a href="/admin/users" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            <span class="jg-nav-label">{{ .T "nav_users" }}</span>
+        </a>
+        <a href="/admin/automation" class="jg-nav-item active">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+            <span class="jg-nav-label">Automation</span>
+        </a>
+        <a href="/admin/settings" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
+            <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
+        </a>
+    </nav>
+    <div class="jg-sidebar-footer">
+        <form method="POST" action="/admin/logout">
+            <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+<main class="jg-main">
+    <div class="flex flex-col gap-6">
+        <div>
+            <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <h1 class="text-3xl font-bold inline-block align-middle">Automation</h1>
+            <p class="text-sm text-slate-400 mt-1">Presets Jellyfin + scheduler generique (sync, nettoyage, campagnes, backup).</p>
+        </div>
+
+        <section class="glass-card p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h2 class="text-lg font-semibold">Presets Jellyfin</h2>
+                <div class="flex gap-2">
+                    <button id="btn-preset-add" class="jg-btn jg-btn-ghost jg-btn-sm">Ajouter</button>
+                    <button id="btn-preset-save" class="jg-btn jg-btn-sm">Sauvegarder</button>
+                </div>
+            </div>
+            <div class="jg-table-wrap">
+                <table class="jg-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Download</th>
+                            <th>Remote</th>
+                            <th>Sessions</th>
+                            <th>Bitrate</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="presets-body">
+                        <tr><td colspan="7" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="glass-card p-4">
+            <h2 class="text-lg font-semibold mb-3">Taches planifiees</h2>
+            <form id="task-create-form" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
+                <input id="task-name" class="jg-input md:col-span-2" placeholder="Nom de tache">
+                <select id="task-type" class="jg-input">
+                    <option value="sync_users">sync_users</option>
+                    <option value="cleanup_resets">cleanup_resets</option>
+                    <option value="dispatch_campaigns">dispatch_campaigns</option>
+                    <option value="create_backup">create_backup</option>
+                </select>
+                <input id="task-hour" type="number" class="jg-input" min="0" max="23" placeholder="Heure">
+                <input id="task-minute" type="number" class="jg-input" min="0" max="59" placeholder="Minute">
+                <button type="submit" class="jg-btn">Creer</button>
+                <input id="task-payload" class="jg-input md:col-span-6" placeholder="Payload optionnel (texte libre)">
+                <label class="inline-flex items-center gap-2 text-sm text-slate-300 md:col-span-6">
+                    <input id="task-enabled" type="checkbox" class="form-checkbox" checked>
+                    Tache active
+                </label>
+            </form>
+
+            <div class="jg-table-wrap">
+                <table class="jg-table">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Type</th>
+                            <th>Horaire</th>
+                            <th>Payload</th>
+                            <th>Dernier run</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-body">
+                        <tr><td colspan="6" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+</main>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let presets = [];
+    let tasks = [];
+
+    function presetRow(p, idx) {
+        return `<tr>
+            <td><input class="jg-input" data-p="${idx}" data-k="id" value="${JG.esc(p.id || '')}"></td>
+            <td><input class="jg-input" data-p="${idx}" data-k="name" value="${JG.esc(p.name || '')}"></td>
+            <td><input type="checkbox" class="form-checkbox" data-p="${idx}" data-k="enable_download" ${p.enable_download ? 'checked' : ''}></td>
+            <td><input type="checkbox" class="form-checkbox" data-p="${idx}" data-k="enable_remote_access" ${p.enable_remote_access ? 'checked' : ''}></td>
+            <td><input type="number" class="jg-input" data-p="${idx}" data-k="max_sessions" value="${Number.isInteger(p.max_sessions) ? p.max_sessions : 0}"></td>
+            <td><input type="number" class="jg-input" data-p="${idx}" data-k="bitrate_limit" value="${Number.isInteger(p.bitrate_limit) ? p.bitrate_limit : 0}"></td>
+            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="preset-delete" data-index="${idx}">Supprimer</button></td>
+        </tr>`;
+    }
+
+    function renderPresets() {
+        const tbody = document.getElementById('presets-body');
+        if (!presets.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">Aucun preset.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = presets.map((p, idx) => presetRow(p, idx)).join('');
+    }
+
+    async function loadPresets() {
+        const res = await JG.api('/admin/api/automation/presets');
+        if (!res.success) {
+            JG.toast(res.message || 'Erreur presets', 'error');
+            return;
+        }
+        presets = Array.isArray(res.data) ? res.data : [];
+        renderPresets();
+    }
+
+    function collectPresetsFromUI() {
+        const rows = document.querySelectorAll('#presets-body tr');
+        const next = [];
+        rows.forEach((_, idx) => {
+            const read = (k) => document.querySelector(`[data-p="${idx}"][data-k="${k}"]`);
+            const idEl = read('id');
+            const nameEl = read('name');
+            if (!idEl || !nameEl) return;
+            next.push({
+                id: (idEl.value || '').trim(),
+                name: (nameEl.value || '').trim(),
+                enable_download: !!read('enable_download')?.checked,
+                enable_remote_access: !!read('enable_remote_access')?.checked,
+                max_sessions: parseInt(read('max_sessions')?.value || '0', 10) || 0,
+                bitrate_limit: parseInt(read('bitrate_limit')?.value || '0', 10) || 0,
+                enable_all_folders: true,
+                enabled_folder_ids: [],
+            });
+        });
+        return next;
+    }
+
+    function renderTasks() {
+        const tbody = document.getElementById('tasks-body');
+        if (!tasks.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-8">Aucune tache planifiee.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = tasks.map(t => `<tr>
+            <td>${JG.esc(t.name || '')}</td>
+            <td>${JG.esc(t.task_type || '')}</td>
+            <td>${String(t.hour).padStart(2, '0')}:${String(t.minute).padStart(2, '0')} ${t.enabled ? '<span class="badge badge-success ml-2">ON</span>' : '<span class="badge badge-muted ml-2">OFF</span>'}</td>
+            <td class="text-xs text-slate-400">${JG.esc(t.payload || '')}</td>
+            <td class="text-sm text-slate-500">${JG.esc(t.last_run_at || '—')}</td>
+            <td class="text-right">
+                <div class="flex justify-end gap-2">
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-run" data-id="${t.id}">Run now</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-toggle" data-id="${t.id}">${t.enabled ? 'Desactiver' : 'Activer'}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="task-delete" data-id="${t.id}">Supprimer</button>
+                </div>
+            </td>
+        </tr>`).join('');
+    }
+
+    async function loadTasks() {
+        const res = await JG.api('/admin/api/automation/tasks');
+        if (!res.success) {
+            JG.toast(res.message || 'Erreur taches', 'error');
+            return;
+        }
+        tasks = Array.isArray(res.data) ? res.data : [];
+        renderTasks();
+    }
+
+    document.getElementById('btn-preset-add').addEventListener('click', () => {
+        presets.push({
+            id: `preset-${presets.length + 1}`,
+            name: 'Nouveau preset',
+            enable_download: true,
+            enable_remote_access: true,
+            max_sessions: 0,
+            bitrate_limit: 0,
+            enable_all_folders: true,
+            enabled_folder_ids: [],
+        });
+        renderPresets();
+    });
+
+    document.getElementById('btn-preset-save').addEventListener('click', async () => {
+        const payload = collectPresetsFromUI();
+        const res = await JG.api('/admin/api/automation/presets', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+        if (!res.success) {
+            JG.toast(res.message || 'Sauvegarde presets impossible', 'error');
+            return;
+        }
+        JG.toast('Presets sauvegardes', 'success');
+        await loadPresets();
+    });
+
+    document.getElementById('presets-body').addEventListener('click', (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        if (button.dataset.action !== 'preset-delete') return;
+        const index = parseInt(button.dataset.index || '-1', 10);
+        if (!Number.isInteger(index) || index < 0) return;
+        presets.splice(index, 1);
+        renderPresets();
+    });
+
+    document.getElementById('task-create-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+            name: document.getElementById('task-name').value.trim(),
+            task_type: document.getElementById('task-type').value,
+            enabled: document.getElementById('task-enabled').checked,
+            hour: parseInt(document.getElementById('task-hour').value || '0', 10),
+            minute: parseInt(document.getElementById('task-minute').value || '0', 10),
+            payload: document.getElementById('task-payload').value.trim(),
+        };
+
+        const res = await JG.api('/admin/api/automation/tasks', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        });
+        if (!res.success) {
+            JG.toast(res.message || 'Creation tache impossible', 'error');
+            return;
+        }
+        JG.toast('Tache creee', 'success');
+        event.target.reset();
+        document.getElementById('task-enabled').checked = true;
+        await loadTasks();
+    });
+
+    document.getElementById('tasks-body').addEventListener('click', async (event) => {
+        const button = event.target.closest('button');
+        if (!button) return;
+        const id = button.dataset.id;
+        const action = button.dataset.action;
+        const task = tasks.find(t => String(t.id) === String(id));
+
+        if (action === 'task-delete') {
+            if (!confirm('Supprimer cette tache ?')) return;
+            const res = await JG.api(`/admin/api/automation/tasks/${id}`, { method: 'DELETE' });
+            if (!res.success) {
+                JG.toast(res.message || 'Suppression impossible', 'error');
+                return;
+            }
+            JG.toast('Tache supprimee', 'success');
+            await loadTasks();
+            return;
+        }
+
+        if (action === 'task-run') {
+            const res = await JG.api(`/admin/api/automation/tasks/${id}/run`, { method: 'POST' });
+            if (!res.success) {
+                JG.toast(res.message || 'Execution impossible', 'error');
+                return;
+            }
+            JG.toast('Tache executee', 'success');
+            await loadTasks();
+            return;
+        }
+
+        if (action === 'task-toggle' && task) {
+            const res = await JG.api(`/admin/api/automation/tasks/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    name: task.name,
+                    task_type: task.task_type,
+                    enabled: !task.enabled,
+                    hour: task.hour,
+                    minute: task.minute,
+                    payload: task.payload || '',
+                }),
+            });
+            if (!res.success) {
+                JG.toast(res.message || 'Mise a jour impossible', 'error');
+                return;
+            }
+            await loadTasks();
+        }
+    });
+
+    const toggle = document.getElementById('sidebar-toggle');
+    if (toggle) {
+        toggle.addEventListener('click', () => {
+            const sidebar = document.getElementById('sidebar');
+            if (sidebar) sidebar.classList.toggle('open');
+        });
+    }
+
+    loadPresets();
+    loadTasks();
+});
+</script>
+{{ end }}

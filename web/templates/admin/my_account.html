@@ -34,6 +34,13 @@
             </svg>
             <span class="jg-nav-label">My Account</span>
         </a>
+        <a href="/admin/messages" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
+            </svg>
+            <span class="jg-nav-label">Messages</span>
+        </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -41,6 +48,12 @@
                     d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>
             <span class="jg-nav-label">{{ .T "nav_users" }}</span>
+        </a>
+        <a href="/admin/automation" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span class="jg-nav-label">Automation</span>
         </a>
         {{ end }}
         {{ if .CanInvite }}
@@ -122,6 +135,16 @@
                     <label class="jg-label" for="my-email">Adresse email</label>
                     <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
                 </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="jg-label" for="my-discord">Discord (username ou ID)</label>
+                        <input type="text" id="my-discord" class="jg-input" placeholder="ex: mael#1234">
+                    </div>
+                    <div>
+                        <label class="jg-label" for="my-telegram">Telegram (username ou chat id)</label>
+                        <input type="text" id="my-telegram" class="jg-input" placeholder="ex: @mael">
+                    </div>
+                </div>
                 <div class="max-w-xs">
                     <label class="jg-label" for="my-lang">Langue preferee</label>
                     <select id="my-lang" class="jg-input">
@@ -139,6 +162,23 @@
                         <input type="checkbox" id="my-notify-events" class="form-checkbox">
                         Recevoir les emails d'evenements du compte
                     </label>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">Opt-in par canal</div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" id="my-opt-email" class="form-checkbox">
+                            Canal email
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" id="my-opt-discord" class="form-checkbox">
+                            Canal Discord
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" id="my-opt-telegram" class="form-checkbox">
+                            Canal Telegram
+                        </label>
+                    </div>
                 </div>
                 <div class="flex justify-end">
                     <button type="submit" class="jg-btn">Enregistrer les preferences</button>
@@ -188,18 +228,28 @@
         document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at);
 
         document.getElementById('my-email').value = profile.email || '';
+        document.getElementById('my-discord').value = profile.contact_discord || '';
+        document.getElementById('my-telegram').value = profile.contact_telegram || '';
         document.getElementById('my-lang').value = profile.preferred_lang || '';
         document.getElementById('my-notify-expiry').checked = profile.notify_expiry_reminder !== false;
         document.getElementById('my-notify-events').checked = profile.notify_account_events !== false;
+        document.getElementById('my-opt-email').checked = profile.opt_in_email !== false;
+        document.getElementById('my-opt-discord').checked = !!profile.opt_in_discord;
+        document.getElementById('my-opt-telegram').checked = !!profile.opt_in_telegram;
     }
 
     async function saveMyAccount(event) {
         event.preventDefault();
         const payload = {
             email: document.getElementById('my-email').value.trim(),
+            contact_discord: document.getElementById('my-discord').value.trim(),
+            contact_telegram: document.getElementById('my-telegram').value.trim(),
             preferred_lang: document.getElementById('my-lang').value,
             notify_expiry_reminder: document.getElementById('my-notify-expiry').checked,
             notify_account_events: document.getElementById('my-notify-events').checked,
+            opt_in_email: document.getElementById('my-opt-email').checked,
+            opt_in_discord: document.getElementById('my-opt-discord').checked,
+            opt_in_telegram: document.getElementById('my-opt-telegram').checked,
         };
 
         const res = await JG.api('/admin/api/users/me', {

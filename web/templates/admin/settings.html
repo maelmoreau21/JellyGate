@@ -33,6 +33,13 @@
       </svg>
       <span class="jg-nav-label">My Account</span>
     </a>
+    <a href="/admin/messages" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
+      </svg>
+      <span class="jg-nav-label">Messages</span>
+    </a>
     {{ if .IsAdmin }}
     <a href="/admin/users" class="jg-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,6 +47,12 @@
           d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
       </svg>
       <span class="jg-nav-label">{{ .T "nav_users" }}</span>
+    </a>
+    <a href="/admin/automation" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      <span class="jg-nav-label">Automation</span>
     </a>
     {{ end }}
     {{ if .CanInvite }}
@@ -410,6 +423,21 @@
                 <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-expiry-reminder-14">Rappel d'expiration J-14</label>
+                <p class="text-xs text-slate-400 mb-2">Template specifique envoye 14 jours avant expiration.</p>
+                <textarea id="tpl-expiry-reminder-14" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-expiry-reminder-7">Rappel d'expiration J-7</label>
+                <p class="text-xs text-slate-400 mb-2">Template specifique envoye 7 jours avant expiration.</p>
+                <textarea id="tpl-expiry-reminder-7" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-expiry-reminder-1">Rappel d'expiration J-1</label>
+                <p class="text-xs text-slate-400 mb-2">Template specifique envoye la veille de l'expiration.</p>
+                <textarea id="tpl-expiry-reminder-1" class="jg-input font-mono text-sm" rows="4"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-invitation">Courriel d'invitation</label>
                 <p class="text-xs text-slate-400 mb-2">Message principal quand un admin envoie un lien d'invitation.</p>
                 <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="4"></textarea>
@@ -630,6 +658,9 @@
       document.getElementById('tpl-confirmation').value = d.email_templates.confirmation || '';
       document.getElementById('tpl-expiry-reminder').value = d.email_templates.expiry_reminder || '';
       document.getElementById('tpl-expiry-reminder-days').value = d.email_templates.expiry_reminder_days || 3;
+      document.getElementById('tpl-expiry-reminder-14').value = d.email_templates.expiry_reminder_14 || '';
+      document.getElementById('tpl-expiry-reminder-7').value = d.email_templates.expiry_reminder_7 || '';
+      document.getElementById('tpl-expiry-reminder-1').value = d.email_templates.expiry_reminder_1 || '';
       document.getElementById('tpl-invitation').value = d.email_templates.invitation || '';
       document.getElementById('tpl-invite-expiry').value = d.email_templates.invite_expiry || '';
       document.getElementById('tpl-password-reset').value = d.email_templates.password_reset || '';
@@ -699,6 +730,9 @@
         confirmation: document.getElementById('tpl-confirmation').value,
         expiry_reminder: document.getElementById('tpl-expiry-reminder').value,
         expiry_reminder_days: Math.max(1, Math.min(365, reminderDays)),
+        expiry_reminder_14: document.getElementById('tpl-expiry-reminder-14').value,
+        expiry_reminder_7: document.getElementById('tpl-expiry-reminder-7').value,
+        expiry_reminder_1: document.getElementById('tpl-expiry-reminder-1').value,
         invitation: document.getElementById('tpl-invitation').value,
         invite_expiry: document.getElementById('tpl-invite-expiry').value,
         password_reset: document.getElementById('tpl-password-reset').value,
