@@ -303,6 +303,30 @@
                 <p class="text-xs text-slate-500 mt-1">Utilise ce groupe pour les profils d'invitation de type admin.</p>
               </div>
             </div>
+
+            <div class="rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
+              <h3 class="text-sm font-semibold text-purple-100 mb-2">Tests LDAP & plugin Jellyfin LDAP</h3>
+              <p class="text-xs text-purple-200/80 mb-3">Ces tests n'enregistrent pas la configuration. Ils valident la connexion LDAP, la recherche d'utilisateur AD, puis l'authentification via le plugin LDAP de Jellyfin.</p>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label class="jg-label" for="ldap-test-username">Utilisateur de test (sAMAccountName)</label>
+                  <input type="text" id="ldap-test-username" class="jg-input" placeholder="jdoe">
+                </div>
+                <div>
+                  <label class="jg-label" for="ldap-test-password">Mot de passe de test</label>
+                  <input type="password" id="ldap-test-password" class="jg-input" placeholder="••••••••">
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button type="button" id="btn-ldap-test-conn" class="jg-btn jg-btn-ghost jg-btn-sm">Tester connexion LDAP</button>
+                <button type="button" id="btn-ldap-test-user" class="jg-btn jg-btn-ghost jg-btn-sm">Tester recherche utilisateur</button>
+                <button type="button" id="btn-ldap-test-jf" class="jg-btn jg-btn-sm">Tester login Jellyfin (plugin LDAP)</button>
+              </div>
+
+              <div id="ldap-test-result" class="hidden mt-3 text-xs rounded-lg border px-3 py-2"></div>
+            </div>
           </div>
 
           <div class="mt-6 flex justify-end">
@@ -597,8 +621,9 @@
               <input id="backup-time" type="time" class="jg-input" value="03:00">
             </div>
             <div>
-              <label class="jg-label" for="backup-retention">Nombre de sauvegardes conservées</label>
-              <input id="backup-retention" type="number" min="1" max="365" class="jg-input" value="7">
+              <label class="jg-label" for="backup-retention">Sauvegardes conservées (fixe)</label>
+              <input id="backup-retention" type="number" min="7" max="7" class="jg-input" value="7" readonly>
+              <p class="text-xs text-slate-400 mt-1">JellyGate conserve automatiquement les 7 dernières sauvegardes (imports inclus).</p>
             </div>
             <div class="flex items-end">
               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">💾 Sauvegarder la planification</button>
@@ -614,7 +639,7 @@
           </div>
           <div class="rounded-xl border border-white/10 bg-white/5 p-4">
             <h3 class="text-sm font-semibold text-white mb-3">Importer une sauvegarde</h3>
-            <p class="text-xs text-slate-400 mb-3">Importe une archive ZIP dans JellyGate pour la restaurer plus tard.</p>
+            <p class="text-xs text-slate-400 mb-3">Importe une archive ZIP dans JellyGate pour la restaurer plus tard. Les actions Exporter/Supprimer restent disponibles dans la liste ci-dessous.</p>
             <div class="flex flex-col sm:flex-row gap-3">
               <input id="backup-import-file" type="file" accept=".zip" class="jg-input">
               <button id="backup-import-btn" class="jg-btn jg-btn-ghost" type="button">Importer</button>
@@ -671,6 +696,55 @@
       fields.style.opacity = '0.35';
       fields.style.pointerEvents = 'none';
     }
+  }
+
+  function collectLDAPPayload() {
+    return {
+      enabled: document.getElementById('ldap-enabled').checked,
+      host: document.getElementById('ldap-host').value,
+      port: parseInt(document.getElementById('ldap-port').value, 10) || 636,
+      use_tls: document.getElementById('ldap-tls').checked,
+      skip_verify: document.getElementById('ldap-skip-verify').checked,
+      bind_dn: document.getElementById('ldap-bind-dn').value,
+      bind_password: document.getElementById('ldap-bind-password').value,
+      base_dn: document.getElementById('ldap-base-dn').value,
+      provision_mode: document.getElementById('ldap-provision-mode').value,
+      user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
+      domain: document.getElementById('ldap-domain').value,
+      jellyfin_group: document.getElementById('ldap-jellyfin-group').value.trim(),
+      administrators_group: document.getElementById('ldap-admin-group').value.trim(),
+      user_group: document.getElementById('ldap-jellyfin-group').value.trim(),
+    };
+  }
+
+  function showLDAPTestResult(message, type = 'info') {
+    const box = document.getElementById('ldap-test-result');
+    if (!box) return;
+    box.classList.remove('hidden', 'border-emerald-500/40', 'bg-emerald-500/10', 'text-emerald-200', 'border-red-500/40', 'bg-red-500/10', 'text-red-200', 'border-sky-500/40', 'bg-sky-500/10', 'text-sky-200');
+
+    if (type === 'success') {
+      box.classList.add('border-emerald-500/40', 'bg-emerald-500/10', 'text-emerald-200');
+    } else if (type === 'error') {
+      box.classList.add('border-red-500/40', 'bg-red-500/10', 'text-red-200');
+    } else {
+      box.classList.add('border-sky-500/40', 'bg-sky-500/10', 'text-sky-200');
+    }
+    box.textContent = message;
+  }
+
+  async function runLDAPTest(endpoint, payload) {
+    showLDAPTestResult('Test en cours...', 'info');
+    const res = await JG.api(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res && res.success) {
+      showLDAPTestResult(res.message || 'Test réussi', 'success');
+      return;
+    }
+    showLDAPTestResult((res && res.message) || 'Test échoué', 'error');
   }
 
   // ── Load settings from API ──────────────────────────────────────────────
@@ -784,7 +858,7 @@
     const backupHour = Number.isInteger(backupCfg.hour) ? backupCfg.hour : 3;
     const backupMinute = Number.isInteger(backupCfg.minute) ? backupCfg.minute : 0;
     document.getElementById('backup-time').value = `${String(backupHour).padStart(2, '0')}:${String(backupMinute).padStart(2, '0')}`;
-    document.getElementById('backup-retention').value = backupCfg.retention_count || 7;
+    document.getElementById('backup-retention').value = 7;
 
     // Modèles Email
     if (d.email_templates) {
@@ -830,22 +904,7 @@
         jellytulli_url: document.getElementById('general-jellytulli-url').value.trim(),
       };
     } else if (section === 'ldap') {
-      body = {
-        enabled: document.getElementById('ldap-enabled').checked,
-        host: document.getElementById('ldap-host').value,
-        port: parseInt(document.getElementById('ldap-port').value) || 636,
-        use_tls: document.getElementById('ldap-tls').checked,
-        skip_verify: document.getElementById('ldap-skip-verify').checked,
-        bind_dn: document.getElementById('ldap-bind-dn').value,
-        bind_password: document.getElementById('ldap-bind-password').value,
-        base_dn: document.getElementById('ldap-base-dn').value,
-        provision_mode: document.getElementById('ldap-provision-mode').value,
-        user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
-        domain: document.getElementById('ldap-domain').value,
-        jellyfin_group: document.getElementById('ldap-jellyfin-group').value.trim(),
-        administrators_group: document.getElementById('ldap-admin-group').value.trim(),
-        user_group: document.getElementById('ldap-jellyfin-group').value.trim(),
-      };
+      body = collectLDAPPayload();
     } else if (section === 'smtp') {
       body = {
         host: document.getElementById('smtp-host').value,
@@ -894,11 +953,12 @@
       };
     } else if (section === 'backup') {
       const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
+      document.getElementById('backup-retention').value = '7';
       body = {
         enabled: document.getElementById('backup-enabled').checked,
         hour: parseInt(hourStr, 10),
         minute: parseInt(minuteStr, 10),
-        retention_count: parseInt(document.getElementById('backup-retention').value, 10) || 7,
+        retention_count: 7,
       };
     }
 
@@ -1060,6 +1120,41 @@
 
     await loadSettings();
     await loadBackups();
+
+    const ldapConnBtn = document.getElementById('btn-ldap-test-conn');
+    if (ldapConnBtn) {
+      ldapConnBtn.addEventListener('click', async () => {
+        await runLDAPTest('/admin/api/settings/ldap/test-connection', collectLDAPPayload());
+      });
+    }
+
+    const ldapUserBtn = document.getElementById('btn-ldap-test-user');
+    if (ldapUserBtn) {
+      ldapUserBtn.addEventListener('click', async () => {
+        const username = (document.getElementById('ldap-test-username').value || '').trim();
+        if (!username) {
+          showLDAPTestResult('Renseigne un utilisateur de test (sAMAccountName).', 'error');
+          return;
+        }
+        const payload = collectLDAPPayload();
+        payload.username = username;
+        await runLDAPTest('/admin/api/settings/ldap/test-user', payload);
+      });
+    }
+
+    const ldapJfBtn = document.getElementById('btn-ldap-test-jf');
+    if (ldapJfBtn) {
+      ldapJfBtn.addEventListener('click', async () => {
+        const username = (document.getElementById('ldap-test-username').value || '').trim();
+        const password = document.getElementById('ldap-test-password').value || '';
+        if (!username || !password) {
+          showLDAPTestResult('Renseigne utilisateur + mot de passe de test pour valider le plugin LDAP Jellyfin.', 'error');
+          return;
+        }
+        await runLDAPTest('/admin/api/settings/ldap/test-jellyfin-auth', { username, password });
+      });
+    }
+
     document.getElementById('backup-create-btn').addEventListener('click', createBackupNow);
     document.getElementById('backup-import-btn').addEventListener('click', importBackup);
   });

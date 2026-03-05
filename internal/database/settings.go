@@ -265,15 +265,16 @@ func (db *DB) GetBackupConfig() (config.BackupConfig, error) {
 	if cfg.Minute < 0 || cfg.Minute > 59 {
 		cfg.Minute = 0
 	}
-	if cfg.RetentionCount < 1 {
-		cfg.RetentionCount = 7
-	}
+	// Retention is intentionally fixed to the last 7 archives.
+	cfg.RetentionCount = 7
 
 	return cfg, nil
 }
 
 // SaveBackupConfig sauvegarde la configuration des sauvegardes planifiées.
 func (db *DB) SaveBackupConfig(cfg config.BackupConfig) error {
+	// Retention is intentionally fixed to the last 7 archives.
+	cfg.RetentionCount = 7
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("SaveBackupConfig marshal: %w", err)

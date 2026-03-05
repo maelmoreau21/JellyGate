@@ -14,20 +14,26 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 )
 
 // ── SettingsHandler ─────────────────────────────────────────────────────────
 
 // SettingsHandler gère les routes de configuration.
 type SettingsHandler struct {
-	db *database.DB
+	db          *database.DB
+	jellyfinURL string
 
 	// Callbacks de rechargement — appelés après sauvegarde pour
 	// réinitialiser les clients à chaud sans redémarrer le conteneur.
@@ -37,8 +43,208 @@ type SettingsHandler struct {
 }
 
 // NewSettingsHandler crée un nouveau handler de paramètres.
-func NewSettingsHandler(db *database.DB) *SettingsHandler {
-	return &SettingsHandler{db: db}
+func NewSettingsHandler(db *database.DB, jellyfinURL string) *SettingsHandler {
+	return &SettingsHandler{db: db, jellyfinURL: strings.TrimSpace(jellyfinURL)}
+}
+
+type ldapUserTestInput struct {
+	config.LDAPConfig
+	Username string `json:"username"`
+}
+
+type jellyfinLDAPAuthTestInput struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
+	if input.BindPassword == "••••••••" || input.BindPassword == "" {
+		existing, _ := h.db.GetLDAPConfig()
+		input.BindPassword = existing.BindPassword
+	}
+	if input.Port == 0 {
+		input.Port = 636
+	}
+	if strings.TrimSpace(input.UserOU) == "" {
+		input.UserOU = "CN=Users"
+	}
+
+	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
+	if input.ProvisionMode == "" {
+		input.ProvisionMode = "hybrid"
+	}
+
+	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
+	input.AdministratorsGroup = strings.TrimSpace(input.AdministratorsGroup)
+	if input.JellyfinGroup == "" {
+		input.JellyfinGroup = "jellyfin_group"
+	}
+	if input.AdministratorsGroup == "" {
+		input.AdministratorsGroup = "administrators_group"
+	}
+	input.UserGroup = input.JellyfinGroup
+}
+
+func validateLDAPMinimalConfig(input config.LDAPConfig) error {
+	if strings.TrimSpace(input.Host) == "" {
+		return fmt.Errorf("host LDAP requis")
+	}
+	if strings.TrimSpace(input.BindDN) == "" {
+		return fmt.Errorf("bind_dn requis")
+	}
+	if strings.TrimSpace(input.BindPassword) == "" {
+		return fmt.Errorf("bind_password requis")
+	}
+	if strings.TrimSpace(input.BaseDN) == "" {
+		return fmt.Errorf("base_dn requis")
+	}
+	return nil
+}
+
+// TestLDAPConnection teste la connexion et le bind LDAP sans sauvegarder la configuration.
+func (h *SettingsHandler) TestLDAPConnection(w http.ResponseWriter, r *http.Request) {
+	var input config.LDAPConfig
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
+		return
+	}
+
+	h.normalizeLDAPInput(&input)
+	if err := validateLDAPMinimalConfig(input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+	client := jgldap.New(input)
+	if err := client.TestConnection(); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Echec connexion LDAP: " + err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Connexion LDAP OK (reseau + bind)"})
+}
+
+// TestLDAPUserLookup teste la recherche d'un utilisateur LDAP par sAMAccountName.
+func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Request) {
+	var input ldapUserTestInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
+		return
+	}
+
+	h.normalizeLDAPInput(&input.LDAPConfig)
+	if err := validateLDAPMinimalConfig(input.LDAPConfig); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+		return
+	}
+
+	username := strings.TrimSpace(input.Username)
+	if username == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "username de test requis"})
+		return
+	}
+
+	client := jgldap.New(input.LDAPConfig)
+	entry, err := client.FindUser(username)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Echec recherche LDAP: " + err.Error()})
+		return
+	}
+	if entry == nil {
+		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Utilisateur LDAP introuvable"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Utilisateur LDAP trouve",
+		Data: map[string]interface{}{
+			"dn":           entry.DN,
+			"username":     entry.Username,
+			"display_name": entry.DisplayName,
+			"email":        entry.Email,
+			"upn":          entry.UPN,
+			"is_disabled":  entry.IsDisabled,
+		},
+	})
+}
+
+// TestJellyfinLDAPAuth vérifie que l'authentification LDAP via le plugin Jellyfin fonctionne.
+func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Request) {
+	var input jellyfinLDAPAuthTestInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
+		return
+	}
+
+	username := strings.TrimSpace(input.Username)
+	password := input.Password
+	if username == "" || password == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "username et mot de passe de test requis"})
+		return
+	}
+
+	baseURL := strings.TrimRight(strings.TrimSpace(h.jellyfinURL), "/")
+	if baseURL == "" {
+		if links, err := h.db.GetPortalLinksConfig(); err == nil {
+			baseURL = strings.TrimRight(strings.TrimSpace(links.JellyfinURL), "/")
+		}
+	}
+	if baseURL == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL Jellyfin indisponible"})
+		return
+	}
+
+	body, _ := json.Marshal(map[string]string{
+		"Username": username,
+		"Pw":       password,
+	})
+
+	req, err := http.NewRequest(http.MethodPost, baseURL+"/Users/AuthenticateByName", bytes.NewReader(body))
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Creation requete impossible"})
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Emby-Authorization", `MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="0.1.0"`)
+
+	client := &http.Client{Timeout: 12 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Connexion Jellyfin impossible: " + err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Authentification refusee (identifiants invalides ou plugin LDAP Jellyfin non fonctionnel)"})
+		return
+	}
+	if resp.StatusCode != http.StatusOK {
+		raw, _ := io.ReadAll(resp.Body)
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Jellyfin a retourne HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))})
+		return
+	}
+
+	var authResp struct {
+		User struct {
+			ID   string `json:"Id"`
+			Name string `json:"Name"`
+		} `json:"User"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Reponse Jellyfin invalide"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Authentification Jellyfin via LDAP plugin OK",
+		Data: map[string]interface{}{
+			"jellyfin_user_id": authResp.User.ID,
+			"jellyfin_name":    authResp.User.Name,
+		},
+	})
 }
 
 // ── Structures de réponse ───────────────────────────────────────────────────
@@ -399,10 +605,9 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Minutes invalides (0-59)"})
 		return
 	}
-	if input.RetentionCount < 1 || input.RetentionCount > 365 {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Rétention invalide (1-365)"})
-		return
-	}
+
+	// Politique produit: toujours conserver les 7 dernières sauvegardes.
+	input.RetentionCount = 7
 
 	if err := h.db.SaveBackupConfig(input); err != nil {
 		slog.Error("Erreur sauvegarde config Backup", "error", err)

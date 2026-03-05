@@ -56,7 +56,10 @@
         {{/* Carte formulaire */}}
         <div class="glass-card p-8 glow-accent">
             <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate
+                data-username-min-length="{{ or .Data.UsernameMinLength 3 }}"
+                data-username-max-length="{{ or .Data.UsernameMaxLength 32 }}"
                 data-password-min-length="{{ or .Data.PasswordMinLength 8 }}"
+                data-password-max-length="{{ or .Data.PasswordMaxLength 128 }}"
                 data-password-require-upper="{{ .Data.PasswordRequireUpper }}"
                 data-password-require-lower="{{ .Data.PasswordRequireLower }}"
                 data-password-require-digit="{{ .Data.PasswordRequireDigit }}"
@@ -67,9 +70,9 @@
                     <label class="jg-label" for="username">{{ .T "field_username" }}</label>
                     <input type="text" id="username" name="username" class="jg-input"
                         placeholder='{{ .T "field_username_placeholder" }}' required pattern="[a-zA-Z0-9_-]+"
-                        minlength="3" maxlength="32" autocomplete="username" {{ if .Data.ForcedUsername
+                        minlength="{{ or .Data.UsernameMinLength 3 }}" maxlength="{{ or .Data.UsernameMaxLength 32 }}" autocomplete="username" {{ if .Data.ForcedUsername
                         }}value="{{ .Data.ForcedUsername }}" readonly{{ end }}>
-                    <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }}</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }} ({{ or .Data.UsernameMinLength 3 }}-{{ or .Data.UsernameMaxLength 32 }} caractères)</p>
                 </div>
 
                 {{/* Display Name */}}
@@ -90,10 +93,10 @@
                 <div class="mb-5">
                     <label class="jg-label" for="password">{{ .T "field_password" }}</label>
                     <input type="password" id="password" name="password" class="jg-input"
-                        placeholder='{{ .T "field_password_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}"
+                        placeholder='{{ .T "field_password_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
                         autocomplete="new-password">
                     <p id="password-policy-msg" class="text-xs mt-1 text-slate-500">
-                        Règles: {{ or .Data.PasswordMinLength 8 }} caractères minimum{{ if .Data.PasswordRequireUpper }}, 1 majuscule{{ end }}{{ if .Data.PasswordRequireLower }}, 1 minuscule{{ end }}{{ if .Data.PasswordRequireDigit }}, 1 chiffre{{ end }}{{ if .Data.PasswordRequireSpecial }}, 1 caractère spécial{{ end }}.
+                        Règles: {{ or .Data.PasswordMinLength 8 }}-{{ or .Data.PasswordMaxLength 128 }} caractères{{ if .Data.PasswordRequireUpper }}, 1 majuscule{{ end }}{{ if .Data.PasswordRequireLower }}, 1 minuscule{{ end }}{{ if .Data.PasswordRequireDigit }}, 1 chiffre{{ end }}{{ if .Data.PasswordRequireSpecial }}, 1 caractère spécial{{ end }}.
                     </p>
                 </div>
 
@@ -101,7 +104,7 @@
                 <div class="mb-6">
                     <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
                     <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
-                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}"
+                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
                         autocomplete="new-password">
                     <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
                 </div>
@@ -115,6 +118,23 @@
         </div>
 
         {{/* Footer */}}
+        {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTulliURL }}
+        <div class="jg-public-links mt-5">
+            <p class="jg-public-links-title">Raccourcis rapides</p>
+            <div class="jg-public-links-grid">
+                {{ if .Data.JellyfinURL }}
+                <a href="{{ .Data.JellyfinURL }}" class="jg-public-link-chip">Jellyfin</a>
+                {{ end }}
+                {{ if .Data.JellyseerrURL }}
+                <a href="{{ .Data.JellyseerrURL }}" class="jg-public-link-chip">Jellyseerr</a>
+                {{ end }}
+                {{ if .Data.JellyTulliURL }}
+                <a href="{{ .Data.JellyTulliURL }}" class="jg-public-link-chip">JellyTulli</a>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
+
         <p class="text-center text-xs text-slate-600 mt-6">
             {{ .T "invite_footer" }}
         </p>
@@ -135,7 +155,10 @@
         const policyMsg = document.getElementById('password-policy-msg');
         const inputs = form.querySelectorAll('.jg-input');
         const policy = {
+            usernameMinLength: parseInt(form.dataset.usernameMinLength || '3', 10) || 3,
+            usernameMaxLength: parseInt(form.dataset.usernameMaxLength || '32', 10) || 32,
             minLength: parseInt(form.dataset.passwordMinLength || '8', 10) || 8,
+            maxLength: parseInt(form.dataset.passwordMaxLength || '128', 10) || 128,
             requireUpper: (form.dataset.passwordRequireUpper || '').toLowerCase() === 'true',
             requireLower: (form.dataset.passwordRequireLower || '').toLowerCase() === 'true',
             requireDigit: (form.dataset.passwordRequireDigit || '').toLowerCase() === 'true',
@@ -146,6 +169,9 @@
             const errors = [];
             if (value.length < policy.minLength) {
                 errors.push(`au moins ${policy.minLength} caractères`);
+            }
+            if (value.length > policy.maxLength) {
+                errors.push(`au maximum ${policy.maxLength} caractères`);
             }
             if (policy.requireUpper && !/[A-Z]/.test(value)) {
                 errors.push('une lettre majuscule');
@@ -186,6 +212,20 @@
                             policyMsg.textContent = 'Exigences manquantes: ' + errors.join(', ');
                             policyMsg.className = 'text-xs mt-1 text-red-400';
                         }
+                    }
+                    return;
+                }
+
+                if (input.id === 'username') {
+                    const val = (input.value || '').trim();
+                    if (!val) {
+                        input.classList.remove('is-valid', 'is-invalid');
+                    } else if (val.length < policy.usernameMinLength || val.length > policy.usernameMaxLength) {
+                        input.classList.remove('is-valid');
+                        input.classList.add('is-invalid');
+                    } else {
+                        input.classList.remove('is-invalid');
+                        input.classList.add('is-valid');
                     }
                     return;
                 }

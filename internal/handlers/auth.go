@@ -60,6 +60,10 @@ func NewAuthHandler(cfg *config.Config, db *database.DB, renderer *render.Engine
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.Error = r.URL.Query().Get("error")
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTulliURL"] = links.JellyTulliURL
 
 	if err := h.renderer.Render(w, "admin/login.html", td); err != nil {
 		slog.Error("Erreur rendu login", "error", err)

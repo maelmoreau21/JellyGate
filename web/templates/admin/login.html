@@ -58,6 +58,23 @@
                 {{ .T "login_forgot_password" }}
             </a>
         </div>
+
+        {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTulliURL }}
+        <div class="jg-public-links mt-5">
+            <p class="jg-public-links-title">Raccourcis rapides</p>
+            <div class="jg-public-links-grid">
+                {{ if .Data.JellyfinURL }}
+                <a href="{{ .Data.JellyfinURL }}" class="jg-public-link-chip">Jellyfin</a>
+                {{ end }}
+                {{ if .Data.JellyseerrURL }}
+                <a href="{{ .Data.JellyseerrURL }}" class="jg-public-link-chip">Jellyseerr</a>
+                {{ end }}
+                {{ if .Data.JellyTulliURL }}
+                <a href="{{ .Data.JellyTulliURL }}" class="jg-public-link-chip">JellyTulli</a>
+                {{ end }}
+            </div>
+        </div>
+        {{ end }}
     </div>
 </div>
 {{ end }}

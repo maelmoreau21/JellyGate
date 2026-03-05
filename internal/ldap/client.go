@@ -66,6 +66,16 @@ func New(cfg config.LDAPConfig) *Client {
 	return &Client{cfg: cfg}
 }
 
+// TestConnection vérifie la connectivité réseau + bind LDAP.
+func (c *Client) TestConnection() error {
+	conn, err := c.connect()
+	if err != nil {
+		return fmt.Errorf("ldap.TestConnection: %w", err)
+	}
+	defer conn.Close()
+	return nil
+}
+
 // ── Connexion ───────────────────────────────────────────────────────────────
 
 // connect établit une connexion LDAPS authentifiée au serveur.

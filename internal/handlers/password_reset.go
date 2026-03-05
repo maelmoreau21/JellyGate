@@ -110,6 +110,10 @@ func (h *PasswordResetHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 // RequestPage affiche le formulaire de demande de réinitialisation.
 func (h *PasswordResetHandler) RequestPage(w http.ResponseWriter, r *http.Request) {
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTulliURL"] = links.JellyTulliURL
 	td.ShowNewPasswordForm = false
 	if err := h.renderer.Render(w, "reset.html", td); err != nil {
 		slog.Error("Erreur rendu reset request", "error", err)
@@ -242,6 +246,10 @@ func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request)
 	}
 
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTulliURL"] = links.JellyTulliURL
 	td.ShowNewPasswordForm = true
 	td.ResetCode = code
 
@@ -484,6 +492,10 @@ func generateSecureToken(length int) (string, error) {
 func (h *PasswordResetHandler) renderSuccessPage(w http.ResponseWriter, r *http.Request, message string) {
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.SuccessMessage = message
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTulliURL"] = links.JellyTulliURL
 	if err := h.renderer.Render(w, "reset.html", td); err != nil {
 		slog.Error("Erreur rendu success page", "error", err)
 		http.Error(w, "Erreur serveur", http.StatusInternalServerError)

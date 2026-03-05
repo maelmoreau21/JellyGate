@@ -2484,7 +2484,10 @@ type CreateInvitationRequest struct {
 	GroupName        string   `json:"group_name"`
 	ForcedUsername   string   `json:"forced_username"`
 	TemplateUserID   string   `json:"template_user_id"`
+	UsernameMinLen   *int     `json:"username_min_length"`
+	UsernameMaxLen   *int     `json:"username_max_length"`
 	PasswordMinLen   *int     `json:"password_min_length"`
+	PasswordMaxLen   *int     `json:"password_max_length"`
 	RequireUpper     *bool    `json:"password_require_upper"`
 	RequireLower     *bool    `json:"password_require_lower"`
 	RequireDigit     *bool    `json:"password_require_digit"`
@@ -2547,7 +2550,10 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		GroupName:          strings.TrimSpace(req.GroupName),
 		ForcedUsername:     req.ForcedUsername,
 		TemplateUserID:     req.TemplateUserID,
+		UsernameMinLength:  3,
+		UsernameMaxLength:  32,
 		PasswordMinLength:  8,
+		PasswordMaxLength:  128,
 		ExpiryAction:       "disable",
 	}
 
@@ -2571,7 +2577,10 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		if strings.TrimSpace(jfProfile.TemplateUserID) == "" {
 			jfProfile.TemplateUserID = strings.TrimSpace(preset.TemplateUserID)
 		}
+		jfProfile.UsernameMinLength = preset.UsernameMinLength
+		jfProfile.UsernameMaxLength = preset.UsernameMaxLength
 		jfProfile.PasswordMinLength = preset.PasswordMinLength
+		jfProfile.PasswordMaxLength = preset.PasswordMaxLength
 		jfProfile.PasswordRequireUpper = preset.RequireUpper
 		jfProfile.PasswordRequireLower = preset.RequireLower
 		jfProfile.PasswordRequireDigit = preset.RequireDigit
@@ -2581,8 +2590,17 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		jfProfile.DeleteAfterDays = preset.DeleteAfterDays
 	}
 
+	if req.UsernameMinLen != nil && *req.UsernameMinLen >= 0 {
+		jfProfile.UsernameMinLength = *req.UsernameMinLen
+	}
+	if req.UsernameMaxLen != nil && *req.UsernameMaxLen >= 0 {
+		jfProfile.UsernameMaxLength = *req.UsernameMaxLen
+	}
 	if req.PasswordMinLen != nil && *req.PasswordMinLen >= 0 {
 		jfProfile.PasswordMinLength = *req.PasswordMinLen
+	}
+	if req.PasswordMaxLen != nil && *req.PasswordMaxLen >= 0 {
+		jfProfile.PasswordMaxLength = *req.PasswordMaxLen
 	}
 	if req.RequireUpper != nil {
 		jfProfile.PasswordRequireUpper = *req.RequireUpper
@@ -2610,8 +2628,24 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 	jfProfile.UserExpiryDays = jfProfile.DisableAfterDays
 
+	if jfProfile.UsernameMinLength <= 0 {
+		jfProfile.UsernameMinLength = 3
+	}
+	if jfProfile.UsernameMaxLength <= 0 {
+		jfProfile.UsernameMaxLength = 32
+	}
+	if jfProfile.UsernameMaxLength < jfProfile.UsernameMinLength {
+		jfProfile.UsernameMaxLength = jfProfile.UsernameMinLength
+	}
+
 	if jfProfile.PasswordMinLength <= 0 {
 		jfProfile.PasswordMinLength = 8
+	}
+	if jfProfile.PasswordMaxLength <= 0 {
+		jfProfile.PasswordMaxLength = 128
+	}
+	if jfProfile.PasswordMaxLength < jfProfile.PasswordMinLength {
+		jfProfile.PasswordMaxLength = jfProfile.PasswordMinLength
 	}
 
 	profileJSON, _ := json.Marshal(jfProfile)

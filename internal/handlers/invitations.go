@@ -110,7 +110,11 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.Invitation = inv
-	profile := jellyfin.InviteProfile{PasswordMinLength: 8}
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTulliURL"] = links.JellyTulliURL
+	profile := jellyfin.InviteProfile{UsernameMinLength: 3, UsernameMaxLength: 32, PasswordMinLength: 8, PasswordMaxLength: 128}
 
 	// Analyser le profil pour vérifier si un username est forcé (Flux B)
 	if inv.JellyfinProfile != "" {
@@ -122,7 +126,11 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pwdPolicy := resolveInvitePasswordPolicy(profile)
+	usernameMin, usernameMax := resolveInviteUsernamePolicy(profile)
+	td.Data["UsernameMinLength"] = usernameMin
+	td.Data["UsernameMaxLength"] = usernameMax
 	td.Data["PasswordMinLength"] = pwdPolicy.MinLength
+	td.Data["PasswordMaxLength"] = pwdPolicy.MaxLength
 	td.Data["PasswordRequireUpper"] = pwdPolicy.RequireUpper
 	td.Data["PasswordRequireLower"] = pwdPolicy.RequireLower
 	td.Data["PasswordRequireDigit"] = pwdPolicy.RequireDigit
@@ -213,7 +221,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	if profile.ForcedUsername != "" {
 		slog.Debug("Flux JFA-Go (Forced Username) détecté", "forced", profile.ForcedUsername, "submitted", form.Username)
 		form.Username = profile.ForcedUsername
-		if err := validateInviteUsername(form.Username); err != nil {
+		if err := validateInviteUsername(form.Username, &profile); err != nil {
 			slog.Error("Nom d'utilisateur forcé invalide", "code", code, "forced_username", profile.ForcedUsername, "error", err)
 			http.Error(w, "Erreur de configuration de l'invitation", http.StatusInternalServerError)
 			return
@@ -464,7 +472,7 @@ func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.Invi
 	displayName := strings.TrimSpace(r.FormValue("display_name"))
 
 	// Validations
-	if err := validateInviteUsername(username); err != nil {
+	if err := validateInviteUsername(username, profile); err != nil {
 		return nil, err
 	}
 
@@ -494,10 +502,28 @@ func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.Invi
 
 type invitePasswordPolicy struct {
 	MinLength      int
+	MaxLength      int
 	RequireUpper   bool
 	RequireLower   bool
 	RequireDigit   bool
 	RequireSpecial bool
+}
+
+func resolveInviteUsernamePolicy(profile jellyfin.InviteProfile) (int, int) {
+	minLength := profile.UsernameMinLength
+	maxLength := profile.UsernameMaxLength
+
+	if minLength <= 0 {
+		minLength = 3
+	}
+	if maxLength <= 0 {
+		maxLength = 32
+	}
+	if maxLength < minLength {
+		maxLength = minLength
+	}
+
+	return minLength, maxLength
 }
 
 func shouldProvisionAsLDAPAdmin(profile jellyfin.InviteProfile, ldapCfg config.LDAPConfig) bool {
@@ -516,12 +542,20 @@ func shouldProvisionAsLDAPAdmin(profile jellyfin.InviteProfile, ldapCfg config.L
 
 func resolveInvitePasswordPolicy(profile jellyfin.InviteProfile) invitePasswordPolicy {
 	minLength := profile.PasswordMinLength
+	maxLength := profile.PasswordMaxLength
 	if minLength <= 0 {
 		minLength = 8
+	}
+	if maxLength <= 0 {
+		maxLength = 128
+	}
+	if maxLength < minLength {
+		maxLength = minLength
 	}
 
 	return invitePasswordPolicy{
 		MinLength:      minLength,
+		MaxLength:      maxLength,
 		RequireUpper:   profile.PasswordRequireUpper,
 		RequireLower:   profile.PasswordRequireLower,
 		RequireDigit:   profile.PasswordRequireDigit,
@@ -529,12 +563,18 @@ func resolveInvitePasswordPolicy(profile jellyfin.InviteProfile) invitePasswordP
 	}
 }
 
-func validateInviteUsername(username string) error {
+func validateInviteUsername(username string, profile *jellyfin.InviteProfile) error {
+	usernamePolicy := jellyfin.InviteProfile{}
+	if profile != nil {
+		usernamePolicy = *profile
+	}
+	minLength, maxLength := resolveInviteUsernamePolicy(usernamePolicy)
+
 	if username == "" {
 		return fmt.Errorf("le nom d'utilisateur est requis")
 	}
-	if len(username) < 3 || len(username) > 32 {
-		return fmt.Errorf("le nom d'utilisateur doit faire entre 3 et 32 caractères")
+	if len(username) < minLength || len(username) > maxLength {
+		return fmt.Errorf("le nom d'utilisateur doit faire entre %d et %d caractères", minLength, maxLength)
 	}
 
 	for _, c := range username {
@@ -554,6 +594,9 @@ func validateInvitePassword(password string, profile *jellyfin.InviteProfile) er
 
 	if len(password) < policy.MinLength {
 		return fmt.Errorf("le mot de passe doit faire au minimum %d caractères", policy.MinLength)
+	}
+	if len(password) > policy.MaxLength {
+		return fmt.Errorf("le mot de passe doit faire au maximum %d caractères", policy.MaxLength)
 	}
 	if policy.RequireUpper && !strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
 		return fmt.Errorf("le mot de passe doit contenir au moins une lettre majuscule")

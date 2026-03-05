@@ -115,8 +115,11 @@ type InviteProfile struct {
 	ExpiryAction       string   `json:"expiry_action"` // disable|delete|disable_then_delete
 	DeleteAfterDays    int      `json:"delete_after_days"`
 	GroupName          string   `json:"group_name"`
+	UsernameMinLength  int      `json:"username_min_length"`
+	UsernameMaxLength  int      `json:"username_max_length"`
 
 	PasswordMinLength      int  `json:"password_min_length"`
+	PasswordMaxLength      int  `json:"password_max_length"`
 	PasswordRequireUpper   bool `json:"password_require_upper"`
 	PasswordRequireLower   bool `json:"password_require_lower"`
 	PasswordRequireDigit   bool `json:"password_require_digit"`

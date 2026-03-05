@@ -106,6 +106,10 @@ func (h *BackupHandler) ImportBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if cfg, cfgErr := h.db.GetBackupConfig(); cfgErr == nil {
+		_ = h.service.ApplyRetention(cfg.RetentionCount)
+	}
+
 	_ = h.db.LogAction("backup.imported", sess.Username, info.Name, "")
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde importée", Data: info})
 }

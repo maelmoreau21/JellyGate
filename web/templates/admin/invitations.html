@@ -108,7 +108,7 @@
             <h1 class="text-3xl font-bold text-white inline-block align-middle">🎟️ {{ .T "nav_invitations" }}</h1>
             <p class="text-slate-400 text-sm mt-1">Générez, suivez et gérez vos liens d'invitation depuis une vue unique.</p>
         </div>
-        <button onclick="JG.openCreateModal()" class="jg-btn">
+        <button onclick="JG.openCreateModal()" class="jg-btn jg-btn-primary">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
@@ -142,8 +142,8 @@
 </main>
 
 {{/* Modale de création */}}
-<div id="create-modal" class="modal-overlay" style="display:none">
-    <div class="glass-card modal-content w-full max-w-3xl p-6 relative">
+<div id="create-modal" class="modal-overlay modal-scroll" style="display:none">
+    <div class="glass-card modal-content modal-content-lg relative">
         <button onclick="JG.closeCreateModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -204,8 +204,20 @@
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
+                            <label class="jg-label">Nom utilisateur min</label>
+                            <input type="number" id="inv-user-min" class="jg-input" min="1" value="3">
+                        </div>
+                        <div>
+                            <label class="jg-label">Nom utilisateur max</label>
+                            <input type="number" id="inv-user-max" class="jg-input" min="1" value="32">
+                        </div>
+                        <div>
                             <label class="jg-label">Longueur minimum du mot de passe</label>
                             <input type="number" id="inv-pw-min" class="jg-input" min="0" value="8">
+                        </div>
+                        <div>
+                            <label class="jg-label">Longueur maximum du mot de passe</label>
+                            <input type="number" id="inv-pw-max" class="jg-input" min="1" value="128">
                         </div>
                         <div>
                             <label class="jg-label">Supprimer le compte apres (jours, 0 = jamais)</label>
@@ -251,7 +263,7 @@
 
             <div class="flex justify-end gap-3 pt-6 border-t border-white/10">
                 <button type="button" class="jg-btn jg-btn-ghost" onclick="JG.closeCreateModal()">Annuler</button>
-                <button type="submit" class="jg-btn" id="create-btn">
+                <button type="submit" class="jg-btn jg-btn-primary" id="create-btn">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -299,6 +311,15 @@
             document.getElementById('inv-pw-min').value = Number.isInteger(preset.password_min_length)
                 ? preset.password_min_length
                 : 8;
+            document.getElementById('inv-pw-max').value = Number.isInteger(preset.password_max_length)
+                ? preset.password_max_length
+                : 128;
+            document.getElementById('inv-user-min').value = Number.isInteger(preset.username_min_length)
+                ? preset.username_min_length
+                : 3;
+            document.getElementById('inv-user-max').value = Number.isInteger(preset.username_max_length)
+                ? preset.username_max_length
+                : 32;
             document.getElementById('inv-pw-upper').checked = !!preset.require_upper;
             document.getElementById('inv-pw-lower').checked = !!preset.require_lower;
             document.getElementById('inv-pw-digit').checked = !!preset.require_digit;
@@ -366,10 +387,16 @@
                 const deleteLabel = deleteAfter > 0 ? `delete a ${deleteAfter} jours` : 'pas de suppression planifiee';
                 const pwRules = [];
                 if (Number(rawProfile.password_min_length || 0) > 0) pwRules.push(`min ${rawProfile.password_min_length}`);
+                if (Number(rawProfile.password_max_length || 0) > 0) pwRules.push(`max ${rawProfile.password_max_length}`);
                 if (rawProfile.password_require_upper) pwRules.push('MAJ');
                 if (rawProfile.password_require_lower) pwRules.push('min');
                 if (rawProfile.password_require_digit) pwRules.push('chiffre');
                 if (rawProfile.password_require_special) pwRules.push('special');
+                const unMin = Number(rawProfile.username_min_length || 0);
+                const unMax = Number(rawProfile.username_max_length || 0);
+                if (unMin > 0 || unMax > 0) {
+                    pwRules.push(`user ${unMin || 3}-${unMax || 32}`);
+                }
                 const policyLabel = pwRules.length > 0 ? pwRules.join(', ') : 'defaut';
                 const groupLabel = groupName ? `groupe: ${groupName}` : 'sans groupe';
                 const userExp = `<div>${JG.esc(userExpiry)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)} · ${JG.esc(policyLabel)}</div>`;
@@ -431,6 +458,9 @@
             document.getElementById('create-modal').style.display = 'none';
             document.getElementById('create-form').reset();
             document.getElementById('inv-pw-min').value = '8';
+            document.getElementById('inv-pw-max').value = '128';
+            document.getElementById('inv-user-min').value = '3';
+            document.getElementById('inv-user-max').value = '32';
             document.getElementById('inv-disable-after').value = '0';
             document.getElementById('inv-delete-after').value = '0';
         }
@@ -454,7 +484,10 @@
                 group_name: document.getElementById('inv-group-name').value,
                 forced_username: document.getElementById('inv-forced-user').value,
                 template_user_id: document.getElementById('inv-template-user').value,
+                username_min_length: parseInt(document.getElementById('inv-user-min').value, 10) || 0,
+                username_max_length: parseInt(document.getElementById('inv-user-max').value, 10) || 0,
                 password_min_length: parseInt(document.getElementById('inv-pw-min').value, 10) || 0,
+                password_max_length: parseInt(document.getElementById('inv-pw-max').value, 10) || 0,
                 password_require_upper: document.getElementById('inv-pw-upper').checked,
                 password_require_lower: document.getElementById('inv-pw-lower').checked,
                 password_require_digit: document.getElementById('inv-pw-digit').checked,
