@@ -31,6 +31,7 @@ body {
     background: var(--jg-bg-primary);
     color: var(--jg-text);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
 }
 
 /* ── Glassmorphism card ──────────────────────────────────────────────────── */
@@ -384,6 +385,43 @@ body {
     color: var(--jg-text-muted);
 }
 
+/* ── Bulk wizard ────────────────────────────────────────────────────────── */
+.bulk-steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.bulk-step-card {
+    border: 1px solid var(--jg-border);
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.bulk-step-card.active {
+    border-color: rgba(139, 92, 246, 0.6);
+    background: rgba(139, 92, 246, 0.15);
+}
+
+.bulk-step-card.done {
+    border-color: rgba(16, 185, 129, 0.5);
+    background: rgba(16, 185, 129, 0.12);
+}
+
+.bulk-step-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--jg-text-muted);
+    margin-bottom: 0.2rem;
+}
+
+.bulk-step-text {
+    font-size: 0.8rem;
+    color: var(--jg-text);
+}
+
 /* ── Toast notifications ─────────────────────────────────────────────────── */
 .toast-container {
     position: fixed;
@@ -554,6 +592,8 @@ body {
 @media (max-width: 768px) {
     .jg-sidebar {
         transform: translateX(-100%);
+        width: min(90vw, var(--jg-sidebar-width));
+        z-index: 80;
     }
 
     .jg-sidebar.open {
@@ -562,9 +602,62 @@ body {
 
     .jg-main {
         margin-left: 0 !important;
+        padding: 1rem;
     }
 
     .stats-grid {
         grid-template-columns: 1fr;
+    }
+
+    .jg-btn {
+        min-height: 42px;
+    }
+
+    .jg-table-wrap {
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .jg-table {
+        min-width: 780px;
+    }
+
+    .bulk-steps-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .jg-table th,
+    .jg-table td {
+        padding: 0.65rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .modal-content {
+        width: 96%;
+        max-width: 96%;
+        max-height: 90vh;
+        overflow-y: auto;
+        padding: 1rem;
+    }
+
+    .toast-container {
+        top: auto;
+        right: 0.75rem;
+        left: 0.75rem;
+        bottom: 0.75rem;
+    }
+
+    .toast {
+        max-width: none;
+    }
+
+    #lang-switcher {
+        bottom: 0.75rem;
+        right: 0.75rem;
+    }
+}
+
+@media (max-width: 1024px) {
+    .jg-main {
+        padding: 1.25rem;
     }
 }

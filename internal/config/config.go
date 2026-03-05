@@ -84,39 +84,43 @@ func DefaultBackupConfig() BackupConfig {
 
 // EmailTemplatesConfig contient les modèles de courriels personnalisés configurables (JFA-Go).
 type EmailTemplatesConfig struct {
-	Confirmation   string `json:"confirmation"`
-	ExpiryReminder string `json:"expiry_reminder"`
-	Invitation     string `json:"invitation"`
-	InviteExpiry   string `json:"invite_expiry"`
-	PasswordReset  string `json:"password_reset"`
-	PreSignupHelp  string `json:"pre_signup_help"`
-	PostSignupHelp string `json:"post_signup_help"`
-	UserCreation   string `json:"user_creation"`
-	UserDeletion   string `json:"user_deletion"`
-	UserDisabled   string `json:"user_disabled"`
-	UserEnabled    string `json:"user_enabled"`
-	UserExpired    string `json:"user_expired"`
-	ExpiryAdjusted string `json:"expiry_adjusted"`
-	Welcome        string `json:"welcome"`
+	Confirmation             string `json:"confirmation"`
+	ExpiryReminder           string `json:"expiry_reminder"`
+	ExpiryReminderDays       int    `json:"expiry_reminder_days"`
+	Invitation               string `json:"invitation"`
+	InviteExpiry             string `json:"invite_expiry"`
+	PasswordReset            string `json:"password_reset"`
+	PreSignupHelp            string `json:"pre_signup_help"`
+	PostSignupHelp           string `json:"post_signup_help"`
+	UserCreation             string `json:"user_creation"`
+	UserDeletion             string `json:"user_deletion"`
+	DisableUserDeletionEmail bool   `json:"disable_user_deletion_email"`
+	UserDisabled             string `json:"user_disabled"`
+	UserEnabled              string `json:"user_enabled"`
+	UserExpired              string `json:"user_expired"`
+	ExpiryAdjusted           string `json:"expiry_adjusted"`
+	Welcome                  string `json:"welcome"`
 }
 
 // DefaultEmailTemplates retourne les traductions de base des modèles d'emails
 func DefaultEmailTemplates() EmailTemplatesConfig {
 	return EmailTemplatesConfig{
-		Confirmation:   "Bonjour {{.Username}},\n\nVotre inscription est confirmée.",
-		ExpiryReminder: "Bonjour {{.Username}},\n\nVotre compte expirera prochainement.",
-		Invitation:     "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}",
-		InviteExpiry:   "Bonjour {{.Username}},\n\nVotre lien d'invitation va expirer le {{.ExpiryDate}}.",
-		PasswordReset:  "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}",
-		PreSignupHelp:  "Besoin d'aide avant l'inscription ? Consultez ce guide : {{.HelpURL}}",
-		PostSignupHelp: "Bienvenue {{.Username}} ! Voici les premières étapes après inscription : {{.HelpURL}}",
-		UserCreation:   "Bonjour {{.Username}},\n\nVotre compte a été créé avec succès par un administrateur.",
-		UserDeletion:   "Bonjour {{.Username}},\n\nVotre compte a été supprimé.",
-		UserDisabled:   "Bonjour {{.Username}},\n\nVotre compte a été désactivé.",
-		UserEnabled:    "Bonjour {{.Username}},\n\nVotre compte a été réactivé.",
-		UserExpired:    "Bonjour {{.Username}},\n\nVotre accès a expiré et votre compte a été désactivé.",
-		ExpiryAdjusted: "Bonjour {{.Username}},\n\nLa date d'expiration de votre accès a été mise à jour : {{.ExpiryDate}}.",
-		Welcome:        "Bienvenue {{.Username}} ! Votre compte JellyGate est prêt.",
+		Confirmation:             "Bonjour {{.Username}},\n\nVotre inscription est confirmée.",
+		ExpiryReminder:           "Bonjour {{.Username}},\n\nVotre compte expirera prochainement.",
+		ExpiryReminderDays:       3,
+		Invitation:               "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}",
+		InviteExpiry:             "Bonjour {{.Username}},\n\nVotre lien d'invitation va expirer le {{.ExpiryDate}}.",
+		PasswordReset:            "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}",
+		PreSignupHelp:            "Besoin d'aide avant l'inscription ? Consultez ce guide : {{.HelpURL}}",
+		PostSignupHelp:           "Bienvenue {{.Username}} ! Voici les premières étapes après inscription : {{.HelpURL}}",
+		UserCreation:             "Bonjour {{.Username}},\n\nVotre compte a été créé avec succès par un administrateur.",
+		UserDeletion:             "Bonjour {{.Username}},\n\nVotre compte a été supprimé.",
+		DisableUserDeletionEmail: false,
+		UserDisabled:             "Bonjour {{.Username}},\n\nVotre compte a été désactivé.",
+		UserEnabled:              "Bonjour {{.Username}},\n\nVotre compte a été réactivé.",
+		UserExpired:              "Bonjour {{.Username}},\n\nVotre accès a expiré et votre compte a été désactivé.",
+		ExpiryAdjusted:           "Bonjour {{.Username}},\n\nLa date d'expiration de votre accès a été mise à jour : {{.ExpiryDate}}.",
+		Welcome:                  "Bienvenue {{.Username}} ! Votre compte JellyGate est prêt.",
 	}
 }
 

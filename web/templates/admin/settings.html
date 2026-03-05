@@ -26,6 +26,13 @@
       </svg>
       <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
     </a>
+    <a href="/admin/my-account" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+      <span class="jg-nav-label">My Account</span>
+    </a>
     {{ if .IsAdmin }}
     <a href="/admin/users" class="jg-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,29 +100,29 @@
     <p class="text-slate-400 mt-1 mb-8">{{ .T "settings_subheading" }}</p>
 
     {{/* ── Tabs ───────────────────────────────────────────────────────── */}}
-    <div class="flex gap-2 mb-6 border-b border-white/10 pb-1">
+    <div class="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto">
       <button onclick="switchTab('general')" id="tab-general"
-        class="tab-btn active px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        class="tab-btn active px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
         🌐 {{ .T "settings_tab_general" }}
       </button>
       <button onclick="switchTab('ldap')" id="tab-ldap"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
         🔐 LDAP
       </button>
       <button onclick="switchTab('smtp')" id="tab-smtp"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
         📧 SMTP
       </button>
       <button onclick="switchTab('webhooks')" id="tab-webhooks"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
         🔔 Webhooks
       </button>
       <button onclick="switchTab('email-templates')" id="tab-email-templates"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
         📝 Modèles Email
       </button>
       <button onclick="switchTab('backup')" id="tab-backup"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all">
+        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
         💾 Sauvegardes
       </button>
     </div>
@@ -380,6 +387,15 @@
           </div>
         </div>
 
+        <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
+          <h3 class="text-sm font-semibold text-white mb-2">Planification des rappels d'expiration</h3>
+          <p class="text-xs text-slate-400 mb-3">Definis combien de jours avant la date d'expiration un rappel est envoye automatiquement.</p>
+          <div class="max-w-xs">
+            <label class="jg-label" for="tpl-expiry-reminder-days">N jours avant expiration</label>
+            <input type="number" id="tpl-expiry-reminder-days" class="jg-input" min="1" max="365" value="3">
+          </div>
+        </div>
+
         <form id="form-email-templates" onsubmit="saveSettings('email-templates', event)">
           <div class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -426,6 +442,10 @@
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-deletion">Suppression de l'utilisateur</label>
                 <p class="text-xs text-slate-400 mb-2">Notification de suppression de compte.</p>
+                <label class="inline-flex items-center gap-2 text-xs text-slate-300 mb-3">
+                  <input type="checkbox" id="tpl-disable-user-deletion-email" class="form-checkbox">
+                  Ne pas envoyer cet email lors d'une suppression utilisateur
+                </label>
                 <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="4"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
@@ -609,6 +629,7 @@
     if (d.email_templates) {
       document.getElementById('tpl-confirmation').value = d.email_templates.confirmation || '';
       document.getElementById('tpl-expiry-reminder').value = d.email_templates.expiry_reminder || '';
+      document.getElementById('tpl-expiry-reminder-days').value = d.email_templates.expiry_reminder_days || 3;
       document.getElementById('tpl-invitation').value = d.email_templates.invitation || '';
       document.getElementById('tpl-invite-expiry').value = d.email_templates.invite_expiry || '';
       document.getElementById('tpl-password-reset').value = d.email_templates.password_reset || '';
@@ -616,6 +637,7 @@
       document.getElementById('tpl-post-signup-help').value = d.email_templates.post_signup_help || '';
       document.getElementById('tpl-user-creation').value = d.email_templates.user_creation || '';
       document.getElementById('tpl-user-deletion').value = d.email_templates.user_deletion || '';
+      document.getElementById('tpl-disable-user-deletion-email').checked = !!d.email_templates.disable_user_deletion_email;
       document.getElementById('tpl-user-disabled').value = d.email_templates.user_disabled || '';
       document.getElementById('tpl-user-enabled').value = d.email_templates.user_enabled || '';
       document.getElementById('tpl-user-expired').value = d.email_templates.user_expired || '';
@@ -671,9 +693,12 @@
         },
       };
     } else if (section === 'email-templates') {
+      const reminderDaysRaw = parseInt(document.getElementById('tpl-expiry-reminder-days').value, 10);
+      const reminderDays = Number.isInteger(reminderDaysRaw) ? reminderDaysRaw : 3;
       body = {
         confirmation: document.getElementById('tpl-confirmation').value,
         expiry_reminder: document.getElementById('tpl-expiry-reminder').value,
+        expiry_reminder_days: Math.max(1, Math.min(365, reminderDays)),
         invitation: document.getElementById('tpl-invitation').value,
         invite_expiry: document.getElementById('tpl-invite-expiry').value,
         password_reset: document.getElementById('tpl-password-reset').value,
@@ -681,6 +706,7 @@
         post_signup_help: document.getElementById('tpl-post-signup-help').value,
         user_creation: document.getElementById('tpl-user-creation').value,
         user_deletion: document.getElementById('tpl-user-deletion').value,
+        disable_user_deletion_email: document.getElementById('tpl-disable-user-deletion-email').checked,
         user_disabled: document.getElementById('tpl-user-disabled').value,
         user_enabled: document.getElementById('tpl-user-enabled').value,
         user_expired: document.getElementById('tpl-user-expired').value,
@@ -815,6 +841,14 @@
 
   // ── Init ────────────────────────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', async () => {
+    const toggle = document.getElementById('sidebar-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) sidebar.classList.toggle('open');
+      });
+    }
+
     await loadSettings();
     await loadBackups();
     document.getElementById('backup-create-btn').addEventListener('click', createBackupNow);

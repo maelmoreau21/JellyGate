@@ -28,6 +28,13 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
         </a>
+        <a href="/admin/my-account" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="jg-nav-label">My Account</span>
+        </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,27 +101,14 @@
         </div>
     </div>
 
-    {{/* Password Reset Card (Visible par tous les utilisateurs) */}}
+    {{/* My Account quick access */}}
     <div class="glass-card mb-8 p-6">
-        <h2 class="text-xl font-bold mb-4">🔐 Mon Compte</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <p class="text-slate-400 mb-4 text-sm">Modifiez votre mot de passe d'accès (Jellyfin et Active
-                    Directory). La déconnexion ne sera pas immédiate sur vos autres appareils.</p>
-                <form id="change-password-form" onsubmit="event.preventDefault(); submitInternalPasswordChange();">
-                    <div class="mb-4">
-                        <label class="jg-label">Nouveau mot de passe</label>
-                        <input type="password" id="new-password" class="jg-input" minlength="8" required
-                            placeholder="8 caractères minimum">
-                    </div>
-                    <div class="mb-4">
-                        <label class="jg-label">Confirmez le mot de passe</label>
-                        <input type="password" id="new-password-confirm" class="jg-input" required
-                            placeholder="Ressaisir le mot de passe">
-                    </div>
-                    <button type="submit" class="jg-btn">Mettre à jour le mot de passe</button>
-                </form>
-            </div>
+        <h2 class="text-xl font-bold mb-4">🔐 My Account</h2>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <p class="text-slate-400 text-sm max-w-2xl">
+                Accede a la page dediee pour modifier ton email, gerer tes preferences de notifications et changer ton mot de passe.
+            </p>
+            <a href="/admin/my-account" class="jg-btn">Ouvrir My Account</a>
         </div>
     </div>
 
@@ -245,35 +239,5 @@
         });
         // {{ end }}
     });
-
-    // Change Password function
-    async function submitInternalPasswordChange() {
-        const p1 = document.getElementById('new-password').value;
-        const p2 = document.getElementById('new-password-confirm').value;
-
-        if (p1 !== p2) {
-            JG.toast("Les mots de passe ne correspondent pas", "error");
-            return;
-        }
-        if (p1.length < 8) {
-            JG.toast("Le mot de passe est trop court", "error");
-            return;
-        }
-
-        const res = await JG.api('/admin/api/users/me/password', {
-            method: 'POST',
-            body: JSON.stringify({
-                current_password: "not_needed_by_admin_token",
-                new_password: p1
-            })
-        });
-
-        if (res.success) {
-            JG.toast(res.message, "success");
-            document.getElementById('change-password-form').reset();
-        } else {
-            JG.toast(res.message || "Erreur lors du changement", "error");
-        }
-    }
 </script>
 {{ end }}

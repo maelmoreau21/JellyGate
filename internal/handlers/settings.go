@@ -362,6 +362,17 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	if input.ExpiryReminderDays == 0 {
+		input.ExpiryReminderDays = 3
+	}
+	if input.ExpiryReminderDays < 1 || input.ExpiryReminderDays > 365 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "expiry_reminder_days doit etre entre 1 et 365",
+		})
+		return
+	}
+
 	if err := h.db.SaveEmailTemplatesConfig(input); err != nil {
 		slog.Error("Erreur sauvegarde config Email Templates", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{

@@ -74,6 +74,9 @@ type adminUserRecord struct {
 	LdapDN          string
 	IsActive        bool
 	CanInvite       bool
+	PreferredLang   string
+	NotifyExpiry    bool
+	NotifyEvents    bool
 	AccessExpiresAt sql.NullString
 }
 
@@ -82,6 +85,13 @@ type UpdateUserRequest struct {
 	CanInvite       *bool   `json:"can_invite"`
 	AccessExpiresAt *string `json:"access_expires_at"`
 	ClearExpiry     bool    `json:"clear_expiry"`
+}
+
+type UpdateMyAccountRequest struct {
+	Email                *string `json:"email"`
+	PreferredLang        *string `json:"preferred_lang"`
+	NotifyExpiryReminder *bool   `json:"notify_expiry_reminder"`
+	NotifyAccountEvents  *bool   `json:"notify_account_events"`
 }
 
 type BulkJellyfinPolicyPatch struct {
@@ -157,7 +167,34 @@ func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templat
 	return sendTemplateIfConfigured(h.mailer, rec.Email, subject, templateBody, data)
 }
 
+func (h *AdminHandler) canSendUserTemplate(userID int64, templateKey string) bool {
+	if userID <= 0 {
+		return true
+	}
+
+	var notifyExpiry, notifyEvents bool
+	err := h.db.Conn().QueryRow(
+		`SELECT notify_expiry_reminder, notify_account_events FROM users WHERE id = ?`,
+		userID,
+	).Scan(&notifyExpiry, &notifyEvents)
+	if err != nil {
+		return true
+	}
+
+	if templateKey == "expiry_reminder" {
+		return notifyExpiry
+	}
+	return notifyEvents
+}
+
 func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey string, extra map[string]string) error {
+	if rec == nil {
+		return nil
+	}
+	if !h.canSendUserTemplate(rec.ID, templateKey) {
+		return nil
+	}
+
 	emailCfg, err := h.db.GetEmailTemplatesConfig()
 	if err != nil {
 		return err
@@ -172,6 +209,9 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 		subject = "Compte désactivé — JellyGate"
 		body = emailCfg.UserDisabled
 	case "user_deleted":
+		if emailCfg.DisableUserDeletionEmail {
+			return nil
+		}
 		subject = "Compte supprimé — JellyGate"
 		body = emailCfg.UserDeletion
 	case "user_expired":
@@ -215,11 +255,18 @@ func (h *AdminHandler) StartExpirationJob(ctx context.Context) {
 func (h *AdminHandler) runExpirationCheck() {
 	slog.Debug("Lancement du job d'expiration automatique des utilisateurs...")
 	now := time.Now()
-	reminderWindow := now.Add(72 * time.Hour)
+
+	reminderDays := 3
+	if emailCfg, err := h.db.GetEmailTemplatesConfig(); err == nil {
+		if emailCfg.ExpiryReminderDays > 0 {
+			reminderDays = emailCfg.ExpiryReminderDays
+		}
+	}
+	reminderWindow := now.Add(time.Duration(reminderDays) * 24 * time.Hour)
 
 	// Rappels d'expiration imminente
 	reminderRows, err := h.db.Conn().Query(`
-		SELECT id, username, email, access_expires_at
+		SELECT id, username, email, access_expires_at, notify_expiry_reminder
 		FROM users
 		WHERE is_active = 1
 		  AND access_expires_at IS NOT NULL
@@ -230,11 +277,15 @@ func (h *AdminHandler) runExpirationCheck() {
 		for reminderRows.Next() {
 			var id int64
 			var username string
+			var notifyExpiry bool
 			var email, expiryRaw sql.NullString
-			if err := reminderRows.Scan(&id, &username, &email, &expiryRaw); err != nil {
+			if err := reminderRows.Scan(&id, &username, &email, &expiryRaw, &notifyExpiry); err != nil {
 				continue
 			}
 			if !email.Valid || strings.TrimSpace(email.String) == "" || !expiryRaw.Valid {
+				continue
+			}
+			if !notifyExpiry {
 				continue
 			}
 
@@ -370,6 +421,193 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur rendu dashboard", "error", err)
 		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
 	}
+}
+
+// MyAccountPage affiche la page "Mon compte" pour l'utilisateur connecté.
+func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.AdminUsername = sess.Username
+	td.IsAdmin = sess.IsAdmin
+
+	if td.IsAdmin {
+		td.CanInvite = true
+	} else {
+		var canInvite bool
+		_ = h.db.Conn().QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		td.CanInvite = canInvite
+	}
+
+	if err := h.renderer.Render(w, "admin/my_account.html", td); err != nil {
+		slog.Error("Erreur rendu my account page", "error", err)
+		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+	}
+}
+
+func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
+	if sess == nil {
+		return fmt.Errorf("session absente")
+	}
+
+	var userID int64
+	err := h.db.Conn().QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&userID)
+	if err == nil {
+		return nil
+	}
+	if err != sql.ErrNoRows {
+		return err
+	}
+
+	_, err = h.db.Conn().Exec(
+		`INSERT INTO users (jellyfin_id, username, is_active, can_invite)
+		 VALUES (?, ?, 1, ?)
+		 ON CONFLICT(jellyfin_id) DO UPDATE SET username = excluded.username, updated_at = datetime('now')`,
+		sess.UserID,
+		sess.Username,
+		sess.IsAdmin,
+	)
+	return err
+}
+
+// GetMyAccount retourne les informations éditables de l'utilisateur connecté.
+func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	if err := h.ensureUserRowForSession(sess); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de préparer le profil utilisateur"})
+		return
+	}
+
+	var (
+		id              int64
+		email           sql.NullString
+		preferredLang   string
+		notifyExpiry    bool
+		notifyEvents    bool
+		accessExpiresAt sql.NullString
+		createdAt       sql.NullString
+	)
+
+	err := h.db.Conn().QueryRow(
+		`SELECT id, email, preferred_lang, notify_expiry_reminder, notify_account_events, access_expires_at, created_at
+		 FROM users WHERE jellyfin_id = ?`,
+		sess.UserID,
+	).Scan(&id, &email, &preferredLang, &notifyExpiry, &notifyEvents, &accessExpiresAt, &createdAt)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture du profil"})
+		return
+	}
+
+	if preferredLang == "" {
+		preferredLang = h.db.GetDefaultLang()
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"id":                     id,
+			"username":               sess.Username,
+			"email":                  email.String,
+			"preferred_lang":         preferredLang,
+			"notify_expiry_reminder": notifyExpiry,
+			"notify_account_events":  notifyEvents,
+			"is_admin":               sess.IsAdmin,
+			"access_expires_at":      accessExpiresAt.String,
+			"created_at":             createdAt.String,
+		},
+	})
+}
+
+// UpdateMyAccount met à jour les préférences et l'email de l'utilisateur connecté.
+func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	if err := h.ensureUserRowForSession(sess); err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de préparer le profil utilisateur"})
+		return
+	}
+
+	var req UpdateMyAccountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
+		return
+	}
+
+	var (
+		currentEmail  sql.NullString
+		preferredLang string
+		notifyExpiry  bool
+		notifyEvents  bool
+	)
+	err := h.db.Conn().QueryRow(
+		`SELECT email, preferred_lang, notify_expiry_reminder, notify_account_events
+		 FROM users WHERE jellyfin_id = ?`,
+		sess.UserID,
+	).Scan(&currentEmail, &preferredLang, &notifyExpiry, &notifyEvents)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture des préférences"})
+		return
+	}
+
+	newEmail := strings.TrimSpace(currentEmail.String)
+	if req.Email != nil {
+		newEmail = strings.TrimSpace(*req.Email)
+	}
+
+	newPreferredLang := strings.TrimSpace(preferredLang)
+	if req.PreferredLang != nil {
+		candidate := strings.TrimSpace(*req.PreferredLang)
+		if candidate != "" && candidate != "fr" && candidate != "en" {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Langue invalide (fr/en)"})
+			return
+		}
+		newPreferredLang = candidate
+	}
+
+	newNotifyExpiry := notifyExpiry
+	if req.NotifyExpiryReminder != nil {
+		newNotifyExpiry = *req.NotifyExpiryReminder
+	}
+
+	newNotifyEvents := notifyEvents
+	if req.NotifyAccountEvents != nil {
+		newNotifyEvents = *req.NotifyAccountEvents
+	}
+
+	_, err = h.db.Conn().Exec(
+		`UPDATE users
+		 SET email = ?, preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?, updated_at = datetime('now')
+		 WHERE jellyfin_id = ?`,
+		newEmail,
+		newPreferredLang,
+		newNotifyExpiry,
+		newNotifyEvents,
+		sess.UserID,
+	)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise à jour des préférences"})
+		return
+	}
+
+	_ = h.db.LogAction(
+		"user.profile.updated",
+		sess.Username,
+		sess.Username,
+		fmt.Sprintf(`{"preferred_lang":"%s","notify_expiry":%t,"notify_events":%t}`,
+			newPreferredLang,
+			newNotifyExpiry,
+			newNotifyEvents,
+		),
+	)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Profil mis à jour",
+		Data: map[string]interface{}{
+			"email":                  newEmail,
+			"preferred_lang":         newPreferredLang,
+			"notify_expiry_reminder": newNotifyExpiry,
+			"notify_account_events":  newNotifyEvents,
+		},
+	})
 }
 
 // UsersPage affiche la page de gestion des utilisateurs.
@@ -696,7 +934,8 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 	var email, jellyfinID, ldapDN sql.NullString
 
 	err := h.db.Conn().QueryRow(
-		`SELECT id, username, email, jellyfin_id, ldap_dn, is_active, can_invite, access_expires_at
+		`SELECT id, username, email, jellyfin_id, ldap_dn, is_active, can_invite,
+		        preferred_lang, notify_expiry_reminder, notify_account_events, access_expires_at
 		 FROM users WHERE id = ?`,
 		userID,
 	).Scan(
@@ -707,6 +946,9 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		&ldapDN,
 		&rec.IsActive,
 		&rec.CanInvite,
+		&rec.PreferredLang,
+		&rec.NotifyExpiry,
+		&rec.NotifyEvents,
 		&rec.AccessExpiresAt,
 	)
 	if err != nil {
@@ -847,6 +1089,10 @@ func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]s
 		}
 	}
 
+	if err := h.sendUserTemplateByKey(rec, "user_deleted", nil); err != nil {
+		partialErrors = append(partialErrors, fmt.Sprintf("Email: %s", err.Error()))
+	}
+
 	_, err := h.db.Conn().Exec(`DELETE FROM users WHERE id = ?`, rec.ID)
 	if err != nil {
 		partialErrors = append(partialErrors, fmt.Sprintf("SQLite: %s", err.Error()))
@@ -855,10 +1101,6 @@ func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]s
 
 	_ = h.db.LogAction("user.deleted", actor, rec.Username, fmt.Sprintf(`{"user_id":%d,"errors":%d}`,
 		rec.ID, len(partialErrors)))
-
-	if err := h.sendUserTemplateByKey(rec, "user_deleted", nil); err != nil {
-		partialErrors = append(partialErrors, fmt.Sprintf("Email: %s", err.Error()))
-	}
 
 	return partialErrors, nil
 }

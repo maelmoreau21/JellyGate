@@ -248,11 +248,19 @@ func (db *DB) GetEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
 		return cfg, nil // Fallback silenceus sur defaults
 	}
 
+	if cfg.ExpiryReminderDays < 1 || cfg.ExpiryReminderDays > 365 {
+		cfg.ExpiryReminderDays = 3
+	}
+
 	return cfg, nil
 }
 
 // SaveEmailTemplatesConfig sauvegarde la configuration des gabarits.
 func (db *DB) SaveEmailTemplatesConfig(cfg config.EmailTemplatesConfig) error {
+	if cfg.ExpiryReminderDays < 1 || cfg.ExpiryReminderDays > 365 {
+		cfg.ExpiryReminderDays = 3
+	}
+
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("SaveEmailTemplatesConfig marshal: %w", err)

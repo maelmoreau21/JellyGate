@@ -210,6 +210,9 @@ func (db *DB) migrate() error {
 	// Retro-compatibilité logic: Add can_invite to existing tables.
 	// We ignore the error since it will fail cleanly if the column already exists.
 	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN can_invite BOOLEAN NOT NULL DEFAULT 0`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN preferred_lang TEXT NOT NULL DEFAULT ''`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN notify_expiry_reminder BOOLEAN NOT NULL DEFAULT 1`)
+	_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN notify_account_events BOOLEAN NOT NULL DEFAULT 1`)
 
 	slog.Info("Migrations terminées", "count", len(migrations))
 	return nil

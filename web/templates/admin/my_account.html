@@ -1,0 +1,261 @@
+{{/* my_account.html — Gestion du profil utilisateur */}}
+{{ template "layouts/base.html" . }}
+
+{{ define "title" }}My Account — JellyGate{{ end }}
+
+{{ define "body" }}
+<aside id="sidebar" class="jg-sidebar">
+    <div class="jg-sidebar-logo">
+        <svg viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="14" fill="url(#grd)" />
+            <defs>
+                <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
+                    <stop stop-color="#8b5cf6" />
+                    <stop offset="1" stop-color="#6366f1" />
+                </linearGradient>
+            </defs>
+            <path d="M10 22V10l12 6-12 6z" fill="#fff" />
+        </svg>
+        <span>JellyGate</span>
+    </div>
+
+    <nav class="jg-nav">
+        <a href="/admin/" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
+        </a>
+        <a href="/admin/my-account" class="jg-nav-item active">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="jg-nav-label">My Account</span>
+        </a>
+        {{ if .IsAdmin }}
+        <a href="/admin/users" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_users" }}</span>
+        </a>
+        {{ end }}
+        {{ if .CanInvite }}
+        <a href="/admin/invitations" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
+        </a>
+        {{ end }}
+        {{ if .IsAdmin }}
+        <a href="/admin/settings" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
+        </a>
+        <a href="/admin/logs" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
+        </a>
+        {{ end }}
+    </nav>
+
+    <div class="jg-sidebar-footer">
+        <form method="POST" action="/admin/logout">
+            <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+<main class="jg-main">
+    <div class="max-w-4xl mx-auto flex flex-col gap-6">
+        <div>
+            <button id="sidebar-toggle"
+                class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+            <h1 class="text-3xl font-bold text-white inline-block align-middle">My Account</h1>
+            <p class="text-slate-400 mt-1">Gere ton adresse email, tes preferences de notification et ton mot de passe.</p>
+        </div>
+
+        <section class="glass-card p-6">
+            <h2 class="text-lg font-semibold mb-4">Profil</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div class="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div class="text-slate-400">Utilisateur</div>
+                    <div class="font-semibold mt-1" id="account-username">-</div>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div class="text-slate-400">Role</div>
+                    <div class="font-semibold mt-1" id="account-role">-</div>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/5 p-3 md:col-span-2">
+                    <div class="text-slate-400">Expiration d'acces</div>
+                    <div class="font-semibold mt-1" id="account-expiry">Aucune expiration</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="glass-card p-6">
+            <h2 class="text-lg font-semibold mb-4">Coordonnees & preferences</h2>
+            <form id="my-account-form" class="space-y-4">
+                <div>
+                    <label class="jg-label" for="my-email">Adresse email</label>
+                    <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
+                </div>
+                <div class="max-w-xs">
+                    <label class="jg-label" for="my-lang">Langue preferee</label>
+                    <select id="my-lang" class="jg-input">
+                        <option value="">Par defaut du serveur</option>
+                        <option value="fr">Francais</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                        <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
+                        Recevoir les rappels d'expiration
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                        <input type="checkbox" id="my-notify-events" class="form-checkbox">
+                        Recevoir les emails d'evenements du compte
+                    </label>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="jg-btn">Enregistrer les preferences</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="glass-card p-6">
+            <h2 class="text-lg font-semibold mb-4">Mot de passe</h2>
+            <form id="my-password-form" class="space-y-4">
+                <div>
+                    <label class="jg-label" for="my-password">Nouveau mot de passe</label>
+                    <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder="8 caracteres minimum">
+                </div>
+                <div>
+                    <label class="jg-label" for="my-password-confirm">Confirmer le mot de passe</label>
+                    <input type="password" id="my-password-confirm" class="jg-input" required>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="jg-btn">Mettre a jour le mot de passe</button>
+                </div>
+            </form>
+        </section>
+    </div>
+</main>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+    function formatDateTime(value) {
+        if (!value) return 'Aucune expiration';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString();
+    }
+
+    async function loadMyAccount() {
+        const res = await JG.api('/admin/api/users/me');
+        if (!res.success) {
+            JG.toast(res.message || 'Impossible de charger le profil', 'error');
+            return;
+        }
+
+        const profile = res.data || {};
+        document.getElementById('account-username').textContent = profile.username || '-';
+        document.getElementById('account-role').textContent = profile.is_admin ? 'Administrateur' : 'Utilisateur';
+        document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at);
+
+        document.getElementById('my-email').value = profile.email || '';
+        document.getElementById('my-lang').value = profile.preferred_lang || '';
+        document.getElementById('my-notify-expiry').checked = profile.notify_expiry_reminder !== false;
+        document.getElementById('my-notify-events').checked = profile.notify_account_events !== false;
+    }
+
+    async function saveMyAccount(event) {
+        event.preventDefault();
+        const payload = {
+            email: document.getElementById('my-email').value.trim(),
+            preferred_lang: document.getElementById('my-lang').value,
+            notify_expiry_reminder: document.getElementById('my-notify-expiry').checked,
+            notify_account_events: document.getElementById('my-notify-events').checked,
+        };
+
+        const res = await JG.api('/admin/api/users/me', {
+            method: 'PATCH',
+            body: JSON.stringify(payload),
+        });
+
+        if (res.success) {
+            JG.toast(res.message || 'Profil mis a jour', 'success');
+            return;
+        }
+        JG.toast(res.message || 'Erreur de sauvegarde', 'error');
+    }
+
+    async function updateMyPassword(event) {
+        event.preventDefault();
+
+        const p1 = document.getElementById('my-password').value;
+        const p2 = document.getElementById('my-password-confirm').value;
+        if (p1.length < 8) {
+            JG.toast('Le mot de passe doit faire au moins 8 caracteres', 'error');
+            return;
+        }
+        if (p1 !== p2) {
+            JG.toast('Les mots de passe ne correspondent pas', 'error');
+            return;
+        }
+
+        const res = await JG.api('/admin/api/users/me/password', {
+            method: 'POST',
+            body: JSON.stringify({
+                current_password: 'not_needed_by_admin_token',
+                new_password: p1,
+            }),
+        });
+
+        if (res.success) {
+            JG.toast(res.message || 'Mot de passe mis a jour', 'success');
+            document.getElementById('my-password-form').reset();
+            return;
+        }
+        JG.toast(res.message || 'Erreur lors du changement', 'error');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const toggle = document.getElementById('sidebar-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) sidebar.classList.toggle('open');
+            });
+        }
+
+        document.getElementById('my-account-form').addEventListener('submit', saveMyAccount);
+        document.getElementById('my-password-form').addEventListener('submit', updateMyPassword);
+        await loadMyAccount();
+    });
+</script>
+{{ end }}

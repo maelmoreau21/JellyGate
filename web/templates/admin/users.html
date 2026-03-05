@@ -26,6 +26,13 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
         </a>
+        <a href="/admin/my-account" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span class="jg-nav-label">My Account</span>
+        </a>
         <a href="/admin/users" class="jg-nav-item active">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -73,6 +80,12 @@
     <div class="flex flex-col gap-6">
         <div class="flex items-start justify-between gap-4">
             <div>
+                <button id="sidebar-toggle"
+                    class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
                 <h1 class="text-2xl font-bold">{{ .T "users_heading" }}</h1>
                 <p class="text-sm text-slate-400">Édition rapide, recherche multi-critères et actions de masse.</p>
             </div>
@@ -118,9 +131,24 @@
 
         <div class="glass-card p-4" id="bulk-card">
             <div class="flex flex-col gap-4">
+                <div class="bulk-steps-grid">
+                    <div id="bulk-step-select" class="bulk-step-card active">
+                        <div class="bulk-step-title">Etape 1 · Selection</div>
+                        <div class="bulk-step-text"><span id="bulk-selected-count">0</span> utilisateur(s) selectionne(s)</div>
+                    </div>
+                    <div id="bulk-step-action" class="bulk-step-card">
+                        <div class="bulk-step-title">Etape 2 · Action</div>
+                        <div class="bulk-step-text" id="bulk-action-label">Choisis une action de masse</div>
+                    </div>
+                    <div id="bulk-step-config" class="bulk-step-card">
+                        <div class="bulk-step-title">Etape 3 · Verification</div>
+                        <div class="bulk-step-text" id="bulk-validation-text">Complete les champs requis</div>
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between flex-wrap gap-3">
                     <div class="text-sm text-slate-300">
-                        <span id="bulk-selected-count">0</span> utilisateur(s) sélectionné(s)
+                        Assistant d'operation de masse inspire jfa-go
                     </div>
                     <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">Sélectionner les filtrés</button>
                 </div>
@@ -141,12 +169,16 @@
                         <option value="deactivate">Désactiver les comptes</option>
                         <option value="delete">Supprimer les utilisateurs</option>
                     </select>
-                    <button id="bulk-apply" class="jg-btn">Appliquer</button>
+                    <button id="bulk-apply" class="jg-btn opacity-60 cursor-not-allowed" disabled>Appliquer</button>
                 </div>
 
                 <div id="bulk-help" class="hidden rounded-lg border border-blue-400/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-100"></div>
 
                 <div id="bulk-fields" class="hidden"></div>
+
+                <div id="bulk-summary" class="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                    Selectionne une action pour afficher un resume de l'impact.
+                </div>
             </div>
         </div>
 
@@ -233,6 +265,40 @@
         let allUsers = [];
         let filteredUsers = [];
         const selectedIds = new Set();
+        const bulkActionMeta = {
+            send_email: {
+                label: 'Envoyer un courriel',
+                help: "Envoie un email personnalise a tous les utilisateurs selectionnes disposant d'une adresse email.",
+            },
+            send_password_reset: {
+                label: 'Envoyer un reset mot de passe',
+                help: "Genere et envoie un lien de reinitialisation de mot de passe pour chaque utilisateur selectionne.",
+            },
+            set_expiry: {
+                label: 'Definir/supprimer une expiration',
+                help: "Definit une date d'expiration d'acces, ou supprime l'expiration si la case est cochee.",
+            },
+            set_parrainage: {
+                label: 'Modifier le parrainage',
+                help: "Active ou desactive la capacite de creer des invitations pour les utilisateurs selectionnes.",
+            },
+            jellyfin_policy: {
+                label: 'Modifier politique Jellyfin',
+                help: "Applique des restrictions Jellyfin (telechargement, acces distant, sessions, bitrate).",
+            },
+            activate: {
+                label: 'Activer les comptes',
+                help: 'Reactive les comptes dans SQLite, LDAP et Jellyfin.',
+            },
+            deactivate: {
+                label: 'Desactiver les comptes',
+                help: 'Desactive les comptes dans SQLite, LDAP et Jellyfin.',
+            },
+            delete: {
+                label: 'Supprimer les utilisateurs',
+                help: 'Supprime definitivement les comptes selectionnes (action irreversible).',
+            },
+        };
 
         window.JG = window.JG || {};
 
@@ -277,6 +343,7 @@
             const selectedVisible = selectable.filter(id => selectedIds.has(id)).length;
             checkAll.checked = selectable.length > 0 && selectedVisible === selectable.length;
             checkAll.indeterminate = selectedVisible > 0 && selectedVisible < selectable.length;
+            updateBulkWizardState();
         }
 
         function renderUsers(users) {
@@ -369,6 +436,124 @@
             renderUsers(result);
         }
 
+        function actionLabel(action) {
+            if (!action) return 'Choisis une action de masse';
+            return bulkActionMeta[action]?.label || 'Action de masse';
+        }
+
+        function collectBulkPayload(action, userIDs) {
+            const payload = { action, user_ids: userIDs };
+
+            if (action === 'send_email') {
+                payload.email_subject = (document.getElementById('bulk-email-subject')?.value || '').trim();
+                payload.email_body = (document.getElementById('bulk-email-body')?.value || '').trim();
+            }
+
+            if (action === 'set_parrainage') {
+                payload.can_invite = (document.getElementById('bulk-can-invite')?.value || 'false') === 'true';
+            }
+
+            if (action === 'set_expiry') {
+                const clearExpiry = document.getElementById('bulk-clear-expiry')?.checked;
+                payload.clear_expiry = !!clearExpiry;
+                if (!clearExpiry) {
+                    payload.access_expires_at = document.getElementById('bulk-expiry')?.value || '';
+                }
+            }
+
+            if (action === 'jellyfin_policy') {
+                const downloads = document.getElementById('bulk-jf-downloads')?.value || '';
+                const remote = document.getElementById('bulk-jf-remote')?.value || '';
+                const sessionsRaw = document.getElementById('bulk-jf-sessions')?.value;
+                const bitrateRaw = document.getElementById('bulk-jf-bitrate')?.value;
+
+                const policy = {};
+                if (downloads) policy.enable_downloads = downloads === 'true';
+                if (remote) policy.enable_remote_access = remote === 'true';
+                if (sessionsRaw !== undefined && sessionsRaw !== '') policy.max_active_sessions = parseInt(sessionsRaw, 10);
+                if (bitrateRaw !== undefined && bitrateRaw !== '') policy.remote_bitrate_limit = parseInt(bitrateRaw, 10);
+
+                payload.jellyfin_policy = policy;
+            }
+
+            return payload;
+        }
+
+        function validateBulkPayload(action, payload) {
+            if (!action) return 'Choisis une action de masse';
+            if (!payload.user_ids || payload.user_ids.length === 0) return 'Selectionne au moins un utilisateur';
+
+            if (action === 'send_email') {
+                if (!payload.email_subject || !payload.email_body) return 'Renseigne le sujet et le corps du courriel';
+            }
+
+            if (action === 'set_expiry' && !payload.clear_expiry && !payload.access_expires_at) {
+                return 'Renseigne la date d expiration ou coche suppression';
+            }
+
+            if (action === 'jellyfin_policy') {
+                const policy = payload.jellyfin_policy || {};
+                if (Object.keys(policy).length === 0) return 'Choisis au moins un parametre Jellyfin';
+                if (Number.isNaN(policy.max_active_sessions) || Number.isNaN(policy.remote_bitrate_limit)) {
+                    return 'Valeurs numeriques Jellyfin invalides';
+                }
+            }
+
+            return '';
+        }
+
+        function updateBulkWizardState() {
+            const action = document.getElementById('bulk-action').value;
+            const userIDs = Array.from(selectedIds);
+            const payload = collectBulkPayload(action, userIDs);
+            const validationError = validateBulkPayload(action, payload);
+
+            const stepSelect = document.getElementById('bulk-step-select');
+            const stepAction = document.getElementById('bulk-step-action');
+            const stepConfig = document.getElementById('bulk-step-config');
+
+            stepSelect.classList.remove('active', 'done');
+            stepAction.classList.remove('active', 'done');
+            stepConfig.classList.remove('active', 'done');
+
+            if (userIDs.length > 0) {
+                stepSelect.classList.add('done');
+            } else {
+                stepSelect.classList.add('active');
+            }
+
+            if (action) {
+                stepAction.classList.add('done');
+            } else if (userIDs.length > 0) {
+                stepAction.classList.add('active');
+            }
+
+            if (action) {
+                if (validationError) {
+                    stepConfig.classList.add('active');
+                } else {
+                    stepConfig.classList.add('done');
+                }
+            }
+
+            document.getElementById('bulk-action-label').textContent = actionLabel(action);
+            document.getElementById('bulk-validation-text').textContent = validationError || 'Configuration complete, operation prete.';
+
+            const summary = document.getElementById('bulk-summary');
+            const selectedUsers = allUsers.filter(u => selectedIds.has(u.id));
+            const firstUsers = selectedUsers.slice(0, 3).map(u => u.username).join(', ');
+            const hiddenCount = selectedUsers.length > 3 ? ` et ${selectedUsers.length - 3} autre(s)` : '';
+            const actionTxt = action ? actionLabel(action) : 'Aucune action choisie';
+            const validationTxt = validationError ? `Bloque: ${validationError}.` : 'Valide: pret a appliquer.';
+            summary.textContent = `${actionTxt} sur ${selectedUsers.length} utilisateur(s) [${firstUsers || 'aucun'}${hiddenCount}]. ${validationTxt}`;
+
+            const applyButton = document.getElementById('bulk-apply');
+            const isReady = !validationError;
+            applyButton.disabled = !isReady;
+            applyButton.classList.toggle('opacity-60', !isReady);
+            applyButton.classList.toggle('cursor-not-allowed', !isReady);
+        }
+
         function resetBulkFields() {
             const container = document.getElementById('bulk-fields');
             const help = document.getElementById('bulk-help');
@@ -378,21 +563,12 @@
                 container.innerHTML = '';
                 help.classList.add('hidden');
                 help.innerHTML = '';
+                updateBulkWizardState();
                 return;
             }
 
-            const helpTexts = {
-                send_email: "Envoie un email personnalisé à tous les utilisateurs sélectionnés disposant d'une adresse email.",
-                send_password_reset: "Génère et envoie un lien de réinitialisation de mot de passe pour chaque utilisateur sélectionné.",
-                set_expiry: "Définit une date d'expiration d'accès, ou supprime l'expiration si la case est cochée.",
-                set_parrainage: "Active ou désactive la capacité de créer des invitations pour les utilisateurs sélectionnés.",
-                jellyfin_policy: "Applique des restrictions Jellyfin (téléchargement, accès distant, sessions, bitrate).",
-                activate: "Réactive les comptes dans SQLite, LDAP et Jellyfin.",
-                deactivate: "Désactive les comptes dans SQLite, LDAP et Jellyfin.",
-                delete: "Supprime définitivement les comptes sélectionnés (action irréversible)."
-            };
             help.classList.remove('hidden');
-            help.textContent = helpTexts[action] || "Action de masse sélectionnée.";
+            help.textContent = bulkActionMeta[action]?.help || 'Action de masse selectionnee.';
 
             container.classList.remove('hidden');
             if (action === 'send_email') {
@@ -401,22 +577,16 @@
                         <input id="bulk-email-subject" class="jg-input" placeholder="Sujet du courriel">
                         <input id="bulk-email-tooltips" class="jg-input" disabled value="Variables: {{ "{{" }}.Username{{ "}}" }} {{ "{{" }}.Email{{ "}}" }} {{ "{{" }}.Actor{{ "}}" }}">
                     </div>
-                    <textarea id="bulk-email-body" class="jg-input mt-3 font-mono text-sm" rows="5" placeholder="Corps du courriel (template Go autorisé)"></textarea>
+                    <textarea id="bulk-email-body" class="jg-input mt-3 font-mono text-sm" rows="5" placeholder="Corps du courriel (template Go autorise)"></textarea>
                 `;
-                return;
-            }
-
-            if (action === 'set_parrainage') {
+            } else if (action === 'set_parrainage') {
                 container.innerHTML = `
                     <select id="bulk-can-invite" class="jg-input max-w-xs">
                         <option value="true">Activer le parrainage</option>
-                        <option value="false">Désactiver le parrainage</option>
+                        <option value="false">Desactiver le parrainage</option>
                     </select>
                 `;
-                return;
-            }
-
-            if (action === 'set_expiry') {
+            } else if (action === 'set_expiry') {
                 container.innerHTML = `
                     <div class="flex flex-wrap items-center gap-3">
                         <label class="text-xs text-slate-300">Date d'expiration:</label>
@@ -427,30 +597,43 @@
                         </label>
                     </div>
                 `;
-                return;
-            }
-
-            if (action === 'jellyfin_policy') {
+            } else if (action === 'jellyfin_policy') {
                 container.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                         <select id="bulk-jf-downloads" class="jg-input">
-                            <option value="">Téléchargement: inchangé</option>
-                            <option value="true">Téléchargement: autorisé</option>
-                            <option value="false">Téléchargement: interdit</option>
+                            <option value="">Telechargement: inchange</option>
+                            <option value="true">Telechargement: autorise</option>
+                            <option value="false">Telechargement: interdit</option>
                         </select>
                         <select id="bulk-jf-remote" class="jg-input">
-                            <option value="">Accès distant: inchangé</option>
-                            <option value="true">Accès distant: autorisé</option>
-                            <option value="false">Accès distant: interdit</option>
+                            <option value="">Acces distant: inchange</option>
+                            <option value="true">Acces distant: autorise</option>
+                            <option value="false">Acces distant: interdit</option>
                         </select>
-                        <input type="number" id="bulk-jf-sessions" class="jg-input" min="0" placeholder="Sessions max (0 = illimité)">
-                        <input type="number" id="bulk-jf-bitrate" class="jg-input" min="0" placeholder="Bitrate max kbps (0 = illimité)">
+                        <input type="number" id="bulk-jf-sessions" class="jg-input" min="0" placeholder="Sessions max (0 = illimite)">
+                        <input type="number" id="bulk-jf-bitrate" class="jg-input" min="0" placeholder="Bitrate max kbps (0 = illimite)">
                     </div>
                 `;
-                return;
+            } else {
+                container.innerHTML = '<p class="text-sm text-slate-400">Cette action ne necessite pas de parametres supplementaires.</p>';
             }
 
-            container.innerHTML = '<p class="text-sm text-slate-400">Cette action ne nécessite pas de paramètres supplémentaires.</p>';
+            const clearExpiry = document.getElementById('bulk-clear-expiry');
+            const expiryInput = document.getElementById('bulk-expiry');
+            if (clearExpiry && expiryInput) {
+                const syncExpiryInput = () => {
+                    expiryInput.disabled = clearExpiry.checked;
+                };
+                clearExpiry.addEventListener('change', syncExpiryInput);
+                syncExpiryInput();
+            }
+
+            container.querySelectorAll('input, select, textarea').forEach(el => {
+                el.addEventListener('input', updateBulkWizardState);
+                el.addEventListener('change', updateBulkWizardState);
+            });
+
+            updateBulkWizardState();
         }
 
         async function loadUsers() {
@@ -589,64 +772,20 @@
 
         document.getElementById('bulk-apply').addEventListener('click', async () => {
             const action = document.getElementById('bulk-action').value;
-            if (!action) {
-                JG.toast('Choisissez une action de masse', 'error');
-                return;
-            }
             const userIDs = Array.from(selectedIds);
-            if (userIDs.length === 0) {
-                JG.toast('Aucun utilisateur sélectionné', 'error');
+
+            const payload = collectBulkPayload(action, userIDs);
+            const validationError = validateBulkPayload(action, payload);
+            if (validationError) {
+                JG.toast(validationError, 'error');
+                updateBulkWizardState();
                 return;
             }
 
-            const payload = { action, user_ids: userIDs };
+            const selectedUsers = allUsers.filter(u => selectedIds.has(u.id));
+            const confirmationMsg = `${actionLabel(action)}\n\nUtilisateurs cibles: ${selectedUsers.length}\nConfirmer l'execution ?`;
 
-            if (action === 'send_email') {
-                payload.email_subject = (document.getElementById('bulk-email-subject')?.value || '').trim();
-                payload.email_body = (document.getElementById('bulk-email-body')?.value || '').trim();
-                if (!payload.email_subject || !payload.email_body) {
-                    JG.toast('Sujet et corps du courriel requis', 'error');
-                    return;
-                }
-            }
-
-            if (action === 'set_parrainage') {
-                payload.can_invite = (document.getElementById('bulk-can-invite')?.value || 'false') === 'true';
-            }
-
-            if (action === 'set_expiry') {
-                const clearExpiry = document.getElementById('bulk-clear-expiry')?.checked;
-                payload.clear_expiry = !!clearExpiry;
-                if (!clearExpiry) {
-                    const expiry = document.getElementById('bulk-expiry')?.value || '';
-                    if (!expiry) {
-                        JG.toast('Date d’expiration requise', 'error');
-                        return;
-                    }
-                    payload.access_expires_at = expiry;
-                }
-            }
-
-            if (action === 'jellyfin_policy') {
-                const downloads = document.getElementById('bulk-jf-downloads')?.value || '';
-                const remote = document.getElementById('bulk-jf-remote')?.value || '';
-                const sessionsRaw = document.getElementById('bulk-jf-sessions')?.value;
-                const bitrateRaw = document.getElementById('bulk-jf-bitrate')?.value;
-
-                const policy = {};
-                if (downloads) policy.enable_downloads = downloads === 'true';
-                if (remote) policy.enable_remote_access = remote === 'true';
-                if (sessionsRaw !== undefined && sessionsRaw !== '') policy.max_active_sessions = parseInt(sessionsRaw, 10);
-                if (bitrateRaw !== undefined && bitrateRaw !== '') policy.remote_bitrate_limit = parseInt(bitrateRaw, 10);
-
-                if (Object.keys(policy).length === 0) {
-                    JG.toast('Choisissez au moins un paramètre Jellyfin', 'error');
-                    return;
-                }
-                payload.jellyfin_policy = policy;
-            }
-
-            if (action === 'delete' && !confirm('Supprimer tous les utilisateurs sélectionnés ?')) {
+            if ((action === 'delete' || action === 'deactivate' || action === 'jellyfin_policy') && !confirm(confirmationMsg)) {
                 return;
             }
 
@@ -662,6 +801,7 @@
                 if (action === 'delete') {
                     selectedIds.clear();
                 }
+                updateBulkWizardState();
                 loadUsers();
             } else {
                 JG.toast(res.message || 'Erreur action de masse', 'error');
@@ -681,6 +821,15 @@
             });
         });
 
+        const toggle = document.getElementById('sidebar-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const sidebar = document.getElementById('sidebar');
+                if (sidebar) sidebar.classList.toggle('open');
+            });
+        }
+
+        resetBulkFields();
         loadUsers();
     });
 

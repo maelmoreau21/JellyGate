@@ -201,6 +201,7 @@ func main() {
 
 			// Le tableau de bord est commun
 			r.Get("/", adminHandler.DashboardPage)
+			r.Get("/my-account", adminHandler.MyAccountPage)
 
 			// ── Routes limitées aux administrateurs purs ────────────────────
 			r.Group(func(r chi.Router) {
@@ -260,7 +261,11 @@ func main() {
 			})
 
 			// ── Route de profil (Changement MDP, par tout le monde) ─────────
-			r.Post("/api/users/me/password", adminHandler.ChangeMyPassword)
+			r.Route("/api/users/me", func(r chi.Router) {
+				r.Get("/", adminHandler.GetMyAccount)
+				r.Patch("/", adminHandler.UpdateMyAccount)
+				r.Post("/password", adminHandler.ChangeMyPassword)
+			})
 
 		}) // fin Group RequireAuth
 	})
