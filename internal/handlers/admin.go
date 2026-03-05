@@ -184,10 +184,15 @@ func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templat
 		return nil
 	}
 
+	links := resolvePortalLinks(h.cfg, h.db)
+
 	data := map[string]string{
-		"Username": rec.Username,
-		"Email":    rec.Email,
-		"HelpURL":  h.cfg.BaseURL,
+		"Username":      rec.Username,
+		"Email":         rec.Email,
+		"HelpURL":       h.cfg.BaseURL,
+		"JellyfinURL":   links.JellyfinURL,
+		"JellyseerrURL": links.JellyseerrURL,
+		"JellyTulliURL": links.JellyTulliURL,
 	}
 	if rec.AccessExpiresAt.Valid {
 		if t, err := parseAccessExpiry(rec.AccessExpiresAt.String); err == nil {
@@ -207,7 +212,7 @@ func (h *AdminHandler) canSendUserTemplate(userID int64, templateKey string) boo
 	}
 
 	var notifyExpiry, notifyEvents bool
-	err := h.db.Conn().QueryRow(
+	err := h.db.QueryRow(
 		`SELECT notify_expiry_reminder, notify_account_events FROM users WHERE id = ?`,
 		userID,
 	).Scan(&notifyExpiry, &notifyEvents)
@@ -343,10 +348,10 @@ func (h *AdminHandler) runExpirationCheck() {
 	reminderWindow := now.Add(time.Duration(maxStage+1) * 24 * time.Hour)
 
 	// Rappels d'expiration imminente
-	reminderRows, err := h.db.Conn().Query(`
+	reminderRows, err := h.db.Query(`
 		SELECT id, username, email, access_expires_at, notify_expiry_reminder
 		FROM users
-		WHERE is_active = 1
+		WHERE is_active = TRUE
 		  AND access_expires_at IS NOT NULL
 		  AND access_expires_at >= ?
 		  AND access_expires_at <= ?
@@ -387,7 +392,7 @@ func (h *AdminHandler) runExpirationCheck() {
 			details := fmt.Sprintf("stage=%d|expiry=%s", stageDays, expiryRaw.String)
 
 			var alreadySent int
-			_ = h.db.Conn().QueryRow(
+			_ = h.db.QueryRow(
 				`SELECT COUNT(1) FROM audit_log WHERE action = 'user.expiry_reminder.sent' AND target = ? AND details = ?`,
 				username,
 				details,
@@ -417,7 +422,7 @@ func (h *AdminHandler) runExpirationCheck() {
 	}
 
 	// Suppression planifiee (simple): delete_at atteint.
-	deleteRows, err := h.db.Conn().Query(`
+	deleteRows, err := h.db.Query(`
 		SELECT id, username
 		FROM users
 		WHERE delete_at IS NOT NULL
@@ -451,10 +456,10 @@ func (h *AdminHandler) runExpirationCheck() {
 	}
 
 	// Rechercher les utilisateurs actifs dont access_expires_at est dépassé.
-	rows, err := h.db.Conn().Query(`
+	rows, err := h.db.Query(`
 		SELECT id, username, email, jellyfin_id, ldap_dn, access_expires_at, expiry_action, expiry_delete_after_days
 		FROM users
-		WHERE is_active = 1
+		WHERE is_active = TRUE
 		  AND access_expires_at IS NOT NULL
 		  AND access_expires_at < ?
 	`, now)
@@ -526,7 +531,7 @@ func (h *AdminHandler) runExpirationCheck() {
 			}
 		}
 
-		_, err := h.db.Conn().Exec(`UPDATE users SET is_active = 0, expired_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, u.ID)
+		_, err := h.db.Exec(`UPDATE users SET is_active = FALSE, expired_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, u.ID)
 		if err != nil {
 			slog.Error("Erreur lors de la desactivation SQLite (Expiration)", "error", err)
 		}
@@ -547,10 +552,10 @@ func (h *AdminHandler) runExpirationCheck() {
 	}
 
 	// Politique disable_then_delete: suppression differée apres la desactivation.
-	deletionRows, err := h.db.Conn().Query(`
+	deletionRows, err := h.db.Query(`
 		SELECT id, username, expired_at, expiry_delete_after_days
 		FROM users
-		WHERE is_active = 0
+		WHERE is_active = FALSE
 		  AND expiry_action = 'disable_then_delete'
 		  AND expired_at IS NOT NULL
 	`)
@@ -609,7 +614,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 		td.CanInvite = true
 	} else {
 		var canInvite bool
-		_ = h.db.Conn().QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
 		td.CanInvite = canInvite
 	}
 
@@ -630,7 +635,7 @@ func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 		td.CanInvite = true
 	} else {
 		var canInvite bool
-		_ = h.db.Conn().QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
 		td.CanInvite = canInvite
 	}
 
@@ -646,7 +651,7 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 	}
 
 	var userID int64
-	err := h.db.Conn().QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&userID)
+	err := h.db.QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&userID)
 	if err == nil {
 		return nil
 	}
@@ -654,9 +659,9 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return err
 	}
 
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`INSERT INTO users (jellyfin_id, username, is_active, can_invite)
-		 VALUES (?, ?, 1, ?)
+			 VALUES (?, ?, TRUE, ?)
 		 ON CONFLICT(jellyfin_id) DO UPDATE SET username = excluded.username, updated_at = datetime('now')`,
 		sess.UserID,
 		sess.Username,
@@ -688,7 +693,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		createdAt       sql.NullString
 	)
 
-	err := h.db.Conn().QueryRow(
+	err := h.db.QueryRow(
 		`SELECT id, email, contact_discord, contact_telegram,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram,
@@ -764,7 +769,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		optInDiscord    bool
 		optInTelegram   bool
 	)
-	err := h.db.Conn().QueryRow(
+	err := h.db.QueryRow(
 		`SELECT email, contact_discord, contact_telegram,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram
@@ -832,7 +837,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		newOptInTelegram = *req.OptInTelegram
 	}
 
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`UPDATE users
 		 SET email = ?, contact_discord = ?, contact_telegram = ?,
 		     preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
@@ -923,7 +928,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 		td.CanInvite = true
 	} else {
 		var canInvite bool
-		_ = h.db.Conn().QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
 		td.CanInvite = canInvite
 
 		if !td.CanInvite {
@@ -1018,7 +1023,7 @@ func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
 	// 1. Compter le total des résultats
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM audit_log %s", whereClause)
-	err := h.db.Conn().QueryRow(countQuery, args...).Scan(&total)
+	err := h.db.QueryRow(countQuery, args...).Scan(&total)
 	if err != nil {
 		slog.Error("Erreur comptage des logs", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture base de données"})
@@ -1032,7 +1037,7 @@ func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
 	// Ajouter limit et offset aux arguments existants
 	args = append(args, limit, offset)
 
-	rows, err := h.db.Conn().Query(query, args...)
+	rows, err := h.db.Query(query, args...)
 	if err != nil {
 		slog.Error("Erreur lecture table audit_log", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur traitement journaux"})
@@ -1101,7 +1106,7 @@ func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request)
 	var addedCount int
 	for _, ju := range jfUsers {
 		// INSERT OR IGNORE dans SQLite
-		res, err := h.db.Conn().Exec(`
+		res, err := h.db.Exec(`
 			INSERT OR IGNORE INTO users (jellyfin_id, username, is_active)
 			VALUES (?, ?, ?)
 		`, ju.ID, ju.Name, !ju.Policy.IsDisabled)
@@ -1132,7 +1137,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Liste des utilisateurs demandée", "admin", sess.Username)
 
 	// ── 1. Récupérer les utilisateurs depuis SQLite ─────────────────────
-	rows, err := h.db.Conn().Query(
+	rows, err := h.db.Query(
 		`SELECT id, jellyfin_id, username, email, ldap_dn, invited_by,
 		        group_name, is_active, is_banned, can_invite, access_expires_at, delete_at,
 		        expiry_action, expiry_delete_after_days, expired_at,
@@ -1237,7 +1242,7 @@ func (h *AdminHandler) UserTimeline(w http.ResponseWriter, r *http.Request) {
 	}
 
 	idTarget := strconv.FormatInt(rec.ID, 10)
-	rows, err := h.db.Conn().Query(
+	rows, err := h.db.Query(
 		`SELECT action, actor, target, details, created_at
 		 FROM audit_log
 		 WHERE target = ?
@@ -1323,7 +1328,7 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 	var rec adminUserRecord
 	var email, jellyfinID, ldapDN, groupName, discordContact, telegramContact sql.NullString
 
-	err := h.db.Conn().QueryRow(
+	err := h.db.QueryRow(
 		`SELECT id, username, email, jellyfin_id, ldap_dn, group_name, is_active, can_invite,
 		        contact_discord, contact_telegram,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
@@ -1626,7 +1631,7 @@ func (h *AdminHandler) setUserActiveState(rec *adminUserRecord, newActive bool, 
 		}
 	}
 
-	_, err := h.db.Conn().Exec(
+	_, err := h.db.Exec(
 		`UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?`,
 		newActive,
 		rec.ID,
@@ -1674,7 +1679,7 @@ func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]s
 		partialErrors = append(partialErrors, fmt.Sprintf("Email: %s", err.Error()))
 	}
 
-	_, err := h.db.Conn().Exec(`DELETE FROM users WHERE id = ?`, rec.ID)
+	_, err := h.db.Exec(`DELETE FROM users WHERE id = ?`, rec.ID)
 	if err != nil {
 		partialErrors = append(partialErrors, fmt.Sprintf("SQLite: %s", err.Error()))
 		return partialErrors, err
@@ -1700,9 +1705,9 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	}
 
 	expiresAt := time.Now().Add(resetTokenExpiry)
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`INSERT INTO password_resets (user_id, code, used, expires_at)
-		 VALUES (?, ?, 0, ?)`,
+		 VALUES (?, ?, FALSE, ?)`,
 		rec.ID,
 		token,
 		expiresAt.Format("2006-01-02 15:04:05"),
@@ -1725,6 +1730,10 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 		"ResetCode": token,
 		"ExpiresIn": "15 minutes",
 	}
+	links := resolvePortalLinks(h.cfg, h.db)
+	data["JellyfinURL"] = links.JellyfinURL
+	data["JellyseerrURL"] = links.JellyseerrURL
+	data["JellyTulliURL"] = links.JellyTulliURL
 
 	if err := h.mailer.SendTemplateString(rec.Email, "Réinitialisation de votre mot de passe — JellyGate", tpl, data); err != nil {
 		return fmt.Errorf("envoi de l'email: %w", err)
@@ -1803,7 +1812,7 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		newExpiry = strings.TrimSpace(rec.AccessExpiresAt.String)
 	}
 
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`UPDATE users
 		 SET email = ?, group_name = ?, can_invite = ?, access_expires_at = ?, updated_at = datetime('now')
 		 WHERE id = ?`,
@@ -1998,7 +2007,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 
-			_, err := h.db.Conn().Exec(`UPDATE users SET can_invite = ?, updated_at = datetime('now') WHERE id = ?`, *req.CanInvite, rec.ID)
+			_, err := h.db.Exec(`UPDATE users SET can_invite = ?, updated_at = datetime('now') WHERE id = ?`, *req.CanInvite, rec.ID)
 			if err != nil {
 				entry["success"] = false
 				entry["message"] = "Erreur SQLite"
@@ -2030,7 +2039,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 				emailExpiryDate = emailTime(exp)
 			}
 
-			_, err := h.db.Conn().Exec(`UPDATE users SET access_expires_at = ?, updated_at = datetime('now') WHERE id = ?`, expiry, rec.ID)
+			_, err := h.db.Exec(`UPDATE users SET access_expires_at = ?, updated_at = datetime('now') WHERE id = ?`, expiry, rec.ID)
 			if err != nil {
 				entry["success"] = false
 				entry["message"] = "Erreur SQLite"
@@ -2203,7 +2212,7 @@ func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) 
 
 	var username string
 	var canInvite bool
-	err = h.db.Conn().QueryRow(`SELECT username, can_invite FROM users WHERE id = ?`, userID).
+	err = h.db.QueryRow(`SELECT username, can_invite FROM users WHERE id = ?`, userID).
 		Scan(&username, &canInvite)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Utilisateur introuvable"})
@@ -2211,7 +2220,7 @@ func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) 
 	}
 
 	newStatus := !canInvite
-	_, err = h.db.Conn().Exec(`UPDATE users SET can_invite = ?, updated_at = datetime('now') WHERE id = ?`, newStatus, userID)
+	_, err = h.db.Exec(`UPDATE users SET can_invite = ?, updated_at = datetime('now') WHERE id = ?`, newStatus, userID)
 	if err != nil {
 		slog.Error("Erreur modification can_invite", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur BDD"})
@@ -2256,7 +2265,7 @@ func (h *AdminHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request) 
 
 	// Récupérer le DN LDAP depuis SQLite
 	var ldapDN sql.NullString
-	err := h.db.Conn().QueryRow(`SELECT ldap_dn FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&ldapDN)
+	err := h.db.QueryRow(`SELECT ldap_dn FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&ldapDN)
 	if err != nil && err != sql.ErrNoRows {
 		slog.Error("Erreur lecture ldap_dn pour changement MDP", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de données"})
@@ -2393,7 +2402,7 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		args = append(args, sess.Username)
 	}
 
-	rows, err := h.db.Conn().Query(query, args...)
+	rows, err := h.db.Query(query, args...)
 	if err != nil {
 		slog.Error("Erreur lecture des invitations", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
@@ -2468,7 +2477,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	sess := session.FromContext(r.Context())
 	if !sess.IsAdmin {
 		var canInvite bool
-		_ = h.db.Conn().QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
 		if !canInvite {
 			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de créer des invitations"})
 			return
@@ -2586,7 +2595,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 
 	profileJSON, _ := json.Marshal(jfProfile)
 
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`INSERT INTO invitations (code, label, max_uses, jellyfin_profile, expires_at, created_by)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		code, req.Label, req.MaxUses, string(profileJSON), expiresAt, sess.Username,
@@ -2602,8 +2611,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 
 	// Envoi SMTP si demandé
 	baseURL := strings.TrimSpace(h.cfg.BaseURL)
+	links := resolvePortalLinks(h.cfg, h.db)
 	if baseURL == "" {
-		baseURL = strings.TrimSpace(h.cfg.Jellyfin.URL)
+		baseURL = strings.TrimSpace(links.JellyfinURL)
 	}
 	inviteURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(baseURL, "/"), code)
 	sendToEmail := strings.TrimSpace(req.SendToEmail)
@@ -2632,11 +2642,14 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				}
 
 				emailData := map[string]string{
-					"InviteLink": inviteURL,
-					"InviteURL":  inviteURL,
-					"InviteCode": code,
-					"HelpURL":    strings.TrimRight(baseURL, "/"),
-					"Username":   username,
+					"InviteLink":    inviteURL,
+					"InviteURL":     inviteURL,
+					"InviteCode":    code,
+					"HelpURL":       strings.TrimRight(baseURL, "/"),
+					"Username":      username,
+					"JellyfinURL":   links.JellyfinURL,
+					"JellyseerrURL": links.JellyseerrURL,
+					"JellyTulliURL": links.JellyTulliURL,
 				}
 				if expiryDate != "" {
 					emailData["ExpiryDate"] = expiryDate
@@ -2681,10 +2694,10 @@ func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) 
 
 	var errDB error
 	if sess.IsAdmin {
-		_, errDB = h.db.Conn().Exec(`DELETE FROM invitations WHERE id = ?`, invID)
+		_, errDB = h.db.Exec(`DELETE FROM invitations WHERE id = ?`, invID)
 	} else {
 		// Security: Le standard user ne supprime que ses propres liens
-		result, errDBQuery := h.db.Conn().Exec(`DELETE FROM invitations WHERE id = ? AND created_by = ?`, invID, sess.Username)
+		result, errDBQuery := h.db.Exec(`DELETE FROM invitations WHERE id = ? AND created_by = ?`, invID, sess.Username)
 		errDB = errDBQuery
 		if errDB == nil {
 			rowsAffected, _ := result.RowsAffected()

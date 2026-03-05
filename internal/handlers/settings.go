@@ -44,17 +44,23 @@ func NewSettingsHandler(db *database.DB) *SettingsHandler {
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
-	DefaultLang    string                      `json:"default_lang"`
-	LDAP           config.LDAPConfig           `json:"ldap"`
-	SMTP           config.SMTPConfig           `json:"smtp"`
-	Webhooks       config.WebhooksConfig       `json:"webhooks"`
-	Backup         config.BackupConfig         `json:"backup"`
-	EmailTemplates config.EmailTemplatesConfig `json:"email_templates"`
+	DefaultLang      string                      `json:"default_lang"`
+	DatabaseType     string                      `json:"database_type"`
+	BackupSQLiteOnly bool                        `json:"backup_sqlite_only"`
+	PortalLinks      config.PortalLinksConfig    `json:"portal_links"`
+	LDAP             config.LDAPConfig           `json:"ldap"`
+	SMTP             config.SMTPConfig           `json:"smtp"`
+	Webhooks         config.WebhooksConfig       `json:"webhooks"`
+	Backup           config.BackupConfig         `json:"backup"`
+	EmailTemplates   config.EmailTemplatesConfig `json:"email_templates"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
 type generalInput struct {
-	DefaultLang string `json:"default_lang"`
+	DefaultLang   string `json:"default_lang"`
+	JellyfinURL   string `json:"jellyfin_url"`
+	JellyseerrURL string `json:"jellyseerr_url"`
+	JellyTulliURL string `json:"jellytulli_url"`
 }
 
 // ── GET /admin/api/settings ─────────────────────────────────────────────────
@@ -103,6 +109,16 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	portalLinks, err := h.db.GetPortalLinksConfig()
+	if err != nil {
+		slog.Error("Erreur lecture config Portal Links", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur lecture des URLs publiques",
+		})
+		return
+	}
+
 	// Masquer le mot de passe LDAP et SMTP dans la réponse
 	maskedLDAP := ldapCfg
 	if maskedLDAP.BindPassword != "" {
@@ -121,12 +137,15 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
-			DefaultLang:    defaultLang,
-			LDAP:           maskedLDAP,
-			SMTP:           maskedSMTP,
-			Webhooks:       webhooksCfg,
-			Backup:         backupCfg,
-			EmailTemplates: emailTemplatesCfg,
+			DefaultLang:      defaultLang,
+			DatabaseType:     h.db.Driver(),
+			BackupSQLiteOnly: h.db.IsSQLite(),
+			PortalLinks:      portalLinks,
+			LDAP:             maskedLDAP,
+			SMTP:             maskedSMTP,
+			Webhooks:         webhooksCfg,
+			Backup:           backupCfg,
+			EmailTemplates:   emailTemplatesCfg,
 		},
 	})
 }
@@ -158,6 +177,19 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
 			Message: "Erreur de sauvegarde",
+		})
+		return
+	}
+
+	if err := h.db.SavePortalLinksConfig(config.PortalLinksConfig{
+		JellyfinURL:   input.JellyfinURL,
+		JellyseerrURL: input.JellyseerrURL,
+		JellyTulliURL: input.JellyTulliURL,
+	}); err != nil {
+		slog.Error("Erreur sauvegarde portal_links", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur de sauvegarde des URLs publiques",
 		})
 		return
 	}
@@ -314,6 +346,14 @@ func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
 
 // SaveBackup sauvegarde la configuration des sauvegardes planifiées.
 func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
+	if !h.db.IsSQLite() {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Planification backup locale indisponible en mode PostgreSQL (utiliser pg_dump/pg_restore)",
+		})
+		return
+	}
+
 	var input config.BackupConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{

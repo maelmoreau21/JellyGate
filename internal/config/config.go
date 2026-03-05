@@ -5,7 +5,7 @@
 //   - JELLYGATE_*  : Application (port, URL, data, secret)
 //   - JELLYFIN_*   : Connexion à Jellyfin
 //
-// Les paramètres LDAP, SMTP et Webhooks sont désormais stockés dans SQLite
+// Les paramètres LDAP, SMTP et Webhooks sont stockés en base SQL
 // (table `settings`) et gérés via l'interface d'administration.
 package config
 
@@ -24,6 +24,9 @@ type Config struct {
 	BaseURL   string // URL de base publique
 	DataDir   string // Répertoire des données (SQLite, etc.)
 	SecretKey string // Clé secrète pour sessions/tokens (min 32 chars)
+
+	// Base de donnees (sqlite ou postgres)
+	Database DatabaseConfig
 
 	// Jellyfin (seul service externe requis au démarrage)
 	Jellyfin JellyfinConfig
@@ -44,6 +47,18 @@ type ThirdPartyConfig struct {
 	JellyseerrAPIKey string
 	OmbiURL          string
 	OmbiAPIKey       string
+	JellyTulliURL    string
+}
+
+// DatabaseConfig contient la configuration de la base SQL principale.
+type DatabaseConfig struct {
+	Type     string
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Name     string
+	SSLMode  string
 }
 
 // ── Types de configuration stockés en base (table settings) ─────────────────
@@ -171,6 +186,18 @@ type GroupPolicyMapping struct {
 	PolicyPresetID string `json:"policy_preset_id"`
 }
 
+// PortalLinksConfig contient les URLs publiques exposees dans l'UI et les emails.
+type PortalLinksConfig struct {
+	JellyfinURL   string `json:"jellyfin_url"`
+	JellyseerrURL string `json:"jellyseerr_url"`
+	JellyTulliURL string `json:"jellytulli_url"`
+}
+
+// DefaultPortalLinks retourne une configuration de liens vide.
+func DefaultPortalLinks() PortalLinksConfig {
+	return PortalLinksConfig{}
+}
+
 // DefaultJellyfinPolicyPresets retourne un ensemble de presets initiaux.
 func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 	return []JellyfinPolicyPreset{
@@ -245,6 +272,16 @@ func Load() (*Config, error) {
 		DataDir:   getEnv("JELLYGATE_DATA_DIR", "/data"),
 		SecretKey: getEnv("JELLYGATE_SECRET_KEY", ""),
 
+		Database: DatabaseConfig{
+			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", "sqlite"))),
+			Host:     strings.TrimSpace(getEnv("DB_HOST", "")),
+			Port:     getEnvInt("DB_PORT", 5432),
+			User:     strings.TrimSpace(getEnv("DB_USER", "")),
+			Password: getEnv("DB_PASSWORD", ""),
+			Name:     strings.TrimSpace(getEnv("DB_NAME", "jellygate")),
+			SSLMode:  strings.TrimSpace(strings.ToLower(getEnv("DB_SSLMODE", "disable"))),
+		},
+
 		Jellyfin: JellyfinConfig{
 			URL:    getEnv("JELLYFIN_URL", ""),
 			APIKey: getEnv("JELLYFIN_API_KEY", ""),
@@ -255,6 +292,7 @@ func Load() (*Config, error) {
 			JellyseerrAPIKey: strings.TrimSpace(getEnv("JELLYSEERR_API_KEY", "")),
 			OmbiURL:          strings.TrimSpace(getEnv("OMBI_URL", "")),
 			OmbiAPIKey:       strings.TrimSpace(getEnv("OMBI_API_KEY", "")),
+			JellyTulliURL:    strings.TrimSpace(getEnv("JELLYTULLI_URL", "")),
 		},
 	}
 
@@ -282,6 +320,27 @@ func (c *Config) validate() error {
 	}
 	if c.Jellyfin.APIKey == "" {
 		errs = append(errs, "JELLYFIN_API_KEY est requis")
+	}
+
+	if c.Database.Type == "" {
+		c.Database.Type = "sqlite"
+	}
+	if c.Database.Type != "sqlite" && c.Database.Type != "postgres" {
+		errs = append(errs, "DB_TYPE doit etre 'sqlite' ou 'postgres'")
+	}
+	if c.Database.Type == "postgres" {
+		if c.Database.Host == "" {
+			errs = append(errs, "DB_HOST est requis quand DB_TYPE=postgres")
+		}
+		if c.Database.User == "" {
+			errs = append(errs, "DB_USER est requis quand DB_TYPE=postgres")
+		}
+		if c.Database.Name == "" {
+			errs = append(errs, "DB_NAME est requis quand DB_TYPE=postgres")
+		}
+		if c.Database.Port <= 0 {
+			errs = append(errs, "DB_PORT doit etre superieur a 0")
+		}
 	}
 
 	if len(errs) > 0 {

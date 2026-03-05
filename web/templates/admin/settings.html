@@ -161,6 +161,35 @@
               </select>
               <p class="text-xs text-slate-500 mt-1">{{ .T "settings_default_lang_help" }}</p>
             </div>
+
+            <div class="pt-2 border-t border-white/10"></div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="jg-label" for="general-jellyfin-url">URL publique Jellyfin</label>
+                <input type="url" id="general-jellyfin-url" class="jg-input" placeholder="https://jellyfin.example.com">
+                <p class="text-xs text-slate-500 mt-1">Utilisée dans les boutons et templates emails ({{ "{{" }}.JellyfinURL{{ "}}" }}).</p>
+              </div>
+              <div>
+                <label class="jg-label" for="general-jellyseerr-url">URL publique Jellyseerr</label>
+                <input type="url" id="general-jellyseerr-url" class="jg-input" placeholder="https://jellyseerr.example.com">
+                <p class="text-xs text-slate-500 mt-1">Disponible dans les templates via {{ "{{" }}.JellyseerrURL{{ "}}" }}.</p>
+              </div>
+              <div>
+                <label class="jg-label" for="general-jellytulli-url">URL publique JellyTulli</label>
+                <input type="url" id="general-jellytulli-url" class="jg-input" placeholder="https://jellytulli.example.com">
+                <p class="text-xs text-slate-500 mt-1">Disponible dans les templates via {{ "{{" }}.JellyTulliURL{{ "}}" }}.</p>
+              </div>
+            </div>
+
+            <div class="rounded-xl bg-white/5 border border-white/10 p-4">
+              <h3 class="text-sm font-semibold text-white mb-2">Raccourcis rapides</h3>
+              <div class="flex flex-wrap gap-2">
+                <a id="shortcut-jellyfin" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir Jellyfin</a>
+                <a id="shortcut-jellyseerr" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir Jellyseerr</a>
+                <a id="shortcut-jellytulli" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir JellyTulli</a>
+              </div>
+            </div>
           </div>
 
           <div class="mt-6 flex justify-end">
@@ -396,6 +425,8 @@
             <div><span class="text-purple-200">{{ "{{" }}.ExpiresIn{{ "}}" }}</span> : durée de validité</div>
             <div><span class="text-purple-200">{{ "{{" }}.ExpiryDate{{ "}}" }}</span> : date d'expiration</div>
             <div><span class="text-purple-200">{{ "{{" }}.JellyfinURL{{ "}}" }}</span> : URL Jellyfin</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyseerrURL{{ "}}" }}</span> : URL Jellyseerr</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyTulliURL{{ "}}" }}</span> : URL JellyTulli</div>
             <div><span class="text-purple-200">{{ "{{" }}.Message{{ "}}" }}</span> : message personnalisé (invitation admin)</div>
           </div>
         </div>
@@ -521,6 +552,8 @@
           <p class="text-sm text-slate-400">Configure les sauvegardes automatiques, crée des sauvegardes manuelles, importe des archives et prépare une restauration.</p>
         </div>
 
+        <div id="backup-db-note" class="hidden mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100"></div>
+
         <form id="form-backup" onsubmit="saveSettings('backup', event)">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <label class="inline-flex items-center gap-2 text-sm text-slate-200 md:col-span-3">
@@ -541,7 +574,7 @@
           </div>
         </form>
 
-        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div id="backup-actions-grid" class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="rounded-xl border border-white/10 bg-white/5 p-4">
             <h3 class="text-sm font-semibold text-white mb-3">Sauvegarde manuelle</h3>
             <p class="text-xs text-slate-400 mb-3">Crée une archive ZIP exportable (base SQLite + paramètres + templates).</p>
@@ -557,7 +590,7 @@
           </div>
         </div>
 
-        <div class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
+        <div id="backup-list-section" class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
           <h3 class="text-sm font-semibold text-white mb-3">Archives disponibles</h3>
           <p class="text-xs text-slate-400 mb-4">La restauration est préparée puis appliquée au prochain redémarrage de JellyGate.</p>
           <div class="jg-table-wrap">
@@ -585,6 +618,8 @@
 
 {{ define "scripts" }}
 <script>
+  let backupDatabaseType = 'sqlite';
+
   // ── Tab switching ───────────────────────────────────────────────────────
   function switchTab(name) {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
@@ -607,13 +642,77 @@
   }
 
   // ── Load settings from API ──────────────────────────────────────────────
+  function refreshPortalShortcuts(links) {
+    const mapping = [
+      { id: 'shortcut-jellyfin', url: links.jellyfin_url || '' },
+      { id: 'shortcut-jellyseerr', url: links.jellyseerr_url || '' },
+      { id: 'shortcut-jellytulli', url: links.jellytulli_url || '' },
+    ];
+
+    mapping.forEach(item => {
+      const el = document.getElementById(item.id);
+      if (!el) return;
+      const url = (item.url || '').trim();
+      if (!url) {
+        el.classList.add('hidden');
+        el.removeAttribute('href');
+        return;
+      }
+      el.href = url;
+      el.classList.remove('hidden');
+    });
+  }
+
+  function setBackupMode(databaseType) {
+    const normalized = String(databaseType || '').trim().toLowerCase() || 'sqlite';
+    backupDatabaseType = normalized;
+    const isSQLite = normalized === 'sqlite';
+
+    const note = document.getElementById('backup-db-note');
+    const actionsGrid = document.getElementById('backup-actions-grid');
+    const listSection = document.getElementById('backup-list-section');
+    const form = document.getElementById('form-backup');
+
+    if (note) {
+      if (isSQLite) {
+        note.classList.add('hidden');
+      } else {
+        note.classList.remove('hidden');
+        note.innerHTML = [
+          '<div class="font-semibold mb-1">Mode PostgreSQL détecté</div>',
+          '<div>Les sauvegardes ZIP natives JellyGate (SQLite) sont désactivées.</div>',
+          '<div class="mt-2">Utilise plutôt <code>pg_dump</code> et <code>pg_restore</code> pour la base PostgreSQL.</div>'
+        ].join('');
+      }
+    }
+
+    if (actionsGrid) {
+      actionsGrid.classList.toggle('hidden', !isSQLite);
+    }
+    if (listSection) {
+      listSection.classList.toggle('hidden', !isSQLite);
+    }
+
+    if (form) {
+      form.querySelectorAll('input, select, button').forEach(el => {
+        el.disabled = !isSQLite;
+      });
+    }
+  }
+
   async function loadSettings() {
     const res = await JG.api('/admin/api/settings');
     if (!res || !res.success) return;
     const d = res.data;
+    setBackupMode(d.database_type || 'sqlite');
 
     // Général
     document.getElementById('default-lang').value = d.default_lang || 'fr';
+    const links = d.portal_links || {};
+    document.getElementById('general-jellyfin-url').value = links.jellyfin_url || '';
+    document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
+    document.getElementById('general-jellytulli-url').value = links.jellytulli_url || '';
+    refreshPortalShortcuts(links);
 
     // LDAP
     document.getElementById('ldap-enabled').checked = d.ldap.enabled || false;
@@ -680,12 +779,21 @@
   // ── Save settings to API ────────────────────────────────────────────────
   async function saveSettings(section, event) {
     event.preventDefault();
+
+    if (section === 'backup' && backupDatabaseType !== 'sqlite') {
+      JG.toast('Planification backup locale indisponible en mode PostgreSQL (utiliser pg_dump/pg_restore)', 'error');
+      return;
+    }
+
     let body = {};
     let endpoint = '/admin/api/settings/' + section;
 
     if (section === 'general') {
       body = {
         default_lang: document.getElementById('default-lang').value,
+        jellyfin_url: document.getElementById('general-jellyfin-url').value.trim(),
+        jellyseerr_url: document.getElementById('general-jellyseerr-url').value.trim(),
+        jellytulli_url: document.getElementById('general-jellytulli-url').value.trim(),
       };
     } else if (section === 'ldap') {
       body = {
@@ -765,6 +873,9 @@
 
     if (res && res.success) {
       JG.toast(res.message || 'Configuration sauvegardée', 'success');
+      if (section === 'general') {
+        refreshPortalShortcuts(body);
+      }
     } else {
       JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
     }
@@ -790,6 +901,11 @@
 
   async function loadBackups() {
     const tbody = document.getElementById('backup-list-body');
+    if (backupDatabaseType !== 'sqlite') {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-amber-200 py-8">Mode PostgreSQL: archives SQLite non disponibles. Utilise pg_dump/pg_restore.</td></tr>';
+      return;
+    }
+
     const res = await JG.api('/admin/api/backups');
     if (!res || !res.success) {
       tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red-300 py-8">Impossible de charger les sauvegardes.</td></tr>';
@@ -819,6 +935,11 @@
   }
 
   async function createBackupNow() {
+    if (backupDatabaseType !== 'sqlite') {
+      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      return;
+    }
+
     const res = await JG.api('/admin/api/backups/create', { method: 'POST' });
     if (res && res.success) {
       JG.toast(res.message || 'Sauvegarde créée', 'success');
@@ -829,6 +950,11 @@
   }
 
   async function importBackup() {
+    if (backupDatabaseType !== 'sqlite') {
+      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      return;
+    }
+
     const input = document.getElementById('backup-import-file');
     const file = input.files && input.files[0];
     if (!file) {
@@ -849,10 +975,18 @@
   }
 
   window.downloadBackup = function (name) {
+    if (backupDatabaseType !== 'sqlite') {
+      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      return;
+    }
     window.location.href = `/admin/api/backups/${encodeURIComponent(name)}/download`;
   };
 
   window.restoreBackup = async function (name) {
+    if (backupDatabaseType !== 'sqlite') {
+      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      return;
+    }
     if (!confirm(`Préparer la restauration de ${name} ? Un redémarrage sera requis.`)) return;
     const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' });
     if (res && res.success) {
@@ -863,6 +997,10 @@
   };
 
   window.deleteBackup = async function (name) {
+    if (backupDatabaseType !== 'sqlite') {
+      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      return;
+    }
     if (!confirm(`Supprimer définitivement ${name} ?`)) return;
     const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' });
     if (res && res.success) {

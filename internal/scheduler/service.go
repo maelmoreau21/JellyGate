@@ -77,10 +77,10 @@ func (s *Service) RunTaskNow(taskID int64) error {
 
 func (s *Service) runDueTasks() {
 	now := time.Now()
-	rows, err := s.db.Conn().Query(
+	rows, err := s.db.Query(
 		`SELECT id, name, task_type, enabled, hour, minute, payload, last_run_at, created_by, created_at, updated_at
 		 FROM scheduled_tasks
-		 WHERE enabled = 1 AND hour = ? AND minute = ?`,
+		 WHERE enabled = TRUE AND hour = ? AND minute = ?`,
 		now.Hour(),
 		now.Minute(),
 	)
@@ -125,7 +125,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 		}
 		added := 0
 		for _, ju := range jfUsers {
-			res, err := s.db.Conn().Exec(`INSERT OR IGNORE INTO users (jellyfin_id, username, is_active) VALUES (?, ?, ?)`, ju.ID, ju.Name, !ju.Policy.IsDisabled)
+			res, err := s.db.Exec(`INSERT OR IGNORE INTO users (jellyfin_id, username, is_active) VALUES (?, ?, ?)`, ju.ID, ju.Name, !ju.Policy.IsDisabled)
 			if err != nil {
 				continue
 			}
@@ -136,7 +136,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 		_ = s.db.LogAction("task.sync_users", "scheduler", task.Name, fmt.Sprintf("%d nouveaux utilisateurs", added))
 
 	case "cleanup_resets":
-		res, err := s.db.Conn().Exec(`DELETE FROM password_resets WHERE used = 1 OR expires_at < datetime('now', '-24 hours')`)
+		res, err := s.db.Exec(`DELETE FROM password_resets WHERE used = TRUE OR expires_at < datetime('now', '-24 hours')`)
 		if err != nil {
 			return err
 		}
@@ -163,15 +163,15 @@ func (s *Service) executeTask(task TaskRecord) error {
 		return fmt.Errorf("type de tache non supporte: %s", task.TaskType)
 	}
 
-	_, err := s.db.Conn().Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = datetime('now') WHERE id = ?`, now, task.ID)
+	_, err := s.db.Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = datetime('now') WHERE id = ?`, now, task.ID)
 	return err
 }
 
 func (s *Service) dispatchCampaignMessages() error {
-	rows, err := s.db.Conn().Query(
+	rows, err := s.db.Query(
 		`SELECT id, title, body, target_group, target_user_ids, channels
 		 FROM user_messages
-		 WHERE is_campaign = 1
+		 WHERE is_campaign = TRUE
 		   AND sent_at IS NULL
 		   AND (starts_at IS NULL OR starts_at <= datetime('now'))
 		 ORDER BY created_at ASC`,
@@ -200,7 +200,7 @@ func (s *Service) dispatchCampaignMessages() error {
 
 	for _, c := range campaigns {
 		if !strings.Contains(strings.ToLower(c.channels), "email") || s.mailer == nil {
-			_, _ = s.db.Conn().Exec(`UPDATE user_messages SET sent_at = datetime('now') WHERE id = ?`, c.id)
+			_, _ = s.db.Exec(`UPDATE user_messages SET sent_at = datetime('now') WHERE id = ?`, c.id)
 			continue
 		}
 
@@ -228,7 +228,7 @@ func (s *Service) dispatchCampaignMessages() error {
 			sentCount++
 		}
 
-		_, _ = s.db.Conn().Exec(`UPDATE user_messages SET sent_at = datetime('now') WHERE id = ?`, c.id)
+		_, _ = s.db.Exec(`UPDATE user_messages SET sent_at = datetime('now') WHERE id = ?`, c.id)
 		_ = s.db.LogAction("task.dispatch_campaigns", "scheduler", strconv.FormatInt(c.id, 10), fmt.Sprintf("%d emails envoyes", sentCount))
 	}
 
@@ -246,7 +246,7 @@ type campaignUser struct {
 }
 
 func (s *Service) loadUsersForCampaign() ([]campaignUser, error) {
-	rows, err := s.db.Conn().Query(`SELECT id, username, email, is_active, can_invite, opt_in_email FROM users`)
+	rows, err := s.db.Query(`SELECT id, username, email, is_active, can_invite, opt_in_email FROM users`)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +327,7 @@ func ParseTaskPayloadDelayMinutes(payload string) int {
 }
 
 func (s *Service) loadTask(taskID int64) (TaskRecord, error) {
-	row := s.db.Conn().QueryRow(
+	row := s.db.QueryRow(
 		`SELECT id, name, task_type, enabled, hour, minute, payload, last_run_at, created_by, created_at, updated_at
 		 FROM scheduled_tasks WHERE id = ?`,
 		taskID,

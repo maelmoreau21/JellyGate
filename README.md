@@ -109,7 +109,7 @@ docker compose up -d
 
 1. Dans le dashboard, créez une nouvelle invitation
 2. Partagez le lien généré (`http://votre-ip:8097/invite/{code}`)
-3. L'utilisateur remplit le formulaire → son compte est créé atomiquement dans **AD + Jellyfin + SQLite**
+3. L'utilisateur remplit le formulaire → son compte est créé atomiquement dans **AD + Jellyfin + base SQL**
 
 ## ⚙️ Variables d'environnement
 
@@ -126,10 +126,33 @@ Voir [`.env.example`](.env.example) pour la liste complète.
 | `JELLYGATE_BASE_URL` | ❌ | `http://localhost:8097` | URL publique JellyGate |
 | `JELLYGATE_DATA_DIR` | ❌ | `/data` | Dossier de persistance |
 | `JELLYGATE_DEFAULT_LANG` | ❌ | `fr` | Langue par défaut (`fr`/`en`) |
-| `JELLYSEERR_URL` | ❌ | — | URL Jellyseerr (provisionnement automatique) |
+| `DB_TYPE` | ❌ | `sqlite` | Type de base SQL (`sqlite` ou `postgres`) |
+| `DB_HOST` | ❌ | `postgres` | Hôte PostgreSQL (si `DB_TYPE=postgres`) |
+| `DB_PORT` | ❌ | `5432` | Port PostgreSQL |
+| `DB_USER` | ❌ | `jellygate` | Utilisateur PostgreSQL |
+| `DB_PASSWORD` | ❌ | — | Mot de passe PostgreSQL |
+| `DB_NAME` | ❌ | `jellygate` | Nom de base PostgreSQL |
+| `DB_SSLMODE` | ❌ | `disable` | SSL mode PostgreSQL |
+| `JELLYSEERR_URL` | ❌ | — | URL Jellyseerr (provisionnement + fallback liens) |
 | `JELLYSEERR_API_KEY` | ❌ | — | Clé API Jellyseerr |
-| `OMBI_URL` | ❌ | — | URL Ombi (provisionnement automatique) |
+| `OMBI_URL` | ❌ | — | URL Ombi (provisionnement) |
 | `OMBI_API_KEY` | ❌ | — | Clé API Ombi |
+| `JELLYTULLI_URL` | ❌ | — | URL JellyTulli (raccourcis UI + templates emails) |
+
+## 🗄️ SQLite ou PostgreSQL
+
+- Mode simple par défaut: `DB_TYPE=sqlite`
+- Mode scalable: `DB_TYPE=postgres` + variables `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME`
+
+Le `docker-compose.yml` fournit maintenant les deux services (`jellygate` + `postgres`) et des variables commentées prêtes pour la bascule.
+
+Pour une bascule sans toucher au compose principal, utilisez le fichier dédié:
+
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+```
+
+En mode PostgreSQL, l'onglet Sauvegardes masque automatiquement les actions SQLite natives et affiche une guidance `pg_dump`/`pg_restore`.
 
 ## 🏠 Mode Home Server (Groupes + Expiration + Provisioning)
 
@@ -147,6 +170,12 @@ OMBI_API_KEY=...
 ```
 
 Si ces variables sont absentes, l'inscription continue normalement sans provisioning tiers.
+
+Pour les liens publics (emails + raccourcis UI), configurez dans `Admin > Paramètres > Général`:
+
+- URL publique Jellyfin
+- URL publique Jellyseerr
+- URL publique JellyTulli
 
 ### 2. Configurer les presets et mappings de groupes
 
@@ -182,7 +211,7 @@ Résultat attendu : utilisateur créé et mappé correctement, expiration planif
 | Composant | Technologie |
 |---|---|
 | Backend | Go 1.22 + Chi v5 |
-| Base de données | SQLite via `modernc.org/sqlite` (pure Go, sans CGO) |
+| Base de données | SQLite (`modernc.org/sqlite`) ou PostgreSQL (`pgx`) |
 | LDAP | `go-ldap/ldap/v3` (LDAPS, unicodePwd) |
 | Email | `wneessen/go-mail` (STARTTLS / TLS) |
 | Frontend | HTML/CSS/JS vanilla + Tailwind CDN |

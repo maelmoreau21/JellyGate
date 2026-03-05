@@ -4,6 +4,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/maelmoreau21/JellyGate/internal/config"
+	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 )
 
@@ -38,4 +40,28 @@ func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, tpl string, data
 
 func emailTime(t time.Time) string {
 	return t.Format("02/01/2006 15:04")
+}
+
+func resolvePortalLinks(cfg *config.Config, db *database.DB) config.PortalLinksConfig {
+	links := config.DefaultPortalLinks()
+	if db != nil {
+		if saved, err := db.GetPortalLinksConfig(); err == nil {
+			links = saved
+		}
+	}
+
+	if strings.TrimSpace(links.JellyfinURL) == "" && cfg != nil {
+		links.JellyfinURL = strings.TrimSpace(cfg.Jellyfin.URL)
+	}
+	if strings.TrimSpace(links.JellyseerrURL) == "" && cfg != nil {
+		links.JellyseerrURL = strings.TrimSpace(cfg.ThirdParty.JellyseerrURL)
+	}
+	if strings.TrimSpace(links.JellyTulliURL) == "" && cfg != nil {
+		links.JellyTulliURL = strings.TrimSpace(cfg.ThirdParty.JellyTulliURL)
+	}
+
+	links.JellyfinURL = strings.TrimSpace(links.JellyfinURL)
+	links.JellyseerrURL = strings.TrimSpace(links.JellyseerrURL)
+	links.JellyTulliURL = strings.TrimSpace(links.JellyTulliURL)
+	return links
 }

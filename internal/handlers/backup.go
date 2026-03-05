@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -37,6 +38,10 @@ func (h *BackupHandler) CreateBackup(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	info, err := h.service.CreateBackup("manual")
 	if err != nil {
+		if errors.Is(err, backup.ErrSQLiteOnly) {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Échec de création de la sauvegarde"})
 		return
 	}
@@ -93,6 +98,10 @@ func (h *BackupHandler) ImportBackup(w http.ResponseWriter, r *http.Request) {
 
 	info, err := h.service.ImportBackup(header.Filename, file)
 	if err != nil {
+		if errors.Is(err, backup.ErrSQLiteOnly) {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
@@ -110,6 +119,10 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.PrepareRestore(name); err != nil {
+		if errors.Is(err, backup.ErrSQLiteOnly) {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+			return
+		}
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
 		return
 	}

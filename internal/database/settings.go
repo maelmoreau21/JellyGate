@@ -22,6 +22,7 @@ const (
 	SettingLDAPConfig      = "ldap_config"      // JSON: config.LDAPConfig
 	SettingSMTPConfig      = "smtp_config"      // JSON: config.SMTPConfig
 	SettingWebhooksConfig  = "webhooks_config"  // JSON: config.WebhooksConfig
+	SettingPortalLinks     = "portal_links"     // JSON: config.PortalLinksConfig
 	SettingEmailTemplates  = "email_templates"  // JSON: config.EmailTemplatesConfig
 	SettingBackupConfig    = "backup_config"    // JSON: config.BackupConfig
 	SettingJellyfinPresets = "jellyfin_presets" // JSON: []config.JellyfinPolicyPreset
@@ -46,7 +47,7 @@ func (db *DB) GetDefaultLang() string {
 // Retourne "" si la clé n'existe pas.
 func (db *DB) GetSetting(key string) (string, error) {
 	var value sql.NullString
-	err := db.conn.QueryRow(
+	err := db.QueryRow(
 		`SELECT value FROM settings WHERE key = ?`, key,
 	).Scan(&value)
 
@@ -62,7 +63,7 @@ func (db *DB) GetSetting(key string) (string, error) {
 
 // SetSetting insère ou met à jour un paramètre (UPSERT).
 func (db *DB) SetSetting(key, value string) error {
-	_, err := db.conn.Exec(`
+	_, err := db.Exec(`
 		INSERT INTO settings (key, value, updated_at)
 		VALUES (?, ?, ?)
 		ON CONFLICT(key) DO UPDATE SET
@@ -78,7 +79,7 @@ func (db *DB) SetSetting(key, value string) error {
 
 // GetAllSettings récupère tous les paramètres sous forme de map.
 func (db *DB) GetAllSettings() (map[string]string, error) {
-	rows, err := db.conn.Query(`SELECT key, value FROM settings`)
+	rows, err := db.Query(`SELECT key, value FROM settings`)
 	if err != nil {
 		return nil, fmt.Errorf("GetAllSettings: %w", err)
 	}
@@ -93,6 +94,43 @@ func (db *DB) GetAllSettings() (map[string]string, error) {
 		result[k] = v
 	}
 	return result, rows.Err()
+}
+
+// GetPortalLinksConfig récupère les URL publiques (Jellyfin/Jellyseerr/JellyTulli).
+func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
+	cfg := config.DefaultPortalLinks()
+
+	raw, err := db.GetSetting(SettingPortalLinks)
+	if err != nil {
+		return cfg, err
+	}
+	if strings.TrimSpace(raw) == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config PortalLinks", "error", err)
+		return config.DefaultPortalLinks(), nil
+	}
+
+	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
+	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
+	cfg.JellyTulliURL = strings.TrimSpace(cfg.JellyTulliURL)
+
+	return cfg, nil
+}
+
+// SavePortalLinksConfig sauvegarde les URL publiques.
+func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
+	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
+	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
+	cfg.JellyTulliURL = strings.TrimSpace(cfg.JellyTulliURL)
+
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SavePortalLinksConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingPortalLinks, string(data))
 }
 
 // ── LDAP Config ─────────────────────────────────────────────────────────────

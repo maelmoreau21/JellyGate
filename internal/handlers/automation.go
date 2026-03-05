@@ -140,7 +140,7 @@ func (h *AutomationHandler) SaveGroupMappings(w http.ResponseWriter, r *http.Req
 }
 
 func (h *AutomationHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.db.Conn().Query(
+	rows, err := h.db.Query(
 		`SELECT id, name, task_type, enabled, hour, minute, payload, last_run_at, created_by, created_at, updated_at
 		 FROM scheduled_tasks ORDER BY created_at DESC`,
 	)
@@ -183,7 +183,7 @@ func (h *AutomationHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err := h.db.Conn().Exec(
+	_, err := h.db.Exec(
 		`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, payload, created_by, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		strings.TrimSpace(input.Name),
@@ -223,7 +223,7 @@ func (h *AutomationHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`UPDATE scheduled_tasks
 		 SET name = ?, task_type = ?, enabled = ?, hour = ?, minute = ?, payload = ?, updated_at = datetime('now')
 		 WHERE id = ?`,
@@ -256,7 +256,7 @@ func (h *AutomationHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.db.Conn().Exec(`DELETE FROM scheduled_tasks WHERE id = ?`, taskID)
+	res, err := h.db.Exec(`DELETE FROM scheduled_tasks WHERE id = ?`, taskID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Suppression impossible"})
 		return

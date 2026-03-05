@@ -54,7 +54,7 @@ func (h *AdminHandler) MessagesPage(w http.ResponseWriter, r *http.Request) {
 		td.CanInvite = true
 	} else {
 		var canInvite bool
-		_ = h.db.Conn().QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
 		td.CanInvite = canInvite
 	}
 
@@ -189,7 +189,7 @@ func (h *AdminHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	channels := normalizeChannels(req.Channels)
 	targetUsers := csvTargetUserIDs(req.TargetUserIDs)
 
-	res, err := h.db.Conn().Exec(
+	res, err := h.db.Exec(
 		`INSERT INTO user_messages (title, body, created_by, target_group, target_user_ids, channels, is_campaign, starts_at, ends_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		title,
@@ -239,7 +239,7 @@ func (h *AdminHandler) DeleteMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, err := h.db.Conn().Exec(`DELETE FROM user_messages WHERE id = ?`, msgID)
+	res, err := h.db.Exec(`DELETE FROM user_messages WHERE id = ?`, msgID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Suppression impossible"})
 		return
@@ -272,7 +272,7 @@ func (h *AdminHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	readMap := map[int64]string{}
-	rowsRead, err := h.db.Conn().Query(`SELECT message_id, read_at FROM user_message_reads WHERE user_id = ?`, userID)
+	rowsRead, err := h.db.Query(`SELECT message_id, read_at FROM user_message_reads WHERE user_id = ?`, userID)
 	if err == nil {
 		for rowsRead.Next() {
 			var msgID int64
@@ -286,7 +286,7 @@ func (h *AdminHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 
 	readCountMap := map[int64]int{}
 	if sess.IsAdmin && view == "admin" {
-		rowsAgg, err := h.db.Conn().Query(`SELECT message_id, COUNT(*) FROM user_message_reads GROUP BY message_id`)
+		rowsAgg, err := h.db.Query(`SELECT message_id, COUNT(*) FROM user_message_reads GROUP BY message_id`)
 		if err == nil {
 			for rowsAgg.Next() {
 				var msgID int64
@@ -299,7 +299,7 @@ func (h *AdminHandler) ListMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rows, err := h.db.Conn().Query(
+	rows, err := h.db.Query(
 		`SELECT id, title, body, created_by, target_group, target_user_ids, channels, is_campaign,
 		        starts_at, ends_at, sent_at, created_at
 		 FROM user_messages
@@ -382,7 +382,7 @@ func (h *AdminHandler) loadLocalUserFlags(jellyfinID string) (int64, bool, bool,
 		isActive  bool
 		canInvite bool
 	)
-	err := h.db.Conn().QueryRow(
+	err := h.db.QueryRow(
 		`SELECT id, is_active, can_invite FROM users WHERE jellyfin_id = ?`,
 		jellyfinID,
 	).Scan(&userID, &isActive, &canInvite)
@@ -412,7 +412,7 @@ func (h *AdminHandler) MarkMessageRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var targetGroup, targetUserIDs string
-	err = h.db.Conn().QueryRow(`SELECT target_group, target_user_ids FROM user_messages WHERE id = ?`, msgID).Scan(&targetGroup, &targetUserIDs)
+	err = h.db.QueryRow(`SELECT target_group, target_user_ids FROM user_messages WHERE id = ?`, msgID).Scan(&targetGroup, &targetUserIDs)
 	if err == sql.ErrNoRows {
 		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Message introuvable"})
 		return
@@ -427,7 +427,7 @@ func (h *AdminHandler) MarkMessageRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`INSERT INTO user_message_reads (message_id, user_id, read_at)
 		 VALUES (?, ?, ?)
 		 ON CONFLICT(message_id, user_id) DO UPDATE SET read_at = excluded.read_at`,

@@ -177,9 +177,9 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 
 	// ── 3. Insérer dans SQLite ──────────────────────────────────────────
 	expiresAt := time.Now().Add(resetTokenExpiry)
-	_, err = h.db.Conn().Exec(
+	_, err = h.db.Exec(
 		`INSERT INTO password_resets (user_id, code, used, expires_at)
-		 VALUES (?, ?, 0, ?)`,
+		 VALUES (?, ?, FALSE, ?)`,
 		user.ID, token, expiresAt.Format("2006-01-02 15:04:05"),
 	)
 	if err != nil {
@@ -192,13 +192,17 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 
 	// ── 4. Envoyer l'email ──────────────────────────────────────────────
 	resetURL := fmt.Sprintf("%s/reset/%s", strings.TrimRight(h.cfg.BaseURL, "/"), token)
+	links := resolvePortalLinks(h.cfg, h.db)
 
 	emailData := map[string]string{
-		"Username":  user.Username,
-		"ResetLink": resetURL,
-		"ResetURL":  resetURL,
-		"ResetCode": token,
-		"ExpiresIn": "15 minutes",
+		"Username":      user.Username,
+		"ResetLink":     resetURL,
+		"ResetURL":      resetURL,
+		"ResetCode":     token,
+		"ExpiresIn":     "15 minutes",
+		"JellyfinURL":   links.JellyfinURL,
+		"JellyseerrURL": links.JellyseerrURL,
+		"JellyTulliURL": links.JellyTulliURL,
 	}
 
 	emailCfg, _ := h.db.GetEmailTemplatesConfig()
@@ -338,8 +342,8 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 	}
 
 	// ── 4. Marquer le token comme utilisé ───────────────────────────────
-	_, err = h.db.Conn().Exec(
-		`UPDATE password_resets SET used = 1 WHERE id = ?`,
+	_, err = h.db.Exec(
+		`UPDATE password_resets SET used = TRUE WHERE id = ?`,
 		resetRecord.ID,
 	)
 	if err != nil {
@@ -382,7 +386,7 @@ func (h *PasswordResetHandler) findUserByIdentifier(identifier string) (*userRec
 	var user userRecord
 	var jellyfinID, email, ldapDN sql.NullString
 
-	err := h.db.Conn().QueryRow(
+	err := h.db.QueryRow(
 		`SELECT id, username, email, jellyfin_id, ldap_dn
 		 FROM users
 		 WHERE username = ? OR email = ?
@@ -416,7 +420,7 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 	var rec passwordResetRecord
 	var expiresAtStr string
 
-	err := h.db.Conn().QueryRow(
+	err := h.db.QueryRow(
 		`SELECT id, user_id, code, used, expires_at, created_at
 		 FROM password_resets WHERE code = ?`, code,
 	).Scan(&rec.ID, &rec.UserID, &rec.Code, &rec.Used, &expiresAtStr, &rec.CreatedAt)
@@ -449,7 +453,7 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 	var user userRecord
 	var jellyfinID, email, ldapDN sql.NullString
 
-	err = h.db.Conn().QueryRow(
+	err = h.db.QueryRow(
 		`SELECT id, username, email, jellyfin_id, ldap_dn FROM users WHERE id = ?`,
 		rec.UserID,
 	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN)

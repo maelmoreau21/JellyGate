@@ -40,6 +40,16 @@
                 <a href="{{ .Data.JellyfinURL }}" class="jg-btn jg-btn-primary w-full shadow-lg shadow-purple-500/20">
                     Se connecter à Jellyfin
                 </a>
+                {{ if .Data.JellyseerrURL }}
+                <a href="{{ .Data.JellyseerrURL }}" class="jg-btn jg-btn-ghost w-full">
+                    Ouvrir Jellyseerr
+                </a>
+                {{ end }}
+                {{ if .Data.JellyTulliURL }}
+                <a href="{{ .Data.JellyTulliURL }}" class="jg-btn jg-btn-ghost w-full">
+                    Ouvrir JellyTulli
+                </a>
+                {{ end }}
             </div>
         </div>
         {{ else }}

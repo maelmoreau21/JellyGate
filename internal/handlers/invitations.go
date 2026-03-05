@@ -361,6 +361,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
 		emailCfg, _ := h.db.GetEmailTemplatesConfig()
+		links := resolvePortalLinks(h.cfg, h.db)
 		combinedTemplate := joinTemplateSections(
 			emailCfg.Welcome,
 			emailCfg.Confirmation,
@@ -370,13 +371,15 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 		if combinedTemplate != "" {
 			emailData := map[string]string{
-				"Username":    form.Username,
-				"DisplayName": form.DisplayName,
-				"Email":       form.Email,
-				"InviteCode":  code,
-				"InviteLink":  strings.TrimRight(h.cfg.BaseURL, "/") + "/invite/" + code,
-				"HelpURL":     h.cfg.BaseURL,
-				"JellyfinURL": h.cfg.Jellyfin.URL,
+				"Username":      form.Username,
+				"DisplayName":   form.DisplayName,
+				"Email":         form.Email,
+				"InviteCode":    code,
+				"InviteLink":    strings.TrimRight(h.cfg.BaseURL, "/") + "/invite/" + code,
+				"HelpURL":       h.cfg.BaseURL,
+				"JellyfinURL":   links.JellyfinURL,
+				"JellyseerrURL": links.JellyseerrURL,
+				"JellyTulliURL": links.JellyTulliURL,
 			}
 
 			if err := sendTemplateIfConfigured(h.mailer, form.Email, "Bienvenue sur JellyGate", combinedTemplate, emailData); err != nil {
@@ -408,7 +411,10 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	// ── Réponse de succès ────────────────────────────────────────────────
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé avec succès dans Jellyfin et dans l'annuaire.", form.DisplayName)
-	td.Data["JellyfinURL"] = h.cfg.Jellyfin.URL
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTulliURL"] = links.JellyTulliURL
 
 	if err := h.renderer.Render(w, "invite.html", td); err != nil {
 		slog.Error("Erreur rendu invite success page", "error", err)
@@ -539,7 +545,7 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 		return nil, fmt.Errorf("code d'invitation vide")
 	}
 
-	row := h.db.Conn().QueryRow(
+	row := h.db.QueryRow(
 		`SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_at
 		 FROM invitations WHERE code = ?`, code)
 
@@ -580,7 +586,7 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 // registerUser insère l'utilisateur dans SQLite et incrémente le compteur
 // d'utilisation de l'invitation. Les deux opérations sont dans une transaction.
 func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, jellyfinID, ldapDN string) error {
-	tx, err := h.db.Conn().Begin()
+	tx, err := h.db.Begin()
 	if err != nil {
 		return fmt.Errorf("impossible de démarrer la transaction: %w", err)
 	}
@@ -619,7 +625,7 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
 		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, invited_by, is_active, is_banned, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at)
-		 VALUES (?, ?, ?, ?, ?, ?, 1, 0, ?, ?, ?, ?, NULL)`,
+		 VALUES (?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, NULL)`,
 		jellyfinID, form.Username, form.Email, ldapDN, groupName, inv.Code, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
 	)
 	if err != nil {

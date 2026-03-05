@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -17,6 +18,8 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/database"
 )
+
+var ErrSQLiteOnly = errors.New("fonction backup disponible uniquement en mode sqlite")
 
 type BackupInfo struct {
 	Name      string    `json:"name"`
@@ -39,6 +42,20 @@ func NewService(dataDir string, db *database.DB) *Service {
 		restoreDir: filepath.Join(dataDir, "restore"),
 		db:         db,
 	}
+}
+
+func (s *Service) SupportsSQLiteArchive() bool {
+	return s != nil && s.db != nil && s.db.IsSQLite()
+}
+
+func (s *Service) requireSQLiteArchive(action string) error {
+	if s.SupportsSQLiteArchive() {
+		return nil
+	}
+	if s == nil || s.db == nil {
+		return fmt.Errorf("%w: %s impossible (service indisponible)", ErrSQLiteOnly, action)
+	}
+	return fmt.Errorf("%w: %s non supporte avec %q (utiliser pg_dump/pg_restore)", ErrSQLiteOnly, action, s.db.Driver())
 }
 
 func (s *Service) ensureDirs() error {
@@ -99,8 +116,12 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 	snapshotPath := filepath.Join(s.restoreDir, fmt.Sprintf("snapshot-%s.db", stamp))
 	defer os.Remove(snapshotPath)
 
+	if err := s.requireSQLiteArchive("creation de sauvegarde"); err != nil {
+		return info, err
+	}
+
 	quotedSnapshot := strings.ReplaceAll(snapshotPath, "'", "''")
-	if _, err := s.db.Conn().Exec("VACUUM INTO '" + quotedSnapshot + "'"); err != nil {
+	if _, err := s.db.Exec("VACUUM INTO '" + quotedSnapshot + "'"); err != nil {
 		return info, fmt.Errorf("snapshot sqlite (VACUUM INTO): %w", err)
 	}
 
@@ -227,6 +248,9 @@ func (s *Service) ImportBackup(filename string, r io.Reader) (BackupInfo, error)
 	defer s.mu.Unlock()
 
 	var info BackupInfo
+	if err := s.requireSQLiteArchive("import de sauvegarde"); err != nil {
+		return info, err
+	}
 	if err := s.ensureDirs(); err != nil {
 		return info, err
 	}
@@ -291,6 +315,10 @@ func (s *Service) PrepareRestore(name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if err := s.requireSQLiteArchive("restauration"); err != nil {
+		return err
+	}
+
 	if err := s.ensureDirs(); err != nil {
 		return err
 	}
@@ -352,7 +380,11 @@ func (s *Service) PrepareRestore(name string) error {
 	return nil
 }
 
-func ApplyPendingRestore(dataDir string) error {
+func ApplyPendingRestore(dataDir, dbType string) error {
+	if strings.TrimSpace(strings.ToLower(dbType)) != database.DialectSQLite {
+		return nil
+	}
+
 	restoreDir := filepath.Join(dataDir, "restore")
 	pendingDB := filepath.Join(restoreDir, "jellygate.db.pending")
 	if _, err := os.Stat(pendingDB); err != nil {
@@ -441,6 +473,10 @@ func (s *Service) StartScheduler(ctx context.Context) {
 }
 
 func (s *Service) runScheduledTick() {
+	if !s.SupportsSQLiteArchive() {
+		return
+	}
+
 	cfg, err := s.db.GetBackupConfig()
 	if err != nil {
 		slog.Warn("Lecture config backup impossible", "error", err)

@@ -53,18 +53,22 @@ func main() {
 		"jellyfin_url", cfg.Jellyfin.URL,
 	)
 
-	if err := backup.ApplyPendingRestore(cfg.DataDir); err != nil {
+	if err := backup.ApplyPendingRestore(cfg.DataDir, cfg.Database.Type); err != nil {
 		slog.Error("Erreur application restauration en attente", "error", err)
 	}
 
-	// ── 3. Initialiser la base de données SQLite ────────────────────────────
-	db, err := database.New(cfg.DataDir)
+	// ── 3. Initialiser la base de données (SQLite/PostgreSQL) ──────────────
+	db, err := database.New(cfg.Database, cfg.DataDir)
 	if err != nil {
 		slog.Error("Erreur d'initialisation de la base de données", "error", err)
 		os.Exit(1)
 	}
 	defer db.Close()
-	slog.Info("Base de données SQLite initialisée", "path", db.Path())
+	if db.IsSQLite() {
+		slog.Info("Base de données SQLite initialisée", "path", db.Path())
+	} else {
+		slog.Info("Base de données PostgreSQL initialisée", "driver", db.Driver())
+	}
 
 	// ── 3b. Initialiser les clients de service à partir des settings DB ──
 	jfClient := jellyfin.New(cfg.Jellyfin)
