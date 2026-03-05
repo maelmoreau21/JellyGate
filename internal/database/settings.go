@@ -28,7 +28,7 @@ const (
 	SettingJellyfinPresets = "jellyfin_presets" // JSON: []config.JellyfinPolicyPreset
 	SettingGroupMappings   = "group_mappings"   // JSON: []config.GroupPolicyMapping
 	SettingBackupLastRun   = "backup_last_run"  // Date locale YYYY-MM-DD
-	SettingDefaultLang     = "default_lang"     // Langue par défaut du serveur ("fr" ou "en")
+	SettingDefaultLang     = "default_lang"     // Langue par defaut du serveur (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
 )
 
 // GetDefaultLang retourne la langue par défaut du serveur.
@@ -38,7 +38,11 @@ func (db *DB) GetDefaultLang() string {
 	if err != nil || val == "" {
 		return "fr"
 	}
-	return val
+	lang := config.NormalizeLanguageTag(val)
+	if !config.IsSupportedLanguage(lang) {
+		return "fr"
+	}
+	return lang
 }
 
 // ── Get / Set générique ─────────────────────────────────────────────────────
@@ -139,10 +143,13 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 // Retourne une config par défaut (Enabled=false) si non configurée.
 func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	cfg := config.LDAPConfig{
-		Enabled: false,
-		Port:    636,
-		UseTLS:  true,
-		UserOU:  "CN=Users",
+		Enabled:             false,
+		Port:                636,
+		UseTLS:              true,
+		UserOU:              "CN=Users",
+		ProvisionMode:       "hybrid",
+		JellyfinGroup:       "jellyfin_group",
+		AdministratorsGroup: "administrators_group",
 	}
 
 	raw, err := db.GetSetting(SettingLDAPConfig)
@@ -156,6 +163,24 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
 		slog.Warn("Erreur de parsing de la config LDAP", "error", err)
 		return cfg, nil
+	}
+
+	cfg.ProvisionMode = strings.ToLower(strings.TrimSpace(cfg.ProvisionMode))
+	if cfg.ProvisionMode == "" {
+		cfg.ProvisionMode = "hybrid"
+	}
+	if cfg.ProvisionMode != "hybrid" && cfg.ProvisionMode != "ldap_only" {
+		cfg.ProvisionMode = "hybrid"
+	}
+
+	if strings.TrimSpace(cfg.JellyfinGroup) == "" {
+		cfg.JellyfinGroup = strings.TrimSpace(cfg.UserGroup)
+	}
+	if strings.TrimSpace(cfg.JellyfinGroup) == "" {
+		cfg.JellyfinGroup = "jellyfin_group"
+	}
+	if strings.TrimSpace(cfg.AdministratorsGroup) == "" {
+		cfg.AdministratorsGroup = "administrators_group"
 	}
 
 	return cfg, nil

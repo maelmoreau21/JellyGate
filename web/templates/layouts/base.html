@@ -56,17 +56,20 @@
     {{ block "body" . }}{{ end }}
 
     {{/* Language selector — fixed bottom-right */}}
-    <div id="lang-switcher" class="fixed bottom-4 right-4 z-50 flex items-center gap-1 glass-card-sm px-2 py-1.5">
-        <button onclick="JG.setLang('fr')"
-            class="px-2 py-1 rounded-lg text-xs font-semibold transition-all {{ if eq .Lang " fr" }}bg-purple-500/20
-            text-purple-400{{ else }}text-slate-500 hover:text-slate-300{{ end }}" title="Français">
-            🇫🇷 FR
-        </button>
-        <button onclick="JG.setLang('en')"
-            class="px-2 py-1 rounded-lg text-xs font-semibold transition-all {{ if eq .Lang " en" }}bg-purple-500/20
-            text-purple-400{{ else }}text-slate-500 hover:text-slate-300{{ end }}" title="English">
-            🇬🇧 EN
-        </button>
+    <div id="lang-switcher" class="fixed bottom-4 right-4 z-50 glass-card-sm px-3 py-2">
+        <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-400 block mb-1">Language</label>
+        <select id="lang-select" class="jg-input jg-lang-select" onchange="JG.setLang(this.value)">
+            <option value="fr" {{ if eq .Lang "fr" }}selected{{ end }}>fr - Français</option>
+            <option value="en" {{ if eq .Lang "en" }}selected{{ end }}>en - English</option>
+            <option value="de" {{ if eq .Lang "de" }}selected{{ end }}>de - Deutsch</option>
+            <option value="es" {{ if eq .Lang "es" }}selected{{ end }}>es - Español</option>
+            <option value="it" {{ if eq .Lang "it" }}selected{{ end }}>it - Italiano</option>
+            <option value="nl" {{ if eq .Lang "nl" }}selected{{ end }}>nl - Nederlands</option>
+            <option value="pl" {{ if eq .Lang "pl" }}selected{{ end }}>pl - Polski</option>
+            <option value="pt-br" {{ if eq .Lang "pt-br" }}selected{{ end }}>pt-BR - Português (Brasil)</option>
+            <option value="ru" {{ if eq .Lang "ru" }}selected{{ end }}>ru - Русский</option>
+            <option value="zh" {{ if eq .Lang "zh" }}selected{{ end }}>zh - 中文</option>
+        </select>
     </div>
 
     {{/* App JS */}}

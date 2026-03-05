@@ -115,7 +115,7 @@ func (c *Client) connect() (*goldap.Conn, error) {
 //
 // Retourne le DN (Distinguished Name) de l'utilisateur créé.
 // En cas d'erreur, aucun nettoyage n'est nécessaire côté LDAP (l'ADD est atomique).
-func (c *Client) CreateUser(username, displayName, email, password string) (string, error) {
+func (c *Client) CreateUser(username, displayName, email, password string, isAdmin bool) (string, error) {
 	conn, err := c.connect()
 	if err != nil {
 		return "", fmt.Errorf("ldap.CreateUser: %w", err)
@@ -175,16 +175,13 @@ func (c *Client) CreateUser(username, displayName, email, password string) (stri
 
 	slog.Info("Utilisateur AD créé", "dn", userDN, "username", username, "upn", upn)
 
-	// Ajouter au groupe si configuré
-	if c.cfg.UserGroup != "" {
-		if err := c.addToGroup(conn, userDN); err != nil {
-			// Log l'erreur mais ne fait pas échouer la création
-			slog.Warn("Impossible d'ajouter l'utilisateur au groupe",
-				"dn", userDN,
-				"group", c.cfg.UserGroup,
-				"error", err,
-			)
-		}
+	if err := c.assignUserToDefaultGroup(conn, userDN, isAdmin); err != nil {
+		// Log l'erreur mais ne fait pas échouer la création
+		slog.Warn("Impossible d'ajouter l'utilisateur au groupe LDAP cible",
+			"dn", userDN,
+			"is_admin", isAdmin,
+			"error", err,
+		)
 	}
 
 	return userDN, nil
@@ -349,10 +346,37 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 
 // ── Opérations internes ─────────────────────────────────────────────────────
 
-// addToGroup ajoute un utilisateur à un groupe AD.
-// Utilise une connexion déjà établie.
-func (c *Client) addToGroup(conn *goldap.Conn, userDN string) error {
-	groupDN := fmt.Sprintf("CN=%s,%s,%s", c.cfg.UserGroup, c.cfg.UserOU, c.cfg.BaseDN)
+// assignUserToDefaultGroup ajoute un utilisateur au groupe cible selon son role.
+// Admin -> administrators_group, sinon jellyfin_group (avec fallback legacy user_group).
+func (c *Client) assignUserToDefaultGroup(conn *goldap.Conn, userDN string, isAdmin bool) error {
+	groupRef := strings.TrimSpace(c.cfg.JellyfinGroup)
+	if isAdmin {
+		groupRef = strings.TrimSpace(c.cfg.AdministratorsGroup)
+		if groupRef == "" {
+			groupRef = strings.TrimSpace(c.cfg.JellyfinGroup)
+		}
+	}
+	if groupRef == "" {
+		groupRef = strings.TrimSpace(c.cfg.UserGroup)
+	}
+	if groupRef == "" {
+		return nil
+	}
+
+	return c.addToGroupByRef(conn, userDN, groupRef)
+}
+
+// addToGroupByRef ajoute un utilisateur a un groupe AD (DN complet ou nom simple).
+func (c *Client) addToGroupByRef(conn *goldap.Conn, userDN, groupRef string) error {
+	groupRef = strings.TrimSpace(groupRef)
+	if groupRef == "" {
+		return fmt.Errorf("groupe vide")
+	}
+
+	groupDN := groupRef
+	if !strings.Contains(strings.ToLower(groupRef), "dc=") {
+		groupDN = fmt.Sprintf("CN=%s,%s,%s", groupRef, c.cfg.UserOU, c.cfg.BaseDN)
+	}
 
 	modReq := goldap.NewModifyRequest(groupDN, nil)
 	modReq.Add("member", []string{userDN})
@@ -361,7 +385,7 @@ func (c *Client) addToGroup(conn *goldap.Conn, userDN string) error {
 		return fmt.Errorf("échec de l'ajout de %q au groupe %q: %w", userDN, groupDN, err)
 	}
 
-	slog.Info("Utilisateur ajouté au groupe AD", "user_dn", userDN, "group", c.cfg.UserGroup)
+	slog.Info("Utilisateur ajouté au groupe AD", "user_dn", userDN, "group_dn", groupDN)
 	return nil
 }
 
@@ -383,18 +407,9 @@ func (c *Client) AddUserToGroup(userDN, groupRef string) error {
 	}
 	defer conn.Close()
 
-	groupDN := groupRef
-	if !strings.Contains(strings.ToLower(groupRef), "dc=") {
-		groupDN = fmt.Sprintf("CN=%s,%s,%s", groupRef, c.cfg.UserOU, c.cfg.BaseDN)
+	if err := c.addToGroupByRef(conn, userDN, groupRef); err != nil {
+		return fmt.Errorf("ldap.AddUserToGroup: %w", err)
 	}
-
-	modReq := goldap.NewModifyRequest(groupDN, nil)
-	modReq.Add("member", []string{userDN})
-	if err := conn.Modify(modReq); err != nil {
-		return fmt.Errorf("ldap.AddUserToGroup: échec de l'ajout de %q au groupe %q: %w", userDN, groupDN, err)
-	}
-
-	slog.Info("Utilisateur ajouté au groupe AD (manuel)", "user_dn", userDN, "group_dn", groupDN)
 	return nil
 }
 

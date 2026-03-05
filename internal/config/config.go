@@ -16,6 +16,49 @@ import (
 	"strings"
 )
 
+// SupportedLanguages contient les langues officiellement supportees par l'UI.
+// Les cles sont stockees en lowercase pour faciliter la comparaison.
+var SupportedLanguages = map[string]bool{
+	"fr":    true,
+	"en":    true,
+	"de":    true,
+	"es":    true,
+	"it":    true,
+	"nl":    true,
+	"pl":    true,
+	"pt-br": true,
+	"ru":    true,
+	"zh":    true,
+}
+
+// NormalizeLanguageTag normalise un tag de langue vers un code interne stable.
+// Exemples: EN-us -> en, pt_BR -> pt-br, zh-CN -> zh.
+func NormalizeLanguageTag(lang string) string {
+	normalized := strings.ToLower(strings.TrimSpace(strings.ReplaceAll(lang, "_", "-")))
+	if normalized == "" {
+		return ""
+	}
+
+	if SupportedLanguages[normalized] {
+		return normalized
+	}
+
+	base := strings.SplitN(normalized, "-", 2)[0]
+	if base == "pt" {
+		return "pt-br"
+	}
+	if SupportedLanguages[base] {
+		return base
+	}
+
+	return normalized
+}
+
+// IsSupportedLanguage indique si la langue est supportee apres normalisation.
+func IsSupportedLanguage(lang string) bool {
+	return SupportedLanguages[NormalizeLanguageTag(lang)]
+}
+
 // Config contient la configuration chargée depuis les variables d'environnement.
 // Ne contient que les paramètres essentiels au démarrage de l'application.
 type Config struct {
@@ -76,8 +119,16 @@ type LDAPConfig struct {
 	BindPassword string `json:"bind_password"` // Mot de passe de bind
 	BaseDN       string `json:"base_dn"`       // Base DN de recherche
 	UserOU       string `json:"user_ou"`       // OU pour la création des utilisateurs
-	UserGroup    string `json:"user_group"`    // Groupe AD (optionnel)
-	Domain       string `json:"domain"`        // Domaine AD (ex: home.lan)
+	UserGroup    string `json:"user_group"`    // Legacy: fallback groupe utilisateur
+
+	// Mode de provisioning: "hybrid" (LDAP + Jellyfin) ou "ldap_only".
+	ProvisionMode string `json:"provision_mode"`
+
+	// Groupes LDAP cibles pour l'affectation automatique des comptes.
+	JellyfinGroup       string `json:"jellyfin_group"`
+	AdministratorsGroup string `json:"administrators_group"`
+
+	Domain string `json:"domain"` // Domaine AD (ex: home.lan)
 }
 
 // SMTPConfig contient les paramètres d'envoi d'emails.

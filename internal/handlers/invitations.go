@@ -222,6 +222,18 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 	slog.Info("✅ Étape 1/5 terminée", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))
 
+	ldapCfg, _ := h.db.GetLDAPConfig()
+	ldapOnlyMode := h.ldClient != nil && ldapCfg.Enabled && strings.EqualFold(strings.TrimSpace(ldapCfg.ProvisionMode), "ldap_only")
+	createJellyfinUser := !ldapOnlyMode
+
+	isAdminProvision := shouldProvisionAsLDAPAdmin(profile, ldapCfg)
+	if isAdminProvision {
+		slog.Info("Provisioning LDAP admin detecte depuis le profil d'invitation",
+			"group_name", strings.TrimSpace(profile.GroupName),
+			"admin_group", strings.TrimSpace(ldapCfg.AdministratorsGroup),
+		)
+	}
+
 	// ═══════════════════════════════════════════════════════════════════
 	// ÉTAPE 2 : Création du compte dans l'Active Directory (LDAP)
 	// ═══════════════════════════════════════════════════════════════════
@@ -229,7 +241,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	if h.ldClient != nil {
 		slog.Info("🔐 Étape 2/5 : Création du compte LDAP", "username", form.Username)
 
-		userDN, err = h.ldClient.CreateUser(form.Username, form.DisplayName, form.Email, form.Password)
+		userDN, err = h.ldClient.CreateUser(form.Username, form.DisplayName, form.Email, form.Password, isAdminProvision)
 		if err != nil {
 			slog.Error("❌ Étape 2/5 échouée : création LDAP",
 				"username", form.Username,
@@ -245,65 +257,73 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		slog.Info("⏭️ Étape 2/5 ignorée (LDAP désactivé)")
 	}
 
+	var jellyfinID string
+
 	// ═══════════════════════════════════════════════════════════════════
 	// ÉTAPE 3 : Création du compte dans Jellyfin + profil
 	// ═══════════════════════════════════════════════════════════════════
-	slog.Info("🎬 Étape 3/5 : Création du compte Jellyfin", "username", form.Username)
+	if createJellyfinUser {
+		slog.Info("🎬 Étape 3/5 : Création du compte Jellyfin", "username", form.Username)
 
-	jfUser, err := h.jfClient.CreateUser(form.Username, form.Password)
-	if err != nil {
-		slog.Error("❌ Étape 3/5 échouée : création Jellyfin",
-			"username", form.Username,
-			"error", err,
-		)
+		jfUser, err := h.jfClient.CreateUser(form.Username, form.Password)
+		if err != nil {
+			slog.Error("❌ Étape 3/5 échouée : création Jellyfin",
+				"username", form.Username,
+				"error", err,
+			)
 
-		// ── ROLLBACK : Supprimer le compte LDAP créé à l'étape 2 ────
-		if h.ldClient != nil && userDN != "" {
-			slog.Warn("🔄 Rollback : suppression du compte LDAP", "dn", userDN)
-			if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-				slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise",
-					"dn", userDN,
-					"rollback_error", rbErr,
-					"original_error", err,
-				)
-				_ = h.db.LogAction("invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
-			} else {
-				slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+			// ── ROLLBACK : Supprimer le compte LDAP créé à l'étape 2 ────
+			if h.ldClient != nil && userDN != "" {
+				slog.Warn("🔄 Rollback : suppression du compte LDAP", "dn", userDN)
+				if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
+					slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise",
+						"dn", userDN,
+						"rollback_error", rbErr,
+						"original_error", err,
+					)
+					_ = h.db.LogAction("invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
+				} else {
+					slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+				}
 			}
+
+			_ = h.db.LogAction("invite.jellyfin.failed", form.Username, code, err.Error())
+			http.Error(w, "Erreur lors de la création du compte (Jellyfin)", http.StatusInternalServerError)
+			return
 		}
 
-		_ = h.db.LogAction("invite.jellyfin.failed", form.Username, code, err.Error())
-		http.Error(w, "Erreur lors de la création du compte (Jellyfin)", http.StatusInternalServerError)
-		return
-	}
+		jellyfinID = jfUser.ID
 
-	// Appliquer le profil d'invitation (bibliothèques, droits)
-	if err := h.jfClient.ApplyInviteProfile(jfUser.ID, profile); err != nil {
-		slog.Warn("Erreur lors de l'application du profil Jellyfin (non-bloquant)",
-			"jellyfin_id", jfUser.ID,
-			"error", err,
-		)
-		// Le profil n'est pas critique — on continue mais on log
-		_ = h.db.LogAction("invite.profile.failed", form.Username, jfUser.ID, err.Error())
-	}
+		// Appliquer le profil d'invitation (bibliothèques, droits)
+		if err := h.jfClient.ApplyInviteProfile(jfUser.ID, profile); err != nil {
+			slog.Warn("Erreur lors de l'application du profil Jellyfin (non-bloquant)",
+				"jellyfin_id", jfUser.ID,
+				"error", err,
+			)
+			// Le profil n'est pas critique — on continue mais on log
+			_ = h.db.LogAction("invite.profile.failed", form.Username, jfUser.ID, err.Error())
+		}
 
-	if err := h.applyGroupPolicyFromProfile(profile, jfUser.ID, userDN); err != nil {
-		slog.Warn("Erreur application mapping de groupe (non-bloquant)",
-			"group", strings.TrimSpace(profile.GroupName),
-			"jellyfin_id", jfUser.ID,
-			"error", err,
-		)
-		_ = h.db.LogAction("invite.group_mapping.failed", form.Username, jfUser.ID, err.Error())
-	}
+		if err := h.applyGroupPolicyFromProfile(profile, jfUser.ID, userDN); err != nil {
+			slog.Warn("Erreur application mapping de groupe (non-bloquant)",
+				"group", strings.TrimSpace(profile.GroupName),
+				"jellyfin_id", jfUser.ID,
+				"error", err,
+			)
+			_ = h.db.LogAction("invite.group_mapping.failed", form.Username, jfUser.ID, err.Error())
+		}
 
-	slog.Info("✅ Étape 3/5 terminée", "jellyfin_id", jfUser.ID)
+		slog.Info("✅ Étape 3/5 terminée", "jellyfin_id", jfUser.ID)
+	} else {
+		slog.Info("⏭️ Étape 3/5 ignorée (mode LDAP-only)", "username", form.Username)
+	}
 
 	// ═══════════════════════════════════════════════════════════════════
 	// ÉTAPE 4 : Enregistrement dans SQLite
 	// ═══════════════════════════════════════════════════════════════════
 	slog.Info("💾 Étape 4/5 : Enregistrement SQLite", "username", form.Username)
 
-	if err := h.registerUser(form, inv, jfUser.ID, userDN); err != nil {
+	if err := h.registerUser(form, inv, jellyfinID, userDN); err != nil {
 		slog.Error("❌ Étape 4/5 échouée : enregistrement SQLite",
 			"username", form.Username,
 			"error", err,
@@ -312,15 +332,17 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		// ── ROLLBACK : Supprimer Jellyfin ET LDAP ───────────────────
 		slog.Warn("🔄 Rollback : suppression Jellyfin + LDAP")
 
-		// Rollback Jellyfin
-		if rbErr := h.jfClient.DeleteUser(jfUser.ID); rbErr != nil {
-			slog.Error("⚠️ ROLLBACK JELLYFIN ÉCHOUÉ — intervention manuelle requise",
-				"jellyfin_id", jfUser.ID,
-				"rollback_error", rbErr,
-			)
-			_ = h.db.LogAction("invite.rollback.jellyfin.failed", form.Username, jfUser.ID, rbErr.Error())
-		} else {
-			slog.Info("✅ Rollback Jellyfin réussi", "id", jfUser.ID)
+		// Rollback Jellyfin (si mode hybride)
+		if createJellyfinUser && strings.TrimSpace(jellyfinID) != "" {
+			if rbErr := h.jfClient.DeleteUser(jellyfinID); rbErr != nil {
+				slog.Error("⚠️ ROLLBACK JELLYFIN ÉCHOUÉ — intervention manuelle requise",
+					"jellyfin_id", jellyfinID,
+					"rollback_error", rbErr,
+				)
+				_ = h.db.LogAction("invite.rollback.jellyfin.failed", form.Username, jellyfinID, rbErr.Error())
+			} else {
+				slog.Info("✅ Rollback Jellyfin réussi", "id", jellyfinID)
+			}
 		}
 
 		// Rollback LDAP
@@ -355,7 +377,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		Email:       form.Email,
 		InviteCode:  code,
 		InvitedBy:   inv.CreatedBy,
-		JellyfinID:  jfUser.ID,
+		JellyfinID:  jellyfinID,
 		LdapDN:      userDN,
 	})
 
@@ -399,18 +421,27 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	}
 
 	_ = h.db.LogAction("invite.used", form.Username, code,
-		fmt.Sprintf(`{"jellyfin_id":"%s","ldap_dn":"%s","email":"%s"}`, jfUser.ID, userDN, form.Email))
+		fmt.Sprintf(`{"jellyfin_id":"%s","ldap_dn":"%s","email":"%s","mode":"%s"}`,
+			jellyfinID,
+			userDN,
+			form.Email,
+			map[bool]string{true: "ldap_only", false: "hybrid"}[ldapOnlyMode],
+		))
 
 	slog.Info("🎉 Inscription terminée avec succès",
 		"username", form.Username,
-		"jellyfin_id", jfUser.ID,
+		"jellyfin_id", jellyfinID,
 		"ldap_dn", userDN,
 		"invitation", code,
 	)
 
 	// ── Réponse de succès ────────────────────────────────────────────────
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
-	td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé avec succès dans Jellyfin et dans l'annuaire.", form.DisplayName)
+	if createJellyfinUser {
+		td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé avec succès dans Jellyfin et dans l'annuaire.", form.DisplayName)
+	} else {
+		td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé dans l'annuaire LDAP. Le compte Jellyfin sera utilisé via votre integration LDAP.", form.DisplayName)
+	}
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
@@ -467,6 +498,20 @@ type invitePasswordPolicy struct {
 	RequireLower   bool
 	RequireDigit   bool
 	RequireSpecial bool
+}
+
+func shouldProvisionAsLDAPAdmin(profile jellyfin.InviteProfile, ldapCfg config.LDAPConfig) bool {
+	groupName := strings.ToLower(strings.TrimSpace(profile.GroupName))
+	if groupName == "" {
+		return false
+	}
+
+	adminGroup := strings.ToLower(strings.TrimSpace(ldapCfg.AdministratorsGroup))
+	if adminGroup != "" && groupName == adminGroup {
+		return true
+	}
+
+	return groupName == "admin" || groupName == "admins" || groupName == "administrator" || groupName == "administrators"
 }
 
 func resolveInvitePasswordPolicy(profile jellyfin.InviteProfile) invitePasswordPolicy {
@@ -622,11 +667,18 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		deleteAt = time.Now().AddDate(0, 0, deleteAfterDays)
 	}
 
+	var jellyfinIDValue interface{}
+	if strings.TrimSpace(jellyfinID) == "" {
+		jellyfinIDValue = nil
+	} else {
+		jellyfinIDValue = jellyfinID
+	}
+
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
 		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, invited_by, is_active, is_banned, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at)
 		 VALUES (?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, NULL)`,
-		jellyfinID, form.Username, form.Email, ldapDN, groupName, inv.Code, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
+		jellyfinIDValue, form.Username, form.Email, ldapDN, groupName, inv.Code, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)

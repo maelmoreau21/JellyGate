@@ -126,10 +126,14 @@ JG.closeModal = function () {
 
 /**
  * Set the language cookie and reload.
- * @param {string} lang - 'fr' or 'en'
+ * @param {string} lang - Supported language code
  */
 JG.setLang = function (lang) {
-    document.cookie = `lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
+    const raw = String(lang || '').trim().toLowerCase().replace('_', '-');
+    if (!raw) return;
+
+    const normalized = raw === 'pt' ? 'pt-br' : raw;
+    document.cookie = `lang=${normalized};path=/;max-age=31536000;SameSite=Lax`;
     window.location.reload();
 };
 

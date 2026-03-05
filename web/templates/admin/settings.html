@@ -112,6 +112,15 @@
     </div>
     <p class="text-slate-400 mt-1 mb-8">{{ .T "settings_subheading" }}</p>
 
+    <div class="settings-legend mb-8">
+      <div class="settings-legend-item"><span class="dot dot-general"></span>General</div>
+      <div class="settings-legend-item"><span class="dot dot-ldap"></span>LDAP</div>
+      <div class="settings-legend-item"><span class="dot dot-smtp"></span>SMTP</div>
+      <div class="settings-legend-item"><span class="dot dot-hooks"></span>Webhooks</div>
+      <div class="settings-legend-item"><span class="dot dot-email"></span>Templates</div>
+      <div class="settings-legend-item"><span class="dot dot-backup"></span>Sauvegardes</div>
+    </div>
+
     {{/* ── Tabs ───────────────────────────────────────────────────────── */}}
     <div class="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto">
       <button onclick="switchTab('general')" id="tab-general"
@@ -143,7 +152,7 @@
     {{/* ═══════════════════════════════════════════════════════════════ */}}
     {{/* TAB: Général */}}
     {{/* ═══════════════════════════════════════════════════════════════ */}}
-    <div id="panel-general" class="tab-panel">
+    <div id="panel-general" class="tab-panel settings-panel settings-panel-general">
       <div class="glass-card p-6 md:p-8">
 
         <div class="mb-6 pb-4 border-b border-white/10">
@@ -158,6 +167,14 @@
               <select id="default-lang" class="jg-input">
                 <option value="fr">🇫🇷 Français</option>
                 <option value="en">🇬🇧 English</option>
+                <option value="de">🇩🇪 Deutsch</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="it">🇮🇹 Italiano</option>
+                <option value="nl">🇳🇱 Nederlands</option>
+                <option value="pl">🇵🇱 Polski</option>
+                <option value="pt-br">🇧🇷 Português (Brasil)</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="zh">🇨🇳 中文</option>
               </select>
               <p class="text-xs text-slate-500 mt-1">{{ .T "settings_default_lang_help" }}</p>
             </div>
@@ -193,7 +210,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="btn-primary px-6 py-2.5">💾 {{ .T "btn_save" }}</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "btn_save" }}</button>
           </div>
         </form>
 
@@ -203,7 +220,7 @@
     {{/* ═══════════════════════════════════════════════════════════════ */}}
     {{/* TAB: LDAP */}}
     {{/* ═══════════════════════════════════════════════════════════════ */}}
-    <div id="panel-ldap" class="tab-panel hidden">
+    <div id="panel-ldap" class="tab-panel settings-panel settings-panel-ldap hidden">
       <div class="glass-card p-6 md:p-8">
 
         {{/* Master Toggle */}}
@@ -258,6 +275,13 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label class="jg-label" for="ldap-provision-mode">Mode de provisioning</label>
+                <select id="ldap-provision-mode" class="jg-input">
+                  <option value="hybrid">Hybride (LDAP + Jellyfin)</option>
+                  <option value="ldap_only">LDAP only (pas de creation API Jellyfin)</option>
+                </select>
+              </div>
+              <div>
                 <label class="jg-label" for="ldap-user-ou">User OU</label>
                 <input type="text" id="ldap-user-ou" class="jg-input" value="CN=Users">
               </div>
@@ -266,15 +290,23 @@
                 <input type="text" id="ldap-domain" class="jg-input" placeholder="example.com">
               </div>
             </div>
-            <div>
-              <label class="jg-label" for="ldap-user-group">Groupe AD (optionnel)</label>
-              <input type="text" id="ldap-user-group" class="jg-input"
-                placeholder="CN=JellyfinUsers,CN=Users,DC=example,DC=com">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="jg-label" for="ldap-jellyfin-group">Groupe LDAP utilisateurs</label>
+                <input type="text" id="ldap-jellyfin-group" class="jg-input" placeholder="jellyfin_group ou CN=...,DC=...">
+                <p class="text-xs text-slate-500 mt-1">Affecte automatiquement les utilisateurs standards.</p>
+              </div>
+              <div>
+                <label class="jg-label" for="ldap-admin-group">Groupe LDAP administrateurs</label>
+                <input type="text" id="ldap-admin-group" class="jg-input" placeholder="administrators_group ou CN=...,DC=...">
+                <p class="text-xs text-slate-500 mt-1">Utilise ce groupe pour les profils d'invitation de type admin.</p>
+              </div>
             </div>
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="btn-primary px-6 py-2.5">💾 Sauvegarder LDAP</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder LDAP</button>
           </div>
         </form>
 
@@ -284,7 +316,7 @@
     {{/* ═══════════════════════════════════════════════════════════════ */}}
     {{/* TAB: SMTP */}}
     {{/* ═══════════════════════════════════════════════════════════════ */}}
-    <div id="panel-smtp" class="tab-panel hidden">
+    <div id="panel-smtp" class="tab-panel settings-panel settings-panel-smtp hidden">
       <div class="glass-card p-6 md:p-8">
 
         <div class="mb-6 pb-4 border-b border-white/10">
@@ -327,7 +359,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="btn-primary px-6 py-2.5">💾 Sauvegarder SMTP</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder SMTP</button>
           </div>
         </form>
 
@@ -337,7 +369,7 @@
     {{/* ═══════════════════════════════════════════════════════════════ */}}
     {{/* TAB: Webhooks */}}
     {{/* ═══════════════════════════════════════════════════════════════ */}}
-    <div id="panel-webhooks" class="tab-panel hidden">
+    <div id="panel-webhooks" class="tab-panel settings-panel settings-panel-webhooks hidden">
       <div class="glass-card p-6 md:p-8">
 
         <div class="mb-6 pb-4 border-b border-white/10">
@@ -394,7 +426,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="btn-primary px-6 py-2.5">💾 Sauvegarder Webhooks</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder Webhooks</button>
           </div>
         </form>
 
@@ -404,7 +436,7 @@
     {{/* ═══════════════════════════════════════════════════════════════ */}}
     {{/* TAB: Modèles Email */}}
     {{/* ═══════════════════════════════════════════════════════════════ */}}
-    <div id="panel-email-templates" class="tab-panel hidden">
+    <div id="panel-email-templates" class="tab-panel settings-panel settings-panel-email hidden">
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-white/10">
           <h2 class="text-lg font-semibold text-white">Modèles de courriels (Templates)</h2>
@@ -536,7 +568,7 @@
 
           </div>
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="btn-primary px-6 py-2.5">💾 Sauvegarder les modèles</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder les modèles</button>
           </div>
         </form>
       </div>
@@ -545,7 +577,7 @@
     {{/* ═══════════════════════════════════════════════════════════════ */}}
     {{/* TAB: Sauvegardes */}}
     {{/* ═══════════════════════════════════════════════════════════════ */}}
-    <div id="panel-backup" class="tab-panel hidden">
+    <div id="panel-backup" class="tab-panel settings-panel settings-panel-backup hidden">
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-white/10">
           <h2 class="text-lg font-semibold text-white">Sauvegardes & restauration</h2>
@@ -569,7 +601,7 @@
               <input id="backup-retention" type="number" min="1" max="365" class="jg-input" value="7">
             </div>
             <div class="flex items-end">
-              <button type="submit" class="btn-primary px-6 py-2.5 w-full">💾 Sauvegarder la planification</button>
+              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">💾 Sauvegarder la planification</button>
             </div>
           </div>
         </form>
@@ -723,9 +755,11 @@
     document.getElementById('ldap-bind-dn').value = d.ldap.bind_dn || '';
     document.getElementById('ldap-bind-password').value = d.ldap.bind_password || '';
     document.getElementById('ldap-base-dn').value = d.ldap.base_dn || '';
+    document.getElementById('ldap-provision-mode').value = d.ldap.provision_mode || 'hybrid';
     document.getElementById('ldap-user-ou').value = d.ldap.user_ou || 'CN=Users';
     document.getElementById('ldap-domain').value = d.ldap.domain || '';
-    document.getElementById('ldap-user-group').value = d.ldap.user_group || '';
+    document.getElementById('ldap-jellyfin-group').value = d.ldap.jellyfin_group || d.ldap.user_group || 'jellyfin_group';
+    document.getElementById('ldap-admin-group').value = d.ldap.administrators_group || 'administrators_group';
     toggleLDAPFields();
 
     // SMTP
@@ -805,9 +839,12 @@
         bind_dn: document.getElementById('ldap-bind-dn').value,
         bind_password: document.getElementById('ldap-bind-password').value,
         base_dn: document.getElementById('ldap-base-dn').value,
+        provision_mode: document.getElementById('ldap-provision-mode').value,
         user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
         domain: document.getElementById('ldap-domain').value,
-        user_group: document.getElementById('ldap-user-group').value,
+        jellyfin_group: document.getElementById('ldap-jellyfin-group').value.trim(),
+        administrators_group: document.getElementById('ldap-admin-group').value.trim(),
+        user_group: document.getElementById('ldap-jellyfin-group').value.trim(),
       };
     } else if (section === 'smtp') {
       body = {
@@ -1029,9 +1066,42 @@
 </script>
 
 <style>
+  .settings-legend {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.6rem;
+  }
+
+  .settings-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 0.7rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 0.78rem;
+    color: rgb(203 213 225);
+  }
+
+  .settings-legend-item .dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    display: inline-block;
+  }
+
+  .dot-general { background: #22d3ee; }
+  .dot-ldap { background: #a78bfa; }
+  .dot-smtp { background: #38bdf8; }
+  .dot-hooks { background: #34d399; }
+  .dot-email { background: #f59e0b; }
+  .dot-backup { background: #fb7185; }
+
   .tab-btn {
     color: rgb(148 163 184);
     background: transparent;
+    border-bottom: 2px solid transparent;
   }
 
   .tab-btn:hover {
@@ -1040,10 +1110,27 @@
   }
 
   .tab-btn.active {
-    color: rgb(167 139 250);
-    background: rgba(139, 92, 246, 0.1);
-    border-bottom: 2px solid rgb(139, 92, 246);
+    color: rgb(226 232 240);
+    background: rgba(255, 255, 255, 0.08);
   }
+
+  #tab-general.active { border-bottom-color: #22d3ee; box-shadow: inset 0 -1px 0 rgba(34, 211, 238, 0.3); }
+  #tab-ldap.active { border-bottom-color: #a78bfa; box-shadow: inset 0 -1px 0 rgba(167, 139, 250, 0.3); }
+  #tab-smtp.active { border-bottom-color: #38bdf8; box-shadow: inset 0 -1px 0 rgba(56, 189, 248, 0.3); }
+  #tab-webhooks.active { border-bottom-color: #34d399; box-shadow: inset 0 -1px 0 rgba(52, 211, 153, 0.3); }
+  #tab-email-templates.active { border-bottom-color: #f59e0b; box-shadow: inset 0 -1px 0 rgba(245, 158, 11, 0.3); }
+  #tab-backup.active { border-bottom-color: #fb7185; box-shadow: inset 0 -1px 0 rgba(251, 113, 133, 0.3); }
+
+  .settings-panel .glass-card {
+    border-top: 3px solid rgba(255, 255, 255, 0.18);
+  }
+
+  .settings-panel-general .glass-card { border-top-color: rgba(34, 211, 238, 0.7); }
+  .settings-panel-ldap .glass-card { border-top-color: rgba(167, 139, 250, 0.7); }
+  .settings-panel-smtp .glass-card { border-top-color: rgba(56, 189, 248, 0.7); }
+  .settings-panel-webhooks .glass-card { border-top-color: rgba(52, 211, 153, 0.7); }
+  .settings-panel-email .glass-card { border-top-color: rgba(245, 158, 11, 0.7); }
+  .settings-panel-backup .glass-card { border-top-color: rgba(251, 113, 133, 0.7); }
 
   .form-label {
     display: block;
@@ -1053,10 +1140,10 @@
     margin-bottom: 0.35rem;
   }
 
-  .form-checkbox {
-    width: 1rem;
-    height: 1rem;
-    accent-color: rgb(139, 92, 246);
+  @media (max-width: 768px) {
+    .settings-legend {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 </style>
 {{ end }}

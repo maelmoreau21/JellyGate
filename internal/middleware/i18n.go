@@ -15,6 +15,8 @@ import (
 	"context"
 	"net/http"
 	"strings"
+
+	"github.com/maelmoreau21/JellyGate/internal/config"
 )
 
 // ── Context key ─────────────────────────────────────────────────────────────
@@ -28,19 +30,6 @@ func LangFromContext(ctx context.Context) string {
 		return lang
 	}
 	return "fr"
-}
-
-// ── Langues supportées ──────────────────────────────────────────────────────
-
-// supportedLangs contient les langues disponibles.
-var supportedLangs = map[string]bool{
-	"fr": true,
-	"en": true,
-}
-
-// isSupported vérifie si une langue est supportée.
-func isSupported(lang string) bool {
-	return supportedLangs[strings.ToLower(lang)]
 }
 
 // ── Provider ────────────────────────────────────────────────────────────────
@@ -64,8 +53,8 @@ func DetectLanguage(provider DefaultLangProvider) func(http.Handler) http.Handle
 
 			// 1. Cookie "lang"
 			if cookie, err := r.Cookie("lang"); err == nil {
-				candidate := strings.ToLower(strings.TrimSpace(cookie.Value))
-				if isSupported(candidate) {
+				candidate := config.NormalizeLanguageTag(cookie.Value)
+				if config.IsSupportedLanguage(candidate) {
 					lang = candidate
 				}
 			}
@@ -77,8 +66,8 @@ func DetectLanguage(provider DefaultLangProvider) func(http.Handler) http.Handle
 
 			// 3. Default (depuis la base de données)
 			if lang == "" {
-				lang = provider.GetDefaultLang()
-				if !isSupported(lang) {
+				lang = config.NormalizeLanguageTag(provider.GetDefaultLang())
+				if !config.IsSupportedLanguage(lang) {
 					lang = "fr"
 				}
 			}
@@ -99,7 +88,7 @@ func DetectLanguage(provider DefaultLangProvider) func(http.Handler) http.Handle
 //
 //	"fr-FR,fr;q=0.9,en;q=0.8" → "fr"
 //	"en-US,en;q=0.9"           → "en"
-//	"de-DE,de;q=0.9"           → "" (non supporté)
+//	"pt-BR,pt;q=0.9,en;q=0.8"  → "pt-br"
 func parseAcceptLanguage(header string) string {
 	if header == "" {
 		return ""
@@ -111,10 +100,9 @@ func parseAcceptLanguage(header string) string {
 		tag := strings.TrimSpace(strings.SplitN(part, ";", 2)[0])
 
 		// Extraire le code de langue de base (ex: "fr-FR" → "fr")
-		base := strings.ToLower(strings.SplitN(tag, "-", 2)[0])
-
-		if isSupported(base) {
-			return base
+		candidate := config.NormalizeLanguageTag(tag)
+		if config.IsSupportedLanguage(candidate) {
+			return candidate
 		}
 	}
 

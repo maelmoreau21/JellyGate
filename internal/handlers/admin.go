@@ -650,10 +650,31 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return fmt.Errorf("session absente")
 	}
 
+	if strings.TrimSpace(sess.UserID) == "" {
+		return fmt.Errorf("session sans user id jellyfin")
+	}
+
 	var userID int64
 	err := h.db.QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&userID)
 	if err == nil {
 		return nil
+	}
+	if err != sql.ErrNoRows {
+		return err
+	}
+
+	// Cas LDAP-only: l'utilisateur peut exister en base avec username sans jellyfin_id.
+	err = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, sess.Username).Scan(&userID)
+	if err == nil {
+		_, upErr := h.db.Exec(
+			`UPDATE users
+			 SET jellyfin_id = ?, is_active = TRUE, can_invite = ?, updated_at = datetime('now')
+			 WHERE id = ?`,
+			sess.UserID,
+			sess.IsAdmin,
+			userID,
+		)
+		return upErr
 	}
 	if err != sql.ErrNoRows {
 		return err
@@ -806,9 +827,9 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	newPreferredLang := strings.TrimSpace(preferredLang)
 	if req.PreferredLang != nil {
-		candidate := strings.TrimSpace(*req.PreferredLang)
-		if candidate != "" && candidate != "fr" && candidate != "en" {
-			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Langue invalide (fr/en)"})
+		candidate := config.NormalizeLanguageTag(*req.PreferredLang)
+		if candidate != "" && !config.IsSupportedLanguage(candidate) {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Langue invalide (fr, en, de, es, it, nl, pl, pt-BR, ru, zh)"})
 			return
 		}
 		newPreferredLang = candidate

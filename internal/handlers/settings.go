@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
@@ -163,11 +164,13 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validation : seules "fr" et "en" sont acceptées
-	if input.DefaultLang != "fr" && input.DefaultLang != "en" {
+	input.DefaultLang = config.NormalizeLanguageTag(input.DefaultLang)
+
+	// Validation : langues supportees par l'application
+	if !config.IsSupportedLanguage(input.DefaultLang) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
-			Message: "Langue invalide : doit être 'fr' ou 'en'",
+			Message: "Langue invalide: fr, en, de, es, it, nl, pl, pt-BR, ru, zh",
 		})
 		return
 	}
@@ -230,6 +233,30 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 		input.UserOU = "CN=Users"
 	}
 
+	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
+	if input.ProvisionMode == "" {
+		input.ProvisionMode = "hybrid"
+	}
+	if input.ProvisionMode != "hybrid" && input.ProvisionMode != "ldap_only" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Mode LDAP invalide: hybrid ou ldap_only",
+		})
+		return
+	}
+
+	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
+	input.AdministratorsGroup = strings.TrimSpace(input.AdministratorsGroup)
+	if input.JellyfinGroup == "" {
+		input.JellyfinGroup = "jellyfin_group"
+	}
+	if input.AdministratorsGroup == "" {
+		input.AdministratorsGroup = "administrators_group"
+	}
+
+	// Compatibilite: user_group reste renseigne pour les anciennes versions/exports.
+	input.UserGroup = input.JellyfinGroup
+
 	if err := h.db.SaveLDAPConfig(input); err != nil {
 		slog.Error("Erreur sauvegarde config LDAP", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
@@ -242,6 +269,7 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Configuration LDAP sauvegardée",
 		"enabled", input.Enabled,
 		"host", input.Host,
+		"provision_mode", input.ProvisionMode,
 	)
 
 	// Rechargement à chaud

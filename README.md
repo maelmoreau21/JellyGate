@@ -125,7 +125,7 @@ Voir [`.env.example`](.env.example) pour la liste complète.
 | `JELLYGATE_PORT` | ❌ | `8097` | Port d'écoute |
 | `JELLYGATE_BASE_URL` | ❌ | `http://localhost:8097` | URL publique JellyGate |
 | `JELLYGATE_DATA_DIR` | ❌ | `/data` | Dossier de persistance |
-| `JELLYGATE_DEFAULT_LANG` | ❌ | `fr` | Langue par défaut (`fr`/`en`) |
+| `JELLYGATE_DEFAULT_LANG` | ❌ | `fr` | Langue par défaut (`fr`, `en`, `de`, `es`, `it`, `nl`, `pl`, `pt-BR`, `ru`, `zh`) |
 | `DB_TYPE` | ❌ | `sqlite` | Type de base SQL (`sqlite` ou `postgres`) |
 | `DB_HOST` | ❌ | `postgres` | Hôte PostgreSQL (si `DB_TYPE=postgres`) |
 | `DB_PORT` | ❌ | `5432` | Port PostgreSQL |
@@ -153,6 +153,20 @@ docker compose -f docker-compose.postgres.yml up -d
 ```
 
 En mode PostgreSQL, l'onglet Sauvegardes masque automatiquement les actions SQLite natives et affiche une guidance `pg_dump`/`pg_restore`.
+
+## 🔐 Modes LDAP
+
+Dans `Admin > Paramètres > LDAP`, tu peux maintenant choisir:
+
+- `Hybride (LDAP + Jellyfin)` : création du compte dans LDAP puis Jellyfin (comportement historique).
+- `LDAP only` : création uniquement dans LDAP (pas de création via API Jellyfin).
+
+Groupes LDAP configurables:
+
+- `Groupe LDAP utilisateurs` (ex: `jellyfin_group`)
+- `Groupe LDAP administrateurs` (ex: `administrators_group`)
+
+En `LDAP only`, JellyGate stocke l'utilisateur localement sans `jellyfin_id` puis rattache automatiquement le compte quand Jellyfin fournit un ID (première connexion/activation côté Jellyfin).
 
 ## 🏠 Mode Home Server (Groupes + Expiration + Provisioning)
 
