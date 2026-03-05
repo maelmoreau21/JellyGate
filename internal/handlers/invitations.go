@@ -234,10 +234,12 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	ldapOnlyMode := h.ldClient != nil && ldapCfg.Enabled && strings.EqualFold(strings.TrimSpace(ldapCfg.ProvisionMode), "ldap_only")
 	createJellyfinUser := !ldapOnlyMode
 
-	isAdminProvision := shouldProvisionAsLDAPAdmin(profile, ldapCfg)
-	if isAdminProvision {
-		slog.Info("Provisioning LDAP admin detecte depuis le profil d'invitation",
+	ldapProvisionRole := resolveLDAPProvisionRole(profile, ldapCfg)
+	if ldapProvisionRole != jgldap.ProvisionRoleUser {
+		slog.Info("Provisioning LDAP role detecte depuis le profil d'invitation",
+			"role", ldapProvisionRole,
 			"group_name", strings.TrimSpace(profile.GroupName),
+			"inviter_group", strings.TrimSpace(ldapCfg.InviterGroup),
 			"admin_group", strings.TrimSpace(ldapCfg.AdministratorsGroup),
 		)
 	}
@@ -249,7 +251,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	if h.ldClient != nil {
 		slog.Info("🔐 Étape 2/5 : Création du compte LDAP", "username", form.Username)
 
-		userDN, err = h.ldClient.CreateUser(form.Username, form.DisplayName, form.Email, form.Password, isAdminProvision)
+		userDN, err = h.ldClient.CreateUser(form.Username, form.DisplayName, form.Email, form.Password, ldapProvisionRole)
 		if err != nil {
 			slog.Error("❌ Étape 2/5 échouée : création LDAP",
 				"username", form.Username,
@@ -331,7 +333,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	// ═══════════════════════════════════════════════════════════════════
 	slog.Info("💾 Étape 4/5 : Enregistrement SQLite", "username", form.Username)
 
-	if err := h.registerUser(form, inv, jellyfinID, userDN); err != nil {
+	if err := h.registerUser(form, inv, jellyfinID, userDN, ldapProvisionRole); err != nil {
 		slog.Error("❌ Étape 4/5 échouée : enregistrement SQLite",
 			"username", form.Username,
 			"error", err,
@@ -526,18 +528,35 @@ func resolveInviteUsernamePolicy(profile jellyfin.InviteProfile) (int, int) {
 	return minLength, maxLength
 }
 
-func shouldProvisionAsLDAPAdmin(profile jellyfin.InviteProfile, ldapCfg config.LDAPConfig) bool {
+func resolveLDAPProvisionRole(profile jellyfin.InviteProfile, ldapCfg config.LDAPConfig) string {
 	groupName := strings.ToLower(strings.TrimSpace(profile.GroupName))
 	if groupName == "" {
-		return false
+		return jgldap.ProvisionRoleUser
 	}
 
 	adminGroup := strings.ToLower(strings.TrimSpace(ldapCfg.AdministratorsGroup))
 	if adminGroup != "" && groupName == adminGroup {
-		return true
+		return jgldap.ProvisionRoleAdmin
 	}
 
-	return groupName == "admin" || groupName == "admins" || groupName == "administrator" || groupName == "administrators"
+	inviterGroup := strings.ToLower(strings.TrimSpace(ldapCfg.InviterGroup))
+	if inviterGroup != "" && groupName == inviterGroup {
+		return jgldap.ProvisionRoleInviter
+	}
+
+	switch groupName {
+	case "admin", "admins", "administrator", "administrators":
+		return jgldap.ProvisionRoleAdmin
+	case "inviter", "inviters", "parrainage", "sponsor", "sponsors":
+		return jgldap.ProvisionRoleInviter
+	default:
+		return jgldap.ProvisionRoleUser
+	}
+}
+
+func roleAllowsInvites(role string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(role))
+	return normalized == jgldap.ProvisionRoleInviter || normalized == jgldap.ProvisionRoleAdmin
 }
 
 func resolveInvitePasswordPolicy(profile jellyfin.InviteProfile) invitePasswordPolicy {
@@ -673,7 +692,7 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 
 // registerUser insère l'utilisateur dans SQLite et incrémente le compteur
 // d'utilisation de l'invitation. Les deux opérations sont dans une transaction.
-func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, jellyfinID, ldapDN string) error {
+func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, jellyfinID, ldapDN, ldapRole string) error {
 	tx, err := h.db.Begin()
 	if err != nil {
 		return fmt.Errorf("impossible de démarrer la transaction: %w", err)
@@ -717,11 +736,13 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		jellyfinIDValue = jellyfinID
 	}
 
+	canInvite := roleAllowsInvites(ldapRole)
+
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, invited_by, is_active, is_banned, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at)
-		 VALUES (?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, NULL)`,
-		jellyfinIDValue, form.Username, form.Email, ldapDN, groupName, inv.Code, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
+		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, invited_by, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at)
+		 VALUES (?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL)`,
+		jellyfinIDValue, form.Username, form.Email, ldapDN, groupName, inv.Code, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)

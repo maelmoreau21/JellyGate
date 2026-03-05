@@ -35,13 +35,6 @@
             </svg>
             <span class="jg-nav-label">My Account</span>
         </a>
-        <a href="/admin/messages" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
-            </svg>
-            <span class="jg-nav-label">Messages</span>
-        </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +116,7 @@
             </p>
             <div class="flex flex-wrap gap-2">
                 <a href="/admin/my-account" class="jg-btn">Ouvrir My Account</a>
-                <a href="/admin/messages" class="jg-btn jg-btn-ghost">Messages</a>
+                
                 {{ if .IsAdmin }}
                 <a href="/admin/automation" class="jg-btn jg-btn-ghost">Automation</a>
                 {{ end }}

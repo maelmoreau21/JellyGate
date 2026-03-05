@@ -4,14 +4,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -45,23 +43,7 @@ type MessageResponse struct {
 }
 
 func (h *AdminHandler) MessagesPage(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
-	td.AdminUsername = sess.Username
-	td.IsAdmin = sess.IsAdmin
-
-	if td.IsAdmin {
-		td.CanInvite = true
-	} else {
-		var canInvite bool
-		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
-		td.CanInvite = canInvite
-	}
-
-	if err := h.renderer.Render(w, "admin/messages.html", td); err != nil {
-		slog.Error("Erreur rendu messages page", "error", err)
-		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
-	}
+	http.Redirect(w, r, "/admin/users", http.StatusFound)
 }
 
 func csvTargetUserIDs(ids []int64) string {

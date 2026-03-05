@@ -33,13 +33,6 @@
       </svg>
       <span class="jg-nav-label">My Account</span>
     </a>
-    <a href="/admin/messages" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 4v-4z" />
-      </svg>
-      <span class="jg-nav-label">Messages</span>
-    </a>
     {{ if .IsAdmin }}
     <a href="/admin/users" class="jg-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,15 +104,6 @@
       </div>
     </div>
     <p class="text-slate-400 mt-1 mb-8">{{ .T "settings_subheading" }}</p>
-
-    <div class="settings-legend mb-8">
-      <div class="settings-legend-item"><span class="dot dot-general"></span>General</div>
-      <div class="settings-legend-item"><span class="dot dot-ldap"></span>LDAP</div>
-      <div class="settings-legend-item"><span class="dot dot-smtp"></span>SMTP</div>
-      <div class="settings-legend-item"><span class="dot dot-hooks"></span>Webhooks</div>
-      <div class="settings-legend-item"><span class="dot dot-email"></span>Templates</div>
-      <div class="settings-legend-item"><span class="dot dot-backup"></span>Sauvegardes</div>
-    </div>
 
     {{/* ── Tabs ───────────────────────────────────────────────────────── */}}
     <div class="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto">
@@ -291,16 +275,21 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label class="jg-label" for="ldap-jellyfin-group">Groupe LDAP utilisateurs</label>
-                <input type="text" id="ldap-jellyfin-group" class="jg-input" placeholder="jellyfin_group ou CN=...,DC=...">
+                <input type="text" id="ldap-jellyfin-group" class="jg-input" placeholder="jellyfin ou CN=...,DC=...">
                 <p class="text-xs text-slate-500 mt-1">Affecte automatiquement les utilisateurs standards.</p>
               </div>
               <div>
+                <label class="jg-label" for="ldap-inviter-group">Groupe LDAP parrainage</label>
+                <input type="text" id="ldap-inviter-group" class="jg-input" placeholder="jellyfin-Parrainage ou CN=...,DC=...">
+                <p class="text-xs text-slate-500 mt-1">Ce groupe donne l'accès normal + droits d'invitation.</p>
+              </div>
+              <div>
                 <label class="jg-label" for="ldap-admin-group">Groupe LDAP administrateurs</label>
-                <input type="text" id="ldap-admin-group" class="jg-input" placeholder="administrators_group ou CN=...,DC=...">
-                <p class="text-xs text-slate-500 mt-1">Utilise ce groupe pour les profils d'invitation de type admin.</p>
+                <input type="text" id="ldap-admin-group" class="jg-input" placeholder="jellyfin-administrateur ou CN=...,DC=...">
+                <p class="text-xs text-slate-500 mt-1">Ce groupe cible les comptes à contrôle complet.</p>
               </div>
             </div>
 
@@ -712,6 +701,7 @@
       user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
       domain: document.getElementById('ldap-domain').value,
       jellyfin_group: document.getElementById('ldap-jellyfin-group').value.trim(),
+      inviter_group: document.getElementById('ldap-inviter-group').value.trim(),
       administrators_group: document.getElementById('ldap-admin-group').value.trim(),
       user_group: document.getElementById('ldap-jellyfin-group').value.trim(),
     };
@@ -832,8 +822,9 @@
     document.getElementById('ldap-provision-mode').value = d.ldap.provision_mode || 'hybrid';
     document.getElementById('ldap-user-ou').value = d.ldap.user_ou || 'CN=Users';
     document.getElementById('ldap-domain').value = d.ldap.domain || '';
-    document.getElementById('ldap-jellyfin-group').value = d.ldap.jellyfin_group || d.ldap.user_group || 'jellyfin_group';
-    document.getElementById('ldap-admin-group').value = d.ldap.administrators_group || 'administrators_group';
+    document.getElementById('ldap-jellyfin-group').value = d.ldap.jellyfin_group || d.ldap.user_group || 'jellyfin';
+    document.getElementById('ldap-inviter-group').value = d.ldap.inviter_group || 'jellyfin-Parrainage';
+    document.getElementById('ldap-admin-group').value = d.ldap.administrators_group || 'jellyfin-administrateur';
     toggleLDAPFields();
 
     // SMTP
@@ -1161,38 +1152,6 @@
 </script>
 
 <style>
-  .settings-legend {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.6rem;
-  }
-
-  .settings-legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.5rem 0.65rem;
-    border-radius: 0.7rem;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.04);
-    font-size: 0.78rem;
-    color: rgb(203 213 225);
-  }
-
-  .settings-legend-item .dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 999px;
-    display: inline-block;
-  }
-
-  .dot-general { background: #22d3ee; }
-  .dot-ldap { background: #a78bfa; }
-  .dot-smtp { background: #38bdf8; }
-  .dot-hooks { background: #34d399; }
-  .dot-email { background: #f59e0b; }
-  .dot-backup { background: #fb7185; }
-
   .tab-btn {
     color: rgb(148 163 184);
     background: transparent;
@@ -1235,10 +1194,5 @@
     margin-bottom: 0.35rem;
   }
 
-  @media (max-width: 768px) {
-    .settings-legend {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
 </style>
 {{ end }}

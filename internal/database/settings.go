@@ -148,8 +148,9 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 		UseTLS:              true,
 		UserOU:              "CN=Users",
 		ProvisionMode:       "hybrid",
-		JellyfinGroup:       "jellyfin_group",
-		AdministratorsGroup: "administrators_group",
+		JellyfinGroup:       "jellyfin",
+		InviterGroup:        "jellyfin-Parrainage",
+		AdministratorsGroup: "jellyfin-administrateur",
 	}
 
 	raw, err := db.GetSetting(SettingLDAPConfig)
@@ -177,10 +178,13 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 		cfg.JellyfinGroup = strings.TrimSpace(cfg.UserGroup)
 	}
 	if strings.TrimSpace(cfg.JellyfinGroup) == "" {
-		cfg.JellyfinGroup = "jellyfin_group"
+		cfg.JellyfinGroup = "jellyfin"
+	}
+	if strings.TrimSpace(cfg.InviterGroup) == "" {
+		cfg.InviterGroup = "jellyfin-Parrainage"
 	}
 	if strings.TrimSpace(cfg.AdministratorsGroup) == "" {
-		cfg.AdministratorsGroup = "administrators_group"
+		cfg.AdministratorsGroup = "jellyfin-administrateur"
 	}
 
 	return cfg, nil

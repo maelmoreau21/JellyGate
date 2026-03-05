@@ -75,12 +75,16 @@ func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
 	}
 
 	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
+	input.InviterGroup = strings.TrimSpace(input.InviterGroup)
 	input.AdministratorsGroup = strings.TrimSpace(input.AdministratorsGroup)
 	if input.JellyfinGroup == "" {
-		input.JellyfinGroup = "jellyfin_group"
+		input.JellyfinGroup = "jellyfin"
+	}
+	if input.InviterGroup == "" {
+		input.InviterGroup = "jellyfin-Parrainage"
 	}
 	if input.AdministratorsGroup == "" {
-		input.AdministratorsGroup = "administrators_group"
+		input.AdministratorsGroup = "jellyfin-administrateur"
 	}
 	input.UserGroup = input.JellyfinGroup
 }
@@ -452,12 +456,16 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
+	input.InviterGroup = strings.TrimSpace(input.InviterGroup)
 	input.AdministratorsGroup = strings.TrimSpace(input.AdministratorsGroup)
 	if input.JellyfinGroup == "" {
-		input.JellyfinGroup = "jellyfin_group"
+		input.JellyfinGroup = "jellyfin"
+	}
+	if input.InviterGroup == "" {
+		input.InviterGroup = "jellyfin-Parrainage"
 	}
 	if input.AdministratorsGroup == "" {
-		input.AdministratorsGroup = "administrators_group"
+		input.AdministratorsGroup = "jellyfin-administrateur"
 	}
 
 	// Compatibilite: user_group reste renseigne pour les anciennes versions/exports.

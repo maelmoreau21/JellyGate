@@ -156,8 +156,7 @@ select.jg-input optgroup {
 }
 
 .jg-lang-switcher {
-    z-index: 70;
-    width: min(280px, calc(100vw - 1.5rem));
+    width: 100%;
     border: 1px solid rgba(139, 92, 246, 0.35);
     background: linear-gradient(145deg, rgba(15, 23, 42, 0.75), rgba(30, 27, 75, 0.75));
     box-shadow: 0 10px 28px rgba(8, 11, 24, 0.45);
@@ -168,6 +167,10 @@ select.jg-input optgroup {
 .jg-lang-switcher .jg-lang-select {
     width: 100%;
     min-width: 0;
+}
+
+.jg-lang-switcher-sidebar {
+    margin-top: 0.75rem;
 }
 
 /* ── Labels ──────────────────────────────────────────────────────────────── */
@@ -790,11 +793,6 @@ select.jg-input optgroup {
         max-width: none;
     }
 
-    #lang-switcher {
-        bottom: 0.75rem;
-        right: 0.75rem;
-        width: min(240px, calc(100vw - 1rem));
-    }
 }
 
 @media (max-width: 1024px) {

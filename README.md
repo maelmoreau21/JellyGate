@@ -158,8 +158,9 @@ Dans `Admin > Paramètres > LDAP`, tu peux maintenant choisir:
 
 Groupes LDAP configurables:
 
-- `Groupe LDAP utilisateurs` (ex: `jellyfin_group`)
-- `Groupe LDAP administrateurs` (ex: `administrators_group`)
+- `Groupe LDAP utilisateurs` (ex: `jellyfin`)
+- `Groupe LDAP parrainage` (ex: `jellyfin-Parrainage`)
+- `Groupe LDAP administrateurs` (ex: `jellyfin-administrateur`)
 
 En `LDAP only`, JellyGate stocke l'utilisateur localement sans `jellyfin_id` puis rattache automatiquement le compte quand Jellyfin fournit un ID (première connexion/activation côté Jellyfin).
 

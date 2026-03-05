@@ -149,6 +149,17 @@ document.addEventListener('keydown', (e) => {
 // ── Auto-hide flash messages ────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+    const langSwitcher = document.getElementById('lang-switcher');
+    if (langSwitcher) {
+        const sidebarFooter = document.querySelector('.jg-sidebar .jg-sidebar-footer');
+        if (sidebarFooter) {
+            langSwitcher.classList.add('jg-lang-switcher-sidebar');
+            sidebarFooter.appendChild(langSwitcher);
+        } else {
+            langSwitcher.style.display = 'none';
+        }
+    }
+
     // Auto-focus first input in forms
     const firstInput = document.querySelector('form .jg-input');
     if (firstInput && !firstInput.value) {

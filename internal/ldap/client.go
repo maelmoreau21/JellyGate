@@ -49,6 +49,11 @@ const (
 
 	// objectClassTop est la classe racine de tous les objets AD.
 	objectClassTop = "top"
+
+	// Roles de provisioning LDAP utilises pour l'affectation automatique de groupe.
+	ProvisionRoleUser    = "user"
+	ProvisionRoleInviter = "inviter"
+	ProvisionRoleAdmin   = "admin"
 )
 
 // ── Client ──────────────────────────────────────────────────────────────────
@@ -125,7 +130,7 @@ func (c *Client) connect() (*goldap.Conn, error) {
 //
 // Retourne le DN (Distinguished Name) de l'utilisateur créé.
 // En cas d'erreur, aucun nettoyage n'est nécessaire côté LDAP (l'ADD est atomique).
-func (c *Client) CreateUser(username, displayName, email, password string, isAdmin bool) (string, error) {
+func (c *Client) CreateUser(username, displayName, email, password, role string) (string, error) {
 	conn, err := c.connect()
 	if err != nil {
 		return "", fmt.Errorf("ldap.CreateUser: %w", err)
@@ -185,11 +190,11 @@ func (c *Client) CreateUser(username, displayName, email, password string, isAdm
 
 	slog.Info("Utilisateur AD créé", "dn", userDN, "username", username, "upn", upn)
 
-	if err := c.assignUserToDefaultGroup(conn, userDN, isAdmin); err != nil {
+	if err := c.assignUserToDefaultGroup(conn, userDN, role); err != nil {
 		// Log l'erreur mais ne fait pas échouer la création
 		slog.Warn("Impossible d'ajouter l'utilisateur au groupe LDAP cible",
 			"dn", userDN,
-			"is_admin", isAdmin,
+			"role", role,
 			"error", err,
 		)
 	}
@@ -357,15 +362,24 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 // ── Opérations internes ─────────────────────────────────────────────────────
 
 // assignUserToDefaultGroup ajoute un utilisateur au groupe cible selon son role.
-// Admin -> administrators_group, sinon jellyfin_group (avec fallback legacy user_group).
-func (c *Client) assignUserToDefaultGroup(conn *goldap.Conn, userDN string, isAdmin bool) error {
+// user -> jellyfin, inviter -> jellyfin-Parrainage, admin -> jellyfin-administrateur.
+func (c *Client) assignUserToDefaultGroup(conn *goldap.Conn, userDN, role string) error {
+	normalizedRole := strings.ToLower(strings.TrimSpace(role))
 	groupRef := strings.TrimSpace(c.cfg.JellyfinGroup)
-	if isAdmin {
+
+	switch normalizedRole {
+	case ProvisionRoleAdmin:
 		groupRef = strings.TrimSpace(c.cfg.AdministratorsGroup)
 		if groupRef == "" {
 			groupRef = strings.TrimSpace(c.cfg.JellyfinGroup)
 		}
+	case ProvisionRoleInviter:
+		groupRef = strings.TrimSpace(c.cfg.InviterGroup)
+		if groupRef == "" {
+			groupRef = strings.TrimSpace(c.cfg.JellyfinGroup)
+		}
 	}
+
 	if groupRef == "" {
 		groupRef = strings.TrimSpace(c.cfg.UserGroup)
 	}

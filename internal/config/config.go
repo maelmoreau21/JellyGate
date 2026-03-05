@@ -126,6 +126,7 @@ type LDAPConfig struct {
 
 	// Groupes LDAP cibles pour l'affectation automatique des comptes.
 	JellyfinGroup       string `json:"jellyfin_group"`
+	InviterGroup        string `json:"inviter_group"`
 	AdministratorsGroup string `json:"administrators_group"`
 
 	Domain string `json:"domain"` // Domaine AD (ex: home.lan)
