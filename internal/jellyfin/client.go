@@ -111,6 +111,14 @@ type InviteProfile struct {
 	MaxSessions        int      `json:"max_sessions"`
 	BitrateLimit       int      `json:"bitrate_limit"`    // 0 = illimité
 	UserExpiryDays     int      `json:"user_expiry_days"` // 0 = illimité
+	ExpiryAction       string   `json:"expiry_action"`    // disable|delete|disable_then_delete
+	DeleteAfterDays    int      `json:"delete_after_days"`
+
+	PasswordMinLength      int  `json:"password_min_length"`
+	PasswordRequireUpper   bool `json:"password_require_upper"`
+	PasswordRequireLower   bool `json:"password_require_lower"`
+	PasswordRequireDigit   bool `json:"password_require_digit"`
+	PasswordRequireSpecial bool `json:"password_require_special"`
 
 	// JFA-Go Features
 	ForcedUsername string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom

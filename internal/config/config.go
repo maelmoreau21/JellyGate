@@ -142,6 +142,13 @@ type JellyfinPolicyPreset struct {
 	MaxSessions        int      `json:"max_sessions"`
 	BitrateLimit       int      `json:"bitrate_limit"`
 	TemplateUserID     string   `json:"template_user_id"`
+	PasswordMinLength  int      `json:"password_min_length"`
+	RequireUpper       bool     `json:"require_upper"`
+	RequireLower       bool     `json:"require_lower"`
+	RequireDigit       bool     `json:"require_digit"`
+	RequireSpecial     bool     `json:"require_special"`
+	ExpiryAction       string   `json:"expiry_action"`
+	DeleteAfterDays    int      `json:"delete_after_days"`
 }
 
 // DefaultJellyfinPolicyPresets retourne un ensemble de presets initiaux.
@@ -156,6 +163,8 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			EnableRemoteAccess: true,
 			MaxSessions:        0,
 			BitrateLimit:       0,
+			PasswordMinLength:  8,
+			ExpiryAction:       "disable",
 		},
 		{
 			ID:                 "limited",
@@ -166,6 +175,9 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			EnableRemoteAccess: true,
 			MaxSessions:        2,
 			BitrateLimit:       4000,
+			PasswordMinLength:  10,
+			RequireDigit:       true,
+			ExpiryAction:       "disable",
 		},
 	}
 }

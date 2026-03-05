@@ -215,6 +215,7 @@ func main() {
 				r.Get("/automation", automationHandler.AutomationPage)
 				r.Route("/api/users", func(r chi.Router) {
 					r.Get("/", adminHandler.ListUsers)
+					r.Get("/{id}/timeline", adminHandler.UserTimeline)
 					r.Post("/bulk", adminHandler.BulkUsersAction)
 					r.Post("/sync", adminHandler.SyncJellyfinUsers)
 					r.Patch("/{id}", adminHandler.UpdateUser)

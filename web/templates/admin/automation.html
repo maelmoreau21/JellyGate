@@ -179,15 +179,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const idEl = read('id');
             const nameEl = read('name');
             if (!idEl || !nameEl) return;
+            const existing = presets[idx] || {};
             next.push({
+                ...existing,
                 id: (idEl.value || '').trim(),
                 name: (nameEl.value || '').trim(),
                 enable_download: !!read('enable_download')?.checked,
                 enable_remote_access: !!read('enable_remote_access')?.checked,
                 max_sessions: parseInt(read('max_sessions')?.value || '0', 10) || 0,
                 bitrate_limit: parseInt(read('bitrate_limit')?.value || '0', 10) || 0,
-                enable_all_folders: true,
-                enabled_folder_ids: [],
+                enable_all_folders: existing.enable_all_folders !== false,
+                enabled_folder_ids: Array.isArray(existing.enabled_folder_ids) ? existing.enabled_folder_ids : [],
+                password_min_length: Number.isInteger(existing.password_min_length) ? existing.password_min_length : 8,
+                require_upper: !!existing.require_upper,
+                require_lower: !!existing.require_lower,
+                require_digit: !!existing.require_digit,
+                require_special: !!existing.require_special,
+                expiry_action: existing.expiry_action || 'disable',
+                delete_after_days: Number.isInteger(existing.delete_after_days) ? existing.delete_after_days : 0,
             });
         });
         return next;
@@ -235,6 +244,13 @@ document.addEventListener('DOMContentLoaded', () => {
             bitrate_limit: 0,
             enable_all_folders: true,
             enabled_folder_ids: [],
+            password_min_length: 8,
+            require_upper: false,
+            require_lower: false,
+            require_digit: false,
+            require_special: false,
+            expiry_action: 'disable',
+            delete_after_days: 0,
         });
         renderPresets();
     });

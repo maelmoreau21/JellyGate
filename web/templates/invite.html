@@ -45,7 +45,12 @@
         {{ else }}
         {{/* Carte formulaire */}}
         <div class="glass-card p-8 glow-accent">
-            <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate>
+            <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate
+                data-password-min-length="{{ or .Data.PasswordMinLength 8 }}"
+                data-password-require-upper="{{ .Data.PasswordRequireUpper }}"
+                data-password-require-lower="{{ .Data.PasswordRequireLower }}"
+                data-password-require-digit="{{ .Data.PasswordRequireDigit }}"
+                data-password-require-special="{{ .Data.PasswordRequireSpecial }}">
 
                 {{/* Username */}}
                 <div class="mb-5">
@@ -75,15 +80,18 @@
                 <div class="mb-5">
                     <label class="jg-label" for="password">{{ .T "field_password" }}</label>
                     <input type="password" id="password" name="password" class="jg-input"
-                        placeholder='{{ .T "field_password_placeholder" }}' required minlength="8"
+                        placeholder='{{ .T "field_password_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}"
                         autocomplete="new-password">
+                    <p id="password-policy-msg" class="text-xs mt-1 text-slate-500">
+                        Règles: {{ or .Data.PasswordMinLength 8 }} caractères minimum{{ if .Data.PasswordRequireUpper }}, 1 majuscule{{ end }}{{ if .Data.PasswordRequireLower }}, 1 minuscule{{ end }}{{ if .Data.PasswordRequireDigit }}, 1 chiffre{{ end }}{{ if .Data.PasswordRequireSpecial }}, 1 caractère spécial{{ end }}.
+                    </p>
                 </div>
 
                 {{/* Password Confirm */}}
                 <div class="mb-6">
                     <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
                     <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
-                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="8"
+                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}"
                         autocomplete="new-password">
                     <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
                 </div>
@@ -109,14 +117,69 @@
 <script>
     (function () {
         const form = document.getElementById('invite-form');
+        if (!form) return;
+
         const pw = document.getElementById('password');
         const pwc = document.getElementById('password_confirm');
         const msg = document.getElementById('password-match-msg');
+        const policyMsg = document.getElementById('password-policy-msg');
         const inputs = form.querySelectorAll('.jg-input');
+        const policy = {
+            minLength: parseInt(form.dataset.passwordMinLength || '8', 10) || 8,
+            requireUpper: (form.dataset.passwordRequireUpper || '').toLowerCase() === 'true',
+            requireLower: (form.dataset.passwordRequireLower || '').toLowerCase() === 'true',
+            requireDigit: (form.dataset.passwordRequireDigit || '').toLowerCase() === 'true',
+            requireSpecial: (form.dataset.passwordRequireSpecial || '').toLowerCase() === 'true',
+        };
+
+        function passwordPolicyErrors(value) {
+            const errors = [];
+            if (value.length < policy.minLength) {
+                errors.push(`au moins ${policy.minLength} caractères`);
+            }
+            if (policy.requireUpper && !/[A-Z]/.test(value)) {
+                errors.push('une lettre majuscule');
+            }
+            if (policy.requireLower && !/[a-z]/.test(value)) {
+                errors.push('une lettre minuscule');
+            }
+            if (policy.requireDigit && !/[0-9]/.test(value)) {
+                errors.push('un chiffre');
+            }
+            if (policy.requireSpecial && !/[^A-Za-z0-9]/.test(value)) {
+                errors.push('un caractère spécial');
+            }
+            return errors;
+        }
 
         // Live validation
         inputs.forEach(input => {
             input.addEventListener('input', () => {
+                if (input.id === 'password') {
+                    const errors = passwordPolicyErrors(input.value || '');
+                    if (!input.value) {
+                        input.classList.remove('is-valid', 'is-invalid');
+                        if (policyMsg) {
+                            policyMsg.className = 'text-xs mt-1 text-slate-500';
+                        }
+                    } else if (errors.length === 0) {
+                        input.classList.remove('is-invalid');
+                        input.classList.add('is-valid');
+                        if (policyMsg) {
+                            policyMsg.textContent = '✓ Règles de mot de passe respectées';
+                            policyMsg.className = 'text-xs mt-1 text-emerald-400';
+                        }
+                    } else {
+                        input.classList.remove('is-valid');
+                        input.classList.add('is-invalid');
+                        if (policyMsg) {
+                            policyMsg.textContent = 'Exigences manquantes: ' + errors.join(', ');
+                            policyMsg.className = 'text-xs mt-1 text-red-400';
+                        }
+                    }
+                    return;
+                }
+
                 if (input.validity.valid && input.value) {
                     input.classList.remove('is-invalid');
                     input.classList.add('is-valid');
@@ -150,7 +213,15 @@
 
         // Submit button loading
         form.addEventListener('submit', function (e) {
-            if (pw.value !== pwc.value) { e.preventDefault(); return; }
+            const pwErrors = passwordPolicyErrors(pw.value || '');
+            if (pwErrors.length > 0 || pw.value !== pwc.value) {
+                e.preventDefault();
+                if (pwErrors.length > 0 && policyMsg) {
+                    policyMsg.textContent = 'Exigences manquantes: ' + pwErrors.join(', ');
+                    policyMsg.className = 'text-xs mt-1 text-red-400';
+                }
+                return;
+            }
             const btn = document.getElementById('submit-btn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span> ' + (window.__t?.submitting || 'Création en cours...');

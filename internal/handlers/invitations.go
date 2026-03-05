@@ -107,17 +107,23 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.Invitation = inv
+	profile := jellyfin.InviteProfile{PasswordMinLength: 8}
 
 	// Analyser le profil pour vérifier si un username est forcé (Flux B)
 	if inv.JellyfinProfile != "" {
-		var profile jellyfin.InviteProfile
-		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &profile); err == nil && profile.ForcedUsername != "" {
-			if td.Data == nil {
-				td.Data = make(map[string]interface{})
-			}
+		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &profile); err != nil {
+			slog.Warn("Profil Jellyfin invalide dans invitation page", "code", code, "error", err)
+		} else if profile.ForcedUsername != "" {
 			td.Data["ForcedUsername"] = profile.ForcedUsername
 		}
 	}
+
+	pwdPolicy := resolveInvitePasswordPolicy(profile)
+	td.Data["PasswordMinLength"] = pwdPolicy.MinLength
+	td.Data["PasswordRequireUpper"] = pwdPolicy.RequireUpper
+	td.Data["PasswordRequireLower"] = pwdPolicy.RequireLower
+	td.Data["PasswordRequireDigit"] = pwdPolicy.RequireDigit
+	td.Data["PasswordRequireSpecial"] = pwdPolicy.RequireSpecial
 
 	if err := h.renderer.Render(w, "invite.html", td); err != nil {
 		slog.Error("Erreur rendu invitation page", "error", err)
@@ -152,12 +158,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	form, err := h.validateForm(r)
-	if err != nil {
-		slog.Warn("Formulaire d'inscription invalide", "code", code, "error", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	submittedUsername := strings.TrimSpace(r.FormValue("username"))
 
 	// ═══════════════════════════════════════════════════════════════════
 	// ÉTAPE 1 : Validation SQLite
@@ -167,7 +168,11 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	inv, err := h.getValidInvitation(code)
 	if err != nil {
 		slog.Warn("Invitation invalide", "code", code, "error", err)
-		_ = h.db.LogAction("invite.validation.failed", form.Username, code, err.Error())
+		targetUsername := strings.TrimSpace(submittedUsername)
+		if targetUsername == "" {
+			targetUsername = "unknown"
+		}
+		_ = h.db.LogAction("invite.validation.failed", targetUsername, code, err.Error())
 		http.Error(w, "Invitation invalide ou expirée", http.StatusForbidden)
 		return
 	}
@@ -189,10 +194,27 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	form, err := h.validateForm(r, &profile)
+	if err != nil {
+		slog.Warn("Formulaire d'inscription invalide", "code", code, "error", err)
+		targetUsername := strings.TrimSpace(submittedUsername)
+		if targetUsername == "" {
+			targetUsername = "unknown"
+		}
+		_ = h.db.LogAction("invite.validation.failed", targetUsername, code, err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	// ── JFA-Go Flux B (Forced Username) ─────────────────────────
 	if profile.ForcedUsername != "" {
 		slog.Debug("Flux JFA-Go (Forced Username) détecté", "forced", profile.ForcedUsername, "submitted", form.Username)
 		form.Username = profile.ForcedUsername
+		if err := validateInviteUsername(form.Username); err != nil {
+			slog.Error("Nom d'utilisateur forcé invalide", "code", code, "forced_username", profile.ForcedUsername, "error", err)
+			http.Error(w, "Erreur de configuration de l'invitation", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	slog.Info("✅ Étape 1/5 terminée", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))
@@ -336,9 +358,9 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 		if combinedTemplate != "" {
 			emailData := map[string]string{
-				"Username":   form.Username,
+				"Username":    form.Username,
 				"DisplayName": form.DisplayName,
-				"Email":      form.Email,
+				"Email":       form.Email,
 				"InviteCode":  code,
 				"InviteLink":  strings.TrimRight(h.cfg.BaseURL, "/") + "/invite/" + code,
 				"HelpURL":     h.cfg.BaseURL,
@@ -376,7 +398,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 // ── Méthodes internes ───────────────────────────────────────────────────────
 
 // validateForm valide et extrait les données du formulaire d'inscription.
-func (h *InvitationHandler) validateForm(r *http.Request) (*inviteFormData, error) {
+func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.InviteProfile) (*inviteFormData, error) {
 	username := strings.TrimSpace(r.FormValue("username"))
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
@@ -384,25 +406,18 @@ func (h *InvitationHandler) validateForm(r *http.Request) (*inviteFormData, erro
 	displayName := strings.TrimSpace(r.FormValue("display_name"))
 
 	// Validations
-	if username == "" {
-		return nil, fmt.Errorf("le nom d'utilisateur est requis")
-	}
-	if len(username) < 3 || len(username) > 32 {
-		return nil, fmt.Errorf("le nom d'utilisateur doit faire entre 3 et 32 caractères")
-	}
-	// Caractères autorisés : lettres, chiffres, tirets, underscores
-	for _, c := range username {
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
-			return nil, fmt.Errorf("le nom d'utilisateur ne peut contenir que des lettres, chiffres, tirets et underscores")
-		}
+	if err := validateInviteUsername(username); err != nil {
+		return nil, err
 	}
 
 	if password == "" {
 		return nil, fmt.Errorf("le mot de passe est requis")
 	}
-	if len(password) < 8 {
-		return nil, fmt.Errorf("le mot de passe doit faire au minimum 8 caractères")
+
+	if err := validateInvitePassword(password, profile); err != nil {
+		return nil, err
 	}
+
 	if password != passwordConfirm {
 		return nil, fmt.Errorf("les mots de passe ne correspondent pas")
 	}
@@ -417,6 +432,83 @@ func (h *InvitationHandler) validateForm(r *http.Request) (*inviteFormData, erro
 		Password:    password,
 		DisplayName: displayName,
 	}, nil
+}
+
+type invitePasswordPolicy struct {
+	MinLength      int
+	RequireUpper   bool
+	RequireLower   bool
+	RequireDigit   bool
+	RequireSpecial bool
+}
+
+func resolveInvitePasswordPolicy(profile jellyfin.InviteProfile) invitePasswordPolicy {
+	minLength := profile.PasswordMinLength
+	if minLength <= 0 {
+		minLength = 8
+	}
+
+	return invitePasswordPolicy{
+		MinLength:      minLength,
+		RequireUpper:   profile.PasswordRequireUpper,
+		RequireLower:   profile.PasswordRequireLower,
+		RequireDigit:   profile.PasswordRequireDigit,
+		RequireSpecial: profile.PasswordRequireSpecial,
+	}
+}
+
+func validateInviteUsername(username string) error {
+	if username == "" {
+		return fmt.Errorf("le nom d'utilisateur est requis")
+	}
+	if len(username) < 3 || len(username) > 32 {
+		return fmt.Errorf("le nom d'utilisateur doit faire entre 3 et 32 caractères")
+	}
+
+	for _, c := range username {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
+			return fmt.Errorf("le nom d'utilisateur ne peut contenir que des lettres, chiffres, tirets et underscores")
+		}
+	}
+
+	return nil
+}
+
+func validateInvitePassword(password string, profile *jellyfin.InviteProfile) error {
+	policy := resolveInvitePasswordPolicy(jellyfin.InviteProfile{})
+	if profile != nil {
+		policy = resolveInvitePasswordPolicy(*profile)
+	}
+
+	if len(password) < policy.MinLength {
+		return fmt.Errorf("le mot de passe doit faire au minimum %d caractères", policy.MinLength)
+	}
+	if policy.RequireUpper && !strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
+		return fmt.Errorf("le mot de passe doit contenir au moins une lettre majuscule")
+	}
+	if policy.RequireLower && !strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") {
+		return fmt.Errorf("le mot de passe doit contenir au moins une lettre minuscule")
+	}
+	if policy.RequireDigit && !strings.ContainsAny(password, "0123456789") {
+		return fmt.Errorf("le mot de passe doit contenir au moins un chiffre")
+	}
+	if policy.RequireSpecial {
+		hasSpecial := false
+		for _, c := range password {
+			isLower := c >= 'a' && c <= 'z'
+			isUpper := c >= 'A' && c <= 'Z'
+			isDigit := c >= '0' && c <= '9'
+			if !isLower && !isUpper && !isDigit {
+				hasSpecial = true
+				break
+			}
+		}
+		if !hasSpecial {
+			return fmt.Errorf("le mot de passe doit contenir au moins un caractère spécial")
+		}
+	}
+
+	return nil
 }
 
 // getValidInvitation récupère et valide une invitation depuis SQLite.
@@ -475,10 +567,16 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 
 	// Parsing du profil JSON pour récupérer UserExpiryDays
 	var userExpiryDays int
+	expiryAction := "disable"
+	deleteAfterDays := 0
 	if inv.JellyfinProfile != "" {
 		var pf jellyfin.InviteProfile
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &pf); err == nil {
 			userExpiryDays = pf.UserExpiryDays
+			expiryAction = normalizeExpiryAction(pf.ExpiryAction)
+			if expiryAction == "disable_then_delete" && pf.DeleteAfterDays > 0 {
+				deleteAfterDays = pf.DeleteAfterDays
+			}
 		}
 	}
 
@@ -489,9 +587,9 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, invited_by, is_active, is_banned, access_expires_at)
-		 VALUES (?, ?, ?, ?, ?, 1, 0, ?)`,
-		jellyfinID, form.Username, form.Email, ldapDN, inv.Code, accessExpiresAt,
+		`INSERT INTO users (jellyfin_id, username, email, ldap_dn, invited_by, is_active, is_banned, access_expires_at, expiry_action, expiry_delete_after_days, expired_at)
+		 VALUES (?, ?, ?, ?, ?, 1, 0, ?, ?, ?, NULL)`,
+		jellyfinID, form.Username, form.Email, ldapDN, inv.Code, accessExpiresAt, expiryAction, deleteAfterDays,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)

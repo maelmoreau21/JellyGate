@@ -271,6 +271,19 @@
         </div>
     </div>
 </div>
+
+<div id="timeline-modal" class="modal-overlay" style="display:none">
+    <div class="glass-card modal-content" style="max-width:760px; max-height:80vh; overflow:auto">
+        <div class="flex items-start justify-between gap-3 mb-4">
+            <div>
+                <h3 class="text-lg font-bold">Timeline utilisateur</h3>
+                <p class="text-sm text-slate-400" id="timeline-subtitle"></p>
+            </div>
+            <button class="jg-btn jg-btn-ghost jg-btn-sm" onclick="JG.closeTimelineModal()">Fermer</button>
+        </div>
+        <div id="timeline-list" class="space-y-2 text-sm"></div>
+    </div>
+</div>
 {{ end }}
 
 {{ define "scripts" }}
@@ -397,6 +410,7 @@
                     <td class="text-slate-500 text-sm">${JG.esc(fmtDate(u.created_at))}</td>
                     <td class="text-right">
                         <div class="flex justify-end gap-1 flex-wrap">
+                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-timeline" data-id="${u.id}">Timeline</button>
                             <button class="jg-btn jg-btn-sm jg-btn-ghost action-edit" data-id="${u.id}">Modifier</button>
                             <button class="jg-btn jg-btn-sm jg-btn-ghost action-reset" data-id="${u.id}">Reset</button>
                             <button class="jg-btn jg-btn-sm jg-btn-ghost action-toggle" data-id="${u.id}">${toggleLabel}</button>
@@ -698,6 +712,48 @@
             return allUsers.find(u => u.id === id);
         }
 
+        function timelineLevel(action) {
+            if (!action) return 'neutral';
+            if (action.includes('deleted')) return 'danger';
+            if (action.includes('expired') || action.includes('disabled')) return 'warning';
+            if (action.includes('created') || action.includes('enabled') || action.includes('success')) return 'success';
+            return 'neutral';
+        }
+
+        function timelineBadge(action) {
+            const level = timelineLevel(action);
+            if (level === 'danger') return '<span class="badge badge-danger">Critique</span>';
+            if (level === 'warning') return '<span class="badge badge-warning">Important</span>';
+            if (level === 'success') return '<span class="badge badge-success">Info</span>';
+            return '<span class="badge badge-muted">Trace</span>';
+        }
+
+        function renderTimelineEvents(events) {
+            const container = document.getElementById('timeline-list');
+            if (!Array.isArray(events) || events.length === 0) {
+                container.innerHTML = '<div class="text-slate-400">Aucun evenement disponible pour cet utilisateur.</div>';
+                return;
+            }
+
+            container.innerHTML = events.map(ev => {
+                const action = ev.action || 'event';
+                const actor = ev.actor ? `<span class="text-slate-400">par ${JG.esc(ev.actor)}</span>` : '';
+                const details = ev.details ? `<div class="text-xs text-slate-500 mt-1 break-all">${JG.esc(ev.details)}</div>` : '';
+                return `<div class="rounded-lg border border-white/10 bg-black/20 px-3 py-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="font-medium text-slate-100">${JG.esc(ev.message || action)}</div>
+                        ${timelineBadge(action)}
+                    </div>
+                    <div class="mt-1 text-xs text-slate-400 flex flex-wrap items-center gap-3">
+                        <span>${JG.esc(fmtDate(ev.at || ''))}</span>
+                        <span class="text-slate-500">${JG.esc(action)}</span>
+                        ${actor}
+                    </div>
+                    ${details}
+                </div>`;
+            }).join('');
+        }
+
         JG.openEditModal = function (id) {
             const user = getUserById(id);
             if (!user) return;
@@ -734,6 +790,27 @@
             document.getElementById('delete-modal').style.display = 'none';
         };
 
+        JG.openTimelineModal = async function (id) {
+            const user = getUserById(id);
+            if (!user) return;
+
+            document.getElementById('timeline-subtitle').textContent = `${user.username} (${user.email || 'sans email'})`;
+            document.getElementById('timeline-list').innerHTML = '<div class="text-center text-slate-500 py-8"><span class="spinner"></span></div>';
+            document.getElementById('timeline-modal').style.display = '';
+
+            const res = await JG.api(`/admin/api/users/${id}/timeline`);
+            if (!res.success) {
+                document.getElementById('timeline-list').innerHTML = `<div class="text-red-300">${JG.esc(res.message || 'Erreur de chargement de la timeline')}</div>`;
+                return;
+            }
+
+            renderTimelineEvents(res.data || []);
+        };
+
+        JG.closeTimelineModal = function () {
+            document.getElementById('timeline-modal').style.display = 'none';
+        };
+
         document.getElementById('users-tbody').addEventListener('click', async (event) => {
             const button = event.target.closest('button');
             if (!button) return;
@@ -743,6 +820,11 @@
 
             if (button.classList.contains('action-edit')) {
                 JG.openEditModal(id);
+                return;
+            }
+
+            if (button.classList.contains('action-timeline')) {
+                JG.openTimelineModal(id);
                 return;
             }
 
@@ -865,6 +947,7 @@
                 if (e.target !== overlay) return;
                 JG.closeDeleteModal();
                 JG.closeEditModal();
+                JG.closeTimelineModal();
             });
         });
 
