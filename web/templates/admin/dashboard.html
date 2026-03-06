@@ -33,7 +33,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="jg-nav-label">My Account</span>
+            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
@@ -47,7 +47,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span class="jg-nav-label">Automation</span>
+            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
         {{ end }}
         {{ if .CanInvite }}
@@ -109,16 +109,16 @@
 
     {{/* My Account quick access */}}
     <div class="glass-card mb-8 p-6">
-        <h2 class="text-xl font-bold mb-4">🔐 My Account</h2>
+        <h2 class="text-xl font-bold mb-4">🔐 {{ .T "dashboard_my_account_title" }}</h2>
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <p class="text-slate-400 text-sm max-w-2xl">
-                Accede a la page dediee pour modifier ton email, gerer tes preferences de notifications et changer ton mot de passe.
+                {{ .T "dashboard_my_account_desc" }}
             </p>
             <div class="flex flex-wrap gap-2">
-                <a href="/admin/my-account" class="jg-btn">Ouvrir My Account</a>
+                <a href="/admin/my-account" class="jg-btn">{{ .T "dashboard_open_my_account" }}</a>
                 
                 {{ if .IsAdmin }}
-                <a href="/admin/automation" class="jg-btn jg-btn-ghost">Automation</a>
+                <a href="/admin/automation" class="jg-btn jg-btn-ghost">{{ .T "nav_automation" }}</a>
                 {{ end }}
             </div>
         </div>
@@ -210,6 +210,13 @@
 {{ define "scripts" }}
 <script>
     document.addEventListener('DOMContentLoaded', () => {
+        const i18n = {
+            statusBanned: '{{ .T "status_banned" }}',
+            statusActive: '{{ .T "status_active" }}',
+            statusInactive: '{{ .T "status_inactive" }}',
+            noUsers: '{{ .T "dashboard_no_users" }}',
+        };
+
         // Sidebar toggle
         const toggle = document.getElementById('sidebar-toggle');
         if (toggle) {
@@ -234,10 +241,10 @@
             tbody.innerHTML = '';
             users.slice(0, 5).forEach(u => {
                 const status = u.is_banned
-                    ? '<span class="badge badge-danger">Banni</span>'
+                    ? `<span class="badge badge-danger">${JG.esc(i18n.statusBanned)}</span>`
                     : u.is_active
-                        ? '<span class="badge badge-success">Actif</span>'
-                        : '<span class="badge badge-warning">Inactif</span>';
+                        ? `<span class="badge badge-success">${JG.esc(i18n.statusActive)}</span>`
+                        : `<span class="badge badge-warning">${JG.esc(i18n.statusInactive)}</span>`;
                 tbody.innerHTML += `<tr>
         <td class="font-medium">${JG.esc(u.username)}</td>
         <td>${status}</td>
@@ -246,7 +253,7 @@
       </tr>`;
             });
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-8">Aucun utilisateur</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">${JG.esc(i18n.noUsers)}</td></tr>`;
             }
         });
         // {{ end }}

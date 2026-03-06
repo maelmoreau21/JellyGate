@@ -31,7 +31,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="jg-nav-label">My Account</span>
+            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
         <a href="/admin/users" class="jg-nav-item active">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -44,7 +44,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span class="jg-nav-label">Automation</span>
+            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
         <a href="/admin/invitations" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,18 +93,18 @@
                     </svg>
                 </button>
                 <h1 class="text-2xl font-bold">{{ .T "users_heading" }}</h1>
-                <p class="text-sm text-slate-400">Édition rapide, recherche multi-critères et actions de masse.</p>
+                <p class="text-sm text-slate-400">{{ .T "users_subheading_extended" }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button onclick="openBulkEmailComposer()" class="jg-btn shadow-sm" title="Ouvrir l'envoi de masse">
-                    Email de masse
+                <button onclick="openBulkEmailComposer()" class="jg-btn shadow-sm" title='{{ .T "users_bulk_email_open" }}'>
+                    {{ .T "users_bulk_email" }}
                 </button>
-                <button onclick="syncUsers()" class="jg-btn jg-btn-ghost shadow-sm" title="Synchroniser avec Jellyfin">
+                <button onclick="syncUsers()" class="jg-btn jg-btn-ghost shadow-sm" title='{{ .T "users_sync_jellyfin_title" }}'>
                     <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Sync Jellyfin
+                    {{ .T "users_sync_jellyfin" }}
                 </button>
             </div>
         </div>
@@ -113,29 +113,29 @@
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
                 <input type="text" id="search-users" class="jg-input xl:col-span-2" placeholder='{{ .T "users_search_placeholder" }}'>
                 <select id="filter-status" class="jg-input">
-                    <option value="all">Statut: Tous</option>
-                    <option value="active">Actifs</option>
-                    <option value="inactive">Inactifs</option>
-                    <option value="banned">Bannis</option>
+                    <option value="all">{{ .T "users_filter_status_all" }}</option>
+                    <option value="active">{{ .T "status_active" }}</option>
+                    <option value="inactive">{{ .T "status_inactive" }}</option>
+                    <option value="banned">{{ .T "status_banned" }}</option>
                 </select>
                 <select id="filter-jellyfin" class="jg-input">
-                    <option value="all">Jellyfin: Tous</option>
-                    <option value="ok">Jellyfin OK</option>
-                    <option value="disabled">Jellyfin désactivé</option>
-                    <option value="missing">Jellyfin absent</option>
+                    <option value="all">{{ .T "users_filter_jellyfin_all" }}</option>
+                    <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
+                    <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
+                    <option value="missing">{{ .T "users_filter_jellyfin_missing" }}</option>
                 </select>
                 <select id="filter-invite" class="jg-input">
-                    <option value="all">Parrainage: Tous</option>
-                    <option value="enabled">Parrainage actif</option>
-                    <option value="disabled">Parrainage inactif</option>
+                    <option value="all">{{ .T "users_filter_invite_all" }}</option>
+                    <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
+                    <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
                 </select>
                 <select id="filter-extra" class="jg-input">
-                    <option value="all">Filtres avancés</option>
-                    <option value="with-email">Avec email</option>
-                    <option value="without-email">Sans email</option>
-                    <option value="expiry-active">Expiration définie</option>
-                    <option value="expiry-expired">Déjà expiré</option>
-                    <option value="expiry-none">Sans expiration</option>
+                    <option value="all">{{ .T "users_filter_extra_all" }}</option>
+                    <option value="with-email">{{ .T "users_filter_with_email" }}</option>
+                    <option value="without-email">{{ .T "users_filter_without_email" }}</option>
+                    <option value="expiry-active">{{ .T "users_filter_expiry_active" }}</option>
+                    <option value="expiry-expired">{{ .T "users_filter_expiry_expired" }}</option>
+                    <option value="expiry-none">{{ .T "users_filter_expiry_none" }}</option>
                 </select>
             </div>
         </div>
@@ -144,44 +144,44 @@
             <div class="flex flex-col gap-4">
                 <div class="bulk-steps-grid">
                     <div id="bulk-step-select" class="bulk-step-card active">
-                        <div class="bulk-step-title">Etape 1 · Selection</div>
-                        <div class="bulk-step-text"><span id="bulk-selected-count">0</span> utilisateur(s) selectionne(s)</div>
+                        <div class="bulk-step-title">{{ .T "users_bulk_step_select" }}</div>
+                        <div class="bulk-step-text"><span id="bulk-selected-count">0</span> {{ .T "users_bulk_selected_suffix" }}</div>
                     </div>
                     <div id="bulk-step-action" class="bulk-step-card">
-                        <div class="bulk-step-title">Etape 2 · Action</div>
-                        <div class="bulk-step-text" id="bulk-action-label">Choisis une action de masse</div>
+                        <div class="bulk-step-title">{{ .T "users_bulk_step_action" }}</div>
+                        <div class="bulk-step-text" id="bulk-action-label">{{ .T "users_bulk_choose_action" }}</div>
                     </div>
                     <div id="bulk-step-config" class="bulk-step-card">
-                        <div class="bulk-step-title">Etape 3 · Verification</div>
-                        <div class="bulk-step-text" id="bulk-validation-text">Complete les champs requis</div>
+                        <div class="bulk-step-title">{{ .T "users_bulk_step_verify" }}</div>
+                        <div class="bulk-step-text" id="bulk-validation-text">{{ .T "users_bulk_complete_required" }}</div>
                     </div>
                 </div>
 
                 <div class="flex items-center justify-between flex-wrap gap-3">
                     <div class="text-sm text-slate-300">
-                        Assistant d'operation de masse inspire jfa-go
+                        {{ .T "users_bulk_assistant_desc" }}
                     </div>
-                    <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">Sélectionner les filtrés</button>
+                    <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">{{ .T "users_select_filtered" }}</button>
                 </div>
 
                 <div class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
-                    1) Sélectionne des utilisateurs · 2) Choisis une action · 3) Renseigne les champs demandés puis applique.
+                    {{ .T "users_bulk_instructions" }}
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <select id="bulk-action" class="jg-input md:col-span-2 appearance-none bg-right bg-no-repeat" title="Choisir une action de masse">
-                        <option value="">Action de masse...</option>
-                        <option value="send_email">Envoyer un courriel</option>
-                        <option value="send_password_reset">Envoyer une réinitialisation de mot de passe</option>
-                        <option value="set_expiry">Définir/supprimer une expiration</option>
-                        <option value="set_parrainage">Activer/désactiver le parrainage</option>
-                        <option value="jellyfin_policy">Modifier paramètres Jellyfin</option>
-                        <option value="apply_preset">Appliquer un preset Jellyfin</option>
-                        <option value="activate">Activer les comptes</option>
-                        <option value="deactivate">Désactiver les comptes</option>
-                        <option value="delete">Supprimer les utilisateurs</option>
+                    <select id="bulk-action" class="jg-input md:col-span-2 appearance-none bg-right bg-no-repeat" title='{{ .T "users_bulk_choose_action" }}'>
+                        <option value="">{{ .T "users_bulk_action_placeholder" }}</option>
+                        <option value="send_email">{{ .T "users_action_send_email" }}</option>
+                        <option value="send_password_reset">{{ .T "users_action_send_password_reset" }}</option>
+                        <option value="set_expiry">{{ .T "users_action_set_expiry" }}</option>
+                        <option value="set_parrainage">{{ .T "users_action_set_invite" }}</option>
+                        <option value="jellyfin_policy">{{ .T "users_action_jellyfin_policy" }}</option>
+                        <option value="apply_preset">{{ .T "users_action_apply_preset" }}</option>
+                        <option value="activate">{{ .T "users_action_activate" }}</option>
+                        <option value="deactivate">{{ .T "users_action_deactivate" }}</option>
+                        <option value="delete">{{ .T "users_action_delete" }}</option>
                     </select>
-                    <button id="bulk-apply" class="jg-btn opacity-60 cursor-not-allowed" disabled>Appliquer</button>
+                    <button id="bulk-apply" class="jg-btn opacity-60 cursor-not-allowed" disabled>{{ .T "users_apply" }}</button>
                 </div>
 
                 <div id="bulk-help" class="hidden rounded-lg border border-blue-400/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-100"></div>
@@ -189,7 +189,7 @@
                 <div id="bulk-fields" class="hidden"></div>
 
                 <div id="bulk-summary" class="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                    Selectionne une action pour afficher un resume de l'impact.
+                    {{ .T "users_bulk_summary_placeholder" }}
                 </div>
             </div>
         </div>
@@ -205,11 +205,11 @@
                             <th>{{ .T "col_status" }}</th>
                             <th>{{ .T "col_jellyfin" }}</th>
                             <th>{{ .T "col_invited_by" }}</th>
-                            <th>Groupe</th>
-                            <th>Parrainage</th>
-                            <th>Expiration</th>
+                            <th>{{ .T "users_col_group" }}</th>
+                            <th>{{ .T "users_col_invite" }}</th>
+                            <th>{{ .T "users_col_expiry" }}</th>
                             <th>{{ .T "col_created_at" }}</th>
-                            <th class="text-right">Actions</th>
+                            <th class="text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
                     <tbody id="users-tbody">
@@ -229,33 +229,33 @@
 
 <div id="edit-modal" class="modal-overlay" style="display:none">
     <div class="glass-card modal-content" style="max-width:560px">
-        <h3 class="text-lg font-bold mb-4">Modifier l'utilisateur</h3>
+        <h3 class="text-lg font-bold mb-4">{{ .T "users_edit_title" }}</h3>
         <input type="hidden" id="edit-user-id">
         <div class="space-y-4">
             <div>
-                <label class="jg-label">Adresse email</label>
+                <label class="jg-label">{{ .T "field_email" }}</label>
                 <input type="email" id="edit-email" class="jg-input" placeholder="nom@domaine.tld">
             </div>
             <div>
-                <label class="jg-label">Groupe</label>
+                <label class="jg-label">{{ .T "users_col_group" }}</label>
                 <input type="text" id="edit-group-name" class="jg-input" placeholder="Ex: Enfants">
             </div>
             <div>
-                <label class="jg-label">Expiration du compte</label>
+                <label class="jg-label">{{ .T "users_col_expiry" }}</label>
                 <input type="datetime-local" id="edit-expiry" class="jg-input">
             </div>
             <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" id="edit-clear-expiry" class="form-checkbox">
-                Supprimer la date d'expiration
+                {{ .T "users_clear_expiry" }}
             </label>
             <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" id="edit-can-invite" class="form-checkbox">
-                Autoriser le parrainage
+                {{ .T "users_allow_invite" }}
             </label>
         </div>
         <div class="mt-6 flex justify-end gap-3">
-            <button class="jg-btn jg-btn-ghost" onclick="JG.closeEditModal()">Annuler</button>
-            <button class="jg-btn" id="edit-save-btn">Enregistrer</button>
+            <button class="jg-btn jg-btn-ghost" onclick="JG.closeEditModal()">{{ .T "cancel" }}</button>
+            <button class="jg-btn" id="edit-save-btn">{{ .T "btn_save" }}</button>
         </div>
     </div>
 </div>
@@ -266,11 +266,11 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
-        <h3 class="text-lg font-bold mb-2">Supprimer l'utilisateur</h3>
+        <h3 class="text-lg font-bold mb-2">{{ .T "users_delete_title" }}</h3>
         <p class="text-sm text-slate-400 mb-6" id="delete-modal-text"></p>
         <div class="flex justify-center gap-3">
-            <button class="jg-btn jg-btn-ghost" onclick="JG.closeDeleteModal()">Annuler</button>
-            <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">Supprimer</button>
+            <button class="jg-btn jg-btn-ghost" onclick="JG.closeDeleteModal()">{{ .T "cancel" }}</button>
+            <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">{{ .T "users_action_delete" }}</button>
         </div>
     </div>
 </div>
@@ -279,10 +279,10 @@
     <div class="glass-card modal-content" style="max-width:760px; max-height:80vh; overflow:auto">
         <div class="flex items-start justify-between gap-3 mb-4">
             <div>
-                <h3 class="text-lg font-bold">Timeline utilisateur</h3>
+                <h3 class="text-lg font-bold">{{ .T "users_timeline_title" }}</h3>
                 <p class="text-sm text-slate-400" id="timeline-subtitle"></p>
             </div>
-            <button class="jg-btn jg-btn-ghost jg-btn-sm" onclick="JG.closeTimelineModal()">Fermer</button>
+            <button class="jg-btn jg-btn-ghost jg-btn-sm" onclick="JG.closeTimelineModal()">{{ .T "users_close" }}</button>
         </div>
         <div id="timeline-list" class="space-y-2 text-sm"></div>
     </div>
@@ -296,42 +296,98 @@
         let filteredUsers = [];
         let jellyfinPresets = [];
         const selectedIds = new Set();
+        const i18n = {
+            usersDisplayed: '{{ .T "users_displayed_count" }}',
+            usersNoLocal: '{{ .T "users_no_local" }}',
+            usersNoFilterMatch: '{{ .T "users_no_filter_match" }}',
+            bulkChooseAction: '{{ .T "users_bulk_choose_action" }}',
+            bulkActionGeneric: '{{ .T "users_bulk_action_generic" }}',
+            bulkSelectOne: '{{ .T "users_bulk_select_one" }}',
+            bulkNeedEmailBody: '{{ .T "users_bulk_need_email_body" }}',
+            bulkNeedExpiry: '{{ .T "users_bulk_need_expiry" }}',
+            bulkNeedJellyfinParam: '{{ .T "users_bulk_need_jellyfin_param" }}',
+            bulkJellyfinInvalid: '{{ .T "users_bulk_jellyfin_invalid" }}',
+            bulkNeedPreset: '{{ .T "users_bulk_need_preset" }}',
+            bulkConfigReady: '{{ .T "users_bulk_config_ready" }}',
+            bulkBlockedPrefix: '{{ .T "users_bulk_blocked_prefix" }}',
+            bulkValidPrefix: '{{ .T "users_bulk_valid_prefix" }}',
+            bulkReadySuffix: '{{ .T "users_bulk_ready_suffix" }}',
+            bulkActionOn: '{{ .T "users_bulk_action_on" }}',
+            bulkNone: '{{ .T "users_bulk_none" }}',
+            yes: '{{ .T "users_yes" }}',
+            no: '{{ .T "users_no" }}',
+            timelineCritical: '{{ .T "users_timeline_critical" }}',
+            timelineImportant: '{{ .T "users_timeline_important" }}',
+            timelineInfo: '{{ .T "users_timeline_info" }}',
+            timelineTrace: '{{ .T "users_timeline_trace" }}',
+            timelineEmpty: '{{ .T "users_timeline_empty" }}',
+            editUpdated: '{{ .T "users_updated" }}',
+            editUpdateError: '{{ .T "users_update_error" }}',
+            deleteSuccess: '{{ .T "users_deleted" }}',
+            deleteError: '{{ .T "users_delete_error" }}',
+            timelineLoadError: '{{ .T "users_timeline_load_error" }}',
+            resetSent: '{{ .T "users_reset_sent" }}',
+            resetError: '{{ .T "users_reset_error" }}',
+            toggleUpdated: '{{ .T "users_toggle_updated" }}',
+            toggleError: '{{ .T "users_toggle_error" }}',
+            loadError: '{{ .T "users_load_error" }}',
+            loadErrorDetails: '{{ .T "users_load_error_details" }}',
+            bulkActionFailed: '{{ .T "users_bulk_action_failed" }}',
+            bulkDone: '{{ .T "users_bulk_done" }}',
+            syncConfirm: '{{ .T "users_sync_confirm" }}',
+            syncDone: '{{ .T "users_sync_done" }}',
+            syncError: '{{ .T "users_sync_error" }}',
+            syncNetworkError: '{{ .T "users_sync_network_error" }}',
+            deleteConfirmTemplate: '{{ .T "users_delete_confirm_template" }}',
+            timelineSubtitleTemplate: '{{ .T "users_timeline_subtitle" }}',
+            activate: '{{ .T "users_action_activate" }}',
+            deactivate: '{{ .T "users_action_deactivate" }}',
+            edit: '{{ .T "users_edit" }}',
+            reset: '{{ .T "users_reset" }}',
+            timeline: '{{ .T "users_timeline_title" }}',
+            delete: '{{ .T "users_action_delete" }}',
+            jellyfinDisabled: '{{ .T "users_jellyfin_disabled" }}',
+            jellyfinMissing: '{{ .T "users_jellyfin_missing" }}',
+            statusBanned: '{{ .T "status_banned" }}',
+            statusActive: '{{ .T "status_active" }}',
+            statusInactive: '{{ .T "status_inactive" }}',
+        };
         const bulkActionMeta = {
             send_email: {
-                label: 'Envoyer un courriel',
-                help: "Envoie un email personnalise a tous les utilisateurs selectionnes disposant d'une adresse email.",
+                label: '{{ .T "users_action_send_email" }}',
+                help: '{{ .T "users_action_send_email_help" }}',
             },
             send_password_reset: {
-                label: 'Envoyer un reset mot de passe',
-                help: "Genere et envoie un lien de reinitialisation de mot de passe pour chaque utilisateur selectionne.",
+                label: '{{ .T "users_action_send_password_reset" }}',
+                help: '{{ .T "users_action_send_password_reset_help" }}',
             },
             set_expiry: {
-                label: 'Definir/supprimer une expiration',
-                help: "Definit une date d'expiration d'acces, ou supprime l'expiration si la case est cochee.",
+                label: '{{ .T "users_action_set_expiry" }}',
+                help: '{{ .T "users_action_set_expiry_help" }}',
             },
             set_parrainage: {
-                label: 'Modifier le parrainage',
-                help: "Active ou desactive la capacite de creer des invitations pour les utilisateurs selectionnes.",
+                label: '{{ .T "users_action_set_invite" }}',
+                help: '{{ .T "users_action_set_invite_help" }}',
             },
             jellyfin_policy: {
-                label: 'Modifier politique Jellyfin',
-                help: "Applique des restrictions Jellyfin (telechargement, acces distant, sessions, bitrate).",
+                label: '{{ .T "users_action_jellyfin_policy" }}',
+                help: '{{ .T "users_action_jellyfin_policy_help" }}',
             },
             apply_preset: {
-                label: 'Appliquer preset Jellyfin',
-                help: "Applique une politique Jellyfin predefinie a tous les utilisateurs selectionnes.",
+                label: '{{ .T "users_action_apply_preset" }}',
+                help: '{{ .T "users_action_apply_preset_help" }}',
             },
             activate: {
-                label: 'Activer les comptes',
-                help: 'Reactive les comptes dans SQLite, LDAP et Jellyfin.',
+                label: '{{ .T "users_action_activate" }}',
+                help: '{{ .T "users_action_activate_help" }}',
             },
             deactivate: {
-                label: 'Desactiver les comptes',
-                help: 'Desactive les comptes dans SQLite, LDAP et Jellyfin.',
+                label: '{{ .T "users_action_deactivate" }}',
+                help: '{{ .T "users_action_deactivate_help" }}',
             },
             delete: {
-                label: 'Supprimer les utilisateurs',
-                help: 'Supprime definitivement les comptes selectionnes (action irreversible).',
+                label: '{{ .T "users_action_delete" }}',
+                help: '{{ .T "users_action_delete_help" }}',
             },
         };
 
@@ -353,14 +409,14 @@
         }
 
         function userStatusBadge(user) {
-            if (user.is_banned) return '<span class="badge badge-danger">Banni</span>';
-            if (user.is_active) return '<span class="badge badge-success">Actif</span>';
-            return '<span class="badge badge-warning">Inactif</span>';
+            if (user.is_banned) return `<span class="badge badge-danger">${JG.esc(i18n.statusBanned)}</span>`;
+            if (user.is_active) return `<span class="badge badge-success">${JG.esc(i18n.statusActive)}</span>`;
+            return `<span class="badge badge-warning">${JG.esc(i18n.statusInactive)}</span>`;
         }
 
         function jellyfinStatusBadge(user) {
-            if (!user.jellyfin_exists) return '<span class="badge badge-muted">Absent</span>';
-            if (user.jellyfin_disabled) return '<span class="badge badge-warning">Désactivé</span>';
+            if (!user.jellyfin_exists) return `<span class="badge badge-muted">${JG.esc(i18n.jellyfinMissing)}</span>`;
+            if (user.jellyfin_disabled) return `<span class="badge badge-warning">${JG.esc(i18n.jellyfinDisabled)}</span>`;
             return '<span class="badge badge-success">OK</span>';
         }
 
@@ -398,15 +454,22 @@
             }, 180);
         };
 
+        function fmtTemplate(template, values) {
+            return String(template || '').replace(/\{(\w+)\}/g, (_, key) => {
+                if (!values || values[key] === undefined || values[key] === null) return '';
+                return String(values[key]);
+            });
+        }
+
         function renderUsers(users) {
             filteredUsers = users;
             const tbody = document.getElementById('users-tbody');
-            document.getElementById('user-count').textContent = `${users.length} utilisateur(s) affiché(s) / ${allUsers.length}`;
+            document.getElementById('user-count').textContent = `${users.length} ${i18n.usersDisplayed} ${allUsers.length}`;
 
             if (users.length === 0) {
                 const help = allUsers.length === 0
-                    ? 'Aucun utilisateur local. Clique sur “Sync Jellyfin” pour importer les comptes existants.'
-                    : 'Aucun utilisateur ne correspond aux filtres actuels.';
+                    ? i18n.usersNoLocal
+                    : i18n.usersNoFilterMatch;
                 tbody.innerHTML = `<tr><td colspan="11" class="text-center text-slate-500 py-12">${JG.esc(help)}</td></tr>`;
                 updateSelectionUI();
                 return;
@@ -414,7 +477,7 @@
 
             tbody.innerHTML = users.map(u => {
                 const checked = selectedIds.has(u.id) ? 'checked' : '';
-                const toggleLabel = u.is_active ? 'Désactiver' : 'Activer';
+                const toggleLabel = u.is_active ? i18n.deactivate : i18n.activate;
                 const expiry = u.access_expires_at ? fmtDate(u.access_expires_at) : '—';
                 const expiryClass = isExpired(u) ? 'text-red-300' : 'text-slate-400';
 
@@ -426,16 +489,16 @@
                     <td>${jellyfinStatusBadge(u)}</td>
                     <td class="text-slate-400">${JG.esc(u.invited_by || '—')}</td>
                     <td class="text-slate-300">${JG.esc(u.group_name || '—')}</td>
-                    <td>${u.can_invite ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-muted">Non</span>'}</td>
+                    <td>${u.can_invite ? `<span class="badge badge-success">${JG.esc(i18n.yes)}</span>` : `<span class="badge badge-muted">${JG.esc(i18n.no)}</span>`}</td>
                     <td class="${expiryClass}">${JG.esc(expiry)}</td>
                     <td class="text-slate-500 text-sm">${JG.esc(fmtDate(u.created_at))}</td>
                     <td class="text-right">
                         <div class="flex justify-end gap-1 flex-wrap">
-                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-timeline" data-id="${u.id}">Timeline</button>
-                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-edit" data-id="${u.id}">Modifier</button>
-                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-reset" data-id="${u.id}">Reset</button>
+                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-timeline" data-id="${u.id}">${JG.esc(i18n.timeline)}</button>
+                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-edit" data-id="${u.id}">${JG.esc(i18n.edit)}</button>
+                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-reset" data-id="${u.id}">${JG.esc(i18n.reset)}</button>
                             <button class="jg-btn jg-btn-sm jg-btn-ghost action-toggle" data-id="${u.id}">${toggleLabel}</button>
-                            <button class="jg-btn jg-btn-sm jg-btn-danger action-delete" data-id="${u.id}">Supprimer</button>
+                            <button class="jg-btn jg-btn-sm jg-btn-danger action-delete" data-id="${u.id}">${JG.esc(i18n.delete)}</button>
                         </div>
                     </td>
                 </tr>`;
@@ -492,8 +555,8 @@
         }
 
         function actionLabel(action) {
-            if (!action) return 'Choisis une action de masse';
-            return bulkActionMeta[action]?.label || 'Action de masse';
+            if (!action) return i18n.bulkChooseAction;
+            return bulkActionMeta[action]?.label || i18n.bulkActionGeneric;
         }
 
         function collectBulkPayload(action, userIDs) {
@@ -539,27 +602,27 @@
         }
 
         function validateBulkPayload(action, payload) {
-            if (!action) return 'Choisis une action de masse';
-            if (!payload.user_ids || payload.user_ids.length === 0) return 'Selectionne au moins un utilisateur';
+            if (!action) return i18n.bulkChooseAction;
+            if (!payload.user_ids || payload.user_ids.length === 0) return i18n.bulkSelectOne;
 
             if (action === 'send_email') {
-                if (!payload.email_subject || !payload.email_body) return 'Renseigne le sujet et le corps du courriel';
+                if (!payload.email_subject || !payload.email_body) return i18n.bulkNeedEmailBody;
             }
 
             if (action === 'set_expiry' && !payload.clear_expiry && !payload.access_expires_at) {
-                return 'Renseigne la date d expiration ou coche suppression';
+                return i18n.bulkNeedExpiry;
             }
 
             if (action === 'jellyfin_policy') {
                 const policy = payload.jellyfin_policy || {};
-                if (Object.keys(policy).length === 0) return 'Choisis au moins un parametre Jellyfin';
+                if (Object.keys(policy).length === 0) return i18n.bulkNeedJellyfinParam;
                 if (Number.isNaN(policy.max_active_sessions) || Number.isNaN(policy.remote_bitrate_limit)) {
-                    return 'Valeurs numeriques Jellyfin invalides';
+                    return i18n.bulkJellyfinInvalid;
                 }
             }
 
             if (action === 'apply_preset' && !payload.policy_preset_id) {
-                return 'Selectionne un preset Jellyfin';
+                return i18n.bulkNeedPreset;
             }
 
             return '';
@@ -600,15 +663,15 @@
             }
 
             document.getElementById('bulk-action-label').textContent = actionLabel(action);
-            document.getElementById('bulk-validation-text').textContent = validationError || 'Configuration complete, operation prete.';
+            document.getElementById('bulk-validation-text').textContent = validationError || i18n.bulkConfigReady;
 
             const summary = document.getElementById('bulk-summary');
             const selectedUsers = allUsers.filter(u => selectedIds.has(u.id));
             const firstUsers = selectedUsers.slice(0, 3).map(u => u.username).join(', ');
             const hiddenCount = selectedUsers.length > 3 ? ` et ${selectedUsers.length - 3} autre(s)` : '';
-            const actionTxt = action ? actionLabel(action) : 'Aucune action choisie';
-            const validationTxt = validationError ? `Bloque: ${validationError}.` : 'Valide: pret a appliquer.';
-            summary.textContent = `${actionTxt} sur ${selectedUsers.length} utilisateur(s) [${firstUsers || 'aucun'}${hiddenCount}]. ${validationTxt}`;
+            const actionTxt = action ? actionLabel(action) : i18n.bulkChooseAction;
+            const validationTxt = validationError ? `${i18n.bulkBlockedPrefix}: ${validationError}.` : `${i18n.bulkValidPrefix}: ${i18n.bulkReadySuffix}.`;
+            summary.textContent = `${actionTxt} ${i18n.bulkActionOn} ${selectedUsers.length} [${firstUsers || i18n.bulkNone}${hiddenCount}]. ${validationTxt}`;
 
             const applyButton = document.getElementById('bulk-apply');
             const isReady = !validationError;
@@ -631,32 +694,32 @@
             }
 
             help.classList.remove('hidden');
-            help.textContent = bulkActionMeta[action]?.help || 'Action de masse selectionnee.';
+            help.textContent = bulkActionMeta[action]?.help || i18n.bulkActionGeneric;
 
             container.classList.remove('hidden');
             if (action === 'send_email') {
                 container.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input id="bulk-email-subject" class="jg-input" placeholder="Sujet du courriel">
-                        <input id="bulk-email-tooltips" class="jg-input" disabled value="Variables: {{ "{{" }}.Username{{ "}}" }} {{ "{{" }}.Email{{ "}}" }} {{ "{{" }}.Actor{{ "}}" }}">
+                        <input id="bulk-email-subject" class="jg-input" placeholder="{{ .T "users_bulk_email_subject" }}">
+                        <input id="bulk-email-tooltips" class="jg-input" disabled value="{{ .T "users_bulk_email_variables" }}: {{ "{{" }}.Username{{ "}}" }} {{ "{{" }}.Email{{ "}}" }} {{ "{{" }}.Actor{{ "}}" }}">
                     </div>
-                    <textarea id="bulk-email-body" class="jg-input mt-3 font-mono text-sm" rows="5" placeholder="Corps du courriel (template Go autorise)"></textarea>
+                    <textarea id="bulk-email-body" class="jg-input mt-3 font-mono text-sm" rows="5" placeholder="{{ .T "users_bulk_email_body" }}"></textarea>
                 `;
             } else if (action === 'set_parrainage') {
                 container.innerHTML = `
                     <select id="bulk-can-invite" class="jg-input max-w-xs">
-                        <option value="true">Activer le parrainage</option>
-                        <option value="false">Desactiver le parrainage</option>
+                        <option value="true">{{ .T "users_filter_invite_enabled" }}</option>
+                        <option value="false">{{ .T "users_filter_invite_disabled" }}</option>
                     </select>
                 `;
             } else if (action === 'set_expiry') {
                 container.innerHTML = `
                     <div class="flex flex-wrap items-center gap-3">
-                        <label class="text-xs text-slate-300">Date d'expiration:</label>
+                        <label class="text-xs text-slate-300">{{ .T "users_col_expiry" }}:</label>
                         <input type="datetime-local" id="bulk-expiry" class="jg-input max-w-xs">
                         <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                             <input type="checkbox" id="bulk-clear-expiry" class="form-checkbox">
-                            Supprimer la date d'expiration
+                            {{ .T "users_clear_expiry" }}
                         </label>
                     </div>
                 `;
@@ -664,32 +727,32 @@
                 container.innerHTML = `
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                         <select id="bulk-jf-downloads" class="jg-input">
-                            <option value="">Telechargement: inchange</option>
-                            <option value="true">Telechargement: autorise</option>
-                            <option value="false">Telechargement: interdit</option>
+                            <option value="">{{ .T "users_jf_download_unchanged" }}</option>
+                            <option value="true">{{ .T "users_jf_download_allowed" }}</option>
+                            <option value="false">{{ .T "users_jf_download_blocked" }}</option>
                         </select>
                         <select id="bulk-jf-remote" class="jg-input">
-                            <option value="">Acces distant: inchange</option>
-                            <option value="true">Acces distant: autorise</option>
-                            <option value="false">Acces distant: interdit</option>
+                            <option value="">{{ .T "users_jf_remote_unchanged" }}</option>
+                            <option value="true">{{ .T "users_jf_remote_allowed" }}</option>
+                            <option value="false">{{ .T "users_jf_remote_blocked" }}</option>
                         </select>
-                        <input type="number" id="bulk-jf-sessions" class="jg-input" min="0" placeholder="Sessions max (0 = illimite)">
-                        <input type="number" id="bulk-jf-bitrate" class="jg-input" min="0" placeholder="Bitrate max kbps (0 = illimite)">
+                        <input type="number" id="bulk-jf-sessions" class="jg-input" min="0" placeholder="{{ .T "users_jf_sessions_placeholder" }}">
+                        <input type="number" id="bulk-jf-bitrate" class="jg-input" min="0" placeholder="{{ .T "users_jf_bitrate_placeholder" }}">
                     </div>
                 `;
             } else if (action === 'apply_preset') {
                 const options = jellyfinPresets.map(p => `<option value="${JG.esc(p.id)}">${JG.esc(p.name)}</option>`).join('');
                 container.innerHTML = `
                     <div class="max-w-lg">
-                        <label class="jg-label" for="bulk-jf-preset">Preset Jellyfin</label>
+                        <label class="jg-label" for="bulk-jf-preset">{{ .T "users_action_apply_preset" }}</label>
                         <select id="bulk-jf-preset" class="jg-input">
-                            <option value="">Selectionner un preset...</option>
+                            <option value="">{{ .T "users_bulk_select_preset" }}</option>
                             ${options}
                         </select>
                     </div>
                 `;
             } else {
-                container.innerHTML = '<p class="text-sm text-slate-400">Cette action ne necessite pas de parametres supplementaires.</p>';
+                container.innerHTML = '<p class="text-sm text-slate-400">{{ .T "users_bulk_no_extra_params" }}</p>';
             }
 
             const clearExpiry = document.getElementById('bulk-clear-expiry');
@@ -713,8 +776,8 @@
         async function loadUsers() {
             const res = await JG.api('/admin/api/users');
             if (!res.success) {
-                JG.toast(res.message || 'Erreur chargement', 'error');
-                document.getElementById('users-tbody').innerHTML = '<tr><td colspan="11" class="text-center text-red-300 py-12">Impossible de charger les utilisateurs. Vérifie ta session et recharge la page.</td></tr>';
+                JG.toast(res.message || i18n.loadError, 'error');
+                document.getElementById('users-tbody').innerHTML = `<tr><td colspan="11" class="text-center text-red-300 py-12">${JG.esc(i18n.loadErrorDetails)}</td></tr>`;
                 return;
             }
             allUsers = res.data || [];
@@ -744,16 +807,16 @@
 
         function timelineBadge(action) {
             const level = timelineLevel(action);
-            if (level === 'danger') return '<span class="badge badge-danger">Critique</span>';
-            if (level === 'warning') return '<span class="badge badge-warning">Important</span>';
-            if (level === 'success') return '<span class="badge badge-success">Info</span>';
-            return '<span class="badge badge-muted">Trace</span>';
+            if (level === 'danger') return `<span class="badge badge-danger">${JG.esc(i18n.timelineCritical)}</span>`;
+            if (level === 'warning') return `<span class="badge badge-warning">${JG.esc(i18n.timelineImportant)}</span>`;
+            if (level === 'success') return `<span class="badge badge-success">${JG.esc(i18n.timelineInfo)}</span>`;
+            return `<span class="badge badge-muted">${JG.esc(i18n.timelineTrace)}</span>`;
         }
 
         function renderTimelineEvents(events) {
             const container = document.getElementById('timeline-list');
             if (!Array.isArray(events) || events.length === 0) {
-                container.innerHTML = '<div class="text-slate-400">Aucun evenement disponible pour cet utilisateur.</div>';
+                container.innerHTML = `<div class="text-slate-400">${JG.esc(i18n.timelineEmpty)}</div>`;
                 return;
             }
 
@@ -793,18 +856,17 @@
         };
 
         JG.confirmDelete = function (id, username) {
-            document.getElementById('delete-modal-text').textContent =
-                `L'utilisateur "${username}" sera supprimé de l'AD, de Jellyfin et de la base. Cette action est irréversible.`;
+            document.getElementById('delete-modal-text').textContent = fmtTemplate(i18n.deleteConfirmTemplate, { username });
             document.getElementById('delete-modal').style.display = '';
             document.getElementById('delete-confirm-btn').onclick = async () => {
                 JG.closeDeleteModal();
                 const res = await JG.api(`/admin/api/users/${id}`, { method: 'DELETE' });
                 if (res.success) {
                     selectedIds.delete(id);
-                    JG.toast(`${username} supprimé`, 'success');
+                    JG.toast(fmtTemplate(i18n.deleteSuccess, { username }), 'success');
                     loadUsers();
                 } else {
-                    JG.toast(res.message || 'Erreur suppression', 'error');
+                    JG.toast(res.message || i18n.deleteError, 'error');
                 }
             };
         };
@@ -817,13 +879,16 @@
             const user = getUserById(id);
             if (!user) return;
 
-            document.getElementById('timeline-subtitle').textContent = `${user.username} (${user.email || 'sans email'})`;
+            document.getElementById('timeline-subtitle').textContent = fmtTemplate(i18n.timelineSubtitleTemplate, {
+                username: user.username,
+                email: user.email || '-',
+            });
             document.getElementById('timeline-list').innerHTML = '<div class="text-center text-slate-500 py-8"><span class="spinner"></span></div>';
             document.getElementById('timeline-modal').style.display = '';
 
             const res = await JG.api(`/admin/api/users/${id}/timeline`);
             if (!res.success) {
-                document.getElementById('timeline-list').innerHTML = `<div class="text-red-300">${JG.esc(res.message || 'Erreur de chargement de la timeline')}</div>`;
+                document.getElementById('timeline-list').innerHTML = `<div class="text-red-300">${JG.esc(res.message || i18n.timelineLoadError)}</div>`;
                 return;
             }
 
@@ -853,18 +918,18 @@
 
             if (button.classList.contains('action-reset')) {
                 const res = await JG.api(`/admin/api/users/${id}/password-reset/send`, { method: 'POST' });
-                if (res.success) JG.toast(`Lien de reset envoyé à ${user.username}`, 'success');
-                else JG.toast(res.message || 'Erreur reset', 'error');
+                if (res.success) JG.toast(fmtTemplate(i18n.resetSent, { username: user.username }), 'success');
+                else JG.toast(res.message || i18n.resetError, 'error');
                 return;
             }
 
             if (button.classList.contains('action-toggle')) {
                 const res = await JG.api(`/admin/api/users/${id}/toggle`, { method: 'POST' });
                 if (res.success) {
-                    JG.toast(res.message || 'Statut mis à jour', 'success');
+                    JG.toast(res.message || i18n.toggleUpdated, 'success');
                     loadUsers();
                 } else {
-                    JG.toast(res.message || 'Erreur toggle', 'error');
+                    JG.toast(res.message || i18n.toggleError, 'error');
                 }
                 return;
             }
@@ -913,11 +978,11 @@
             });
 
             if (res.success) {
-                JG.toast('Utilisateur mis à jour', 'success');
+                JG.toast(i18n.editUpdated, 'success');
                 JG.closeEditModal();
                 loadUsers();
             } else {
-                JG.toast(res.message || 'Erreur de mise à jour', 'error');
+                JG.toast(res.message || i18n.editUpdateError, 'error');
             }
         });
 
@@ -936,7 +1001,10 @@
             }
 
             const selectedUsers = allUsers.filter(u => selectedIds.has(u.id));
-            const confirmationMsg = `${actionLabel(action)}\n\nUtilisateurs cibles: ${selectedUsers.length}\nConfirmer l'execution ?`;
+            const confirmationMsg = fmtTemplate('{{ .T "users_bulk_confirm_template" }}', {
+                action: actionLabel(action),
+                count: selectedUsers.length,
+            });
 
             if ((action === 'delete' || action === 'deactivate' || action === 'jellyfin_policy') && !confirm(confirmationMsg)) {
                 return;
@@ -950,14 +1018,14 @@
             if (res.success) {
                 const success = res.data?.success || 0;
                 const total = res.data?.total || userIDs.length;
-                JG.toast(`Action terminée: ${success}/${total} succès`, success === total ? 'success' : 'info');
+                JG.toast(fmtTemplate(i18n.bulkDone, { success, total }), success === total ? 'success' : 'info');
                 if (action === 'delete') {
                     selectedIds.clear();
                 }
                 updateBulkWizardState();
                 loadUsers();
             } else {
-                JG.toast(res.message || 'Erreur action de masse', 'error');
+                JG.toast(res.message || i18n.bulkActionFailed, 'error');
             }
         });
 
@@ -991,18 +1059,18 @@
     });
 
     async function syncUsers() {
-        if (!confirm("Voulez-vous forcer la synchronisation avec Jellyfin ? Les utilisateurs absents de la base locale seront importés.")) return;
+        if (!confirm('{{ .T "users_sync_confirm" }}')) return;
 
         try {
             const data = await JG.api('/admin/api/users/sync', { method: 'POST' });
             if (data.success) {
-                JG.toast(data.message || 'Synchronisation terminée', 'success');
+                JG.toast(data.message || '{{ .T "users_sync_done" }}', 'success');
                 setTimeout(() => window.location.reload(), 1000);
             } else {
-                JG.toast(data.message || 'Erreur de synchronisation', 'error');
+                JG.toast(data.message || '{{ .T "users_sync_error" }}', 'error');
             }
         } catch (err) {
-            JG.toast('Erreur réseau lors de la synchronisation', 'error');
+            JG.toast('{{ .T "users_sync_network_error" }}', 'error');
         }
     }
 </script>

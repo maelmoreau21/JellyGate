@@ -1,7 +1,7 @@
 {{/* my_account.html — Gestion du profil utilisateur */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}My Account — JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_my_account" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
@@ -32,7 +32,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="jg-nav-label">My Account</span>
+            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
@@ -46,7 +46,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span class="jg-nav-label">Automation</span>
+            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
         {{ end }}
         {{ if .CanInvite }}
@@ -99,49 +99,49 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
             </button>
-            <h1 class="text-3xl font-bold text-white inline-block align-middle">My Account</h1>
-            <p class="text-slate-400 mt-1">Gere ton adresse email, tes preferences de notification et ton mot de passe.</p>
+            <h1 class="text-3xl font-bold text-white inline-block align-middle">{{ .T "nav_my_account" }}</h1>
+            <p class="text-slate-400 mt-1">{{ .T "my_account_subheading" }}</p>
         </div>
 
         <section class="glass-card p-6">
-            <h2 class="text-lg font-semibold mb-4">Profil</h2>
+            <h2 class="text-lg font-semibold mb-4">{{ .T "my_account_section_profile" }}</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div class="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div class="text-slate-400">Utilisateur</div>
+                    <div class="text-slate-400">{{ .T "my_account_label_user" }}</div>
                     <div class="font-semibold mt-1" id="account-username">-</div>
                 </div>
                 <div class="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div class="text-slate-400">Role</div>
+                    <div class="text-slate-400">{{ .T "my_account_label_role" }}</div>
                     <div class="font-semibold mt-1" id="account-role">-</div>
                 </div>
                 <div class="rounded-lg border border-white/10 bg-white/5 p-3 md:col-span-2">
-                    <div class="text-slate-400">Expiration d'acces</div>
-                    <div class="font-semibold mt-1" id="account-expiry">Aucune expiration</div>
+                    <div class="text-slate-400">{{ .T "my_account_label_access_expiry" }}</div>
+                    <div class="font-semibold mt-1" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
                 </div>
             </div>
         </section>
 
         <section class="glass-card p-6">
-            <h2 class="text-lg font-semibold mb-4">Coordonnees & preferences</h2>
+            <h2 class="text-lg font-semibold mb-4">{{ .T "my_account_section_contact" }}</h2>
             <form id="my-account-form" class="space-y-4">
                 <div>
-                    <label class="jg-label" for="my-email">Adresse email</label>
+                    <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
                     <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="jg-label" for="my-discord">Discord (username ou ID)</label>
+                        <label class="jg-label" for="my-discord">{{ .T "my_account_label_discord" }}</label>
                         <input type="text" id="my-discord" class="jg-input" placeholder="ex: mael#1234">
                     </div>
                     <div>
-                        <label class="jg-label" for="my-telegram">Telegram (username ou chat id)</label>
+                        <label class="jg-label" for="my-telegram">{{ .T "my_account_label_telegram" }}</label>
                         <input type="text" id="my-telegram" class="jg-input" placeholder="ex: @mael">
                     </div>
                 </div>
                 <div class="max-w-xs">
-                    <label class="jg-label" for="my-lang">Langue preferee</label>
+                    <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
                     <select id="my-lang" class="jg-input">
-                        <option value="">Par defaut du serveur</option>
+                        <option value="">{{ .T "my_account_default_server_lang" }}</option>
                         <option value="fr">Francais</option>
                         <option value="en">English</option>
                         <option value="de">Deutsch</option>
@@ -157,49 +157,49 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                         <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
-                        Recevoir les rappels d'expiration
+                        {{ .T "my_account_notify_expiry" }}
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                         <input type="checkbox" id="my-notify-events" class="form-checkbox">
-                        Recevoir les emails d'evenements du compte
+                        {{ .T "my_account_notify_events" }}
                     </label>
                 </div>
                 <div class="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">Opt-in par canal</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">{{ .T "my_account_channel_optin" }}</div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                             <input type="checkbox" id="my-opt-email" class="form-checkbox">
-                            Canal email
+                            {{ .T "my_account_channel_email" }}
                         </label>
                         <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                             <input type="checkbox" id="my-opt-discord" class="form-checkbox">
-                            Canal Discord
+                            {{ .T "my_account_channel_discord" }}
                         </label>
                         <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                             <input type="checkbox" id="my-opt-telegram" class="form-checkbox">
-                            Canal Telegram
+                            {{ .T "my_account_channel_telegram" }}
                         </label>
                     </div>
                 </div>
                 <div class="flex justify-end">
-                    <button type="submit" class="jg-btn">Enregistrer les preferences</button>
+                    <button type="submit" class="jg-btn">{{ .T "my_account_save_preferences" }}</button>
                 </div>
             </form>
         </section>
 
         <section class="glass-card p-6">
-            <h2 class="text-lg font-semibold mb-4">Mot de passe</h2>
+            <h2 class="text-lg font-semibold mb-4">{{ .T "my_account_section_password" }}</h2>
             <form id="my-password-form" class="space-y-4">
                 <div>
-                    <label class="jg-label" for="my-password">Nouveau mot de passe</label>
-                    <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder="8 caracteres minimum">
+                    <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
+                    <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
                 </div>
                 <div>
-                    <label class="jg-label" for="my-password-confirm">Confirmer le mot de passe</label>
+                    <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
                     <input type="password" id="my-password-confirm" class="jg-input" required>
                 </div>
                 <div class="flex justify-end">
-                    <button type="submit" class="jg-btn">Mettre a jour le mot de passe</button>
+                    <button type="submit" class="jg-btn">{{ .T "my_account_update_password" }}</button>
                 </div>
             </form>
         </section>
@@ -210,7 +210,7 @@
 {{ define "scripts" }}
 <script>
     function formatDateTime(value) {
-        if (!value) return 'Aucune expiration';
+        if (!value) return '{{ .T "my_account_no_expiry" }}';
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
         return date.toLocaleString();
@@ -219,13 +219,13 @@
     async function loadMyAccount() {
         const res = await JG.api('/admin/api/users/me');
         if (!res.success) {
-            JG.toast(res.message || 'Impossible de charger le profil', 'error');
+            JG.toast(res.message || '{{ .T "my_account_load_error" }}', 'error');
             return;
         }
 
         const profile = res.data || {};
         document.getElementById('account-username').textContent = profile.username || '-';
-        document.getElementById('account-role').textContent = profile.is_admin ? 'Administrateur' : 'Utilisateur';
+        document.getElementById('account-role').textContent = profile.is_admin ? '{{ .T "role_admin" }}' : '{{ .T "role_user" }}';
         document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at);
 
         document.getElementById('my-email').value = profile.email || '';
@@ -259,7 +259,7 @@
         });
 
         if (res.success) {
-            JG.toast(res.message || 'Profil mis a jour', 'success');
+            JG.toast(res.message || '{{ .T "my_account_saved" }}', 'success');
             const preferred = String(payload.preferred_lang || '').trim().toLowerCase();
             if (preferred) {
                 document.cookie = `lang=${preferred};path=/;max-age=31536000;SameSite=Lax`;
@@ -269,7 +269,7 @@
             window.location.reload();
             return;
         }
-        JG.toast(res.message || 'Erreur de sauvegarde', 'error');
+        JG.toast(res.message || '{{ .T "my_account_save_error" }}', 'error');
     }
 
     async function updateMyPassword(event) {
@@ -278,11 +278,11 @@
         const p1 = document.getElementById('my-password').value;
         const p2 = document.getElementById('my-password-confirm').value;
         if (p1.length < 8) {
-            JG.toast('Le mot de passe doit faire au moins 8 caracteres', 'error');
+            JG.toast('{{ .T "my_account_password_too_short" }}', 'error');
             return;
         }
         if (p1 !== p2) {
-            JG.toast('Les mots de passe ne correspondent pas', 'error');
+            JG.toast('{{ .T "my_account_password_mismatch" }}', 'error');
             return;
         }
 
@@ -295,11 +295,11 @@
         });
 
         if (res.success) {
-            JG.toast(res.message || 'Mot de passe mis a jour', 'success');
+            JG.toast(res.message || '{{ .T "my_account_password_updated" }}', 'success');
             document.getElementById('my-password-form').reset();
             return;
         }
-        JG.toast(res.message || 'Erreur lors du changement', 'error');
+        JG.toast(res.message || '{{ .T "my_account_password_update_error" }}', 'error');
     }
 
     document.addEventListener('DOMContentLoaded', async () => {

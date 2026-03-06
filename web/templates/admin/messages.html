@@ -1,7 +1,7 @@
 {{/* messages.html — Centre de messages utilisateur */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}Messages — JellyGate{{ end }}
+{{ define "title" }}{{ .T "messages_title" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
@@ -25,7 +25,7 @@
         </a>
         <a href="/admin/my-account" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            <span class="jg-nav-label">My Account</span>
+            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
@@ -34,7 +34,7 @@
         </a>
         <a href="/admin/automation" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-            <span class="jg-nav-label">Automation</span>
+            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
         <a href="/admin/settings" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
@@ -59,41 +59,41 @@
                 <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
-                <h1 class="text-3xl font-bold inline-block align-middle">Centre de messages</h1>
-                <p class="text-sm text-slate-400 mt-1">Inbox utilisateur ciblee + historique de lecture.</p>
+                <h1 class="text-3xl font-bold inline-block align-middle">{{ .T "messages_heading" }}</h1>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "messages_subheading" }}</p>
             </div>
             <div class="flex items-center gap-2">
-                <button id="btn-view-inbox" class="jg-btn jg-btn-ghost jg-btn-sm">Inbox</button>
+                <button id="btn-view-inbox" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "messages_inbox" }}</button>
                 {{ if .IsAdmin }}
-                <button id="btn-view-admin" class="jg-btn jg-btn-ghost jg-btn-sm">Vue admin</button>
+                <button id="btn-view-admin" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "messages_admin_view" }}</button>
                 {{ end }}
             </div>
         </div>
 
         {{ if .IsAdmin }}
         <section class="glass-card p-4">
-            <h2 class="text-lg font-semibold mb-3">Nouveau message</h2>
+            <h2 class="text-lg font-semibold mb-3">{{ .T "messages_new_message" }}</h2>
             <form id="message-create-form" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input id="msg-title" class="jg-input md:col-span-2" placeholder="Titre">
-                <textarea id="msg-body" class="jg-input md:col-span-2" rows="4" placeholder="Contenu du message"></textarea>
+                <input id="msg-title" class="jg-input md:col-span-2" placeholder='{{ .T "messages_title_placeholder" }}'>
+                <textarea id="msg-body" class="jg-input md:col-span-2" rows="4" placeholder='{{ .T "messages_body_placeholder" }}'></textarea>
                 <select id="msg-target-group" class="jg-input">
-                    <option value="all">Tous les utilisateurs</option>
-                    <option value="active">Utilisateurs actifs</option>
-                    <option value="inactive">Utilisateurs inactifs</option>
-                    <option value="admins">Administrateurs</option>
-                    <option value="inviters">Parrains</option>
+                    <option value="all">{{ .T "messages_target_all" }}</option>
+                    <option value="active">{{ .T "messages_target_active" }}</option>
+                    <option value="inactive">{{ .T "messages_target_inactive" }}</option>
+                    <option value="admins">{{ .T "messages_target_admins" }}</option>
+                    <option value="inviters">{{ .T "messages_target_inviters" }}</option>
                 </select>
-                <input id="msg-target-users" class="jg-input" placeholder="IDs users (CSV) optionnel: 1,2,3">
+                <input id="msg-target-users" class="jg-input" placeholder='{{ .T "messages_target_users_placeholder" }}'>
                 <div class="md:col-span-2 flex flex-wrap items-center gap-4 text-sm text-slate-300">
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-email" class="form-checkbox">Email</label>
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-discord" class="form-checkbox">Discord</label>
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-telegram" class="form-checkbox">Telegram</label>
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-campaign" class="form-checkbox">Mode campagne planifiee</label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-email" class="form-checkbox">{{ .T "messages_channel_email" }}</label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-discord" class="form-checkbox">{{ .T "messages_channel_discord" }}</label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-telegram" class="form-checkbox">{{ .T "messages_channel_telegram" }}</label>
+                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-campaign" class="form-checkbox">{{ .T "messages_campaign_mode" }}</label>
                 </div>
-                <input type="datetime-local" id="msg-starts-at" class="jg-input" placeholder="Debut">
-                <input type="datetime-local" id="msg-ends-at" class="jg-input" placeholder="Fin">
+                <input type="datetime-local" id="msg-starts-at" class="jg-input" placeholder='{{ .T "messages_starts_at" }}'>
+                <input type="datetime-local" id="msg-ends-at" class="jg-input" placeholder='{{ .T "messages_ends_at" }}'>
                 <div class="md:col-span-2 flex justify-end">
-                    <button type="submit" class="jg-btn">Publier</button>
+                    <button type="submit" class="jg-btn">{{ .T "messages_publish" }}</button>
                 </div>
             </form>
         </section>
@@ -104,16 +104,16 @@
                 <table class="jg-table">
                     <thead>
                         <tr>
-                            <th>Titre</th>
-                            <th>Cible</th>
-                            <th>Canaux</th>
-                            <th>Etat</th>
-                            <th>Cree le</th>
-                            <th class="text-right">Actions</th>
+                            <th>{{ .T "messages_col_title" }}</th>
+                            <th>{{ .T "messages_col_target" }}</th>
+                            <th>{{ .T "messages_col_channels" }}</th>
+                            <th>{{ .T "messages_col_state" }}</th>
+                            <th>{{ .T "messages_col_created_at" }}</th>
+                            <th class="text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
                     <tbody id="messages-body">
-                        <tr><td colspan="6" class="text-center text-slate-500 py-10">Chargement...</td></tr>
+                        <tr><td colspan="6" class="text-center text-slate-500 py-10">{{ .T "settings_loading" }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -126,6 +126,22 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     let currentView = 'inbox';
+    const i18n = {
+        errorLoading: '{{ .T "messages_error_loading" }}',
+        noMessages: '{{ .T "messages_no_messages" }}',
+        read: '{{ .T "messages_read" }}',
+        unread: '{{ .T "messages_unread" }}',
+        usersSuffix: '{{ .T "messages_users_suffix" }}',
+        defaultChannel: '{{ .T "messages_default_channel" }}',
+        markRead: '{{ .T "messages_mark_read" }}',
+        delete: '{{ .T "messages_delete" }}',
+        genericError: '{{ .T "messages_generic_error" }}',
+        confirmDelete: '{{ .T "messages_confirm_delete" }}',
+        deleteFailed: '{{ .T "messages_delete_failed" }}',
+        deleted: '{{ .T "messages_deleted" }}',
+        createFailed: '{{ .T "messages_create_failed" }}',
+        created: '{{ .T "messages_created" }}',
+    };
 
     function channelsForPayload() {
         const channels = ['in_app'];
@@ -145,22 +161,22 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadMessages() {
         const res = await JG.api(`/admin/api/messages?view=${encodeURIComponent(currentView)}`);
         if (!res.success) {
-            JG.toast(res.message || 'Erreur chargement messages', 'error');
+            JG.toast(res.message || i18n.errorLoading, 'error');
             return;
         }
 
         const rows = Array.isArray(res.data) ? res.data : [];
         const tbody = document.getElementById('messages-body');
         if (rows.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-10">Aucun message.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-10">${JG.esc(i18n.noMessages)}</td></tr>`;
             return;
         }
 
         tbody.innerHTML = rows.map(m => {
             const readBadge = m.read
-                ? `<span class="badge badge-success">Lu</span>`
-                : `<span class="badge badge-warning">Non lu</span>`;
-            const target = (m.target_group || 'all') + (m.target_user_ids && m.target_user_ids.length ? ` + ${m.target_user_ids.length} user(s)` : '');
+                ? `<span class="badge badge-success">${JG.esc(i18n.read)}</span>`
+                : `<span class="badge badge-warning">${JG.esc(i18n.unread)}</span>`;
+            const target = (m.target_group || 'all') + (m.target_user_ids && m.target_user_ids.length ? ` + ${m.target_user_ids.length} ${i18n.usersSuffix}` : '');
             const channels = (m.channels || []).join(', ');
             const canDelete = "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true";
 
@@ -170,13 +186,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="text-xs text-slate-400 mt-1">${JG.esc(m.body || '')}</div>
                 </td>
                 <td class="text-sm text-slate-300">${JG.esc(target)}</td>
-                <td class="text-sm text-slate-400">${JG.esc(channels || 'in_app')}</td>
+                <td class="text-sm text-slate-400">${JG.esc(channels || i18n.defaultChannel)}</td>
                 <td>${readBadge}</td>
                 <td class="text-sm text-slate-500">${JG.esc(m.created_at || '')}</td>
                 <td class="text-right">
                     <div class="flex justify-end gap-2">
-                        ${!m.read ? `<button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="read" data-id="${m.id}">Marquer lu</button>` : ''}
-                        ${canDelete ? `<button class="jg-btn jg-btn-sm jg-btn-danger" data-action="delete" data-id="${m.id}">Supprimer</button>` : ''}
+                        ${!m.read ? `<button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="read" data-id="${m.id}">${JG.esc(i18n.markRead)}</button>` : ''}
+                        ${canDelete ? `<button class="jg-btn jg-btn-sm jg-btn-danger" data-action="delete" data-id="${m.id}">${JG.esc(i18n.delete)}</button>` : ''}
                     </div>
                 </td>
             </tr>`;
@@ -192,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action === 'read') {
             const res = await JG.api(`/admin/api/messages/${id}/read`, { method: 'POST' });
             if (!res.success) {
-                JG.toast(res.message || 'Erreur', 'error');
+                JG.toast(res.message || i18n.genericError, 'error');
                 return;
             }
             await loadMessages();
@@ -200,13 +216,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (action === 'delete') {
-            if (!confirm('Supprimer ce message ?')) return;
+            if (!confirm(i18n.confirmDelete)) return;
             const res = await JG.api(`/admin/api/messages/${id}`, { method: 'DELETE' });
             if (!res.success) {
-                JG.toast(res.message || 'Suppression impossible', 'error');
+                JG.toast(res.message || i18n.deleteFailed, 'error');
                 return;
             }
-            JG.toast('Message supprime', 'success');
+            JG.toast(i18n.deleted, 'success');
             await loadMessages();
         }
     });
@@ -231,10 +247,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(payload),
             });
             if (!res.success) {
-                JG.toast(res.message || 'Creation impossible', 'error');
+                JG.toast(res.message || i18n.createFailed, 'error');
                 return;
             }
-            JG.toast('Message publie', 'success');
+            JG.toast(i18n.created, 'success');
             createForm.reset();
             await loadMessages();
         });

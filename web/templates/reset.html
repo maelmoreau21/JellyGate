@@ -79,7 +79,7 @@
 
         {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTulliURL }}
         <div class="jg-public-links mt-5">
-            <p class="jg-public-links-title">Raccourcis rapides</p>
+            <p class="jg-public-links-title">{{ .T "invite_quick_links" }}</p>
             <div class="jg-public-links-grid">
                 {{ if .Data.JellyfinURL }}
                 <a href="{{ .Data.JellyfinURL }}" class="jg-public-link-chip">Jellyfin</a>
@@ -110,11 +110,11 @@
             if (!pwc.value) { msg.classList.add('hidden'); return; }
             msg.classList.remove('hidden');
             if (pw.value === pwc.value) {
-                msg.textContent = '✓ OK';
+                msg.textContent = '✓ {{ .T "password_match" }}';
                 msg.className = 'text-xs mt-1 text-emerald-400';
                 pwc.classList.remove('is-invalid'); pwc.classList.add('is-valid');
             } else {
-                msg.textContent = '✗ Mismatch';
+                msg.textContent = '✗ {{ .T "password_mismatch" }}';
                 msg.className = 'text-xs mt-1 text-red-400';
                 pwc.classList.remove('is-valid'); pwc.classList.add('is-invalid');
             }

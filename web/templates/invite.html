@@ -73,7 +73,7 @@
                         placeholder='{{ .T "field_username_placeholder" }}' required pattern="[a-zA-Z0-9_-]+"
                         minlength="{{ or .Data.UsernameMinLength 3 }}" maxlength="{{ or .Data.UsernameMaxLength 32 }}" autocomplete="username" {{ if .Data.ForcedUsername
                         }}value="{{ .Data.ForcedUsername }}" readonly{{ end }}>
-                    <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }} ({{ or .Data.UsernameMinLength 3 }}-{{ or .Data.UsernameMaxLength 32 }} caractères)</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }} ({{ or .Data.UsernameMinLength 3 }}-{{ or .Data.UsernameMaxLength 32 }} {{ .T "password_rules_chars" }})</p>
                 </div>
 
                 {{/* Email */}}
@@ -296,7 +296,7 @@
             }
             const btn = document.getElementById('submit-btn');
             btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> ' + (window.__t?.submitting || 'Création en cours...');
+            btn.innerHTML = '<span class="spinner"></span> ' + (window.__t?.submitting || '{{ .T "submitting" }}');
         });
     })();
 </script>

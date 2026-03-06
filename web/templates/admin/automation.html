@@ -1,7 +1,7 @@
 {{/* automation.html — Presets & scheduler */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}Automation — JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_automation" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
@@ -25,7 +25,7 @@
         </a>
         <a href="/admin/my-account" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            <span class="jg-nav-label">My Account</span>
+            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
         <a href="/admin/users" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -33,7 +33,7 @@
         </a>
         <a href="/admin/automation" class="jg-nav-item active">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-            <span class="jg-nav-label">Automation</span>
+            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
         <a href="/admin/settings" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
@@ -56,35 +56,35 @@
             <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
-            <h1 class="text-3xl font-bold inline-block align-middle">Automation</h1>
-            <p class="text-sm text-slate-400 mt-1">Presets Jellyfin + scheduler generique (sync, nettoyage, campagnes, backup).</p>
+            <h1 class="text-3xl font-bold inline-block align-middle">{{ .T "nav_automation" }}</h1>
+            <p class="text-sm text-slate-400 mt-1">{{ .T "automation_subheading" }}</p>
         </div>
 
         <section class="glass-card p-4">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold">Presets Jellyfin</h2>
+                <h2 class="text-lg font-semibold">{{ .T "automation_presets_title" }}</h2>
                 <div class="flex gap-2">
-                    <button id="btn-preset-add" class="jg-btn jg-btn-ghost jg-btn-sm">Ajouter</button>
-                    <button id="btn-preset-save" class="jg-btn jg-btn-sm">Sauvegarder</button>
+                    <button id="btn-preset-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
+                    <button id="btn-preset-save" class="jg-btn jg-btn-sm">{{ .T "automation_save" }}</button>
                 </div>
             </div>
             <div class="jg-table-wrap">
                 <table class="jg-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Nom</th>
-                            <th>Download</th>
-                            <th>Remote</th>
-                            <th>Sessions</th>
-                            <th>Bitrate</th>
-                            <th>Disable (j)</th>
-                            <th>Delete (j)</th>
-                            <th class="text-right">Actions</th>
+                            <th>{{ .T "automation_col_id" }}</th>
+                            <th>{{ .T "automation_col_name" }}</th>
+                            <th>{{ .T "automation_col_download" }}</th>
+                            <th>{{ .T "automation_col_remote" }}</th>
+                            <th>{{ .T "automation_col_sessions" }}</th>
+                            <th>{{ .T "automation_col_bitrate" }}</th>
+                            <th>{{ .T "automation_col_disable_days" }}</th>
+                            <th>{{ .T "automation_col_delete_days" }}</th>
+                            <th class="text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
                     <tbody id="presets-body">
-                        <tr><td colspan="9" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                        <tr><td colspan="9" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -92,48 +92,48 @@
 
         <section class="glass-card p-4">
             <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold">Mapping de groupes</h2>
+                <h2 class="text-lg font-semibold">{{ .T "automation_group_mappings_title" }}</h2>
                 <div class="flex gap-2">
-                    <button id="btn-group-map-add" class="jg-btn jg-btn-ghost jg-btn-sm">Ajouter</button>
-                    <button id="btn-group-map-save" class="jg-btn jg-btn-sm">Sauvegarder</button>
+                    <button id="btn-group-map-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
+                    <button id="btn-group-map-save" class="jg-btn jg-btn-sm">{{ .T "automation_save" }}</button>
                 </div>
             </div>
-            <p class="text-xs text-slate-400 mb-3">Lie un groupe interne/LDAP a un preset Jellyfin. Lorsqu'un utilisateur est assigne a ce groupe, le preset est applique automatiquement.</p>
+            <p class="text-xs text-slate-400 mb-3">{{ .T "automation_group_mappings_desc" }}</p>
             <div class="jg-table-wrap">
                 <table class="jg-table">
                     <thead>
                         <tr>
-                            <th>Groupe</th>
-                            <th>Source</th>
-                            <th>DN LDAP (optionnel)</th>
-                            <th>Preset cible</th>
-                            <th class="text-right">Actions</th>
+                            <th>{{ .T "automation_col_group" }}</th>
+                            <th>{{ .T "automation_col_source" }}</th>
+                            <th>{{ .T "automation_col_ldap_dn_optional" }}</th>
+                            <th>{{ .T "automation_col_preset_target" }}</th>
+                            <th class="text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
                     <tbody id="group-mappings-body">
-                        <tr><td colspan="5" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                        <tr><td colspan="5" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
 
         <section class="glass-card p-4">
-            <h2 class="text-lg font-semibold mb-3">Taches planifiees</h2>
+            <h2 class="text-lg font-semibold mb-3">{{ .T "automation_tasks_title" }}</h2>
             <form id="task-create-form" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-4">
-                <input id="task-name" class="jg-input md:col-span-2" placeholder="Nom de tache">
+                <input id="task-name" class="jg-input md:col-span-2" placeholder='{{ .T "automation_task_name_placeholder" }}'>
                 <select id="task-type" class="jg-input">
                     <option value="sync_users">sync_users</option>
                     <option value="cleanup_resets">cleanup_resets</option>
                     <option value="dispatch_campaigns">dispatch_campaigns</option>
                     <option value="create_backup">create_backup</option>
                 </select>
-                <input id="task-hour" type="number" class="jg-input" min="0" max="23" placeholder="Heure">
-                <input id="task-minute" type="number" class="jg-input" min="0" max="59" placeholder="Minute">
-                <button type="submit" class="jg-btn">Creer</button>
-                <input id="task-payload" class="jg-input md:col-span-6" placeholder="Payload optionnel (texte libre)">
+                <input id="task-hour" type="number" class="jg-input" min="0" max="23" placeholder='{{ .T "automation_task_hour_placeholder" }}'>
+                <input id="task-minute" type="number" class="jg-input" min="0" max="59" placeholder='{{ .T "automation_task_minute_placeholder" }}'>
+                <button type="submit" class="jg-btn">{{ .T "automation_create" }}</button>
+                <input id="task-payload" class="jg-input md:col-span-6" placeholder='{{ .T "automation_task_payload_placeholder" }}'>
                 <label class="inline-flex items-center gap-2 text-sm text-slate-300 md:col-span-6">
                     <input id="task-enabled" type="checkbox" class="form-checkbox" checked>
-                    Tache active
+                    {{ .T "automation_task_enabled" }}
                 </label>
             </form>
 
@@ -141,16 +141,16 @@
                 <table class="jg-table">
                     <thead>
                         <tr>
-                            <th>Nom</th>
-                            <th>Type</th>
-                            <th>Horaire</th>
-                            <th>Payload</th>
-                            <th>Dernier run</th>
-                            <th class="text-right">Actions</th>
+                            <th>{{ .T "automation_col_name" }}</th>
+                            <th>{{ .T "automation_col_type" }}</th>
+                            <th>{{ .T "automation_col_schedule" }}</th>
+                            <th>{{ .T "automation_col_payload" }}</th>
+                            <th>{{ .T "automation_col_last_run" }}</th>
+                            <th class="text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
                     <tbody id="tasks-body">
-                        <tr><td colspan="6" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                        <tr><td colspan="6" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -165,6 +165,33 @@ document.addEventListener('DOMContentLoaded', () => {
     let presets = [];
     let groupMappings = [];
     let tasks = [];
+    const i18n = {
+        deleteLabel: '{{ .T "automation_delete" }}',
+        runNow: '{{ .T "automation_run_now" }}',
+        enable: '{{ .T "automation_enable" }}',
+        disable: '{{ .T "automation_disable" }}',
+        loading: '{{ .T "settings_loading" }}',
+        noPresets: '{{ .T "automation_no_presets" }}',
+        noGroupMappings: '{{ .T "automation_no_group_mappings" }}',
+        noTasks: '{{ .T "automation_no_tasks" }}',
+        selectPreset: '{{ .T "automation_select_preset" }}',
+        newPreset: '{{ .T "automation_new_preset" }}',
+        errorPresets: '{{ .T "automation_error_presets" }}',
+        errorGroupMappings: '{{ .T "automation_error_group_mappings" }}',
+        errorTasks: '{{ .T "automation_error_tasks" }}',
+        savePresetsFailed: '{{ .T "automation_save_presets_failed" }}',
+        presetsSaved: '{{ .T "automation_presets_saved" }}',
+        saveMappingsFailed: '{{ .T "automation_save_mappings_failed" }}',
+        mappingsSaved: '{{ .T "automation_mappings_saved" }}',
+        taskCreateFailed: '{{ .T "automation_task_create_failed" }}',
+        taskCreated: '{{ .T "automation_task_created" }}',
+        taskDeleteConfirm: '{{ .T "automation_task_delete_confirm" }}',
+        taskDeleteFailed: '{{ .T "automation_task_delete_failed" }}',
+        taskDeleted: '{{ .T "automation_task_deleted" }}',
+        taskRunFailed: '{{ .T "automation_task_run_failed" }}',
+        taskRunSuccess: '{{ .T "automation_task_run_success" }}',
+        taskUpdateFailed: '{{ .T "automation_task_update_failed" }}',
+    };
 
     function presetRow(p, idx) {
         return `<tr>
@@ -176,14 +203,14 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><input type="number" class="jg-input" data-p="${idx}" data-k="bitrate_limit" value="${Number.isInteger(p.bitrate_limit) ? p.bitrate_limit : 0}"></td>
             <td><input type="number" class="jg-input" data-p="${idx}" data-k="disable_after_days" min="0" value="${Number.isInteger(p.disable_after_days) ? p.disable_after_days : 0}"></td>
             <td><input type="number" class="jg-input" data-p="${idx}" data-k="delete_after_days" min="0" value="${Number.isInteger(p.delete_after_days) ? p.delete_after_days : 0}"></td>
-            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="preset-delete" data-index="${idx}">Supprimer</button></td>
+            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="preset-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button></td>
         </tr>`;
     }
 
     function renderPresets() {
         const tbody = document.getElementById('presets-body');
         if (!presets.length) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-slate-500 py-8">Aucun preset.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center text-slate-500 py-8">${JG.esc(i18n.noPresets)}</td></tr>`;
             return;
         }
         tbody.innerHTML = presets.map((p, idx) => presetRow(p, idx)).join('');
@@ -195,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadPresets() {
         const res = await JG.api('/admin/api/automation/presets');
         if (!res.success) {
-            JG.toast(res.message || 'Erreur presets', 'error');
+            JG.toast(res.message || i18n.errorPresets, 'error');
             return;
         }
         presets = Array.isArray(res.data) ? res.data : [];
@@ -235,7 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function groupPresetOptions(selectedID) {
-        const options = ['<option value="">Selectionner...</option>'];
+        const options = [`<option value="">${JG.esc(i18n.selectPreset)}</option>`];
         presets.forEach(p => {
             const value = JG.esc(p.id || '');
             const selected = (p.id || '') === (selectedID || '') ? 'selected' : '';
@@ -259,14 +286,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${groupPresetOptions(m.policy_preset_id || '')}
                 </select>
             </td>
-            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="group-map-delete" data-index="${idx}">Supprimer</button></td>
+            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="group-map-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button></td>
         </tr>`;
     }
 
     function renderGroupMappings() {
         const tbody = document.getElementById('group-mappings-body');
         if (!groupMappings.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-slate-500 py-8">Aucun mapping de groupe.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-8">${JG.esc(i18n.noGroupMappings)}</td></tr>`;
             return;
         }
         tbody.innerHTML = groupMappings.map((m, idx) => groupMappingRow(m, idx)).join('');
@@ -295,7 +322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadGroupMappings() {
         const res = await JG.api('/admin/api/automation/group-mappings');
         if (!res.success) {
-            JG.toast(res.message || 'Erreur mappings de groupes', 'error');
+            JG.toast(res.message || i18n.errorGroupMappings, 'error');
             return;
         }
         groupMappings = Array.isArray(res.data) ? res.data : [];
@@ -305,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderTasks() {
         const tbody = document.getElementById('tasks-body');
         if (!tasks.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-8">Aucune tache planifiee.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-8">${JG.esc(i18n.noTasks)}</td></tr>`;
             return;
         }
         tbody.innerHTML = tasks.map(t => `<tr>
@@ -316,9 +343,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <td class="text-sm text-slate-500">${JG.esc(t.last_run_at || '—')}</td>
             <td class="text-right">
                 <div class="flex justify-end gap-2">
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-run" data-id="${t.id}">Run now</button>
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-toggle" data-id="${t.id}">${t.enabled ? 'Desactiver' : 'Activer'}</button>
-                    <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="task-delete" data-id="${t.id}">Supprimer</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-run" data-id="${t.id}">${JG.esc(i18n.runNow)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-toggle" data-id="${t.id}">${t.enabled ? JG.esc(i18n.disable) : JG.esc(i18n.enable)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="task-delete" data-id="${t.id}">${JG.esc(i18n.deleteLabel)}</button>
                 </div>
             </td>
         </tr>`).join('');
@@ -327,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadTasks() {
         const res = await JG.api('/admin/api/automation/tasks');
         if (!res.success) {
-            JG.toast(res.message || 'Erreur taches', 'error');
+            JG.toast(res.message || i18n.errorTasks, 'error');
             return;
         }
         tasks = Array.isArray(res.data) ? res.data : [];
@@ -337,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-preset-add').addEventListener('click', () => {
         presets.push({
             id: `preset-${presets.length + 1}`,
-            name: 'Nouveau preset',
+            name: i18n.newPreset,
             enable_download: true,
             enable_remote_access: true,
             max_sessions: 0,
@@ -363,10 +390,10 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify(payload),
         });
         if (!res.success) {
-            JG.toast(res.message || 'Sauvegarde presets impossible', 'error');
+            JG.toast(res.message || i18n.savePresetsFailed, 'error');
             return;
         }
-        JG.toast('Presets sauvegardes', 'success');
+        JG.toast(i18n.presetsSaved, 'success');
         await loadPresets();
     });
 
@@ -397,10 +424,10 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify(payload),
         });
         if (!res.success) {
-            JG.toast(res.message || 'Sauvegarde mappings impossible', 'error');
+            JG.toast(res.message || i18n.saveMappingsFailed, 'error');
             return;
         }
-        JG.toast('Mappings de groupes sauvegardes', 'success');
+        JG.toast(i18n.mappingsSaved, 'success');
         await loadGroupMappings();
     });
 
@@ -430,10 +457,10 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify(payload),
         });
         if (!res.success) {
-            JG.toast(res.message || 'Creation tache impossible', 'error');
+            JG.toast(res.message || i18n.taskCreateFailed, 'error');
             return;
         }
-        JG.toast('Tache creee', 'success');
+        JG.toast(i18n.taskCreated, 'success');
         event.target.reset();
         document.getElementById('task-enabled').checked = true;
         await loadTasks();
@@ -447,13 +474,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const task = tasks.find(t => String(t.id) === String(id));
 
         if (action === 'task-delete') {
-            if (!confirm('Supprimer cette tache ?')) return;
+            if (!confirm(i18n.taskDeleteConfirm)) return;
             const res = await JG.api(`/admin/api/automation/tasks/${id}`, { method: 'DELETE' });
             if (!res.success) {
-                JG.toast(res.message || 'Suppression impossible', 'error');
+                JG.toast(res.message || i18n.taskDeleteFailed, 'error');
                 return;
             }
-            JG.toast('Tache supprimee', 'success');
+            JG.toast(i18n.taskDeleted, 'success');
             await loadTasks();
             return;
         }
@@ -461,10 +488,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (action === 'task-run') {
             const res = await JG.api(`/admin/api/automation/tasks/${id}/run`, { method: 'POST' });
             if (!res.success) {
-                JG.toast(res.message || 'Execution impossible', 'error');
+                JG.toast(res.message || i18n.taskRunFailed, 'error');
                 return;
             }
-            JG.toast('Tache executee', 'success');
+            JG.toast(i18n.taskRunSuccess, 'success');
             await loadTasks();
             return;
         }
@@ -482,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }),
             });
             if (!res.success) {
-                JG.toast(res.message || 'Mise a jour impossible', 'error');
+                JG.toast(res.message || i18n.taskUpdateFailed, 'error');
                 return;
             }
             await loadTasks();

@@ -61,7 +61,7 @@
 
         {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTulliURL }}
         <div class="jg-public-links mt-5">
-            <p class="jg-public-links-title">Raccourcis rapides</p>
+            <p class="jg-public-links-title">{{ .T "invite_quick_links" }}</p>
             <div class="jg-public-links-grid">
                 {{ if .Data.JellyfinURL }}
                 <a href="{{ .Data.JellyfinURL }}" class="jg-public-link-chip">Jellyfin</a>

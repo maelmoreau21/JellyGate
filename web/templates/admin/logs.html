@@ -32,7 +32,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="jg-nav-label">My Account</span>
+            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
@@ -46,7 +46,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span class="jg-nav-label">Automation</span>
+            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
         {{ end }}
         {{ if .CanInvite }}
@@ -102,7 +102,7 @@
         </div>
         <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
             <div class="relative w-full sm:w-64">
-                <input type="text" id="search-input" placeholder="Rechercher (ex: admin, deleted...)"
+                <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}'
                     class="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all">
                 <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
@@ -112,8 +112,8 @@
             </div>
             <select id="limit-select"
                 class="w-full sm:w-auto px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white appearance-none focus:outline-none focus:border-purple-500/50">
-                <option value="50" class="bg-gray-800 text-white">50 par page</option>
-                <option value="100" class="bg-gray-800 text-white">100 par page</option>
+                <option value="50" class="bg-gray-800 text-white">50 {{ .T "logs_per_page_suffix" }}</option>
+                <option value="100" class="bg-gray-800 text-white">100 {{ .T "logs_per_page_suffix" }}</option>
             </select>
         </div>
     </div>
@@ -126,49 +126,49 @@
                         <th class="w-48 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             onclick="toggleSort('created_at')">
                             <div class="flex items-center gap-1">
-                                Date <span class="sort-icon text-xs opacity-50" data-col="created_at">▼</span>
+                                {{ .T "col_created_at" }} <span class="sort-icon text-xs opacity-50" data-col="created_at">▼</span>
                             </div>
                         </th>
                         <th class="w-40 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             onclick="toggleSort('action')">
                             <div class="flex items-center gap-1">
-                                Action <span class="sort-icon text-xs opacity-50 hidden" data-col="action">▼</span>
+                                {{ .T "logs_col_action" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="action">▼</span>
                             </div>
                         </th>
                         <th class="w-40 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             onclick="toggleSort('actor')">
                             <div class="flex items-center gap-1">
-                                Acteur <span class="sort-icon text-xs opacity-50 hidden" data-col="actor">▼</span>
+                                {{ .T "logs_col_actor" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="actor">▼</span>
                             </div>
                         </th>
                         <th class="px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             onclick="toggleSort('target')">
                             <div class="flex items-center gap-1">
-                                Cible <span class="sort-icon text-xs opacity-50 hidden" data-col="target">▼</span>
+                                {{ .T "logs_col_target" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="target">▼</span>
                             </div>
                         </th>
                         <th class="px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
-                            Détails
+                            {{ .T "logs_col_details" }}
                         </th>
                     </tr>
                 </thead>
                 <tbody id="logs-tbody" class="divide-y divide-white/5">
                     <tr>
-                        <td colspan="5" class="text-center py-8 text-slate-400">Chargement des journaux...</td>
+                        <td colspan="5" class="text-center py-8 text-slate-400">{{ .T "logs_loading" }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
         <div class="border-t border-white/10 bg-black/20 p-4 flex items-center justify-between mt-auto">
-            <span class="text-sm text-slate-400" id="pagination-info">Affichage des journaux...</span>
+            <span class="text-sm text-slate-400" id="pagination-info">{{ .T "logs_pagination_loading" }}</span>
             <div class="flex gap-2">
                 <button id="btn-prev" onclick="changePage(-1)"
                     class="px-3 py-1.5 text-sm font-medium text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                    Précédent
+                    {{ .T "common_previous" }}
                 </button>
                 <button id="btn-next" onclick="changePage(1)"
                     class="px-3 py-1.5 text-sm font-medium text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                    Suivant
+                    {{ .T "common_next" }}
                 </button>
             </div>
         </div>
@@ -186,6 +186,18 @@
         search: '',
         totalPages: 1
     };
+
+    const i18n = {
+        noResults: '{{ .T "logs_no_results" }}',
+        noResultsShort: '{{ .T "logs_no_results_short" }}',
+        pageLabel: '{{ .T "logs_page_label" }}',
+        ofLabel: '{{ .T "logs_of_label" }}',
+        totalLabel: '{{ .T "logs_total_label" }}',
+        systemActor: '{{ .T "logs_system_actor" }}',
+        networkError: '{{ .T "logs_network_error" }}',
+        loadError: '{{ .T "logs_load_error" }}',
+    };
+    const uiLocale = '{{ .Lang }}' || undefined;
 
     let searchTimeout;
 
@@ -257,12 +269,12 @@
             });
 
             const res = await fetch(`/admin/api/logs?${params}`);
-            if (!res.ok) throw new Error("Erreur réseau");
+            if (!res.ok) throw new Error(i18n.networkError);
             const data = await res.json();
 
             if (!data.success || !data.data || !data.data.logs || data.data.logs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-8 text-slate-400">Aucun journal trouvé.</td></tr>';
-                pageInfo.textContent = "Aucun résultat";
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">${escapeHtml(i18n.noResults)}</td></tr>`;
+                pageInfo.textContent = i18n.noResultsShort;
                 state.totalPages = 1;
                 return;
             }
@@ -271,7 +283,7 @@
             const meta = data.data.meta;
             state.totalPages = meta.total_pages;
 
-            pageInfo.innerHTML = `Page <span class="text-white font-medium">${meta.page}</span> sur <span class="text-white font-medium">${meta.total_pages}</span> <span class="mx-2 text-slate-600">|</span> Total: ${meta.total}`;
+            pageInfo.innerHTML = `${escapeHtml(i18n.pageLabel)} <span class="text-white font-medium">${meta.page}</span> ${escapeHtml(i18n.ofLabel)} <span class="text-white font-medium">${meta.total_pages}</span> <span class="mx-2 text-slate-600">|</span> ${escapeHtml(i18n.totalLabel)}: ${meta.total}`;
             btnPrev.disabled = meta.page <= 1;
             btnNext.disabled = meta.page >= meta.total_pages;
 
@@ -282,10 +294,10 @@
 
                 // Formater la date
                 const date = new Date(log.created_at);
-                const dateStr = date.toLocaleString('fr-FR', {
+                const dateStr = date.toLocaleString(uiLocale, {
                     day: '2-digit', month: '2-digit', year: 'numeric',
                     hour: '2-digit', minute: '2-digit', second: '2-digit'
-                }).replace(',', ' à');
+                });
 
                 // Badge de couleur selon l'action
                 let actionBadge = "bg-slate-500/20 text-slate-300 border-slate-500/30";
@@ -300,7 +312,7 @@
                 }
 
                 const actorHtml = log.actor === "system"
-                    ? `<span class="px-2 py-0.5 rounded text-xs bg-slate-700/50 text-slate-300 border border-slate-600">Système</span>`
+                    ? `<span class="px-2 py-0.5 rounded text-xs bg-slate-700/50 text-slate-300 border border-slate-600">${escapeHtml(i18n.systemActor)}</span>`
                     : `<span class="font-medium text-slate-200">${escapeHtml(log.actor)}</span>`;
 
                 tr.innerHTML = `
@@ -314,7 +326,7 @@
             });
         } catch (err) {
             console.error(err);
-            document.getElementById("logs-tbody").innerHTML = '<tr><td colspan="5" class="text-center py-8 text-red-400">Erreur lors du chargement des journaux.</td></tr>';
+            document.getElementById("logs-tbody").innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-400">${escapeHtml(i18n.loadError)}</td></tr>`;
         }
     }
 

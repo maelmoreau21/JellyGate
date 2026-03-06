@@ -57,7 +57,7 @@
 
     {{/* Language selector — moved into admin sidebar footer by app.js when available */}}
     <div id="lang-switcher" class="jg-lang-switcher px-3 py-2">
-        <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-300 block mb-1">Language</label>
+        <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-300 block mb-1">{{ .T "base_language_label" }}</label>
         <select id="lang-select" class="jg-input jg-lang-select" onchange="JG.setLang(this.value)">
             <option value="fr" {{ if eq .Lang "fr" }}selected{{ end }}>fr - Français</option>
             <option value="en" {{ if eq .Lang "en" }}selected{{ end }}>en - English</option>

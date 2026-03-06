@@ -32,7 +32,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span class="jg-nav-label">My Account</span>
+            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
@@ -46,7 +46,7 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
-            <span class="jg-nav-label">Automation</span>
+            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
         {{ end }}
         {{ if .CanInvite }}
@@ -99,53 +99,53 @@
                 </svg>
             </button>
             <h1 class="text-3xl font-bold text-white inline-block align-middle">🎟️ {{ .T "nav_invitations" }}</h1>
-            <p class="text-slate-400 text-sm mt-1">Générez, suivez et gérez vos liens d'invitation depuis une vue unique.</p>
+            <p class="text-slate-400 text-sm mt-1">{{ .T "invitations_subheading" }}</p>
         </div>
         <button onclick="JG.openCreateModal()" class="jg-btn jg-btn-primary">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Nouvelle Invitation
+            {{ .T "invitations_new_invitation" }}
         </button>
     </div>
 
     <div class="glass-card p-4 mb-6">
         <div class="flex flex-col gap-3">
-            <div class="text-xs text-slate-400" id="invite-policy-summary">Chargement des limites d'invitation...</div>
+            <div class="text-xs text-slate-400" id="invite-policy-summary">{{ .T "invitations_policy_loading" }}</div>
             <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
                 <div>
-                    <label class="jg-label" for="last-created-link">Dernier lien genere</label>
-                    <input type="text" id="last-created-link" class="jg-input" readonly placeholder="Le prochain lien cree apparaitra ici.">
+                    <label class="jg-label" for="last-created-link">{{ .T "invitations_last_link_label" }}</label>
+                    <input type="text" id="last-created-link" class="jg-input" readonly placeholder='{{ .T "invitations_last_link_placeholder" }}'>
                 </div>
-                <button id="copy-last-created-link" type="button" class="jg-btn jg-btn-ghost">Copier</button>
+                <button id="copy-last-created-link" type="button" class="jg-btn jg-btn-ghost">{{ .T "invitations_copy" }}</button>
             </div>
         </div>
     </div>
 
     <div class="glass-card p-4 mb-6">
         <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-semibold text-white">Dashboard Parrainage</h2>
+            <h2 class="text-base font-semibold text-white">{{ .T "invitations_sponsor_dashboard" }}</h2>
             <span class="text-xs text-slate-400" id="sponsor-stats-generated-at">--</span>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
             <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">Liens créés</div>
+                <div class="text-xs text-slate-400">{{ .T "invitations_links_created" }}</div>
                 <div class="text-xl font-semibold text-white" id="sponsor-total-links">0</div>
             </div>
             <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">Liens actifs</div>
+                <div class="text-xs text-slate-400">{{ .T "invitations_links_active" }}</div>
                 <div class="text-xl font-semibold text-emerald-300" id="sponsor-active-links">0</div>
             </div>
             <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">Liens fermés</div>
+                <div class="text-xs text-slate-400">{{ .T "invitations_links_closed" }}</div>
                 <div class="text-xl font-semibold text-rose-300" id="sponsor-closed-links">0</div>
             </div>
             <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">Conversions</div>
+                <div class="text-xs text-slate-400">{{ .T "invitations_conversions" }}</div>
                 <div class="text-xl font-semibold text-cyan-300" id="sponsor-conversions">0</div>
             </div>
             <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">Taux conversion</div>
+                <div class="text-xs text-slate-400">{{ .T "invitations_conversion_rate" }}</div>
                 <div class="text-xl font-semibold text-amber-300" id="sponsor-conversion-rate">0%</div>
             </div>
         </div>
@@ -154,18 +154,18 @@
             <table class="jg-table">
                 <thead>
                     <tr>
-                        <th>Parrain</th>
-                        <th>Liens créés</th>
-                        <th>Actifs</th>
-                        <th>Fermés</th>
-                        <th>Utilisations</th>
-                        <th>Conversions</th>
-                        <th>Taux</th>
+                        <th>{{ .T "invitations_sponsor" }}</th>
+                        <th>{{ .T "invitations_links_created" }}</th>
+                        <th>{{ .T "invitations_links_active" }}</th>
+                        <th>{{ .T "invitations_links_closed" }}</th>
+                        <th>{{ .T "invitations_uses" }}</th>
+                        <th>{{ .T "invitations_conversions" }}</th>
+                        <th>{{ .T "invitations_rate" }}</th>
                     </tr>
                 </thead>
                 <tbody id="sponsor-stats-body">
                     <tr>
-                        <td colspan="7" class="text-center text-slate-500 py-8">Chargement des statistiques...</td>
+                        <td colspan="7" class="text-center text-slate-500 py-8">{{ .T "invitations_stats_loading" }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -178,12 +178,12 @@
             <table class="jg-table">
                 <thead>
                     <tr>
-                        <th>Lien / Code</th>
-                        <th>Utilisations</th>
-                        <th>Expire le (Lien)</th>
-                        <th>Expiration Profil</th>
-                        <th>Email D'Envoi</th>
-                        <th class="text-right">Actions</th>
+                        <th>{{ .T "invitations_col_link_code" }}</th>
+                        <th>{{ .T "invitations_uses" }}</th>
+                        <th>{{ .T "invitations_col_link_expiry" }}</th>
+                        <th>{{ .T "invitations_col_profile_expiry" }}</th>
+                        <th>{{ .T "invitations_col_email" }}</th>
+                        <th class="text-right">{{ .T "col_actions" }}</th>
                     </tr>
                 </thead>
                 <tbody id="invites-tbody">
@@ -204,69 +204,69 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
         </button>
-        <h2 class="text-2xl font-bold mb-2 text-white">Générer une invitation</h2>
-        <p class="text-sm text-slate-400 mb-6">Configurez le lien, le profil utilisateur, puis l'envoi automatique éventuel par courriel.</p>
+        <h2 class="text-2xl font-bold mb-2 text-white">{{ .T "invitations_create_title" }}</h2>
+        <p class="text-sm text-slate-400 mb-6">{{ .T "invitations_create_desc" }}</p>
 
         <form id="create-form" onsubmit="JG.submitCreate(event)">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                    <h3 class="text-lg font-semibold text-purple-300 border-b border-white/10 pb-2">1) Paramètres du lien</h3>
+                    <h3 class="text-lg font-semibold text-purple-300 border-b border-white/10 pb-2">{{ .T "invitations_section_link_settings" }}</h3>
                     <div>
-                        <label class="jg-label">Utilisations maximales (0 = Illimité)</label>
+                        <label class="jg-label">{{ .T "invitations_max_uses_label" }}</label>
                         <input type="number" id="inv-uses" class="jg-input" min="0" value="1">
-                        <p class="text-xs text-slate-500 mt-1" id="inv-uses-help">0 = illimite.</p>
+                        <p class="text-xs text-slate-500 mt-1" id="inv-uses-help">{{ .T "invitations_uses_help_default" }}</p>
                     </div>
                     <div>
-                        <label class="jg-label">Expire le (Date précise, vide = Jamais)</label>
+                        <label class="jg-label">{{ .T "invitations_link_expires_label" }}</label>
                         <input type="datetime-local" id="inv-expires-link" class="jg-input">
-                        <p class="text-xs text-slate-500 mt-1" id="inv-link-expiry-help">Vous pouvez laisser vide.</p>
+                        <p class="text-xs text-slate-500 mt-1" id="inv-link-expiry-help">{{ .T "invitations_link_help_default" }}</p>
                     </div>
                 </div>
 
                 <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                    <h3 class="text-lg font-semibold text-emerald-300 border-b border-white/10 pb-2">2) Profil utilisateur</h3>
+                    <h3 class="text-lg font-semibold text-emerald-300 border-b border-white/10 pb-2">{{ .T "invitations_section_user_profile" }}</h3>
                     <div>
-                        <label class="jg-label">Nom d'utilisateur forcé</label>
-                        <input type="text" id="inv-forced-user" class="jg-input" placeholder="Laisser vide pour choix libre">
-                        <p class="text-xs text-slate-500 mt-1">Le reste du profil utilisateur est force depuis Parametres -> Profil invitation (acces administrateur uniquement).</p>
+                        <label class="jg-label">{{ .T "invitations_forced_username" }}</label>
+                        <input type="text" id="inv-forced-user" class="jg-input" placeholder='{{ .T "invitations_forced_username_placeholder" }}'>
+                        <p class="text-xs text-slate-500 mt-1">{{ .T "invitations_forced_username_help" }}</p>
                     </div>
                     <div>
                         <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                             <input type="checkbox" id="inv-user-expiry-enabled" class="form-checkbox">
-                            Definir une expiration utilisateur specifique pour ce lien
+                            {{ .T "invitations_user_expiry_enable" }}
                         </label>
                         <input type="number" id="inv-user-expiry-days" class="jg-input mt-2" min="1" value="30" disabled>
-                        <p class="text-xs text-slate-500 mt-1">En jours apres la creation du compte.</p>
-                        <label class="jg-label mt-2">Ou date absolue (prioritaire)</label>
+                        <p class="text-xs text-slate-500 mt-1">{{ .T "invitations_user_expiry_days_help" }}</p>
+                        <label class="jg-label mt-2">{{ .T "invitations_user_expiry_absolute" }}</label>
                         <input type="datetime-local" id="inv-user-expiry-at" class="jg-input" disabled>
-                        <p class="text-xs text-slate-500 mt-1">Si renseignee, cette date exacte sera appliquee au compte.</p>
+                        <p class="text-xs text-slate-500 mt-1">{{ .T "invitations_user_expiry_absolute_help" }}</p>
                     </div>
                     <div>
                         <label class="inline-flex items-center gap-2 text-sm text-slate-300" id="inv-can-invite-wrap">
                             <input type="checkbox" id="inv-new-user-can-invite" class="form-checkbox">
-                            Le nouvel utilisateur peut creer des invitations
+                            {{ .T "invitations_new_user_can_invite" }}
                         </label>
-                        <p class="text-xs text-slate-500 mt-1" id="inv-can-invite-help">Option reservee selon la politique admin.</p>
+                        <p class="text-xs text-slate-500 mt-1" id="inv-can-invite-help">{{ .T "invitations_invite_option_policy_limited" }}</p>
                     </div>
                 </div>
             </div>
 
             <div class="space-y-4 mb-8 p-4 rounded-xl bg-white/5 border border-white/10">
-                <h3 class="text-lg font-semibold text-amber-300 border-b border-white/10 pb-2">3) Notification SMTP automatique</h3>
+                <h3 class="text-lg font-semibold text-amber-300 border-b border-white/10 pb-2">{{ .T "invitations_section_smtp_notification" }}</h3>
                 <div>
-                    <label class="jg-label">Envoyer à l'adresse e-mail (Optionnel)</label>
+                    <label class="jg-label">{{ .T "invitations_send_to_email_label" }}</label>
                     <input type="email" id="inv-email" class="jg-input" placeholder="exemple@gmail.com">
-                    <p class="text-xs text-slate-500 mt-1">Si renseigné, un courriel est envoyé avec le lien généré.</p>
+                    <p class="text-xs text-slate-500 mt-1">{{ .T "invitations_send_to_email_help" }}</p>
                 </div>
             </div>
 
             <div class="flex justify-end gap-3 pt-6 border-t border-white/10">
-                <button type="button" class="jg-btn jg-btn-ghost" onclick="JG.closeCreateModal()">Annuler</button>
+                <button type="button" class="jg-btn jg-btn-ghost" onclick="JG.closeCreateModal()">{{ .T "cancel" }}</button>
                 <button type="submit" class="jg-btn jg-btn-primary" id="create-btn">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Créer le lien
+                    {{ .T "invitations_create_link" }}
                 </button>
             </div>
         </form>
@@ -280,12 +280,11 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
-        <h3 class="text-lg font-bold mb-2">Détruire l'invitation ?</h3>
-        <p class="text-sm text-slate-400 mb-6" id="delete-modal-text">Les utilisateurs ayant déjà utilisé ce code ne
-            seront pas impactés, mais le lien ne marchera plus.</p>
+        <h3 class="text-lg font-bold mb-2">{{ .T "invitations_delete_title" }}</h3>
+        <p class="text-sm text-slate-400 mb-6" id="delete-modal-text">{{ .T "invitations_delete_desc" }}</p>
         <div class="flex justify-center gap-3">
-            <button class="jg-btn jg-btn-ghost" onclick="JG.closeDeleteModal()">Annuler</button>
-            <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">Supprimer</button>
+            <button class="jg-btn jg-btn-ghost" onclick="JG.closeDeleteModal()">{{ .T "cancel" }}</button>
+            <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">{{ .T "invitations_delete" }}</button>
         </div>
     </div>
 </div>
@@ -295,6 +294,60 @@
         let allInvitations = [];
 
         window.JG = window.JG || {};
+        const i18n = {
+            linkCopied: '{{ .T "invitations_link_copied" }}',
+            copyUnavailable: '{{ .T "invitations_copy_unavailable" }}',
+            baseLinks: '{{ .T "invitations_policy_base_links" }}',
+            maxUsesPerLink: '{{ .T "invitations_policy_max_uses" }}',
+            maxTtl: '{{ .T "invitations_policy_max_ttl" }}',
+            quotaDay: '{{ .T "invitations_policy_quota_day" }}',
+            quotaWeek: '{{ .T "invitations_policy_quota_week" }}',
+            quotaMonth: '{{ .T "invitations_policy_quota_month" }}',
+            grantLocked: '{{ .T "invitations_policy_grant_locked" }}',
+            expiryLocked: '{{ .T "invitations_policy_expiry_locked" }}',
+            usesHelpLimited: '{{ .T "invitations_uses_help_limited" }}',
+            usesHelpDefault: '{{ .T "invitations_uses_help_default" }}',
+            linkHelpLimited: '{{ .T "invitations_link_help_limited" }}',
+            linkHelpDefault: '{{ .T "invitations_link_help_default" }}',
+            inviteEnabledHelp: '{{ .T "invitations_invite_option_enabled_help" }}',
+            invitePolicyLimited: '{{ .T "invitations_invite_option_policy_limited" }}',
+            loadError: '{{ .T "invitations_error_loading" }}',
+            statsLoadError: '{{ .T "invitations_stats_error" }}',
+            statsUpdatedAt: '{{ .T "invitations_stats_updated_at" }}',
+            noSponsorData: '{{ .T "invitations_sponsor_no_data" }}',
+            unknownSponsor: '{{ .T "invitations_unknown_sponsor" }}',
+            noActiveInvitations: '{{ .T "invitations_none_active" }}',
+            expiresOn: '{{ .T "invitations_expires_on" }}',
+            disableAfterDays: '{{ .T "invitations_disable_after_days" }}',
+            unlimited: '{{ .T "invitations_unlimited" }}',
+            deleteAfterDays: '{{ .T "invitations_delete_after_days" }}',
+            noDeletePlanned: '{{ .T "invitations_no_planned_delete" }}',
+            roleCanInvite: '{{ .T "invitations_role_can_invite" }}',
+            roleStandard: '{{ .T "invitations_role_standard" }}',
+            defaultPolicy: '{{ .T "invitations_default_policy" }}',
+            groupPrefix: '{{ .T "invitations_group_prefix" }}',
+            groupDefault: '{{ .T "invitations_group_default" }}',
+            badgeExpired: '{{ .T "invitations_badge_expired" }}',
+            badgeActive: '{{ .T "invitations_badge_active" }}',
+            copyFullLinkTitle: '{{ .T "invitations_copy_full_link" }}',
+            emailManual: '{{ .T "invitations_email_manual" }}',
+            deleted: '{{ .T "invitations_deleted" }}',
+            createLink: '{{ .T "invitations_create_link" }}',
+            invalidMaxUses: '{{ .T "invitations_invalid_max_uses" }}',
+            invalidUserExpiry: '{{ .T "invitations_invalid_user_expiry" }}',
+            userExpiryFuture: '{{ .T "invitations_user_expiry_future" }}',
+            created: '{{ .T "invitations_created" }}',
+            unknownError: '{{ .T "invitations_unknown_error" }}',
+            noLinkToCopy: '{{ .T "invitations_no_link_to_copy" }}',
+        };
+
+        function fmt(template, vars) {
+            return String(template || '').replace(/\{(\w+)\}/g, (_, key) => (vars && key in vars ? String(vars[key]) : ''));
+        }
+
+        function createBtnLabel() {
+            return `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>${JG.esc(i18n.createLink)}`;
+        }
 
         const inviteBaseCandidate = ("{{ .Data.InviteBaseURL }}" || '').trim();
         const inviteBaseURL = (inviteBaseCandidate && inviteBaseCandidate !== '<no value>') ? inviteBaseCandidate : window.location.origin;
@@ -315,9 +368,9 @@
         async function copyLinkToClipboard(link) {
             const ok = await JG.copyText(link);
             if (ok) {
-                JG.toast('Lien copié', 'success');
+                JG.toast(i18n.linkCopied, 'success');
             } else {
-                JG.toast('Copie auto indisponible, utilise le champ de lien ci-dessus.', 'error');
+                JG.toast(i18n.copyUnavailable, 'error');
             }
             return ok;
         }
@@ -338,27 +391,27 @@
 
             if (summary) {
                 const parts = [];
-                parts.push(`Base des liens: ${getBaseURL()}`);
-                if (!isAdmin && inviterMaxUses > 0) parts.push(`Max utilisations par lien: ${inviterMaxUses}`);
-                if (!isAdmin && inviterMaxLinkHours > 0) parts.push(`TTL max lien: ${inviterMaxLinkHours}h`);
-                if (!isAdmin && inviterQuotaDay > 0) parts.push(`Quota jour: ${inviterQuotaDay}`);
-                if (!isAdmin && inviterQuotaWeek > 0) parts.push(`Quota semaine: ${inviterQuotaWeek}`);
-                if (!isAdmin && inviterQuotaMonth > 0) parts.push(`Quota mois: ${inviterQuotaMonth}`);
-                if (!isAdmin && !allowInviterGrant) parts.push('Delegation invite verrouillee');
-                if (!isAdmin && !allowInviterUserExpiry) parts.push('Expiration utilisateur verrouillee');
+                parts.push(fmt(i18n.baseLinks, { url: getBaseURL() }));
+                if (!isAdmin && inviterMaxUses > 0) parts.push(fmt(i18n.maxUsesPerLink, { n: inviterMaxUses }));
+                if (!isAdmin && inviterMaxLinkHours > 0) parts.push(fmt(i18n.maxTtl, { n: inviterMaxLinkHours }));
+                if (!isAdmin && inviterQuotaDay > 0) parts.push(fmt(i18n.quotaDay, { n: inviterQuotaDay }));
+                if (!isAdmin && inviterQuotaWeek > 0) parts.push(fmt(i18n.quotaWeek, { n: inviterQuotaWeek }));
+                if (!isAdmin && inviterQuotaMonth > 0) parts.push(fmt(i18n.quotaMonth, { n: inviterQuotaMonth }));
+                if (!isAdmin && !allowInviterGrant) parts.push(i18n.grantLocked);
+                if (!isAdmin && !allowInviterUserExpiry) parts.push(i18n.expiryLocked);
                 summary.textContent = parts.join(' • ');
             }
 
             if (usesHelp) {
                 usesHelp.textContent = (!isAdmin && inviterMaxUses > 0)
-                    ? `Pour ton role: de 1 a ${inviterMaxUses} utilisations.`
-                    : '0 = illimite.';
+                    ? fmt(i18n.usesHelpLimited, { n: inviterMaxUses })
+                    : i18n.usesHelpDefault;
             }
 
             if (linkHelp) {
                 linkHelp.textContent = (!isAdmin && inviterMaxLinkHours > 0)
-                    ? `Date limite recommandee: dans les ${inviterMaxLinkHours} prochaines heures.`
-                    : 'Vous pouvez laisser vide.';
+                    ? fmt(i18n.linkHelpLimited, { n: inviterMaxLinkHours })
+                    : i18n.linkHelpDefault;
             }
 
             if (canInviteCheckbox) {
@@ -373,8 +426,8 @@
             }
             if (canInviteHelp) {
                 canInviteHelp.textContent = canGrantInvite
-                    ? 'Si active, le nouvel utilisateur pourra creer des liens d\'invitation.'
-                    : 'Option desactivee par la politique admin.';
+                    ? i18n.inviteEnabledHelp
+                    : i18n.invitePolicyLimited;
             }
 
             if (expiryEnabled && expiryDays) {
@@ -405,7 +458,7 @@
                 allInvitations = res.data || [];
                 renderInvitations(allInvitations);
             } else {
-                JG.toast('Erreur de chargement', 'error');
+                JG.toast(i18n.loadError, 'error');
             }
         };
 
@@ -414,7 +467,7 @@
             const tbody = document.getElementById('sponsor-stats-body');
             if (!res || !res.success || !res.data) {
                 if (tbody) {
-                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-red-300 py-8">Impossible de charger les statistiques.</td></tr>';
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-red-300 py-8">${JG.esc(i18n.statsLoadError)}</td></tr>`;
                 }
                 return;
             }
@@ -428,21 +481,21 @@
 
             const generatedAt = document.getElementById('sponsor-stats-generated-at');
             if (generatedAt) {
-                generatedAt.textContent = data.generated_at ? `Mise a jour: ${new Date(data.generated_at).toLocaleString()}` : '--';
+                generatedAt.textContent = data.generated_at ? fmt(i18n.statsUpdatedAt, { at: new Date(data.generated_at).toLocaleString() }) : '--';
             }
 
             const sponsors = Array.isArray(data.by_sponsor) ? data.by_sponsor : [];
             if (!tbody) return;
 
             if (sponsors.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">Aucune donnée de parrainage.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-500 py-8">${JG.esc(i18n.noSponsorData)}</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = sponsors.map(item => {
                 const rate = Number(item.conversion_rate || 0).toFixed(1);
                 return `<tr>
-                    <td class="font-medium text-slate-200">${JG.esc(item.sponsor || '(inconnu)')}</td>
+                    <td class="font-medium text-slate-200">${JG.esc(item.sponsor || i18n.unknownSponsor)}</td>
                     <td>${JG.esc(String(item.created_links || 0))}</td>
                     <td><span class="badge badge-success">${JG.esc(String(item.active_links || 0))}</span></td>
                     <td><span class="badge badge-danger">${JG.esc(String(item.closed_links || 0))}</span></td>
@@ -456,7 +509,7 @@
         function renderInvitations(list) {
             const tbody = document.getElementById('invites-tbody');
             if (list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-slate-500 py-12">Aucune invitation active.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-12">${JG.esc(i18n.noActiveInvitations)}</td></tr>`;
                 return;
             }
 
@@ -476,10 +529,10 @@
                     absoluteUserExpiryLabel = Number.isNaN(parsedAbs.getTime()) ? absoluteUserExpiry : parsedAbs.toLocaleString();
                 }
                 const userExpiry = absoluteUserExpiry
-                    ? `expire le ${absoluteUserExpiryLabel}`
-                    : (disableAfter > 0 ? `disable a ${disableAfter} jours` : 'Illimité');
-                const deleteLabel = deleteAfter > 0 ? `delete a ${deleteAfter} jours` : 'pas de suppression planifiee';
-                const inviteRole = rawProfile.can_invite ? 'peut inviter' : 'compte standard';
+                    ? fmt(i18n.expiresOn, { date: absoluteUserExpiryLabel })
+                    : (disableAfter > 0 ? fmt(i18n.disableAfterDays, { n: disableAfter }) : i18n.unlimited);
+                const deleteLabel = deleteAfter > 0 ? fmt(i18n.deleteAfterDays, { n: deleteAfter }) : i18n.noDeletePlanned;
+                const inviteRole = rawProfile.can_invite ? i18n.roleCanInvite : i18n.roleStandard;
                 const pwRules = [];
                 if (Number(rawProfile.password_min_length || 0) > 0) pwRules.push(`min ${rawProfile.password_min_length}`);
                 if (Number(rawProfile.password_max_length || 0) > 0) pwRules.push(`max ${rawProfile.password_max_length}`);
@@ -492,21 +545,21 @@
                 if (unMin > 0 || unMax > 0) {
                     pwRules.push(`user ${unMin || 3}-${unMax || 32}`);
                 }
-                const policyLabel = pwRules.length > 0 ? pwRules.join(', ') : 'defaut';
-                const groupLabel = groupName ? `groupe: ${groupName}` : 'groupe LDAP par défaut';
+                const policyLabel = pwRules.length > 0 ? pwRules.join(', ') : i18n.defaultPolicy;
+                const groupLabel = groupName ? fmt(i18n.groupPrefix, { group: groupName }) : i18n.groupDefault;
                 const userExp = `<div>${JG.esc(userExpiry)} · ${JG.esc(inviteRole)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)} · ${JG.esc(policyLabel)}</div>`;
 
                 const usesStr = inv.max_uses > 0 ? `${inv.used_count} / ${inv.max_uses}` : `${inv.used_count} / ∞`;
 
                 // Marqueurs Visuels
                 const isOver = (inv.max_uses > 0 && inv.used_count >= inv.max_uses) || (inv.expires_at && new Date(inv.expires_at) < new Date());
-                const overBadge = isOver ? `<span class="ml-2 badge badge-danger">Expiré</span>` : `<span class="ml-2 badge badge-success">Actif</span>`;
+                const overBadge = isOver ? `<span class="ml-2 badge badge-danger">${JG.esc(i18n.badgeExpired)}</span>` : `<span class="ml-2 badge badge-success">${JG.esc(i18n.badgeActive)}</span>`;
 
                 return `<tr class="${isOver ? 'opacity-50 grayscale' : ''}">
                     <td>
                         <div class="flex items-center gap-2">
                             <code class="px-2 py-1 bg-black/40 rounded text-purple-300 select-all">${inv.code}</code>
-                            <button onclick="JG.copyInviteLink('${encodeURIComponent(link)}')" class="text-slate-400 hover:text-white" title="Copier le lien complet">
+                            <button onclick="JG.copyInviteLink('${encodeURIComponent(link)}')" class="text-slate-400 hover:text-white" title="${JG.esc(i18n.copyFullLinkTitle)}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             </button>
                         </div>
@@ -514,7 +567,7 @@
                     <td class="font-mono text-sm">${usesStr} ${overBadge}</td>
                     <td class="text-sm text-slate-400">${expDate}</td>
                     <td class="text-sm border-l border-white/5 pl-2">${userExp}</td>
-                    <td class="text-sm text-slate-400">SMTP Manuel</td>
+                    <td class="text-sm text-slate-400">${JG.esc(i18n.emailManual)}</td>
                     <td class="text-right">
                         <button class="jg-btn jg-btn-sm jg-btn-danger" onclick="JG.confirmDelete(${inv.id})">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
@@ -536,7 +589,7 @@
                 JG.closeDeleteModal();
                 const res = await JG.api(`/admin/api/invitations/${id}`, { method: 'DELETE' });
                 if (res.success) {
-                    JG.toast('Invitation supprimée', 'success');
+                    JG.toast(i18n.deleted, 'success');
                     JG.loadInvitations();
                     JG.loadSponsorStats();
                 } else {
@@ -575,15 +628,15 @@
 
             if (!isAdmin && inviterMaxUses > 0 && (maxUses <= 0 || maxUses > inviterMaxUses)) {
                 btn.disabled = false;
-                btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
-                JG.toast(`Pour ton role, max_uses doit etre entre 1 et ${inviterMaxUses}.`, 'error');
+                btn.innerHTML = createBtnLabel();
+                JG.toast(fmt(i18n.invalidMaxUses, { n: inviterMaxUses }), 'error');
                 return;
             }
 
             if (userExpiryEnabled && !userExpiryAt && userExpiryDays <= 0) {
                 btn.disabled = false;
-                btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
-                JG.toast('Indique un nombre de jours valide ou une date absolue pour l\'expiration utilisateur.', 'error');
+                btn.innerHTML = createBtnLabel();
+                JG.toast(i18n.invalidUserExpiry, 'error');
                 return;
             }
 
@@ -591,8 +644,8 @@
                 const expiryTimestamp = Date.parse(userExpiryAt);
                 if (Number.isNaN(expiryTimestamp) || expiryTimestamp <= Date.now()) {
                     btn.disabled = false;
-                    btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
-                    JG.toast('La date d\'expiration utilisateur doit etre dans le futur.', 'error');
+                    btn.innerHTML = createBtnLabel();
+                    JG.toast(i18n.userExpiryFuture, 'error');
                     return;
                 }
             }
@@ -619,7 +672,7 @@
             });
 
             btn.disabled = false;
-            btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
+            btn.innerHTML = createBtnLabel();
 
             if (res.success) {
                 const createdLink = (res.data && res.data.url) ? res.data.url : '';
@@ -627,12 +680,12 @@
                     document.getElementById('last-created-link').value = createdLink;
                     await copyLinkToClipboard(createdLink);
                 }
-                JG.toast('Invitation générée.', 'success');
+                JG.toast(i18n.created, 'success');
                 JG.closeCreateModal();
                 JG.loadInvitations();
                 JG.loadSponsorStats();
             } else {
-                JG.toast(res.message || 'Erreur inconnue', 'error');
+                JG.toast(res.message || i18n.unknownError, 'error');
             }
         };
 
@@ -653,7 +706,7 @@
             copyLastBtn.addEventListener('click', async () => {
                 const value = (document.getElementById('last-created-link').value || '').trim();
                 if (!value) {
-                    JG.toast('Aucun lien a copier pour le moment.', 'error');
+                    JG.toast(i18n.noLinkToCopy, 'error');
                     return;
                 }
                 await copyLinkToClipboard(value);
