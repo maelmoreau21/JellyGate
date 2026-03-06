@@ -149,6 +149,9 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 		Enabled:             false,
 		Port:                636,
 		UseTLS:              true,
+		UsernameAttribute:   "auto",
+		UserObjectClass:     "auto",
+		GroupMemberAttr:     "auto",
 		UserOU:              "CN=Users",
 		ProvisionMode:       "hybrid",
 		JellyfinGroup:       "jellyfin",
@@ -175,6 +178,21 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	}
 	if cfg.ProvisionMode != "hybrid" && cfg.ProvisionMode != "ldap_only" {
 		cfg.ProvisionMode = "hybrid"
+	}
+
+	cfg.UsernameAttribute = strings.TrimSpace(cfg.UsernameAttribute)
+	if cfg.UsernameAttribute == "" {
+		cfg.UsernameAttribute = "auto"
+	}
+
+	cfg.UserObjectClass = strings.TrimSpace(cfg.UserObjectClass)
+	if cfg.UserObjectClass == "" {
+		cfg.UserObjectClass = "auto"
+	}
+
+	cfg.GroupMemberAttr = strings.TrimSpace(cfg.GroupMemberAttr)
+	if cfg.GroupMemberAttr == "" {
+		cfg.GroupMemberAttr = "auto"
 	}
 
 	if strings.TrimSpace(cfg.JellyfinGroup) == "" {

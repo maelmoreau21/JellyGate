@@ -108,18 +108,21 @@ type DatabaseConfig struct {
 // Ces structs sont utilisées par database/settings.go et handlers/settings.go
 // pour sérialiser/désérialiser les paramètres depuis SQLite.
 
-// LDAPConfig contient les paramètres de connexion à l'Active Directory (LDAP/LDAPS).
+// LDAPConfig contient les paramètres de connexion annuaire (LDAP/LDAPS).
 type LDAPConfig struct {
-	Enabled      bool   `json:"enabled"`       // Intégration LDAP activée
-	Host         string `json:"host"`          // Hostname du serveur LDAP
-	Port         int    `json:"port"`          // Port (défaut: 636 pour LDAPS)
-	UseTLS       bool   `json:"use_tls"`       // Utiliser LDAPS (TLS)
-	SkipVerify   bool   `json:"skip_verify"`   // Ignorer la vérification du certificat TLS
-	BindDN       string `json:"bind_dn"`       // DN de l'utilisateur pour le bind
-	BindPassword string `json:"bind_password"` // Mot de passe de bind
-	BaseDN       string `json:"base_dn"`       // Base DN de recherche
-	UserOU       string `json:"user_ou"`       // OU pour la création des utilisateurs
-	UserGroup    string `json:"user_group"`    // Legacy: fallback groupe utilisateur
+	Enabled           bool   `json:"enabled"`            // Intégration LDAP activée
+	Host              string `json:"host"`               // Hostname du serveur LDAP
+	Port              int    `json:"port"`               // Port (défaut: 636 pour LDAPS)
+	UseTLS            bool   `json:"use_tls"`            // Utiliser LDAPS (TLS)
+	SkipVerify        bool   `json:"skip_verify"`        // Ignorer la vérification du certificat TLS
+	BindDN            string `json:"bind_dn"`            // DN de l'utilisateur pour le bind
+	BindPassword      string `json:"bind_password"`      // Mot de passe de bind
+	BaseDN            string `json:"base_dn"`            // Base DN de recherche
+	UsernameAttribute string `json:"username_attribute"` // Attribut login utilisateur (auto|sAMAccountName|uid|...)
+	UserObjectClass   string `json:"user_object_class"`  // objectClass utilisateur (auto|user|person|posixAccount|...)
+	GroupMemberAttr   string `json:"group_member_attr"`  // Attribut membre groupe (auto|member|memberUid|...)
+	UserOU            string `json:"user_ou"`            // OU pour la création des utilisateurs
+	UserGroup         string `json:"user_group"`         // Legacy: fallback groupe utilisateur
 
 	// Mode de provisioning: "hybrid" (LDAP + Jellyfin) ou "ldap_only".
 	ProvisionMode string `json:"provision_mode"`

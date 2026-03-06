@@ -402,6 +402,27 @@
                 <label class="jg-label" for="ldap-domain">{{ .T "settings_ldap_domain" }}</label>
                 <input type="text" id="ldap-domain" class="jg-input" placeholder="example.com">
               </div>
+              <div>
+                <label class="jg-label" for="ldap-username-attribute">{{ .T "settings_ldap_username_attribute" }}</label>
+                <select id="ldap-username-attribute" class="jg-input">
+                  <option value="auto">{{ .T "settings_ldap_username_attr_auto" }}</option>
+                  <option value="sAMAccountName">{{ .T "settings_ldap_username_attr_ad" }}</option>
+                  <option value="uid">{{ .T "settings_ldap_username_attr_uid" }}</option>
+                  <option value="userPrincipalName">{{ .T "settings_ldap_username_attr_upn" }}</option>
+                  <option value="cn">{{ .T "settings_ldap_username_attr_cn" }}</option>
+                </select>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_ldap_username_attribute_help" }}</p>
+              </div>
+              <div>
+                <label class="jg-label" for="ldap-user-object-class">{{ .T "settings_ldap_user_object_class" }}</label>
+                <input type="text" id="ldap-user-object-class" class="jg-input" placeholder="auto / user / person / posixAccount">
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_ldap_user_object_class_help" }}</p>
+              </div>
+              <div>
+                <label class="jg-label" for="ldap-group-member-attr">{{ .T "settings_ldap_group_member_attr" }}</label>
+                <input type="text" id="ldap-group-member-attr" class="jg-input" placeholder="auto / member / memberUid">
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_ldap_group_member_attr_help" }}</p>
+              </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -887,6 +908,9 @@
       bind_dn: document.getElementById('ldap-bind-dn').value,
       bind_password: document.getElementById('ldap-bind-password').value,
       base_dn: document.getElementById('ldap-base-dn').value,
+      username_attribute: document.getElementById('ldap-username-attribute').value,
+      user_object_class: document.getElementById('ldap-user-object-class').value.trim(),
+      group_member_attr: document.getElementById('ldap-group-member-attr').value.trim(),
       provision_mode: document.getElementById('ldap-provision-mode').value,
       user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
       domain: document.getElementById('ldap-domain').value,
@@ -1076,6 +1100,9 @@
     document.getElementById('ldap-bind-dn').value = d.ldap.bind_dn || '';
     document.getElementById('ldap-bind-password').value = d.ldap.bind_password || '';
     document.getElementById('ldap-base-dn').value = d.ldap.base_dn || '';
+    document.getElementById('ldap-username-attribute').value = d.ldap.username_attribute || 'auto';
+    document.getElementById('ldap-user-object-class').value = d.ldap.user_object_class || 'auto';
+    document.getElementById('ldap-group-member-attr').value = d.ldap.group_member_attr || 'auto';
     document.getElementById('ldap-provision-mode').value = d.ldap.provision_mode || 'hybrid';
     document.getElementById('ldap-user-ou').value = d.ldap.user_ou || 'CN=Users';
     document.getElementById('ldap-domain').value = d.ldap.domain || '';
@@ -1493,7 +1520,7 @@
       ldapUserBtn.addEventListener('click', async () => {
         const username = (document.getElementById('ldap-test-username').value || '').trim();
         if (!username) {
-          showLDAPTestResult(t('ldap_test_username_required', 'Enter a test username (sAMAccountName).'), 'error');
+          showLDAPTestResult(t('ldap_test_username_required', 'Enter a test user identifier.'), 'error');
           return;
         }
         const payload = collectLDAPPayload();

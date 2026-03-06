@@ -79,6 +79,18 @@ func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
 	if strings.TrimSpace(input.UserOU) == "" {
 		input.UserOU = "CN=Users"
 	}
+	input.UsernameAttribute = strings.TrimSpace(input.UsernameAttribute)
+	if input.UsernameAttribute == "" {
+		input.UsernameAttribute = "auto"
+	}
+	input.UserObjectClass = strings.TrimSpace(input.UserObjectClass)
+	if input.UserObjectClass == "" {
+		input.UserObjectClass = "auto"
+	}
+	input.GroupMemberAttr = strings.TrimSpace(input.GroupMemberAttr)
+	if input.GroupMemberAttr == "" {
+		input.GroupMemberAttr = "auto"
+	}
 
 	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
 	if input.ProvisionMode == "" {
@@ -143,7 +155,8 @@ func (h *SettingsHandler) TestLDAPConnection(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Connexion LDAP OK (reseau + bind)"})
 }
 
-// TestLDAPUserLookup teste la recherche d'un utilisateur LDAP par sAMAccountName.
+// TestLDAPUserLookup teste la recherche d'un utilisateur LDAP via l'attribut
+// de login configure (ex: sAMAccountName, uid).
 func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
@@ -182,12 +195,13 @@ func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Requ
 		Success: true,
 		Message: "Utilisateur LDAP trouve",
 		Data: map[string]interface{}{
-			"dn":           entry.DN,
-			"username":     entry.Username,
-			"display_name": entry.DisplayName,
-			"email":        entry.Email,
-			"upn":          entry.UPN,
-			"is_disabled":  entry.IsDisabled,
+			"dn":            entry.DN,
+			"username":      entry.Username,
+			"username_attr": entry.UsernameAttribute,
+			"display_name":  entry.DisplayName,
+			"email":         entry.Email,
+			"upn":           entry.UPN,
+			"is_disabled":   entry.IsDisabled,
 		},
 	})
 }
@@ -580,6 +594,18 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 	}
 	if input.UserOU == "" {
 		input.UserOU = "CN=Users"
+	}
+	input.UsernameAttribute = strings.TrimSpace(input.UsernameAttribute)
+	if input.UsernameAttribute == "" {
+		input.UsernameAttribute = "auto"
+	}
+	input.UserObjectClass = strings.TrimSpace(input.UserObjectClass)
+	if input.UserObjectClass == "" {
+		input.UserObjectClass = "auto"
+	}
+	input.GroupMemberAttr = strings.TrimSpace(input.GroupMemberAttr)
+	if input.GroupMemberAttr == "" {
+		input.GroupMemberAttr = "auto"
 	}
 
 	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))

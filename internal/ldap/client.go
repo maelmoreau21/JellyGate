@@ -21,6 +21,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 	"unicode/utf16"
 
@@ -54,7 +55,17 @@ const (
 	ProvisionRoleUser    = "user"
 	ProvisionRoleInviter = "inviter"
 	ProvisionRoleAdmin   = "admin"
+
+	// defaultUsernameAttribute est l'attribut AD historique utilise pour le login.
+	defaultUsernameAttribute = "sAMAccountName"
+
+	// directoryProfile types detectes depuis RootDSE.
+	directoryProfileUnknown = "unknown"
+	directoryProfileAD      = "active_directory"
+	directoryProfileLDAP    = "openldap"
 )
+
+var ldapAttrNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]*$`)
 
 // ── Client ──────────────────────────────────────────────────────────────────
 
@@ -303,16 +314,18 @@ func (c *Client) ResetPassword(userDN, newPassword string) error {
 
 // UserEntry contient les attributs pertinents d'un utilisateur AD.
 type UserEntry struct {
-	DN          string
-	Username    string // sAMAccountName
-	DisplayName string
-	Email       string
-	UPN         string // userPrincipalName
-	UAC         string // userAccountControl
-	IsDisabled  bool
+	DN                string
+	Username          string // Attribut identifiant resolu (sAMAccountName/uid/...)
+	UsernameAttribute string
+	DisplayName       string
+	Email             string
+	UPN               string // userPrincipalName
+	UAC               string // userAccountControl
+	IsDisabled        bool
 }
 
-// FindUser recherche un utilisateur dans l'AD par son sAMAccountName.
+// FindUser recherche un utilisateur LDAP via les attributs login compatibles
+// (attribut configure, puis fallback sur uid/sAMAccountName/cn/upn/mail).
 // Retourne nil si l'utilisateur n'est pas trouvé (pas d'erreur).
 func (c *Client) FindUser(username string) (*UserEntry, error) {
 	conn, err := c.connect()
@@ -321,8 +334,29 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 	}
 	defer conn.Close()
 
-	searchDN := fmt.Sprintf("%s,%s", c.cfg.UserOU, c.cfg.BaseDN)
-	filter := fmt.Sprintf("(&(objectClass=user)(sAMAccountName=%s))", goldap.EscapeFilter(username))
+	searchDN := strings.TrimSpace(c.cfg.BaseDN)
+	profile := c.detectDirectoryProfile(conn)
+	lookupAttrs := c.lookupAttributes(profile)
+	escapedUsername := goldap.EscapeFilter(username)
+
+	attrFilters := make([]string, 0, len(lookupAttrs))
+	for _, attr := range lookupAttrs {
+		attrFilters = append(attrFilters, fmt.Sprintf("(%s=%s)", attr, escapedUsername))
+	}
+
+	filter := ""
+	userObjectClass := c.effectiveUserObjectClass(profile)
+	if userObjectClass != "" {
+		filter = fmt.Sprintf("(&(objectClass=%s)(|%s))", goldap.EscapeFilter(userObjectClass), strings.Join(attrFilters, ""))
+	} else {
+		filter = fmt.Sprintf(
+			"(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|%s))",
+			strings.Join(attrFilters, ""),
+		)
+	}
+
+	requestAttrs := []string{"dn", "displayName", "mail", "userPrincipalName", "userAccountControl"}
+	requestAttrs = append(requestAttrs, lookupAttrs...)
 
 	searchReq := goldap.NewSearchRequest(
 		searchDN,
@@ -332,7 +366,7 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 		10, // Timeout 10 secondes
 		false,
 		filter,
-		[]string{"dn", "sAMAccountName", "displayName", "mail", "userPrincipalName", "userAccountControl"},
+		requestAttrs,
 		nil,
 	)
 
@@ -347,16 +381,178 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 
 	entry := result.Entries[0]
 	uac := entry.GetAttributeValue("userAccountControl")
+	resolvedUsername, resolvedAttr := resolveEntryUsername(entry, lookupAttrs)
 
 	return &UserEntry{
-		DN:          entry.DN,
-		Username:    entry.GetAttributeValue("sAMAccountName"),
-		DisplayName: entry.GetAttributeValue("displayName"),
-		Email:       entry.GetAttributeValue("mail"),
-		UPN:         entry.GetAttributeValue("userPrincipalName"),
-		UAC:         uac,
-		IsDisabled:  uac == fmt.Sprintf("%d", UAC_DISABLED_ACCOUNT),
+		DN:                entry.DN,
+		Username:          resolvedUsername,
+		UsernameAttribute: resolvedAttr,
+		DisplayName:       entry.GetAttributeValue("displayName"),
+		Email:             entry.GetAttributeValue("mail"),
+		UPN:               entry.GetAttributeValue("userPrincipalName"),
+		UAC:               uac,
+		IsDisabled:        uac == fmt.Sprintf("%d", UAC_DISABLED_ACCOUNT),
 	}, nil
+}
+
+func normalizeLDAPAttrName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
+	}
+	if !ldapAttrNamePattern.MatchString(name) {
+		return ""
+	}
+	return name
+}
+
+func normalizeLDAPObjectClass(name string) string {
+	return normalizeLDAPAttrName(name)
+}
+
+func isAutoLDAPValue(value string) bool {
+	v := strings.ToLower(strings.TrimSpace(value))
+	return v == "" || v == "auto"
+}
+
+func (c *Client) lookupAttributes(profile string) []string {
+	seen := map[string]struct{}{}
+	attrs := make([]string, 0, 5)
+
+	add := func(attr string) {
+		normalized := normalizeLDAPAttrName(attr)
+		if normalized == "" {
+			return
+		}
+		key := strings.ToLower(normalized)
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		attrs = append(attrs, normalized)
+	}
+
+	add(c.effectiveUsernameAttribute(profile))
+	add(defaultUsernameAttribute)
+	add("uid")
+	add("cn")
+	add("userPrincipalName")
+	add("mail")
+
+	if len(attrs) == 0 {
+		attrs = append(attrs, defaultUsernameAttribute)
+	}
+
+	return attrs
+}
+
+func (c *Client) effectiveUsernameAttribute(profile string) string {
+	configured := normalizeLDAPAttrName(c.cfg.UsernameAttribute)
+	if configured != "" && !isAutoLDAPValue(configured) {
+		return configured
+	}
+
+	switch profile {
+	case directoryProfileLDAP:
+		return "uid"
+	case directoryProfileAD:
+		return defaultUsernameAttribute
+	default:
+		return defaultUsernameAttribute
+	}
+}
+
+func (c *Client) effectiveUserObjectClass(profile string) string {
+	configured := normalizeLDAPObjectClass(c.cfg.UserObjectClass)
+	if configured != "" && !isAutoLDAPValue(configured) {
+		return configured
+	}
+
+	switch profile {
+	case directoryProfileLDAP:
+		return "person"
+	case directoryProfileAD:
+		return "user"
+	default:
+		return ""
+	}
+}
+
+func (c *Client) effectiveGroupMemberAttribute(profile string) string {
+	configured := normalizeLDAPAttrName(c.cfg.GroupMemberAttr)
+	if configured != "" && !isAutoLDAPValue(configured) {
+		return configured
+	}
+
+	switch profile {
+	case directoryProfileLDAP:
+		return "memberUid"
+	default:
+		return "member"
+	}
+}
+
+func (c *Client) detectDirectoryProfile(conn *goldap.Conn) string {
+	searchReq := goldap.NewSearchRequest(
+		"",
+		goldap.ScopeBaseObject,
+		goldap.NeverDerefAliases,
+		1,
+		5,
+		false,
+		"(objectClass=*)",
+		[]string{"vendorName", "supportedCapabilities", "defaultNamingContext", "namingContexts"},
+		nil,
+	)
+
+	result, err := conn.Search(searchReq)
+	if err != nil || len(result.Entries) == 0 {
+		return directoryProfileUnknown
+	}
+
+	entry := result.Entries[0]
+	vendor := strings.ToLower(strings.TrimSpace(entry.GetAttributeValue("vendorName")))
+	defaultNC := strings.TrimSpace(entry.GetAttributeValue("defaultNamingContext"))
+
+	if defaultNC != "" {
+		return directoryProfileAD
+	}
+
+	for _, cap := range entry.GetAttributeValues("supportedCapabilities") {
+		if strings.TrimSpace(cap) == "1.2.840.113556.1.4.800" {
+			return directoryProfileAD
+		}
+	}
+
+	if strings.Contains(vendor, "microsoft") {
+		return directoryProfileAD
+	}
+
+	if strings.Contains(vendor, "openldap") || strings.Contains(vendor, "synology") || strings.Contains(vendor, "389") {
+		return directoryProfileLDAP
+	}
+
+	if len(entry.GetAttributeValues("namingContexts")) > 0 {
+		return directoryProfileLDAP
+	}
+
+	return directoryProfileUnknown
+}
+
+func resolveEntryUsername(entry *goldap.Entry, attrs []string) (string, string) {
+	for _, attr := range attrs {
+		value := strings.TrimSpace(entry.GetAttributeValue(attr))
+		if value != "" {
+			return value, attr
+		}
+	}
+
+	fallback := strings.TrimSpace(entry.GetAttributeValue("displayName"))
+	if fallback != "" {
+		return fallback, "displayName"
+	}
+
+	return "", ""
 }
 
 // ── Opérations internes ─────────────────────────────────────────────────────
@@ -402,15 +598,38 @@ func (c *Client) addToGroupByRef(conn *goldap.Conn, userDN, groupRef string) err
 		groupDN = fmt.Sprintf("CN=%s,%s,%s", groupRef, c.cfg.UserOU, c.cfg.BaseDN)
 	}
 
+	profile := c.detectDirectoryProfile(conn)
+	memberAttr := c.effectiveGroupMemberAttribute(profile)
+	memberValue := resolveGroupMemberValue(memberAttr, userDN)
+
 	modReq := goldap.NewModifyRequest(groupDN, nil)
-	modReq.Add("member", []string{userDN})
+	modReq.Add(memberAttr, []string{memberValue})
 
 	if err := conn.Modify(modReq); err != nil {
-		return fmt.Errorf("échec de l'ajout de %q au groupe %q: %w", userDN, groupDN, err)
+		return fmt.Errorf("échec de l'ajout de %q au groupe %q via %q: %w", memberValue, groupDN, memberAttr, err)
 	}
 
-	slog.Info("Utilisateur ajouté au groupe AD", "user_dn", userDN, "group_dn", groupDN)
+	slog.Info("Utilisateur ajoute au groupe LDAP", "member_attr", memberAttr, "member_value", memberValue, "group_dn", groupDN)
 	return nil
+}
+
+func resolveGroupMemberValue(memberAttr, userDN string) string {
+	attr := strings.ToLower(strings.TrimSpace(memberAttr))
+	if attr == "member" || strings.Contains(attr, "dn") {
+		return userDN
+	}
+
+	parsed, err := goldap.ParseDN(userDN)
+	if err != nil || len(parsed.RDNs) == 0 || len(parsed.RDNs[0].Attributes) == 0 {
+		return userDN
+	}
+
+	value := strings.TrimSpace(parsed.RDNs[0].Attributes[0].Value)
+	if value == "" {
+		return userDN
+	}
+
+	return value
 }
 
 // AddUserToGroup ajoute un utilisateur à un groupe AD spécifique.
