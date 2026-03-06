@@ -255,15 +255,16 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
-	DefaultLang      string                      `json:"default_lang"`
-	DatabaseType     string                      `json:"database_type"`
-	BackupSQLiteOnly bool                        `json:"backup_sqlite_only"`
-	PortalLinks      config.PortalLinksConfig    `json:"portal_links"`
-	LDAP             config.LDAPConfig           `json:"ldap"`
-	SMTP             config.SMTPConfig           `json:"smtp"`
-	Webhooks         config.WebhooksConfig       `json:"webhooks"`
-	Backup           config.BackupConfig         `json:"backup"`
-	EmailTemplates   config.EmailTemplatesConfig `json:"email_templates"`
+	DefaultLang       string                         `json:"default_lang"`
+	DatabaseType      string                         `json:"database_type"`
+	BackupSQLiteOnly  bool                           `json:"backup_sqlite_only"`
+	PortalLinks       config.PortalLinksConfig       `json:"portal_links"`
+	InvitationProfile config.InvitationProfileConfig `json:"invitation_profile"`
+	LDAP              config.LDAPConfig              `json:"ldap"`
+	SMTP              config.SMTPConfig              `json:"smtp"`
+	Webhooks          config.WebhooksConfig          `json:"webhooks"`
+	Backup            config.BackupConfig            `json:"backup"`
+	EmailTemplates    config.EmailTemplatesConfig    `json:"email_templates"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
@@ -330,6 +331,16 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	inviteProfileCfg, err := h.db.GetInvitationProfileConfig()
+	if err != nil {
+		slog.Error("Erreur lecture config Invitation Profile", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur lecture du profil d'invitation",
+		})
+		return
+	}
+
 	// Masquer le mot de passe LDAP et SMTP dans la réponse
 	maskedLDAP := ldapCfg
 	if maskedLDAP.BindPassword != "" {
@@ -348,15 +359,16 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
-			DefaultLang:      defaultLang,
-			DatabaseType:     h.db.Driver(),
-			BackupSQLiteOnly: h.db.IsSQLite(),
-			PortalLinks:      portalLinks,
-			LDAP:             maskedLDAP,
-			SMTP:             maskedSMTP,
-			Webhooks:         webhooksCfg,
-			Backup:           backupCfg,
-			EmailTemplates:   emailTemplatesCfg,
+			DefaultLang:       defaultLang,
+			DatabaseType:      h.db.Driver(),
+			BackupSQLiteOnly:  h.db.IsSQLite(),
+			PortalLinks:       portalLinks,
+			InvitationProfile: inviteProfileCfg,
+			LDAP:              maskedLDAP,
+			SMTP:              maskedSMTP,
+			Webhooks:          webhooksCfg,
+			Backup:            backupCfg,
+			EmailTemplates:    emailTemplatesCfg,
 		},
 	})
 }
@@ -669,5 +681,32 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Message: "Modèles d'emails sauvegardés avec succès",
+	})
+}
+
+// SaveInvitationProfile sauvegarde la politique globale appliquee aux invitations.
+func (h *SettingsHandler) SaveInvitationProfile(w http.ResponseWriter, r *http.Request) {
+	var input config.InvitationProfileConfig
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	if err := h.db.SaveInvitationProfileConfig(input); err != nil {
+		slog.Error("Erreur sauvegarde config Invitation Profile", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur de sauvegarde du profil d'invitation",
+		})
+		return
+	}
+
+	_ = h.db.LogAction("settings.invitation_profile.saved", "", "", "")
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Profil d'invitation sauvegardé",
 	})
 }

@@ -146,6 +146,15 @@ func (e *Engine) Translate(lang, key string) string {
 	}
 
 	// 2. Fallback sur le français
+	if lang != "en" {
+		if trans, ok := e.translations["en"]; ok {
+			if v, ok := trans[key]; ok {
+				return v
+			}
+		}
+	}
+
+	// 3. Fallback final sur le français
 	if lang != e.fallbackLang {
 		if trans, ok := e.translations[e.fallbackLang]; ok {
 			if v, ok := trans[key]; ok {
@@ -154,7 +163,7 @@ func (e *Engine) Translate(lang, key string) string {
 		}
 	}
 
-	// 3. Clé brute (visible en dev)
+	// 4. Clé brute (visible en dev)
 	return "[" + key + "]"
 }
 

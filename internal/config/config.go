@@ -183,28 +183,129 @@ type EmailTemplatesConfig struct {
 	Welcome                  string `json:"welcome"`
 }
 
+const defaultEmailCardStyle = `
+<div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
+	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dde3ec;border-radius:12px;overflow:hidden;">
+		<tr>
+			<td style="background:linear-gradient(135deg,#0f766e,#0ea5e9);color:#ffffff;padding:22px 28px;font-size:20px;font-weight:700;">JellyGate</td>
+		</tr>
+		<tr>
+			<td style="padding:24px 28px;color:#0f172a;line-height:1.6;font-size:15px;">
+`
+
+const defaultEmailCardEnd = `
+			</td>
+		</tr>
+		<tr>
+			<td style="padding:16px 28px;background:#f8fafc;color:#64748b;font-size:12px;border-top:1px solid #e2e8f0;">Message automatique envoye par JellyGate.</td>
+		</tr>
+	</table>
+</div>`
+
+func defaultEmailBody(content string) string {
+	return defaultEmailCardStyle + content + defaultEmailCardEnd
+}
+
 // DefaultEmailTemplates retourne les traductions de base des modèles d'emails
 func DefaultEmailTemplates() EmailTemplatesConfig {
 	return EmailTemplatesConfig{
-		Confirmation:             "Bonjour {{.Username}},\n\nVotre inscription est confirmée.",
-		ExpiryReminder:           "Bonjour {{.Username}},\n\nVotre compte expirera prochainement.",
-		ExpiryReminderDays:       3,
-		ExpiryReminder14:         "Bonjour {{.Username}},\n\nRappel: votre compte expirera dans 14 jours ({{.ExpiryDate}}).",
-		ExpiryReminder7:          "Bonjour {{.Username}},\n\nRappel: votre compte expirera dans 7 jours ({{.ExpiryDate}}).",
-		ExpiryReminder1:          "Bonjour {{.Username}},\n\nRappel important: votre compte expire demain ({{.ExpiryDate}}).",
-		Invitation:               "Bonjour,\n\nVous êtes invité à rejoindre notre serveur. Cliquez sur ce lien pour créer votre compte : {{.InviteLink}}",
-		InviteExpiry:             "Bonjour {{.Username}},\n\nVotre lien d'invitation va expirer le {{.ExpiryDate}}.",
-		PasswordReset:            "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}",
-		PreSignupHelp:            "Besoin d'aide avant l'inscription ? Consultez ce guide : {{.HelpURL}}",
-		PostSignupHelp:           "Bienvenue {{.Username}} ! Voici les premières étapes après inscription : {{.HelpURL}}",
-		UserCreation:             "Bonjour {{.Username}},\n\nVotre compte a été créé avec succès par un administrateur.",
-		UserDeletion:             "Bonjour {{.Username}},\n\nVotre compte a été supprimé.",
+		Confirmation: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Inscription confirmee</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton inscription est bien validee. Ton acces JellyGate est actif.</p>
+<p style="margin:20px 0 0 0;">Si besoin, tu peux contacter l'equipe via <a href="{{.HelpURL}}" style="color:#0284c7;">ce lien d'aide</a>.</p>
+`),
+		ExpiryReminder: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel d'expiration</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte expirera prochainement.</p>
+<p>Date previsionnelle: <strong>{{.ExpiryDate}}</strong></p>
+`),
+		ExpiryReminderDays: 3,
+		ExpiryReminder14: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel a J-14</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte expirera dans 14 jours.</p>
+<p>Date d'expiration: <strong>{{.ExpiryDate}}</strong></p>
+`),
+		ExpiryReminder7: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel a J-7</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte expirera dans 7 jours.</p>
+<p>Date d'expiration: <strong>{{.ExpiryDate}}</strong></p>
+`),
+		ExpiryReminder1: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel important J-1</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte expire demain.</p>
+<p>Date d'expiration: <strong>{{.ExpiryDate}}</strong></p>
+`),
+		Invitation: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Invitation JellyGate</h2>
+<p>Bonjour,</p>
+<p>Tu es invite a rejoindre le serveur. Clique sur le bouton ci-dessous pour creer ton compte.</p>
+<p style="margin:20px 0;"><a href="{{.InviteLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Creer mon compte</a></p>
+<p style="font-size:13px;color:#475569;">Lien direct: {{.InviteLink}}</p>
+`),
+		InviteExpiry: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Expiration du lien d'invitation</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton lien d'invitation expirera le <strong>{{.ExpiryDate}}</strong>.</p>
+`),
+		PasswordReset: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Reinitialisation mot de passe</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Tu as demande une reinitialisation du mot de passe.</p>
+<p style="margin:20px 0;"><a href="{{.ResetLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Reinitialiser mon mot de passe</a></p>
+<p style="font-size:13px;color:#475569;">Code: <strong>{{.ResetCode}}</strong> · Expire dans {{.ExpiresIn}}</p>
+`),
+		PreSignupHelp: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Aide avant inscription</h2>
+<p>Besoin d'aide avant de finaliser l'inscription ?</p>
+<p>Consulte ce guide: <a href="{{.HelpURL}}" style="color:#0284c7;">{{.HelpURL}}</a></p>
+`),
+		PostSignupHelp: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Bienvenue {{.Username}}</h2>
+<p>Ton compte est pret. Voici les premieres etapes conseillees.</p>
+<p><a href="{{.HelpURL}}" style="color:#0284c7;">Ouvrir le guide de demarrage</a></p>
+`),
+		UserCreation: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte cree</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete cree avec succes par un administrateur.</p>
+`),
+		UserDeletion: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte supprime</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete supprime.</p>
+`),
 		DisableUserDeletionEmail: false,
-		UserDisabled:             "Bonjour {{.Username}},\n\nVotre compte a été désactivé.",
-		UserEnabled:              "Bonjour {{.Username}},\n\nVotre compte a été réactivé.",
-		UserExpired:              "Bonjour {{.Username}},\n\nVotre accès a expiré et votre compte a été désactivé.",
-		ExpiryAdjusted:           "Bonjour {{.Username}},\n\nLa date d'expiration de votre accès a été mise à jour : {{.ExpiryDate}}.",
-		Welcome:                  "Bienvenue {{.Username}} ! Votre compte JellyGate est prêt.",
+		UserDisabled: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte desactive</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete desactive.</p>
+`),
+		UserEnabled: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte reactive</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete reactive.</p>
+`),
+		UserExpired: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Acces expire</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton acces a expire et ton compte a ete desactive.</p>
+`),
+		ExpiryAdjusted: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Expiration mise a jour</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>La date d'expiration de ton acces a ete mise a jour.</p>
+<p>Nouvelle date: <strong>{{.ExpiryDate}}</strong></p>
+`),
+		Welcome: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Bienvenue {{.Username}}</h2>
+<p>Ton compte JellyGate est pret.</p>
+<p>Tu peux maintenant acceder a Jellyfin: <a href="{{.JellyfinURL}}" style="color:#0284c7;">{{.JellyfinURL}}</a></p>
+`),
 	}
 }
 
@@ -231,6 +332,46 @@ type JellyfinPolicyPreset struct {
 	DisableAfterDays   int      `json:"disable_after_days"`
 	ExpiryAction       string   `json:"expiry_action"`
 	DeleteAfterDays    int      `json:"delete_after_days"`
+}
+
+// InvitationProfileConfig contient la politique appliquee a chaque nouvelle invitation.
+// Les champs correspondent aux options de "Profil utilisateur" cote interface admin.
+type InvitationProfileConfig struct {
+	PolicyPresetID         string `json:"policy_preset_id"`
+	TemplateUserID         string `json:"template_user_id"`
+	EnableDownloads        bool   `json:"enable_downloads"`
+	DisableAfterDays       int    `json:"disable_after_days"`
+	DeleteAfterDays        int    `json:"delete_after_days"`
+	ExpiryAction           string `json:"expiry_action"`
+	UsernameMinLength      int    `json:"username_min_length"`
+	UsernameMaxLength      int    `json:"username_max_length"`
+	PasswordMinLength      int    `json:"password_min_length"`
+	PasswordMaxLength      int    `json:"password_max_length"`
+	PasswordRequireUpper   bool   `json:"password_require_upper"`
+	PasswordRequireLower   bool   `json:"password_require_lower"`
+	PasswordRequireDigit   bool   `json:"password_require_digit"`
+	PasswordRequireSpecial bool   `json:"password_require_special"`
+}
+
+// DefaultInvitationProfileConfig retourne la configuration par defaut appliquee
+// quand aucune politique d'invitation n'est encore enregistree.
+func DefaultInvitationProfileConfig() InvitationProfileConfig {
+	return InvitationProfileConfig{
+		PolicyPresetID:         "",
+		TemplateUserID:         "",
+		EnableDownloads:        true,
+		DisableAfterDays:       0,
+		DeleteAfterDays:        0,
+		ExpiryAction:           "disable",
+		UsernameMinLength:      3,
+		UsernameMaxLength:      32,
+		PasswordMinLength:      8,
+		PasswordMaxLength:      128,
+		PasswordRequireUpper:   false,
+		PasswordRequireLower:   false,
+		PasswordRequireDigit:   false,
+		PasswordRequireSpecial: false,
+	}
 }
 
 // GroupPolicyMapping lie un groupe (interne ou LDAP) à un preset Jellyfin.

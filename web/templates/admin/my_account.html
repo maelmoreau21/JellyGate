@@ -260,6 +260,13 @@
 
         if (res.success) {
             JG.toast(res.message || 'Profil mis a jour', 'success');
+            const preferred = String(payload.preferred_lang || '').trim().toLowerCase();
+            if (preferred) {
+                document.cookie = `lang=${preferred};path=/;max-age=31536000;SameSite=Lax`;
+            } else {
+                document.cookie = 'lang=;path=/;max-age=0;SameSite=Lax';
+            }
+            window.location.reload();
             return;
         }
         JG.toast(res.message || 'Erreur de sauvegarde', 'error');

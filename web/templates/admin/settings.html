@@ -198,6 +198,92 @@
           </div>
         </form>
 
+        <div class="mt-8 pt-6 border-t border-white/10">
+          <div class="mb-4">
+            <h3 class="text-lg font-semibold text-white">Profil invitation</h3>
+            <p class="text-sm text-slate-400">Ces regles sont appliquees automatiquement a toute nouvelle invitation. Les utilisateurs non-admin ne peuvent plus les modifier depuis la creation d'invitation.</p>
+          </div>
+
+          <form id="form-invitation-profile" onsubmit="saveSettings('invitation-profile', event)">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="jg-label" for="invite-profile-preset">Preset Jellyfin</label>
+                <select id="invite-profile-preset" class="jg-input">
+                  <option value="">Par defaut (aucun)</option>
+                </select>
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-template-user">Cloner un profil Jellyfin</label>
+                <select id="invite-profile-template-user" class="jg-input">
+                  <option value="">Par defaut (aucun)</option>
+                </select>
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-disable-after">Desactiver le compte apres (jours)</label>
+                <input type="number" id="invite-profile-disable-after" min="0" class="jg-input" value="0">
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-delete-after">Supprimer le compte apres (jours)</label>
+                <input type="number" id="invite-profile-delete-after" min="0" class="jg-input" value="0">
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-expiry-action">Action a expiration</label>
+                <select id="invite-profile-expiry-action" class="jg-input">
+                  <option value="disable">Desactiver</option>
+                  <option value="delete">Supprimer</option>
+                  <option value="disable_then_delete">Desactiver puis supprimer</option>
+                </select>
+              </div>
+              <div class="flex items-center gap-3 pt-6">
+                <input type="checkbox" id="invite-profile-enable-downloads" class="form-checkbox" checked>
+                <label class="text-sm text-slate-300" for="invite-profile-enable-downloads">Autoriser le telechargement direct</label>
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="jg-label" for="invite-profile-user-min">Nom utilisateur min</label>
+                <input type="number" id="invite-profile-user-min" min="1" class="jg-input" value="3">
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-user-max">Nom utilisateur max</label>
+                <input type="number" id="invite-profile-user-max" min="1" class="jg-input" value="32">
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-pw-min">Mot de passe min</label>
+                <input type="number" id="invite-profile-pw-min" min="1" class="jg-input" value="8">
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-pw-max">Mot de passe max</label>
+                <input type="number" id="invite-profile-pw-max" min="1" class="jg-input" value="128">
+              </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="invite-profile-pw-upper" class="form-checkbox">
+                Majuscule requise
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="invite-profile-pw-lower" class="form-checkbox">
+                Minuscule requise
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="invite-profile-pw-digit" class="form-checkbox">
+                Chiffre requis
+              </label>
+              <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                <input type="checkbox" id="invite-profile-pw-special" class="form-checkbox">
+                Caractere special requis
+              </label>
+            </div>
+
+            <div class="mt-6 flex justify-end">
+              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder profil invitation</button>
+            </div>
+          </form>
+        </div>
+
       </div>
     </div>
 
@@ -487,61 +573,66 @@
 
         <form id="form-email-templates" onsubmit="saveSettings('email-templates', event)">
           <div class="space-y-6">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="space-y-4">
+              <div class="text-xs uppercase tracking-wide text-slate-400">Onboarding et invitations</div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-confirmation">Email de confirmation</label>
                 <p class="text-xs text-slate-400 mb-2">Envoyé pour confirmer l'inscription.</p>
-                <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder">Rappel d'expiration</label>
                 <p class="text-xs text-slate-400 mb-2">Notification automatique avant expiration du compte.</p>
-                <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder-14">Rappel d'expiration J-14</label>
                 <p class="text-xs text-slate-400 mb-2">Template specifique envoye 14 jours avant expiration.</p>
-                <textarea id="tpl-expiry-reminder-14" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-expiry-reminder-14" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder-7">Rappel d'expiration J-7</label>
                 <p class="text-xs text-slate-400 mb-2">Template specifique envoye 7 jours avant expiration.</p>
-                <textarea id="tpl-expiry-reminder-7" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-expiry-reminder-7" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder-1">Rappel d'expiration J-1</label>
                 <p class="text-xs text-slate-400 mb-2">Template specifique envoye la veille de l'expiration.</p>
-                <textarea id="tpl-expiry-reminder-1" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-expiry-reminder-1" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-invitation">Courriel d'invitation</label>
                 <p class="text-xs text-slate-400 mb-2">Message principal quand un admin envoie un lien d'invitation.</p>
-                <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-invite-expiry">Expiration de l'invitation</label>
                 <p class="text-xs text-slate-400 mb-2">Rappel qu'un lien d'invitation va expirer.</p>
-                <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
+
+              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">Securite et assistance</div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-password-reset">Réinitialisation du mot de passe</label>
                 <p class="text-xs text-slate-400 mb-2">Contient le lien/code de reset envoyé à l'utilisateur.</p>
-                <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-pre-signup-help">Aide avant inscription</label>
                 <p class="text-xs text-slate-400 mb-2">Conseils avant de créer le compte.</p>
-                <textarea id="tpl-pre-signup-help" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-pre-signup-help" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-post-signup-help">Aide après inscription</label>
                 <p class="text-xs text-slate-400 mb-2">Instructions après création du compte.</p>
-                <textarea id="tpl-post-signup-help" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-post-signup-help" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
+
+              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">Cycle de vie du compte</div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-creation">Création d'utilisateur</label>
                 <p class="text-xs text-slate-400 mb-2">Confirme la création d'un compte par un administrateur.</p>
-                <textarea id="tpl-user-creation" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-user-creation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-deletion">Suppression de l'utilisateur</label>
@@ -550,32 +641,32 @@
                   <input type="checkbox" id="tpl-disable-user-deletion-email" class="form-checkbox">
                   Ne pas envoyer cet email lors d'une suppression utilisateur
                 </label>
-                <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-disabled">Utilisateur désactivé</label>
                 <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte est désactivé.</p>
-                <textarea id="tpl-user-disabled" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-user-disabled" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-enabled">Utilisateur activé</label>
                 <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte est réactivé.</p>
-                <textarea id="tpl-user-enabled" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-user-enabled" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-expired">Utilisateur expiré</label>
                 <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte expire automatiquement.</p>
-                <textarea id="tpl-user-expired" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-user-expired" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-adjusted">Expiration ajustée</label>
                 <p class="text-xs text-slate-400 mb-2">Envoyé quand la date d'expiration est modifiée.</p>
-                <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-welcome">Bienvenue</label>
                 <p class="text-xs text-slate-400 mb-2">Message d'accueil global post-inscription.</p>
-                <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="4"></textarea>
+                <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
             </div>
 
@@ -759,6 +850,61 @@
     });
   }
 
+  function setSelectOptions(selectId, options, emptyLabel = 'Par defaut (aucun)') {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    const items = Array.isArray(options) ? options : [];
+    let html = `<option value="">${JG.esc(emptyLabel)}</option>`;
+    items.forEach(item => {
+      html += `<option value="${JG.esc(item.value)}">${JG.esc(item.label)}</option>`;
+    });
+    select.innerHTML = html;
+  }
+
+  async function loadInvitationProfileLookups() {
+    const [presetsRes, usersRes] = await Promise.all([
+      JG.api('/admin/api/automation/presets'),
+      JG.api('/admin/api/users'),
+    ]);
+
+    if (presetsRes && presetsRes.success && Array.isArray(presetsRes.data)) {
+      const presetOptions = presetsRes.data.map(p => ({
+        value: p.id || '',
+        label: p.name || p.id || 'Preset',
+      }));
+      setSelectOptions('invite-profile-preset', presetOptions);
+    }
+
+    if (usersRes && usersRes.success && Array.isArray(usersRes.data)) {
+      const userOptions = usersRes.data
+        .filter(u => u && u.jellyfin_id)
+        .map(u => ({
+          value: u.jellyfin_id,
+          label: u.username || u.jellyfin_id,
+        }));
+      setSelectOptions('invite-profile-template-user', userOptions);
+    }
+  }
+
+  function applyInvitationProfileConfig(cfg) {
+    const p = cfg || {};
+    document.getElementById('invite-profile-preset').value = p.policy_preset_id || '';
+    document.getElementById('invite-profile-template-user').value = p.template_user_id || '';
+    document.getElementById('invite-profile-enable-downloads').checked = p.enable_downloads !== false;
+    document.getElementById('invite-profile-disable-after').value = Number.isInteger(p.disable_after_days) ? p.disable_after_days : 0;
+    document.getElementById('invite-profile-delete-after').value = Number.isInteger(p.delete_after_days) ? p.delete_after_days : 0;
+    document.getElementById('invite-profile-expiry-action').value = p.expiry_action || 'disable';
+    document.getElementById('invite-profile-user-min').value = Number.isInteger(p.username_min_length) ? p.username_min_length : 3;
+    document.getElementById('invite-profile-user-max').value = Number.isInteger(p.username_max_length) ? p.username_max_length : 32;
+    document.getElementById('invite-profile-pw-min').value = Number.isInteger(p.password_min_length) ? p.password_min_length : 8;
+    document.getElementById('invite-profile-pw-max').value = Number.isInteger(p.password_max_length) ? p.password_max_length : 128;
+    document.getElementById('invite-profile-pw-upper').checked = !!p.password_require_upper;
+    document.getElementById('invite-profile-pw-lower').checked = !!p.password_require_lower;
+    document.getElementById('invite-profile-pw-digit').checked = !!p.password_require_digit;
+    document.getElementById('invite-profile-pw-special').checked = !!p.password_require_special;
+  }
+
   function setBackupMode(databaseType) {
     const normalized = String(databaseType || '').trim().toLowerCase() || 'sqlite';
     backupDatabaseType = normalized;
@@ -809,6 +955,8 @@
     document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
     document.getElementById('general-jellytulli-url').value = links.jellytulli_url || '';
     refreshPortalShortcuts(links);
+
+    applyInvitationProfileConfig(d.invitation_profile || {});
 
     // LDAP
     document.getElementById('ldap-enabled').checked = d.ldap.enabled || false;
@@ -894,6 +1042,23 @@
         jellyseerr_url: document.getElementById('general-jellyseerr-url').value.trim(),
         jellytulli_url: document.getElementById('general-jellytulli-url').value.trim(),
       };
+    } else if (section === 'invitation-profile') {
+      body = {
+        policy_preset_id: (document.getElementById('invite-profile-preset').value || '').trim(),
+        template_user_id: (document.getElementById('invite-profile-template-user').value || '').trim(),
+        enable_downloads: document.getElementById('invite-profile-enable-downloads').checked,
+        disable_after_days: parseInt(document.getElementById('invite-profile-disable-after').value, 10) || 0,
+        delete_after_days: parseInt(document.getElementById('invite-profile-delete-after').value, 10) || 0,
+        expiry_action: (document.getElementById('invite-profile-expiry-action').value || 'disable').trim(),
+        username_min_length: parseInt(document.getElementById('invite-profile-user-min').value, 10) || 3,
+        username_max_length: parseInt(document.getElementById('invite-profile-user-max').value, 10) || 32,
+        password_min_length: parseInt(document.getElementById('invite-profile-pw-min').value, 10) || 8,
+        password_max_length: parseInt(document.getElementById('invite-profile-pw-max').value, 10) || 128,
+        password_require_upper: document.getElementById('invite-profile-pw-upper').checked,
+        password_require_lower: document.getElementById('invite-profile-pw-lower').checked,
+        password_require_digit: document.getElementById('invite-profile-pw-digit').checked,
+        password_require_special: document.getElementById('invite-profile-pw-special').checked,
+      };
     } else if (section === 'ldap') {
       body = collectLDAPPayload();
     } else if (section === 'smtp') {
@@ -963,6 +1128,11 @@
       JG.toast(res.message || 'Configuration sauvegardée', 'success');
       if (section === 'general') {
         refreshPortalShortcuts(body);
+        const lang = (body.default_lang || '').trim().toLowerCase();
+        if (lang) {
+          document.cookie = `lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
+        }
+        window.location.reload();
       }
     } else {
       JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
@@ -1109,6 +1279,7 @@
       });
     }
 
+    await loadInvitationProfileLookups();
     await loadSettings();
     await loadBackups();
 

@@ -144,6 +144,18 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode, // Protection CSRF
 	})
 
+	if preferredLang := h.resolvePreferredLang(authResp.User.ID, authResp.User.Name); preferredLang != "" {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "lang",
+			Value:    preferredLang,
+			Path:     "/",
+			MaxAge:   31536000,
+			HttpOnly: false,
+			Secure:   r.TLS != nil,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
+
 	slog.Info("Connexion admin réussie",
 		"username", authResp.User.Name,
 		"jellyfin_id", authResp.User.ID,
@@ -153,6 +165,23 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	// ── 5. Rediriger vers le dashboard ──────────────────────────────────
 	http.Redirect(w, r, "/admin/", http.StatusSeeOther)
+}
+
+func (h *AuthHandler) resolvePreferredLang(jellyfinID, username string) string {
+	var preferred string
+	err := h.db.QueryRow(
+		`SELECT preferred_lang FROM users WHERE jellyfin_id = ? OR username = ? LIMIT 1`,
+		strings.TrimSpace(jellyfinID),
+		strings.TrimSpace(username),
+	).Scan(&preferred)
+	if err != nil {
+		return ""
+	}
+	lang := config.NormalizeLanguageTag(preferred)
+	if !config.IsSupportedLanguage(lang) {
+		return ""
+	}
+	return lang
 }
 
 // Logout déconnecte l'utilisateur en supprimant le cookie de session (POST /admin/logout).

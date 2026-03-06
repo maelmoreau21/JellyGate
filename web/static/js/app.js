@@ -129,7 +129,7 @@ JG.closeModal = function () {
  * @param {string} lang - Supported language code
  */
 JG.setLang = function (lang) {
-    const raw = String(lang || '').trim().toLowerCase().replace('_', '-');
+    const raw = String(lang || '').trim().toLowerCase().replace(/_/g, '-');
     if (!raw) return;
 
     const normalized = raw === 'pt' ? 'pt-br' : raw;

@@ -27,6 +27,7 @@ const (
 	SettingBackupConfig    = "backup_config"    // JSON: config.BackupConfig
 	SettingJellyfinPresets = "jellyfin_presets" // JSON: []config.JellyfinPolicyPreset
 	SettingGroupMappings   = "group_mappings"   // JSON: []config.GroupPolicyMapping
+	SettingInviteProfile   = "invite_profile"   // JSON: config.InvitationProfileConfig
 	SettingBackupLastRun   = "backup_last_run"  // Date locale YYYY-MM-DD
 	SettingDefaultLang     = "default_lang"     // Langue par defaut du serveur (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
 )
@@ -475,6 +476,79 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 	}
 
 	return db.SetSetting(SettingGroupMappings, string(data))
+}
+
+// ── Invitation Profile Config ──────────────────────────────────────────────
+
+func normalizeInvitationProfile(cfg config.InvitationProfileConfig) config.InvitationProfileConfig {
+	cfg.PolicyPresetID = strings.TrimSpace(strings.ToLower(cfg.PolicyPresetID))
+	cfg.TemplateUserID = strings.TrimSpace(cfg.TemplateUserID)
+
+	if cfg.DisableAfterDays < 0 {
+		cfg.DisableAfterDays = 0
+	}
+	if cfg.DeleteAfterDays < 0 {
+		cfg.DeleteAfterDays = 0
+	}
+
+	cfg.ExpiryAction = strings.TrimSpace(strings.ToLower(cfg.ExpiryAction))
+	switch cfg.ExpiryAction {
+	case "disable", "delete", "disable_then_delete":
+	default:
+		cfg.ExpiryAction = "disable"
+	}
+
+	if cfg.UsernameMinLength <= 0 {
+		cfg.UsernameMinLength = 3
+	}
+	if cfg.UsernameMaxLength <= 0 {
+		cfg.UsernameMaxLength = 32
+	}
+	if cfg.UsernameMaxLength < cfg.UsernameMinLength {
+		cfg.UsernameMaxLength = cfg.UsernameMinLength
+	}
+
+	if cfg.PasswordMinLength <= 0 {
+		cfg.PasswordMinLength = 8
+	}
+	if cfg.PasswordMaxLength <= 0 {
+		cfg.PasswordMaxLength = 128
+	}
+	if cfg.PasswordMaxLength < cfg.PasswordMinLength {
+		cfg.PasswordMaxLength = cfg.PasswordMinLength
+	}
+
+	return cfg
+}
+
+// GetInvitationProfileConfig recupere la politique globale appliquee aux nouvelles invitations.
+func (db *DB) GetInvitationProfileConfig() (config.InvitationProfileConfig, error) {
+	cfg := config.DefaultInvitationProfileConfig()
+
+	raw, err := db.GetSetting(SettingInviteProfile)
+	if err != nil {
+		return cfg, err
+	}
+	if strings.TrimSpace(raw) == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config InvitationProfile", "error", err)
+		return config.DefaultInvitationProfileConfig(), nil
+	}
+
+	return normalizeInvitationProfile(cfg), nil
+}
+
+// SaveInvitationProfileConfig sauvegarde la politique globale des invitations.
+func (db *DB) SaveInvitationProfileConfig(cfg config.InvitationProfileConfig) error {
+	cfg = normalizeInvitationProfile(cfg)
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SaveInvitationProfileConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingInviteProfile, string(data))
 }
 
 // ── Webhooks Config ─────────────────────────────────────────────────────────

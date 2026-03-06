@@ -244,6 +244,7 @@ func main() {
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)
 					r.Post("/email-templates", settingsHandler.SaveEmailTemplates)
+					r.Post("/invitation-profile", settingsHandler.SaveInvitationProfile)
 				})
 
 				r.Route("/api/backups", func(r chi.Router) {

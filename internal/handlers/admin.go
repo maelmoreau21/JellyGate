@@ -881,6 +881,30 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.PreferredLang != nil {
+		if strings.TrimSpace(newPreferredLang) == "" {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "lang",
+				Value:    "",
+				Path:     "/",
+				MaxAge:   -1,
+				HttpOnly: false,
+				Secure:   r.TLS != nil,
+				SameSite: http.SameSiteLaxMode,
+			})
+		} else {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "lang",
+				Value:    newPreferredLang,
+				Path:     "/",
+				MaxAge:   31536000,
+				HttpOnly: false,
+				Secure:   r.TLS != nil,
+				SameSite: http.SameSiteLaxMode,
+			})
+		}
+	}
+
 	_ = h.db.LogAction(
 		"user.profile.updated",
 		sess.Username,
@@ -2557,30 +2581,38 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	// Construire profil Jellyfin
+	inviteCfg, err := h.db.GetInvitationProfileConfig()
+	if err != nil {
+		slog.Error("Erreur chargement config profil invitation", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture du profil d'invitation"})
+		return
+	}
+
+	// Construire profil Jellyfin depuis la configuration admin (paramètres globaux).
 	jfProfile := jellyfin.InviteProfile{
-		EnableAllFolders:   len(req.Libraries) == 0,
-		EnabledFolderIDs:   req.Libraries,
-		EnableDownload:     req.EnableDownloads,
-		EnableRemoteAccess: true,
-		UserExpiryDays:     req.UserExpiryDays,
-		DisableAfterDays:   req.DisableAfterDays,
-		GroupName:          strings.TrimSpace(req.GroupName),
-		ForcedUsername:     req.ForcedUsername,
-		TemplateUserID:     req.TemplateUserID,
-		UsernameMinLength:  3,
-		UsernameMaxLength:  32,
-		PasswordMinLength:  8,
-		PasswordMaxLength:  128,
-		ExpiryAction:       "disable",
+		EnableAllFolders:       len(req.Libraries) == 0,
+		EnabledFolderIDs:       req.Libraries,
+		EnableDownload:         inviteCfg.EnableDownloads,
+		EnableRemoteAccess:     true,
+		UserExpiryDays:         inviteCfg.DisableAfterDays,
+		DisableAfterDays:       inviteCfg.DisableAfterDays,
+		GroupName:              strings.TrimSpace(req.GroupName),
+		ForcedUsername:         strings.TrimSpace(req.ForcedUsername),
+		TemplateUserID:         strings.TrimSpace(inviteCfg.TemplateUserID),
+		UsernameMinLength:      inviteCfg.UsernameMinLength,
+		UsernameMaxLength:      inviteCfg.UsernameMaxLength,
+		PasswordMinLength:      inviteCfg.PasswordMinLength,
+		PasswordMaxLength:      inviteCfg.PasswordMaxLength,
+		PasswordRequireUpper:   inviteCfg.PasswordRequireUpper,
+		PasswordRequireLower:   inviteCfg.PasswordRequireLower,
+		PasswordRequireDigit:   inviteCfg.PasswordRequireDigit,
+		PasswordRequireSpecial: inviteCfg.PasswordRequireSpecial,
+		ExpiryAction:           normalizeExpiryAction(inviteCfg.ExpiryAction),
+		DeleteAfterDays:        inviteCfg.DeleteAfterDays,
 	}
 
-	if jfProfile.DisableAfterDays <= 0 {
-		jfProfile.DisableAfterDays = jfProfile.UserExpiryDays
-	}
-
-	if strings.TrimSpace(req.PolicyPresetID) != "" {
-		preset, err := h.getJellyfinPresetByID(req.PolicyPresetID)
+	if strings.TrimSpace(inviteCfg.PolicyPresetID) != "" {
+		preset, err := h.getJellyfinPresetByID(inviteCfg.PolicyPresetID)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Preset Jellyfin introuvable"})
 			return
@@ -2592,9 +2624,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		jfProfile.EnableRemoteAccess = preset.EnableRemoteAccess
 		jfProfile.MaxSessions = preset.MaxSessions
 		jfProfile.BitrateLimit = preset.BitrateLimit
-		if strings.TrimSpace(jfProfile.TemplateUserID) == "" {
-			jfProfile.TemplateUserID = strings.TrimSpace(preset.TemplateUserID)
-		}
+		jfProfile.TemplateUserID = strings.TrimSpace(preset.TemplateUserID)
 		jfProfile.UsernameMinLength = preset.UsernameMinLength
 		jfProfile.UsernameMaxLength = preset.UsernameMaxLength
 		jfProfile.PasswordMinLength = preset.PasswordMinLength
@@ -2608,42 +2638,23 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		jfProfile.DeleteAfterDays = preset.DeleteAfterDays
 	}
 
-	if req.UsernameMinLen != nil && *req.UsernameMinLen >= 0 {
-		jfProfile.UsernameMinLength = *req.UsernameMinLen
+	// Les options exposees dans "Profil utilisateur" sont forcees par les paramètres admin.
+	jfProfile.EnableDownload = inviteCfg.EnableDownloads
+	if strings.TrimSpace(inviteCfg.TemplateUserID) != "" {
+		jfProfile.TemplateUserID = strings.TrimSpace(inviteCfg.TemplateUserID)
 	}
-	if req.UsernameMaxLen != nil && *req.UsernameMaxLen >= 0 {
-		jfProfile.UsernameMaxLength = *req.UsernameMaxLen
-	}
-	if req.PasswordMinLen != nil && *req.PasswordMinLen >= 0 {
-		jfProfile.PasswordMinLength = *req.PasswordMinLen
-	}
-	if req.PasswordMaxLen != nil && *req.PasswordMaxLen >= 0 {
-		jfProfile.PasswordMaxLength = *req.PasswordMaxLen
-	}
-	if req.RequireUpper != nil {
-		jfProfile.PasswordRequireUpper = *req.RequireUpper
-	}
-	if req.RequireLower != nil {
-		jfProfile.PasswordRequireLower = *req.RequireLower
-	}
-	if req.RequireDigit != nil {
-		jfProfile.PasswordRequireDigit = *req.RequireDigit
-	}
-	if req.RequireSpecial != nil {
-		jfProfile.PasswordRequireSpecial = *req.RequireSpecial
-	}
-	if strings.TrimSpace(req.ExpiryAction) != "" {
-		jfProfile.ExpiryAction = normalizeExpiryAction(req.ExpiryAction)
-	}
-	if req.DeleteAfterDays != nil && *req.DeleteAfterDays >= 0 {
-		jfProfile.DeleteAfterDays = *req.DeleteAfterDays
-	}
-	if req.DisableAfterDays > 0 {
-		jfProfile.DisableAfterDays = req.DisableAfterDays
-	}
-	if req.UserExpiryDays > 0 {
-		jfProfile.DisableAfterDays = req.UserExpiryDays
-	}
+	jfProfile.UsernameMinLength = inviteCfg.UsernameMinLength
+	jfProfile.UsernameMaxLength = inviteCfg.UsernameMaxLength
+	jfProfile.PasswordMinLength = inviteCfg.PasswordMinLength
+	jfProfile.PasswordMaxLength = inviteCfg.PasswordMaxLength
+	jfProfile.PasswordRequireUpper = inviteCfg.PasswordRequireUpper
+	jfProfile.PasswordRequireLower = inviteCfg.PasswordRequireLower
+	jfProfile.PasswordRequireDigit = inviteCfg.PasswordRequireDigit
+	jfProfile.PasswordRequireSpecial = inviteCfg.PasswordRequireSpecial
+	jfProfile.DisableAfterDays = inviteCfg.DisableAfterDays
+	jfProfile.ExpiryAction = normalizeExpiryAction(inviteCfg.ExpiryAction)
+	jfProfile.DeleteAfterDays = inviteCfg.DeleteAfterDays
+
 	jfProfile.UserExpiryDays = jfProfile.DisableAfterDays
 
 	if jfProfile.UsernameMinLength <= 0 {

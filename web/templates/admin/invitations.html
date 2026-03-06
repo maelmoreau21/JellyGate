@@ -160,78 +160,10 @@
 
                 <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
                     <h3 class="text-lg font-semibold text-emerald-300 border-b border-white/10 pb-2">2) Profil utilisateur</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="jg-label">Preset Jellyfin</label>
-                            <select id="inv-policy-preset" class="jg-input">
-                                <option value="">Par defaut (Aucun)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="jg-label">Nom d'utilisateur forcé</label>
-                            <input type="text" id="inv-forced-user" class="jg-input"
-                                placeholder="Laisser vide pour choix libre">
-                        </div>
-                        <div>
-                            <label class="jg-label">Cloner un profil Jellyfin</label>
-                            <select id="inv-template-user" class="jg-input">
-                                <option value="">Par défaut (Aucun)</option>
-                                {{/* Populé via JS (Dashboard) */}}
-                            </select>
-                        </div>
-                    </div>
                     <div>
-                        <label class="jg-label mt-2">Desactiver le compte apres (jours, 0 = jamais)</label>
-                        <input type="number" id="inv-disable-after"
-                            class="jg-input text-emerald-100 placeholder-emerald-800" min="0" value="0"
-                            placeholder="Ex: 30">
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="jg-label">Nom utilisateur min</label>
-                            <input type="number" id="inv-user-min" class="jg-input" min="1" value="3">
-                        </div>
-                        <div>
-                            <label class="jg-label">Nom utilisateur max</label>
-                            <input type="number" id="inv-user-max" class="jg-input" min="1" value="32">
-                        </div>
-                        <div>
-                            <label class="jg-label">Longueur minimum du mot de passe</label>
-                            <input type="number" id="inv-pw-min" class="jg-input" min="0" value="8">
-                        </div>
-                        <div>
-                            <label class="jg-label">Longueur maximum du mot de passe</label>
-                            <input type="number" id="inv-pw-max" class="jg-input" min="1" value="128">
-                        </div>
-                        <div>
-                            <label class="jg-label">Supprimer le compte apres (jours, 0 = jamais)</label>
-                            <input type="number" id="inv-delete-after" class="jg-input" min="0" value="0">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <label class="jg-label flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="inv-pw-upper" class="rounded border-slate-600 bg-slate-800 text-purple-500 w-4 h-4 focus:ring-0 cursor-pointer">
-                            <span class="text-slate-300">Majuscule requise</span>
-                        </label>
-                        <label class="jg-label flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="inv-pw-lower" class="rounded border-slate-600 bg-slate-800 text-purple-500 w-4 h-4 focus:ring-0 cursor-pointer">
-                            <span class="text-slate-300">Minuscule requise</span>
-                        </label>
-                        <label class="jg-label flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="inv-pw-digit" class="rounded border-slate-600 bg-slate-800 text-purple-500 w-4 h-4 focus:ring-0 cursor-pointer">
-                            <span class="text-slate-300">Chiffre requis</span>
-                        </label>
-                        <label class="jg-label flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="inv-pw-special" class="rounded border-slate-600 bg-slate-800 text-purple-500 w-4 h-4 focus:ring-0 cursor-pointer">
-                            <span class="text-slate-300">Caractere special requis</span>
-                        </label>
-                    </div>
-                    <div>
-                        <label class="jg-label flex items-center gap-2 cursor-pointer mt-6">
-                            <input type="checkbox" id="inv-dl" checked
-                                class="rounded border-slate-600 bg-slate-800 text-purple-500 w-5 h-5 focus:ring-0 cursor-pointer">
-                            <span class="text-slate-300">Autoriser le téléchargement direct des médias</span>
-                        </label>
+                        <label class="jg-label">Nom d'utilisateur forcé</label>
+                        <input type="text" id="inv-forced-user" class="jg-input" placeholder="Laisser vide pour choix libre">
+                        <p class="text-xs text-slate-500 mt-1">Le reste du profil utilisateur est force depuis Parametres -> Profil invitation (acces administrateur uniquement).</p>
                     </div>
                 </div>
             </div>
@@ -278,42 +210,11 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         let allInvitations = [];
-        let allPresets = [];
 
         window.JG = window.JG || {};
 
         function getBaseURL() {
             return window.location.origin;
-        }
-
-        function applyPresetPolicy(presetId) {
-            const preset = allPresets.find(p => p.id === presetId);
-            if (!preset) {
-                return;
-            }
-
-            document.getElementById('inv-pw-min').value = Number.isInteger(preset.password_min_length)
-                ? preset.password_min_length
-                : 8;
-            document.getElementById('inv-pw-max').value = Number.isInteger(preset.password_max_length)
-                ? preset.password_max_length
-                : 128;
-            document.getElementById('inv-user-min').value = Number.isInteger(preset.username_min_length)
-                ? preset.username_min_length
-                : 3;
-            document.getElementById('inv-user-max').value = Number.isInteger(preset.username_max_length)
-                ? preset.username_max_length
-                : 32;
-            document.getElementById('inv-pw-upper').checked = !!preset.require_upper;
-            document.getElementById('inv-pw-lower').checked = !!preset.require_lower;
-            document.getElementById('inv-pw-digit').checked = !!preset.require_digit;
-            document.getElementById('inv-pw-special').checked = !!preset.require_special;
-            document.getElementById('inv-disable-after').value = Number.isInteger(preset.disable_after_days)
-                ? preset.disable_after_days
-                : 0;
-            document.getElementById('inv-delete-after').value = Number.isInteger(preset.delete_after_days)
-                ? preset.delete_after_days
-                : 0;
         }
 
         // Charger les invitations
@@ -324,28 +225,6 @@
                 renderInvitations(allInvitations);
             } else {
                 JG.toast('Erreur de chargement', 'error');
-            }
-
-            // Charger les utilisateurs JF pour le select du clone de profil
-            const usersRes = await JG.api('/admin/api/users');
-            if (usersRes.success && usersRes.data) {
-                const select = document.getElementById('inv-template-user');
-                let options = `<option value="">Par défaut (Aucun)</option>`;
-                usersRes.data.forEach(u => {
-                    options += `<option value="${u.jellyfin_id}">${JG.esc(u.username)}</option>`;
-                });
-                select.innerHTML = options;
-            }
-
-            const presetsRes = await JG.api('/admin/api/automation/presets');
-            if (presetsRes.success && Array.isArray(presetsRes.data)) {
-                allPresets = presetsRes.data;
-                const presetSelect = document.getElementById('inv-policy-preset');
-                let options = `<option value="">Par défaut (Aucun)</option>`;
-                presetsRes.data.forEach(p => {
-                    options += `<option value="${JG.esc(p.id)}">${JG.esc(p.name)}</option>`;
-                });
-                presetSelect.innerHTML = options;
             }
         };
 
@@ -440,12 +319,6 @@
         JG.closeCreateModal = function () {
             document.getElementById('create-modal').style.display = 'none';
             document.getElementById('create-form').reset();
-            document.getElementById('inv-pw-min').value = '8';
-            document.getElementById('inv-pw-max').value = '128';
-            document.getElementById('inv-user-min').value = '3';
-            document.getElementById('inv-user-max').value = '32';
-            document.getElementById('inv-disable-after').value = '0';
-            document.getElementById('inv-delete-after').value = '0';
         }
 
         JG.submitCreate = async function (e) {
@@ -458,24 +331,10 @@
                 label: "",
                 max_uses: parseInt(document.getElementById('inv-uses').value) || 0,
                 expires_at: document.getElementById('inv-expires-link').value || "",
-                user_expiry_days: parseInt(document.getElementById('inv-disable-after').value) || 0,
-                disable_after_days: parseInt(document.getElementById('inv-disable-after').value) || 0,
                 send_to_email: document.getElementById('inv-email').value,
                 email_message: "", // Obsolète, géré par Moteur d'emails
-                enable_downloads: document.getElementById('inv-dl').checked,
-                policy_preset_id: document.getElementById('inv-policy-preset').value,
                 group_name: "",
                 forced_username: document.getElementById('inv-forced-user').value,
-                template_user_id: document.getElementById('inv-template-user').value,
-                username_min_length: parseInt(document.getElementById('inv-user-min').value, 10) || 0,
-                username_max_length: parseInt(document.getElementById('inv-user-max').value, 10) || 0,
-                password_min_length: parseInt(document.getElementById('inv-pw-min').value, 10) || 0,
-                password_max_length: parseInt(document.getElementById('inv-pw-max').value, 10) || 0,
-                password_require_upper: document.getElementById('inv-pw-upper').checked,
-                password_require_lower: document.getElementById('inv-pw-lower').checked,
-                password_require_digit: document.getElementById('inv-pw-digit').checked,
-                password_require_special: document.getElementById('inv-pw-special').checked,
-                delete_after_days: parseInt(document.getElementById('inv-delete-after').value, 10) || 0,
                 libraries: [] // Pour la démo : Toutes les bibliothèques. JFA-GO utilise des select complexes.
             };
 
@@ -505,14 +364,6 @@
                     JG.closeDeleteModal();
                 }
             });
-        });
-
-        document.getElementById('inv-policy-preset').addEventListener('change', (event) => {
-            const presetID = (event.target.value || '').trim();
-            if (!presetID) {
-                return;
-            }
-            applyPresetPolicy(presetID);
         });
 
         JG.loadInvitations();
