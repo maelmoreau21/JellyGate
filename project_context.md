@@ -1,6 +1,6 @@
 # JellyGate — Project Context (Bible)
 
-> **Dernière mise à jour :** 2026-03-03
+> **Dernière mise à jour :** 2026-03-06
 > **Version :** 0.1.0-alpha
 > **Auteur :** Mael Moreau
 
@@ -96,8 +96,7 @@ JellyGate/
 │   │   └── i18n.go              # Chargement et résolution des traductions
 │   └── middleware/
 │       ├── auth.go              # Middleware d'authentification
-│       ├── ratelimit.go         # Rate limiting
-│       └── logging.go           # Logging des requêtes
+│       └── i18n.go              # Détection de langue
 ├── web/
 │   ├── static/
 │   │   ├── css/
@@ -346,18 +345,37 @@ Utilisateur soumet le formulaire d'invitation
 
 ## 8. Sécurité
 
+### 8.1 Mesures actuellement en place
+
 | Mesure | Détail |
 |--------|--------|
 | Authentification admin | Déléguée à **Jellyfin** (`AuthenticateByName` + vérification `IsAdministrator`) |
-| Sessions | Cookie HTTP-Only, Secure, SameSite=Strict |
-| CSRF | Token CSRF sur tous les formulaires |
-| Rate limiting | Limite sur les routes publiques (login, reset, invite) |
-| LDAPS | Connexion obligatoire via TLS (port 636) |
-| Mot de passe AD | Encodé en **UTF-16LE** encapsulé dans des guillemets, transmis via LDAPS |
-| Injection SQL | Utilisation systématique de requêtes préparées |
+| Sessions | Cookie signé HMAC-SHA256, `HttpOnly`, `SameSite=Strict` |
+| LDAPS | Support LDAPS/TLS pour AD, mot de passe AD encodé UTF-16LE |
+| Injection SQL | Requêtes paramétrées quasi systématiques (`?` placeholders) |
 | XSS | Auto-escaping via `html/template` |
 | Clé secrète | `JELLYGATE_SECRET_KEY` requis, min 32 caractères |
-| Audit | Toutes les actions sensibles sont loguées dans `audit_log` |
+| Audit | Actions sensibles journalisées dans `audit_log` |
+
+### 8.2 Ecarts AppSec identifiés (audit 2026-03-06)
+
+| Domaine | Etat | Risque |
+|--------|------|--------|
+| CSRF | Protection implicite via `SameSite`, **pas de token CSRF serveur** sur les endpoints JSON state-changing | Moyen à élevé selon déploiement |
+| Rate limiting | **Non implémenté** sur login/reset/invite | Elevé (bruteforce/abus) |
+| Cookie `Secure` derrière reverse proxy | Dépend de `r.TLS != nil` uniquement, pas de prise en compte proxy TLS termination | Elevé |
+| Chiffrement des secrets en base | Config LDAP/SMTP/Webhooks stockée en clair dans `settings` | Elevé |
+| PostgreSQL transport security | `sslmode=disable` par défaut | Moyen à élevé |
+| Durcissement HTTP headers | CSP/HSTS/X-Frame-Options non centralisés | Moyen |
+
+### 8.3 Priorités de remédiation
+
+1. Ajouter un middleware CSRF robuste pour toutes les routes admin en écriture.
+2. Mettre en place du rate limiting sur `/admin/login`, `/reset/request`, `/reset/{code}`, `/invite/{code}`.
+3. Forcer les cookies de session en `Secure` derrière proxy TLS (`X-Forwarded-Proto=https` validé) et envisager HSTS.
+4. Chiffrer les secrets applicatifs au repos (AES-GCM avec clé maître hors base, idéalement via secret manager).
+5. Exiger TLS vérifié pour PostgreSQL et LDAP en production (`sslmode=require` min, `verify-full` recommandé).
+6. Ajouter des en-têtes de sécurité HTTP globaux (CSP, X-Content-Type-Options, X-Frame-Options/`frame-ancestors`, Referrer-Policy).
 
 ---
 
@@ -381,6 +399,7 @@ Utilisateur soumet le formulaire d'invitation
 | ✅ Webhooks | **Terminé** | Discord, Telegram, Matrix — async goroutines |
 | ✅ Frontend (templates) | **Terminé** | Dark theme, glassmorphism, Tailwind, fetch API, i18n-ready |
 | ✅ Internationalisation | **Terminé** | fr.json + en.json, middleware détection, fallback FR, sélecteur UI |
+| ⚠️ Audit AppSec OWASP Top 10 | **Réalisé (écarts détectés)** | CSRF token absent, rate limit absent, secrets en clair, cookie secure proxy à corriger |
 | ⬜ Personnalisation UI | À faire | CSS custom depuis l'admin |
 | ⬜ Tests | À faire | Unitaires + intégration |
 | ✅ Docker / CI | **Terminé** | Buildx multi-arch, GHCR, semver tags, GHA cache |
