@@ -109,6 +109,69 @@
         </button>
     </div>
 
+    <div class="glass-card p-4 mb-6">
+        <div class="flex flex-col gap-3">
+            <div class="text-xs text-slate-400" id="invite-policy-summary">Chargement des limites d'invitation...</div>
+            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+                <div>
+                    <label class="jg-label" for="last-created-link">Dernier lien genere</label>
+                    <input type="text" id="last-created-link" class="jg-input" readonly placeholder="Le prochain lien cree apparaitra ici.">
+                </div>
+                <button id="copy-last-created-link" type="button" class="jg-btn jg-btn-ghost">Copier</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card p-4 mb-6">
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-base font-semibold text-white">Dashboard Parrainage</h2>
+            <span class="text-xs text-slate-400" id="sponsor-stats-generated-at">--</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
+            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
+                <div class="text-xs text-slate-400">Liens créés</div>
+                <div class="text-xl font-semibold text-white" id="sponsor-total-links">0</div>
+            </div>
+            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
+                <div class="text-xs text-slate-400">Liens actifs</div>
+                <div class="text-xl font-semibold text-emerald-300" id="sponsor-active-links">0</div>
+            </div>
+            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
+                <div class="text-xs text-slate-400">Liens fermés</div>
+                <div class="text-xl font-semibold text-rose-300" id="sponsor-closed-links">0</div>
+            </div>
+            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
+                <div class="text-xs text-slate-400">Conversions</div>
+                <div class="text-xl font-semibold text-cyan-300" id="sponsor-conversions">0</div>
+            </div>
+            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
+                <div class="text-xs text-slate-400">Taux conversion</div>
+                <div class="text-xl font-semibold text-amber-300" id="sponsor-conversion-rate">0%</div>
+            </div>
+        </div>
+
+        <div class="jg-table-wrap">
+            <table class="jg-table">
+                <thead>
+                    <tr>
+                        <th>Parrain</th>
+                        <th>Liens créés</th>
+                        <th>Actifs</th>
+                        <th>Fermés</th>
+                        <th>Utilisations</th>
+                        <th>Conversions</th>
+                        <th>Taux</th>
+                    </tr>
+                </thead>
+                <tbody id="sponsor-stats-body">
+                    <tr>
+                        <td colspan="7" class="text-center text-slate-500 py-8">Chargement des statistiques...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     {{/* Tableau des invitations */}}
     <div class="glass-card p-0 overflow-hidden">
         <div class="jg-table-wrap">
@@ -151,10 +214,12 @@
                     <div>
                         <label class="jg-label">Utilisations maximales (0 = Illimité)</label>
                         <input type="number" id="inv-uses" class="jg-input" min="0" value="1">
+                        <p class="text-xs text-slate-500 mt-1" id="inv-uses-help">0 = illimite.</p>
                     </div>
                     <div>
                         <label class="jg-label">Expire le (Date précise, vide = Jamais)</label>
                         <input type="datetime-local" id="inv-expires-link" class="jg-input">
+                        <p class="text-xs text-slate-500 mt-1" id="inv-link-expiry-help">Vous pouvez laisser vide.</p>
                     </div>
                 </div>
 
@@ -164,6 +229,24 @@
                         <label class="jg-label">Nom d'utilisateur forcé</label>
                         <input type="text" id="inv-forced-user" class="jg-input" placeholder="Laisser vide pour choix libre">
                         <p class="text-xs text-slate-500 mt-1">Le reste du profil utilisateur est force depuis Parametres -> Profil invitation (acces administrateur uniquement).</p>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" id="inv-user-expiry-enabled" class="form-checkbox">
+                            Definir une expiration utilisateur specifique pour ce lien
+                        </label>
+                        <input type="number" id="inv-user-expiry-days" class="jg-input mt-2" min="1" value="30" disabled>
+                        <p class="text-xs text-slate-500 mt-1">En jours apres la creation du compte.</p>
+                        <label class="jg-label mt-2">Ou date absolue (prioritaire)</label>
+                        <input type="datetime-local" id="inv-user-expiry-at" class="jg-input" disabled>
+                        <p class="text-xs text-slate-500 mt-1">Si renseignee, cette date exacte sera appliquee au compte.</p>
+                    </div>
+                    <div>
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300" id="inv-can-invite-wrap">
+                            <input type="checkbox" id="inv-new-user-can-invite" class="form-checkbox">
+                            Le nouvel utilisateur peut creer des invitations
+                        </label>
+                        <p class="text-xs text-slate-500 mt-1" id="inv-can-invite-help">Option reservee selon la politique admin.</p>
                     </div>
                 </div>
             </div>
@@ -213,8 +296,106 @@
 
         window.JG = window.JG || {};
 
+        const inviteBaseCandidate = ("{{ .Data.InviteBaseURL }}" || '').trim();
+        const inviteBaseURL = (inviteBaseCandidate && inviteBaseCandidate !== '<no value>') ? inviteBaseCandidate : window.location.origin;
+        const isAdmin = "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true";
+        const allowInviterGrant = "{{ if .Data.InviteAllowInviterGrant }}true{{ else }}false{{ end }}" === "true";
+        const allowInviterUserExpiry = "{{ if .Data.InviteAllowInviterUserExpiry }}true{{ else }}false{{ end }}" === "true";
+        const inviterMaxUses = parseInt("{{ .Data.InviteInviterMaxUses }}", 10) || 0;
+        const inviterMaxLinkHours = parseInt("{{ .Data.InviteInviterMaxLinkHours }}", 10) || 0;
+        const inviterQuotaDay = parseInt("{{ .Data.InviteInviterQuotaDay }}", 10) || 0;
+        const inviterQuotaWeek = parseInt("{{ .Data.InviteInviterQuotaWeek }}", 10) || 0;
+        const inviterQuotaMonth = parseInt("{{ .Data.InviteInviterQuotaMonth }}", 10) || 0;
+        const defaultDisableAfterDays = parseInt("{{ .Data.InviteDefaultDisableAfterDays }}", 10) || 0;
+
         function getBaseURL() {
-            return window.location.origin;
+            return inviteBaseURL;
+        }
+
+        async function copyLinkToClipboard(link) {
+            const ok = await JG.copyText(link);
+            if (ok) {
+                JG.toast('Lien copié', 'success');
+            } else {
+                JG.toast('Copie auto indisponible, utilise le champ de lien ci-dessus.', 'error');
+            }
+            return ok;
+        }
+
+        function applyInvitationPolicyUI() {
+            const summary = document.getElementById('invite-policy-summary');
+            const usesHelp = document.getElementById('inv-uses-help');
+            const linkHelp = document.getElementById('inv-link-expiry-help');
+            const canInviteWrap = document.getElementById('inv-can-invite-wrap');
+            const canInviteHelp = document.getElementById('inv-can-invite-help');
+            const canInviteCheckbox = document.getElementById('inv-new-user-can-invite');
+            const expiryEnabled = document.getElementById('inv-user-expiry-enabled');
+            const expiryDays = document.getElementById('inv-user-expiry-days');
+            const expiryAt = document.getElementById('inv-user-expiry-at');
+
+            const canGrantInvite = isAdmin || allowInviterGrant;
+            const canSetUserExpiry = isAdmin || allowInviterUserExpiry;
+
+            if (summary) {
+                const parts = [];
+                parts.push(`Base des liens: ${getBaseURL()}`);
+                if (!isAdmin && inviterMaxUses > 0) parts.push(`Max utilisations par lien: ${inviterMaxUses}`);
+                if (!isAdmin && inviterMaxLinkHours > 0) parts.push(`TTL max lien: ${inviterMaxLinkHours}h`);
+                if (!isAdmin && inviterQuotaDay > 0) parts.push(`Quota jour: ${inviterQuotaDay}`);
+                if (!isAdmin && inviterQuotaWeek > 0) parts.push(`Quota semaine: ${inviterQuotaWeek}`);
+                if (!isAdmin && inviterQuotaMonth > 0) parts.push(`Quota mois: ${inviterQuotaMonth}`);
+                if (!isAdmin && !allowInviterGrant) parts.push('Delegation invite verrouillee');
+                if (!isAdmin && !allowInviterUserExpiry) parts.push('Expiration utilisateur verrouillee');
+                summary.textContent = parts.join(' • ');
+            }
+
+            if (usesHelp) {
+                usesHelp.textContent = (!isAdmin && inviterMaxUses > 0)
+                    ? `Pour ton role: de 1 a ${inviterMaxUses} utilisations.`
+                    : '0 = illimite.';
+            }
+
+            if (linkHelp) {
+                linkHelp.textContent = (!isAdmin && inviterMaxLinkHours > 0)
+                    ? `Date limite recommandee: dans les ${inviterMaxLinkHours} prochaines heures.`
+                    : 'Vous pouvez laisser vide.';
+            }
+
+            if (canInviteCheckbox) {
+                canInviteCheckbox.checked = false;
+                canInviteCheckbox.disabled = !canGrantInvite;
+            }
+            if (canInviteWrap && !canGrantInvite) {
+                canInviteWrap.classList.add('opacity-60');
+            }
+            if (canInviteWrap && canGrantInvite) {
+                canInviteWrap.classList.remove('opacity-60');
+            }
+            if (canInviteHelp) {
+                canInviteHelp.textContent = canGrantInvite
+                    ? 'Si active, le nouvel utilisateur pourra creer des liens d\'invitation.'
+                    : 'Option desactivee par la politique admin.';
+            }
+
+            if (expiryEnabled && expiryDays) {
+                expiryEnabled.disabled = !canSetUserExpiry;
+                if (!canSetUserExpiry) {
+                    expiryEnabled.checked = defaultDisableAfterDays > 0;
+                    expiryDays.disabled = true;
+                    expiryDays.value = defaultDisableAfterDays > 0 ? defaultDisableAfterDays : 30;
+                    if (expiryAt) {
+                        expiryAt.disabled = true;
+                        expiryAt.value = '';
+                    }
+                } else {
+                    expiryEnabled.checked = defaultDisableAfterDays > 0;
+                    expiryDays.value = defaultDisableAfterDays > 0 ? defaultDisableAfterDays : 30;
+                    expiryDays.disabled = !expiryEnabled.checked;
+                    if (expiryAt) {
+                        expiryAt.disabled = !expiryEnabled.checked;
+                    }
+                }
+            }
         }
 
         // Charger les invitations
@@ -226,6 +407,50 @@
             } else {
                 JG.toast('Erreur de chargement', 'error');
             }
+        };
+
+        JG.loadSponsorStats = async function () {
+            const res = await JG.api('/admin/api/invitations/stats');
+            const tbody = document.getElementById('sponsor-stats-body');
+            if (!res || !res.success || !res.data) {
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-red-300 py-8">Impossible de charger les statistiques.</td></tr>';
+                }
+                return;
+            }
+
+            const data = res.data;
+            document.getElementById('sponsor-total-links').textContent = String(data.total_links || 0);
+            document.getElementById('sponsor-active-links').textContent = String(data.active_links || 0);
+            document.getElementById('sponsor-closed-links').textContent = String(data.closed_links || 0);
+            document.getElementById('sponsor-conversions').textContent = String(data.conversions || 0);
+            document.getElementById('sponsor-conversion-rate').textContent = `${Number(data.conversion_rate || 0).toFixed(1)}%`;
+
+            const generatedAt = document.getElementById('sponsor-stats-generated-at');
+            if (generatedAt) {
+                generatedAt.textContent = data.generated_at ? `Mise a jour: ${new Date(data.generated_at).toLocaleString()}` : '--';
+            }
+
+            const sponsors = Array.isArray(data.by_sponsor) ? data.by_sponsor : [];
+            if (!tbody) return;
+
+            if (sponsors.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-8">Aucune donnée de parrainage.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = sponsors.map(item => {
+                const rate = Number(item.conversion_rate || 0).toFixed(1);
+                return `<tr>
+                    <td class="font-medium text-slate-200">${JG.esc(item.sponsor || '(inconnu)')}</td>
+                    <td>${JG.esc(String(item.created_links || 0))}</td>
+                    <td><span class="badge badge-success">${JG.esc(String(item.active_links || 0))}</span></td>
+                    <td><span class="badge badge-danger">${JG.esc(String(item.closed_links || 0))}</span></td>
+                    <td>${JG.esc(String(item.total_uses || 0))}</td>
+                    <td>${JG.esc(String(item.conversions || 0))}</td>
+                    <td>${JG.esc(rate)}%</td>
+                </tr>`;
+            }).join('');
         };
 
         function renderInvitations(list) {
@@ -242,12 +467,19 @@
                 // Expiration Utilisateur depuis le JSON Profile
                 const rawProfile = inv.jellyfin_profile || {};
                 const disableAfter = Number(rawProfile.disable_after_days || rawProfile.user_expiry_days || 0);
+                const absoluteUserExpiry = (rawProfile.user_expires_at || '').trim();
                 const deleteAfter = Number(rawProfile.delete_after_days || 0);
                 const groupName = (rawProfile.group_name || '').trim();
-                const userExpiry = disableAfter > 0
-                    ? `disable a ${disableAfter} jours`
-                    : 'Illimité';
+                let absoluteUserExpiryLabel = '';
+                if (absoluteUserExpiry) {
+                    const parsedAbs = new Date(absoluteUserExpiry);
+                    absoluteUserExpiryLabel = Number.isNaN(parsedAbs.getTime()) ? absoluteUserExpiry : parsedAbs.toLocaleString();
+                }
+                const userExpiry = absoluteUserExpiry
+                    ? `expire le ${absoluteUserExpiryLabel}`
+                    : (disableAfter > 0 ? `disable a ${disableAfter} jours` : 'Illimité');
                 const deleteLabel = deleteAfter > 0 ? `delete a ${deleteAfter} jours` : 'pas de suppression planifiee';
+                const inviteRole = rawProfile.can_invite ? 'peut inviter' : 'compte standard';
                 const pwRules = [];
                 if (Number(rawProfile.password_min_length || 0) > 0) pwRules.push(`min ${rawProfile.password_min_length}`);
                 if (Number(rawProfile.password_max_length || 0) > 0) pwRules.push(`max ${rawProfile.password_max_length}`);
@@ -262,7 +494,7 @@
                 }
                 const policyLabel = pwRules.length > 0 ? pwRules.join(', ') : 'defaut';
                 const groupLabel = groupName ? `groupe: ${groupName}` : 'groupe LDAP par défaut';
-                const userExp = `<div>${JG.esc(userExpiry)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)} · ${JG.esc(policyLabel)}</div>`;
+                const userExp = `<div>${JG.esc(userExpiry)} · ${JG.esc(inviteRole)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)} · ${JG.esc(policyLabel)}</div>`;
 
                 const usesStr = inv.max_uses > 0 ? `${inv.used_count} / ${inv.max_uses}` : `${inv.used_count} / ∞`;
 
@@ -274,7 +506,7 @@
                     <td>
                         <div class="flex items-center gap-2">
                             <code class="px-2 py-1 bg-black/40 rounded text-purple-300 select-all">${inv.code}</code>
-                            <button onclick="navigator.clipboard.writeText('${link}'); JG.toast('Lien copié', 'success')" class="text-slate-400 hover:text-white" title="Copier le lien complet">
+                            <button onclick="JG.copyInviteLink('${encodeURIComponent(link)}')" class="text-slate-400 hover:text-white" title="Copier le lien complet">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             </button>
                         </div>
@@ -292,6 +524,11 @@
             }).join('');
         }
 
+        JG.copyInviteLink = async function (encodedLink) {
+            const link = decodeURIComponent(encodedLink || '');
+            await copyLinkToClipboard(link);
+        };
+
         // Modales de suppression
         JG.confirmDelete = function (id) {
             document.getElementById('delete-modal').style.display = '';
@@ -301,6 +538,7 @@
                 if (res.success) {
                     JG.toast('Invitation supprimée', 'success');
                     JG.loadInvitations();
+                    JG.loadSponsorStats();
                 } else {
                     JG.toast(res.message, 'error');
                 }
@@ -314,11 +552,13 @@
         // Modales de création
         JG.openCreateModal = function () {
             document.getElementById('create-modal').style.display = '';
+            applyInvitationPolicyUI();
         }
 
         JG.closeCreateModal = function () {
             document.getElementById('create-modal').style.display = 'none';
             document.getElementById('create-form').reset();
+            applyInvitationPolicyUI();
         }
 
         JG.submitCreate = async function (e) {
@@ -327,10 +567,45 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>';
 
+            const maxUses = parseInt(document.getElementById('inv-uses').value, 10) || 0;
+            const userExpiryEnabled = !!document.getElementById('inv-user-expiry-enabled').checked;
+            const userExpiryDays = parseInt(document.getElementById('inv-user-expiry-days').value, 10) || 0;
+            const userExpiryAt = (document.getElementById('inv-user-expiry-at').value || '').trim();
+            const grantInvite = !!document.getElementById('inv-new-user-can-invite').checked;
+
+            if (!isAdmin && inviterMaxUses > 0 && (maxUses <= 0 || maxUses > inviterMaxUses)) {
+                btn.disabled = false;
+                btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
+                JG.toast(`Pour ton role, max_uses doit etre entre 1 et ${inviterMaxUses}.`, 'error');
+                return;
+            }
+
+            if (userExpiryEnabled && !userExpiryAt && userExpiryDays <= 0) {
+                btn.disabled = false;
+                btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
+                JG.toast('Indique un nombre de jours valide ou une date absolue pour l\'expiration utilisateur.', 'error');
+                return;
+            }
+
+            if (userExpiryEnabled && userExpiryAt) {
+                const expiryTimestamp = Date.parse(userExpiryAt);
+                if (Number.isNaN(expiryTimestamp) || expiryTimestamp <= Date.now()) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
+                    JG.toast('La date d\'expiration utilisateur doit etre dans le futur.', 'error');
+                    return;
+                }
+            }
+
             const payload = {
                 label: "",
-                max_uses: parseInt(document.getElementById('inv-uses').value) || 0,
+                max_uses: maxUses,
                 expires_at: document.getElementById('inv-expires-link').value || "",
+                apply_user_expiry: userExpiryEnabled,
+                disable_after_days: userExpiryEnabled ? userExpiryDays : 0,
+                user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
+                user_expires_at: userExpiryEnabled ? userExpiryAt : "",
+                new_user_can_invite: grantInvite,
                 send_to_email: document.getElementById('inv-email').value,
                 email_message: "", // Obsolète, géré par Moteur d'emails
                 group_name: "",
@@ -347,14 +622,43 @@
             btn.innerHTML = `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>Créer le lien`;
 
             if (res.success) {
-                JG.toast('Invitation générée ! Lien copié dans le presse-papier.', 'success');
-                navigator.clipboard.writeText(res.data.url);
+                const createdLink = (res.data && res.data.url) ? res.data.url : '';
+                if (createdLink) {
+                    document.getElementById('last-created-link').value = createdLink;
+                    await copyLinkToClipboard(createdLink);
+                }
+                JG.toast('Invitation générée.', 'success');
                 JG.closeCreateModal();
                 JG.loadInvitations();
+                JG.loadSponsorStats();
             } else {
                 JG.toast(res.message || 'Erreur inconnue', 'error');
             }
         };
+
+        const userExpiryToggle = document.getElementById('inv-user-expiry-enabled');
+        const userExpiryDaysField = document.getElementById('inv-user-expiry-days');
+        const userExpiryAtField = document.getElementById('inv-user-expiry-at');
+        if (userExpiryToggle && userExpiryDaysField) {
+            userExpiryToggle.addEventListener('change', () => {
+                userExpiryDaysField.disabled = !userExpiryToggle.checked;
+                if (userExpiryAtField) {
+                    userExpiryAtField.disabled = !userExpiryToggle.checked;
+                }
+            });
+        }
+
+        const copyLastBtn = document.getElementById('copy-last-created-link');
+        if (copyLastBtn) {
+            copyLastBtn.addEventListener('click', async () => {
+                const value = (document.getElementById('last-created-link').value || '').trim();
+                if (!value) {
+                    JG.toast('Aucun lien a copier pour le moment.', 'error');
+                    return;
+                }
+                await copyLinkToClipboard(value);
+            });
+        }
 
         // Modals Overlay click
         document.querySelectorAll('.modal-overlay').forEach(overlay => {
@@ -366,7 +670,9 @@
             });
         });
 
+        applyInvitationPolicyUI();
         JG.loadInvitations();
+        JG.loadSponsorStats();
     });
 </script>
 {{ end }}

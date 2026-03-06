@@ -167,6 +167,11 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <label class="jg-label" for="general-jellygate-url">URL publique JellyGate</label>
+                <input type="url" id="general-jellygate-url" class="jg-input" placeholder="https://jellygate.example.com">
+                <p class="text-xs text-slate-500 mt-1">Utilisee pour les liens d'invitation et les templates via {{ "{{" }}.JellyGateURL{{ "}}" }}.</p>
+              </div>
+              <div>
                 <label class="jg-label" for="general-jellyfin-url">URL publique Jellyfin</label>
                 <input type="url" id="general-jellyfin-url" class="jg-input" placeholder="https://jellyfin.example.com">
                 <p class="text-xs text-slate-500 mt-1">Utilisée dans les boutons et templates emails ({{ "{{" }}.JellyfinURL{{ "}}" }}).</p>
@@ -186,6 +191,7 @@
             <div class="rounded-xl bg-white/5 border border-white/10 p-4">
               <h3 class="text-sm font-semibold text-white mb-2">Raccourcis rapides</h3>
               <div class="flex flex-wrap gap-2">
+                <a id="shortcut-jellygate" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir JellyGate public</a>
                 <a id="shortcut-jellyfin" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir Jellyfin</a>
                 <a id="shortcut-jellyseerr" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir Jellyseerr</a>
                 <a id="shortcut-jellytulli" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir JellyTulli</a>
@@ -227,6 +233,31 @@
                 <input type="number" id="invite-profile-delete-after" min="0" class="jg-input" value="0">
               </div>
               <div>
+                <label class="jg-label" for="invite-profile-inviter-max-uses">Limite d'utilisations (parrains non-admin)</label>
+                <input type="number" id="invite-profile-inviter-max-uses" min="0" class="jg-input" value="0">
+                <p class="text-xs text-slate-500 mt-1">0 = pas de limite supplementaire.</p>
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-inviter-max-link-hours">TTL max lien (heures, parrains non-admin)</label>
+                <input type="number" id="invite-profile-inviter-max-link-hours" min="0" class="jg-input" value="0">
+                <p class="text-xs text-slate-500 mt-1">0 = pas de limite supplementaire.</p>
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-inviter-quota-day">Quota liens / jour (parrain)</label>
+                <input type="number" id="invite-profile-inviter-quota-day" min="0" class="jg-input" value="0">
+                <p class="text-xs text-slate-500 mt-1">0 = illimite.</p>
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-inviter-quota-week">Quota liens / semaine (parrain)</label>
+                <input type="number" id="invite-profile-inviter-quota-week" min="0" class="jg-input" value="0">
+                <p class="text-xs text-slate-500 mt-1">0 = illimite.</p>
+              </div>
+              <div>
+                <label class="jg-label" for="invite-profile-inviter-quota-month">Quota liens / mois (parrain)</label>
+                <input type="number" id="invite-profile-inviter-quota-month" min="0" class="jg-input" value="0">
+                <p class="text-xs text-slate-500 mt-1">0 = illimite.</p>
+              </div>
+              <div>
                 <label class="jg-label" for="invite-profile-expiry-action">Action a expiration</label>
                 <select id="invite-profile-expiry-action" class="jg-input">
                   <option value="disable">Desactiver</option>
@@ -237,6 +268,14 @@
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-enable-downloads" class="form-checkbox" checked>
                 <label class="text-sm text-slate-300" for="invite-profile-enable-downloads">Autoriser le telechargement direct</label>
+              </div>
+              <div class="flex items-center gap-3 pt-6">
+                <input type="checkbox" id="invite-profile-allow-inviter-grant" class="form-checkbox">
+                <label class="text-sm text-slate-300" for="invite-profile-allow-inviter-grant">Autoriser les parrains a donner le droit d'inviter</label>
+              </div>
+              <div class="flex items-center gap-3 pt-6">
+                <input type="checkbox" id="invite-profile-allow-inviter-user-expiry" class="form-checkbox" checked>
+                <label class="text-sm text-slate-300" for="invite-profile-allow-inviter-user-expiry">Autoriser les parrains a personnaliser l'expiration utilisateur</label>
               </div>
             </div>
 
@@ -555,6 +594,7 @@
             <div><span class="text-purple-200">{{ "{{" }}.ResetCode{{ "}}" }}</span> : code reset</div>
             <div><span class="text-purple-200">{{ "{{" }}.ExpiresIn{{ "}}" }}</span> : durée de validité</div>
             <div><span class="text-purple-200">{{ "{{" }}.ExpiryDate{{ "}}" }}</span> : date d'expiration</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyGateURL{{ "}}" }}</span> : URL JellyGate public</div>
             <div><span class="text-purple-200">{{ "{{" }}.JellyfinURL{{ "}}" }}</span> : URL Jellyfin</div>
             <div><span class="text-purple-200">{{ "{{" }}.JellyseerrURL{{ "}}" }}</span> : URL Jellyseerr</div>
             <div><span class="text-purple-200">{{ "{{" }}.JellyTulliURL{{ "}}" }}</span> : URL JellyTulli</div>
@@ -675,6 +715,19 @@
             <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder les modèles</button>
           </div>
         </form>
+
+        <div id="email-preview-modal" class="modal-overlay" style="display:none">
+          <div class="glass-card modal-content modal-content-lg relative">
+            <button type="button" id="email-preview-close" class="absolute top-4 right-4 text-slate-400 hover:text-white" aria-label="Fermer l'aperçu">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 class="text-lg font-semibold text-white mb-1">Aperçu du modèle e-mail</h3>
+            <p class="text-xs text-slate-400 mb-4">Rendu de test avec des valeurs de démonstration.</p>
+            <iframe id="email-preview-frame" class="w-full rounded-lg border border-white/10 bg-white" style="min-height:420px"></iframe>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -831,6 +884,7 @@
   // ── Load settings from API ──────────────────────────────────────────────
   function refreshPortalShortcuts(links) {
     const mapping = [
+      { id: 'shortcut-jellygate', url: links.jellygate_url || '' },
       { id: 'shortcut-jellyfin', url: links.jellyfin_url || '' },
       { id: 'shortcut-jellyseerr', url: links.jellyseerr_url || '' },
       { id: 'shortcut-jellytulli', url: links.jellytulli_url || '' },
@@ -892,8 +946,15 @@
     document.getElementById('invite-profile-preset').value = p.policy_preset_id || '';
     document.getElementById('invite-profile-template-user').value = p.template_user_id || '';
     document.getElementById('invite-profile-enable-downloads').checked = p.enable_downloads !== false;
+    document.getElementById('invite-profile-allow-inviter-grant').checked = !!p.allow_inviter_grant_invite;
+    document.getElementById('invite-profile-allow-inviter-user-expiry').checked = p.allow_inviter_user_expiry !== false;
     document.getElementById('invite-profile-disable-after').value = Number.isInteger(p.disable_after_days) ? p.disable_after_days : 0;
     document.getElementById('invite-profile-delete-after').value = Number.isInteger(p.delete_after_days) ? p.delete_after_days : 0;
+    document.getElementById('invite-profile-inviter-max-uses').value = Number.isInteger(p.inviter_max_uses) ? p.inviter_max_uses : 0;
+    document.getElementById('invite-profile-inviter-max-link-hours').value = Number.isInteger(p.inviter_max_link_hours) ? p.inviter_max_link_hours : 0;
+    document.getElementById('invite-profile-inviter-quota-day').value = Number.isInteger(p.inviter_quota_day) ? p.inviter_quota_day : 0;
+    document.getElementById('invite-profile-inviter-quota-week').value = Number.isInteger(p.inviter_quota_week) ? p.inviter_quota_week : 0;
+    document.getElementById('invite-profile-inviter-quota-month').value = Number.isInteger(p.inviter_quota_month) ? p.inviter_quota_month : 0;
     document.getElementById('invite-profile-expiry-action').value = p.expiry_action || 'disable';
     document.getElementById('invite-profile-user-min').value = Number.isInteger(p.username_min_length) ? p.username_min_length : 3;
     document.getElementById('invite-profile-user-max').value = Number.isInteger(p.username_max_length) ? p.username_max_length : 32;
@@ -951,6 +1012,7 @@
     // Général
     document.getElementById('default-lang').value = d.default_lang || 'fr';
     const links = d.portal_links || {};
+    document.getElementById('general-jellygate-url').value = links.jellygate_url || '';
     document.getElementById('general-jellyfin-url').value = links.jellyfin_url || '';
     document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
     document.getElementById('general-jellytulli-url').value = links.jellytulli_url || '';
@@ -1038,6 +1100,7 @@
     if (section === 'general') {
       body = {
         default_lang: document.getElementById('default-lang').value,
+        jellygate_url: document.getElementById('general-jellygate-url').value.trim(),
         jellyfin_url: document.getElementById('general-jellyfin-url').value.trim(),
         jellyseerr_url: document.getElementById('general-jellyseerr-url').value.trim(),
         jellytulli_url: document.getElementById('general-jellytulli-url').value.trim(),
@@ -1047,8 +1110,15 @@
         policy_preset_id: (document.getElementById('invite-profile-preset').value || '').trim(),
         template_user_id: (document.getElementById('invite-profile-template-user').value || '').trim(),
         enable_downloads: document.getElementById('invite-profile-enable-downloads').checked,
+        allow_inviter_grant_invite: document.getElementById('invite-profile-allow-inviter-grant').checked,
+        allow_inviter_user_expiry: document.getElementById('invite-profile-allow-inviter-user-expiry').checked,
         disable_after_days: parseInt(document.getElementById('invite-profile-disable-after').value, 10) || 0,
         delete_after_days: parseInt(document.getElementById('invite-profile-delete-after').value, 10) || 0,
+        inviter_max_uses: parseInt(document.getElementById('invite-profile-inviter-max-uses').value, 10) || 0,
+        inviter_max_link_hours: parseInt(document.getElementById('invite-profile-inviter-max-link-hours').value, 10) || 0,
+        inviter_quota_day: parseInt(document.getElementById('invite-profile-inviter-quota-day').value, 10) || 0,
+        inviter_quota_week: parseInt(document.getElementById('invite-profile-inviter-quota-week').value, 10) || 0,
+        inviter_quota_month: parseInt(document.getElementById('invite-profile-inviter-quota-month').value, 10) || 0,
         expiry_action: (document.getElementById('invite-profile-expiry-action').value || 'disable').trim(),
         username_min_length: parseInt(document.getElementById('invite-profile-user-min').value, 10) || 3,
         username_max_length: parseInt(document.getElementById('invite-profile-user-max').value, 10) || 32,
@@ -1136,6 +1206,74 @@
       }
     } else {
       JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
+    }
+  }
+
+  async function previewEmailTemplate(templateId) {
+    const field = document.getElementById(templateId);
+    const modal = document.getElementById('email-preview-modal');
+    const frame = document.getElementById('email-preview-frame');
+    if (!field || !modal || !frame) return;
+
+    const template = field.value || '';
+    if (!template.trim()) {
+      JG.toast('Le template est vide.', 'error');
+      return;
+    }
+
+    frame.srcdoc = '<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#0f172a;">Chargement de l\'aperçu...</div>';
+    modal.style.display = '';
+
+    const res = await JG.api('/admin/api/settings/email-templates/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template }),
+    });
+
+    if (!res || !res.success || !res.data || typeof res.data.html !== 'string') {
+      frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#b91c1c;">${JG.esc((res && res.message) || 'Aperçu impossible')}</div>`;
+      return;
+    }
+
+    frame.srcdoc = res.data.html;
+  }
+
+  function closeEmailPreviewModal() {
+    const modal = document.getElementById('email-preview-modal');
+    const frame = document.getElementById('email-preview-frame');
+    if (frame) frame.srcdoc = '';
+    if (modal) modal.style.display = 'none';
+  }
+
+  function attachTemplatePreviewButtons() {
+    const areas = document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]');
+    areas.forEach(area => {
+      const card = area.closest('.p-4.rounded-xl');
+      const label = card ? card.querySelector('label.jg-label') : null;
+      if (!card || !label || card.querySelector('.jg-preview-btn')) return;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'jg-btn jg-btn-sm jg-btn-ghost jg-preview-btn mt-2';
+      btn.textContent = 'Aperçu';
+      btn.addEventListener('click', () => previewEmailTemplate(area.id));
+      label.insertAdjacentElement('afterend', btn);
+    });
+
+    const closeBtn = document.getElementById('email-preview-close');
+    if (closeBtn && !closeBtn.dataset.bound) {
+      closeBtn.dataset.bound = '1';
+      closeBtn.addEventListener('click', closeEmailPreviewModal);
+    }
+
+    const modal = document.getElementById('email-preview-modal');
+    if (modal && !modal.dataset.bound) {
+      modal.dataset.bound = '1';
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+          closeEmailPreviewModal();
+        }
+      });
     }
   }
 
@@ -1281,6 +1419,7 @@
 
     await loadInvitationProfileLookups();
     await loadSettings();
+    attachTemplatePreviewButtons();
     await loadBackups();
 
     const ldapConnBtn = document.getElementById('btn-ldap-test-conn');

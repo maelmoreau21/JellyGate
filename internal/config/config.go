@@ -343,6 +343,13 @@ type InvitationProfileConfig struct {
 	DisableAfterDays       int    `json:"disable_after_days"`
 	DeleteAfterDays        int    `json:"delete_after_days"`
 	ExpiryAction           string `json:"expiry_action"`
+	AllowInviterGrant      bool   `json:"allow_inviter_grant_invite"`
+	AllowInviterUserExpiry bool   `json:"allow_inviter_user_expiry"`
+	InviterMaxUses         int    `json:"inviter_max_uses"`
+	InviterMaxLinkHours    int    `json:"inviter_max_link_hours"`
+	InviterQuotaDay        int    `json:"inviter_quota_day"`
+	InviterQuotaWeek       int    `json:"inviter_quota_week"`
+	InviterQuotaMonth      int    `json:"inviter_quota_month"`
 	UsernameMinLength      int    `json:"username_min_length"`
 	UsernameMaxLength      int    `json:"username_max_length"`
 	PasswordMinLength      int    `json:"password_min_length"`
@@ -363,6 +370,13 @@ func DefaultInvitationProfileConfig() InvitationProfileConfig {
 		DisableAfterDays:       0,
 		DeleteAfterDays:        0,
 		ExpiryAction:           "disable",
+		AllowInviterGrant:      false,
+		AllowInviterUserExpiry: true,
+		InviterMaxUses:         0,
+		InviterMaxLinkHours:    0,
+		InviterQuotaDay:        0,
+		InviterQuotaWeek:       0,
+		InviterQuotaMonth:      0,
 		UsernameMinLength:      3,
 		UsernameMaxLength:      32,
 		PasswordMinLength:      8,
@@ -384,6 +398,7 @@ type GroupPolicyMapping struct {
 
 // PortalLinksConfig contient les URLs publiques exposees dans l'UI et les emails.
 type PortalLinksConfig struct {
+	JellyGateURL  string `json:"jellygate_url"`
 	JellyfinURL   string `json:"jellyfin_url"`
 	JellyseerrURL string `json:"jellyseerr_url"`
 	JellyTulliURL string `json:"jellytulli_url"`

@@ -50,6 +50,10 @@ func resolvePortalLinks(cfg *config.Config, db *database.DB) config.PortalLinksC
 		}
 	}
 
+	if strings.TrimSpace(links.JellyGateURL) == "" && cfg != nil {
+		links.JellyGateURL = strings.TrimSpace(cfg.BaseURL)
+	}
+
 	if strings.TrimSpace(links.JellyfinURL) == "" && cfg != nil {
 		links.JellyfinURL = strings.TrimSpace(cfg.Jellyfin.URL)
 	}
@@ -60,6 +64,7 @@ func resolvePortalLinks(cfg *config.Config, db *database.DB) config.PortalLinksC
 		links.JellyTulliURL = strings.TrimSpace(cfg.ThirdParty.JellyTulliURL)
 	}
 
+	links.JellyGateURL = strings.TrimSpace(links.JellyGateURL)
 	links.JellyfinURL = strings.TrimSpace(links.JellyfinURL)
 	links.JellyseerrURL = strings.TrimSpace(links.JellyseerrURL)
 	links.JellyTulliURL = strings.TrimSpace(links.JellyTulliURL)

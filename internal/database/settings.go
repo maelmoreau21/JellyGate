@@ -119,6 +119,7 @@ func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
 	}
 
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
+	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
 	cfg.JellyTulliURL = strings.TrimSpace(cfg.JellyTulliURL)
 
@@ -128,6 +129,7 @@ func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
 // SavePortalLinksConfig sauvegarde les URL publiques.
 func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
+	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
 	cfg.JellyTulliURL = strings.TrimSpace(cfg.JellyTulliURL)
 
@@ -489,6 +491,21 @@ func normalizeInvitationProfile(cfg config.InvitationProfileConfig) config.Invit
 	}
 	if cfg.DeleteAfterDays < 0 {
 		cfg.DeleteAfterDays = 0
+	}
+	if cfg.InviterMaxUses < 0 {
+		cfg.InviterMaxUses = 0
+	}
+	if cfg.InviterMaxLinkHours < 0 {
+		cfg.InviterMaxLinkHours = 0
+	}
+	if cfg.InviterQuotaDay < 0 {
+		cfg.InviterQuotaDay = 0
+	}
+	if cfg.InviterQuotaWeek < 0 {
+		cfg.InviterQuotaWeek = 0
+	}
+	if cfg.InviterQuotaMonth < 0 {
+		cfg.InviterQuotaMonth = 0
 	}
 
 	cfg.ExpiryAction = strings.TrimSpace(strings.ToLower(cfg.ExpiryAction))

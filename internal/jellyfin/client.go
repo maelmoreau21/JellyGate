@@ -111,6 +111,7 @@ type InviteProfile struct {
 	MaxSessions        int      `json:"max_sessions"`
 	BitrateLimit       int      `json:"bitrate_limit"`    // 0 = illimité
 	UserExpiryDays     int      `json:"user_expiry_days"` // 0 = illimité
+	UserExpiresAt      string   `json:"user_expires_at"`
 	DisableAfterDays   int      `json:"disable_after_days"`
 	ExpiryAction       string   `json:"expiry_action"` // disable|delete|disable_then_delete
 	DeleteAfterDays    int      `json:"delete_after_days"`
@@ -128,6 +129,7 @@ type InviteProfile struct {
 	// JFA-Go Features
 	ForcedUsername string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
 	TemplateUserID string `json:"template_user_id"` // Si fourni, clonage strict des droits de ce profil
+	CanInvite      bool   `json:"can_invite"`
 }
 
 // ── Opérations CRUD ─────────────────────────────────────────────────────────

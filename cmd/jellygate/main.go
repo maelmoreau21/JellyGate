@@ -244,6 +244,7 @@ func main() {
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)
 					r.Post("/email-templates", settingsHandler.SaveEmailTemplates)
+					r.Post("/email-templates/preview", settingsHandler.PreviewEmailTemplate)
 					r.Post("/invitation-profile", settingsHandler.SaveInvitationProfile)
 				})
 
@@ -290,6 +291,7 @@ func main() {
 			})
 			r.Route("/api/invitations", func(r chi.Router) {
 				r.Get("/", adminHandler.ListInvitations)
+				r.Get("/stats", adminHandler.InvitationStats)
 				r.Post("/", adminHandler.CreateInvitation)
 				r.Delete("/{id}", adminHandler.DeleteInvitation)
 			})

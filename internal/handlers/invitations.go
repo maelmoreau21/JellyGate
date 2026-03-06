@@ -394,6 +394,10 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
 		emailCfg, _ := h.db.GetEmailTemplatesConfig()
 		links := resolvePortalLinks(h.cfg, h.db)
+		publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
+		if publicBaseURL == "" {
+			publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
+		}
 		combinedTemplate := joinTemplateSections(
 			emailCfg.Welcome,
 			emailCfg.Confirmation,
@@ -407,8 +411,9 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 				"DisplayName":   form.DisplayName,
 				"Email":         form.Email,
 				"InviteCode":    code,
-				"InviteLink":    strings.TrimRight(h.cfg.BaseURL, "/") + "/invite/" + code,
-				"HelpURL":       h.cfg.BaseURL,
+				"InviteLink":    publicBaseURL + "/invite/" + code,
+				"HelpURL":       publicBaseURL,
+				"JellyGateURL":  publicBaseURL,
 				"JellyfinURL":   links.JellyfinURL,
 				"JellyseerrURL": links.JellyseerrURL,
 				"JellyTulliURL": links.JellyTulliURL,
@@ -701,9 +706,11 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 
 	// Parsing du profil JSON pour récupérer les politiques d'expiration et groupe.
 	var disableAfterDays int
+	var absoluteUserExpiryAt time.Time
 	expiryAction := "disable"
 	deleteAfterDays := 0
 	groupName := ""
+	canInviteFromProfile := false
 	if inv.JellyfinProfile != "" {
 		var pf jellyfin.InviteProfile
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &pf); err == nil {
@@ -715,12 +722,20 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 			if pf.DeleteAfterDays > 0 {
 				deleteAfterDays = pf.DeleteAfterDays
 			}
+			if strings.TrimSpace(pf.UserExpiresAt) != "" {
+				if parsed, err := parseAccessExpiry(pf.UserExpiresAt); err == nil {
+					absoluteUserExpiryAt = parsed
+				}
+			}
 			groupName = strings.TrimSpace(pf.GroupName)
+			canInviteFromProfile = pf.CanInvite
 		}
 	}
 
 	var accessExpiresAt interface{}
-	if disableAfterDays > 0 {
+	if !absoluteUserExpiryAt.IsZero() {
+		accessExpiresAt = absoluteUserExpiryAt
+	} else if disableAfterDays > 0 {
 		accessExpiresAt = time.Now().AddDate(0, 0, disableAfterDays)
 	}
 
@@ -736,7 +751,7 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		jellyfinIDValue = jellyfinID
 	}
 
-	canInvite := roleAllowsInvites(ldapRole)
+	canInvite := roleAllowsInvites(ldapRole) || canInviteFromProfile
 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(

@@ -186,10 +186,16 @@ func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templat
 
 	links := resolvePortalLinks(h.cfg, h.db)
 
+	helpURL := strings.TrimSpace(links.JellyGateURL)
+	if helpURL == "" {
+		helpURL = strings.TrimSpace(h.cfg.BaseURL)
+	}
+
 	data := map[string]string{
 		"Username":      rec.Username,
 		"Email":         rec.Email,
-		"HelpURL":       h.cfg.BaseURL,
+		"HelpURL":       helpURL,
+		"JellyGateURL":  helpURL,
 		"JellyfinURL":   links.JellyfinURL,
 		"JellyseerrURL": links.JellyseerrURL,
 		"JellyTulliURL": links.JellyTulliURL,
@@ -968,6 +974,30 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
+
+	inviteCfg, err := h.db.GetInvitationProfileConfig()
+	if err != nil {
+		slog.Warn("Impossible de charger la config invitation pour la page", "error", err)
+		inviteCfg = config.DefaultInvitationProfileConfig()
+	}
+
+	links := resolvePortalLinks(h.cfg, h.db)
+	inviteBaseURL := strings.TrimSpace(links.JellyGateURL)
+	if inviteBaseURL == "" {
+		inviteBaseURL = strings.TrimSpace(h.cfg.BaseURL)
+	}
+	if inviteBaseURL == "" {
+		inviteBaseURL = requestBaseURL(r)
+	}
+	td.Data["InviteBaseURL"] = strings.TrimRight(inviteBaseURL, "/")
+	td.Data["InviteAllowInviterGrant"] = inviteCfg.AllowInviterGrant
+	td.Data["InviteAllowInviterUserExpiry"] = inviteCfg.AllowInviterUserExpiry
+	td.Data["InviteInviterMaxUses"] = inviteCfg.InviterMaxUses
+	td.Data["InviteInviterMaxLinkHours"] = inviteCfg.InviterMaxLinkHours
+	td.Data["InviteInviterQuotaDay"] = inviteCfg.InviterQuotaDay
+	td.Data["InviteInviterQuotaWeek"] = inviteCfg.InviterQuotaWeek
+	td.Data["InviteInviterQuotaMonth"] = inviteCfg.InviterQuotaMonth
+	td.Data["InviteDefaultDisableAfterDays"] = inviteCfg.DisableAfterDays
 
 	if td.IsAdmin {
 		td.CanInvite = true
@@ -2447,6 +2477,79 @@ func anyToDateString(v interface{}) string {
 	}
 }
 
+func requestBaseURL(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+
+	scheme := "http"
+	if xfProto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); xfProto != "" {
+		scheme = strings.TrimSpace(strings.Split(xfProto, ",")[0])
+	} else if r.TLS != nil {
+		scheme = "https"
+	}
+
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%s://%s", scheme, host)
+}
+
+func parseInvitationDateTimeInput(raw string) (time.Time, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return time.Time{}, fmt.Errorf("date vide")
+	}
+
+	if parsed, err := time.Parse("2006-01-02T15:04", trimmed); err == nil {
+		return parsed, nil
+	}
+	if parsed, err := time.Parse(time.RFC3339, trimmed); err == nil {
+		return parsed, nil
+	}
+
+	return time.Time{}, fmt.Errorf("format de date invalide")
+}
+
+func startOfLocalDay(t time.Time) time.Time {
+	lt := t.Local()
+	y, m, d := lt.Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, lt.Location())
+}
+
+func startOfLocalWeek(t time.Time) time.Time {
+	day := startOfLocalDay(t)
+	offset := (int(day.Weekday()) + 6) % 7 // Monday=0 ... Sunday=6
+	return day.AddDate(0, 0, -offset)
+}
+
+func startOfLocalMonth(t time.Time) time.Time {
+	lt := t.Local()
+	y, m, _ := lt.Date()
+	return time.Date(y, m, 1, 0, 0, 0, 0, lt.Location())
+}
+
+func (h *AdminHandler) countInvitationsCreatedSince(creator string, since time.Time) (int, error) {
+	creator = strings.TrimSpace(creator)
+	if creator == "" {
+		return 0, fmt.Errorf("creator vide")
+	}
+
+	var count int
+	err := h.db.QueryRow(
+		`SELECT COUNT(1) FROM invitations WHERE created_by = ? AND created_at >= ?`,
+		creator,
+		since,
+	).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 // ListInvitations retourne toutes les invitations SQLite.
 func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
@@ -2509,15 +2612,169 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type InvitationSponsorStats struct {
+	Sponsor        string  `json:"sponsor"`
+	CreatedLinks   int     `json:"created_links"`
+	ActiveLinks    int     `json:"active_links"`
+	ClosedLinks    int     `json:"closed_links"`
+	TotalUses      int     `json:"total_uses"`
+	Conversions    int     `json:"conversions"`
+	ConversionRate float64 `json:"conversion_rate"`
+}
+
+// InvitationStats retourne des statistiques de parrainage par createur d'invitations.
+func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+
+	scope := "all"
+	filterByCreator := ""
+	if !sess.IsAdmin {
+		var canInvite bool
+		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		if !canInvite {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation d'acceder aux statistiques de parrainage"})
+			return
+		}
+		scope = "mine"
+		filterByCreator = sess.Username
+	}
+
+	now := time.Now()
+	statsQuery := `
+		SELECT created_by,
+		       COUNT(1) AS created_links,
+		       SUM(CASE WHEN (expires_at IS NULL OR expires_at > ?) AND (max_uses = 0 OR used_count < max_uses) THEN 1 ELSE 0 END) AS active_links,
+		       SUM(CASE WHEN NOT ((expires_at IS NULL OR expires_at > ?) AND (max_uses = 0 OR used_count < max_uses)) THEN 1 ELSE 0 END) AS closed_links,
+		       SUM(used_count) AS total_uses
+		FROM invitations`
+	statsArgs := []interface{}{now, now}
+	if filterByCreator != "" {
+		statsQuery += ` WHERE created_by = ?`
+		statsArgs = append(statsArgs, filterByCreator)
+	}
+	statsQuery += ` GROUP BY created_by ORDER BY total_uses DESC, created_by ASC`
+
+	rows, err := h.db.Query(statsQuery, statsArgs...)
+	if err != nil {
+		slog.Error("Erreur lecture statistiques invitations", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture des statistiques"})
+		return
+	}
+	defer rows.Close()
+
+	statsBySponsor := make(map[string]*InvitationSponsorStats)
+	for rows.Next() {
+		var creator sql.NullString
+		var createdLinks, activeLinks, closedLinks, totalUses sql.NullInt64
+		if scanErr := rows.Scan(&creator, &createdLinks, &activeLinks, &closedLinks, &totalUses); scanErr != nil {
+			continue
+		}
+
+		sponsorKey := strings.TrimSpace(creator.String)
+		if sponsorKey == "" {
+			sponsorKey = "(inconnu)"
+		}
+
+		statsBySponsor[sponsorKey] = &InvitationSponsorStats{
+			Sponsor:      sponsorKey,
+			CreatedLinks: int(createdLinks.Int64),
+			ActiveLinks:  int(activeLinks.Int64),
+			ClosedLinks:  int(closedLinks.Int64),
+			TotalUses:    int(totalUses.Int64),
+		}
+	}
+
+	convQuery := `
+		SELECT i.created_by, COUNT(u.id) AS conversions
+		FROM invitations i
+		LEFT JOIN users u ON u.invited_by = i.code`
+	convArgs := []interface{}{}
+	if filterByCreator != "" {
+		convQuery += ` WHERE i.created_by = ?`
+		convArgs = append(convArgs, filterByCreator)
+	}
+	convQuery += ` GROUP BY i.created_by`
+
+	convRows, err := h.db.Query(convQuery, convArgs...)
+	if err == nil {
+		defer convRows.Close()
+		for convRows.Next() {
+			var creator sql.NullString
+			var conversions sql.NullInt64
+			if scanErr := convRows.Scan(&creator, &conversions); scanErr != nil {
+				continue
+			}
+
+			sponsorKey := strings.TrimSpace(creator.String)
+			if sponsorKey == "" {
+				sponsorKey = "(inconnu)"
+			}
+			if item, ok := statsBySponsor[sponsorKey]; ok {
+				item.Conversions = int(conversions.Int64)
+			}
+		}
+	}
+
+	stats := make([]InvitationSponsorStats, 0, len(statsBySponsor))
+	totalLinks := 0
+	totalActive := 0
+	totalClosed := 0
+	totalUses := 0
+	totalConversions := 0
+
+	for _, item := range statsBySponsor {
+		if item.CreatedLinks > 0 {
+			item.ConversionRate = (float64(item.Conversions) / float64(item.CreatedLinks)) * 100
+		}
+		stats = append(stats, *item)
+
+		totalLinks += item.CreatedLinks
+		totalActive += item.ActiveLinks
+		totalClosed += item.ClosedLinks
+		totalUses += item.TotalUses
+		totalConversions += item.Conversions
+	}
+
+	sort.Slice(stats, func(i, j int) bool {
+		if stats[i].Conversions == stats[j].Conversions {
+			return strings.ToLower(stats[i].Sponsor) < strings.ToLower(stats[j].Sponsor)
+		}
+		return stats[i].Conversions > stats[j].Conversions
+	})
+
+	globalRate := 0.0
+	if totalLinks > 0 {
+		globalRate = (float64(totalConversions) / float64(totalLinks)) * 100
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"scope":           scope,
+			"total_links":     totalLinks,
+			"active_links":    totalActive,
+			"closed_links":    totalClosed,
+			"total_uses":      totalUses,
+			"conversions":     totalConversions,
+			"conversion_rate": globalRate,
+			"by_sponsor":      stats,
+			"generated_at":    now.Format(time.RFC3339),
+		},
+	})
+}
+
 // ── POST /admin/api/invitations ─────────────────────────────────────────────
 
 // CreateInvitationRequest payload pour la création d'invitation
 type CreateInvitationRequest struct {
 	Label            string   `json:"label"`
-	MaxUses          int      `json:"max_uses"`         // 0 = illimité
-	ExpiresAt        string   `json:"expires_at"`       // Date précise, exemple "2026-10-05T12:00"
+	MaxUses          int      `json:"max_uses"`   // 0 = illimité
+	ExpiresAt        string   `json:"expires_at"` // Date précise, exemple "2026-10-05T12:00"
+	ApplyUserExpiry  *bool    `json:"apply_user_expiry"`
 	UserExpiryDays   int      `json:"user_expiry_days"` // Expiration finale du compte client (jours)
+	UserExpiresAt    string   `json:"user_expires_at"`
 	DisableAfterDays int      `json:"disable_after_days"`
+	NewUserCanInvite bool     `json:"new_user_can_invite"`
 	SendToEmail      string   `json:"send_to_email"` // Si renseigné, un e-mail partira par SMTP
 	EmailMessage     string   `json:"email_message"`
 	Libraries        []string `json:"libraries"` // ID des bibliothèques Jellyfin
@@ -2555,6 +2812,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
 		return
 	}
+	if req.MaxUses < 0 {
+		req.MaxUses = 0
+	}
 
 	// Générer code aléatoire (ici via crypt/rand classique, 12 caractères)
 	code, err := generateSecureToken(12)
@@ -2568,17 +2828,13 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	var expiresAt interface{}
 	inviteExpiryDate := ""
 	if strings.TrimSpace(req.ExpiresAt) != "" {
-		// Le frontend enverra "yyyy-MM-ddThh:mm"
-		if parsed, err := time.Parse("2006-01-02T15:04", req.ExpiresAt); err == nil {
-			expiresAt = parsed
-			inviteExpiryDate = emailTime(parsed)
-		} else if parsed, err := time.Parse(time.RFC3339, req.ExpiresAt); err == nil {
-			expiresAt = parsed
-			inviteExpiryDate = emailTime(parsed)
-		} else {
-			expiresAt = req.ExpiresAt // fallback natif sqlite string
-			inviteExpiryDate = strings.TrimSpace(req.ExpiresAt)
+		parsed, parseErr := parseInvitationDateTimeInput(req.ExpiresAt)
+		if parseErr != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Format d'expiration du lien invalide"})
+			return
 		}
+		expiresAt = parsed
+		inviteExpiryDate = emailTime(parsed)
 	}
 
 	inviteCfg, err := h.db.GetInvitationProfileConfig()
@@ -2588,16 +2844,140 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	now := time.Now()
+	var effectiveUserExpiresAt time.Time
+	if req.ApplyUserExpiry != nil && *req.ApplyUserExpiry && strings.TrimSpace(req.UserExpiresAt) != "" {
+		parsedUserExpiry, parseErr := parseInvitationDateTimeInput(req.UserExpiresAt)
+		if parseErr != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Format d'expiration utilisateur invalide"})
+			return
+		}
+		if !parsedUserExpiry.After(now) {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "L'expiration utilisateur doit etre dans le futur"})
+			return
+		}
+		effectiveUserExpiresAt = parsedUserExpiry
+	}
+
+	if !sess.IsAdmin {
+		if inviteCfg.InviterQuotaDay > 0 {
+			usedToday, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalDay(now))
+			if countErr != nil {
+				slog.Error("Erreur calcul quota jour", "user", sess.Username, "error", countErr)
+				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de verifier le quota journalier"})
+				return
+			}
+			if usedToday >= inviteCfg.InviterQuotaDay {
+				writeJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: fmt.Sprintf("Quota journalier atteint (%d/%d)", usedToday, inviteCfg.InviterQuotaDay)})
+				return
+			}
+		}
+
+		if inviteCfg.InviterQuotaWeek > 0 {
+			usedWeek, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalWeek(now))
+			if countErr != nil {
+				slog.Error("Erreur calcul quota semaine", "user", sess.Username, "error", countErr)
+				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de verifier le quota hebdomadaire"})
+				return
+			}
+			if usedWeek >= inviteCfg.InviterQuotaWeek {
+				writeJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: fmt.Sprintf("Quota hebdomadaire atteint (%d/%d)", usedWeek, inviteCfg.InviterQuotaWeek)})
+				return
+			}
+		}
+
+		if inviteCfg.InviterQuotaMonth > 0 {
+			usedMonth, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalMonth(now))
+			if countErr != nil {
+				slog.Error("Erreur calcul quota mois", "user", sess.Username, "error", countErr)
+				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de verifier le quota mensuel"})
+				return
+			}
+			if usedMonth >= inviteCfg.InviterQuotaMonth {
+				writeJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: fmt.Sprintf("Quota mensuel atteint (%d/%d)", usedMonth, inviteCfg.InviterQuotaMonth)})
+				return
+			}
+		}
+
+		if req.NewUserCanInvite && !inviteCfg.AllowInviterGrant {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "La delegation du droit d'invitation est reservee par la configuration admin"})
+			return
+		}
+
+		if req.ApplyUserExpiry != nil && *req.ApplyUserExpiry && !inviteCfg.AllowInviterUserExpiry {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "La personnalisation de l'expiration utilisateur est desactivee pour les parrains"})
+			return
+		}
+
+		if inviteCfg.InviterMaxUses > 0 {
+			if req.MaxUses <= 0 || req.MaxUses > inviteCfg.InviterMaxUses {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Limite par lien: entre 1 et %d utilisations pour les parrains", inviteCfg.InviterMaxUses)})
+				return
+			}
+		}
+
+		if inviteCfg.InviterMaxLinkHours > 0 && strings.TrimSpace(req.ExpiresAt) != "" {
+			maxExpiry := now.Add(time.Duration(inviteCfg.InviterMaxLinkHours) * time.Hour)
+			parsedExpiry, parseErr := parseInvitationDateTimeInput(req.ExpiresAt)
+			if parseErr == nil && parsedExpiry.After(maxExpiry) {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Expiration du lien trop lointaine (max %d heures pour les parrains)", inviteCfg.InviterMaxLinkHours)})
+				return
+			}
+		}
+
+		if inviteCfg.InviterMaxLinkHours > 0 && strings.TrimSpace(req.ExpiresAt) == "" {
+			autoExpiry := now.Add(time.Duration(inviteCfg.InviterMaxLinkHours) * time.Hour)
+			expiresAt = autoExpiry
+			inviteExpiryDate = emailTime(autoExpiry)
+		}
+	}
+
+	effectiveDisableAfterDays := inviteCfg.DisableAfterDays
+	if req.ApplyUserExpiry != nil {
+		if *req.ApplyUserExpiry {
+			if effectiveUserExpiresAt.IsZero() {
+				overrideDays := req.DisableAfterDays
+				if overrideDays <= 0 {
+					overrideDays = req.UserExpiryDays
+				}
+				if overrideDays <= 0 {
+					writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Renseigne un nombre de jours valide ou une date absolue pour l'expiration utilisateur"})
+					return
+				}
+				effectiveDisableAfterDays = overrideDays
+			} else {
+				effectiveDisableAfterDays = 0
+			}
+		} else {
+			effectiveDisableAfterDays = 0
+			effectiveUserExpiresAt = time.Time{}
+		}
+	}
+
+	effectiveCanInvite := false
+	if sess.IsAdmin {
+		effectiveCanInvite = req.NewUserCanInvite
+	} else if req.NewUserCanInvite && inviteCfg.AllowInviterGrant {
+		effectiveCanInvite = true
+	}
+
+	effectiveUserExpiresAtRaw := ""
+	if !effectiveUserExpiresAt.IsZero() {
+		effectiveUserExpiresAtRaw = effectiveUserExpiresAt.Format(time.RFC3339)
+	}
+
 	// Construire profil Jellyfin depuis la configuration admin (paramètres globaux).
 	jfProfile := jellyfin.InviteProfile{
 		EnableAllFolders:       len(req.Libraries) == 0,
 		EnabledFolderIDs:       req.Libraries,
 		EnableDownload:         inviteCfg.EnableDownloads,
 		EnableRemoteAccess:     true,
-		UserExpiryDays:         inviteCfg.DisableAfterDays,
-		DisableAfterDays:       inviteCfg.DisableAfterDays,
+		UserExpiryDays:         effectiveDisableAfterDays,
+		UserExpiresAt:          effectiveUserExpiresAtRaw,
+		DisableAfterDays:       effectiveDisableAfterDays,
 		GroupName:              strings.TrimSpace(req.GroupName),
 		ForcedUsername:         strings.TrimSpace(req.ForcedUsername),
+		CanInvite:              effectiveCanInvite,
 		TemplateUserID:         strings.TrimSpace(inviteCfg.TemplateUserID),
 		UsernameMinLength:      inviteCfg.UsernameMinLength,
 		UsernameMaxLength:      inviteCfg.UsernameMaxLength,
@@ -2651,9 +3031,11 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	jfProfile.PasswordRequireLower = inviteCfg.PasswordRequireLower
 	jfProfile.PasswordRequireDigit = inviteCfg.PasswordRequireDigit
 	jfProfile.PasswordRequireSpecial = inviteCfg.PasswordRequireSpecial
-	jfProfile.DisableAfterDays = inviteCfg.DisableAfterDays
+	jfProfile.DisableAfterDays = effectiveDisableAfterDays
+	jfProfile.UserExpiresAt = effectiveUserExpiresAtRaw
 	jfProfile.ExpiryAction = normalizeExpiryAction(inviteCfg.ExpiryAction)
 	jfProfile.DeleteAfterDays = inviteCfg.DeleteAfterDays
+	jfProfile.CanInvite = effectiveCanInvite
 
 	jfProfile.UserExpiryDays = jfProfile.DisableAfterDays
 
@@ -2694,10 +3076,13 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	h.db.LogAction("invite.created", sess.Username, req.Label, fmt.Sprintf("Code: %s", code))
 
 	// Envoi SMTP si demandé
-	baseURL := strings.TrimSpace(h.cfg.BaseURL)
 	links := resolvePortalLinks(h.cfg, h.db)
+	baseURL := strings.TrimSpace(links.JellyGateURL)
 	if baseURL == "" {
-		baseURL = strings.TrimSpace(links.JellyfinURL)
+		baseURL = strings.TrimSpace(h.cfg.BaseURL)
+	}
+	if baseURL == "" {
+		baseURL = requestBaseURL(r)
 	}
 	inviteURL := fmt.Sprintf("%s/invite/%s", strings.TrimRight(baseURL, "/"), code)
 	sendToEmail := strings.TrimSpace(req.SendToEmail)
@@ -2730,6 +3115,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 					"InviteURL":     inviteURL,
 					"InviteCode":    code,
 					"HelpURL":       strings.TrimRight(baseURL, "/"),
+					"JellyGateURL":  strings.TrimRight(baseURL, "/"),
 					"Username":      username,
 					"JellyfinURL":   links.JellyfinURL,
 					"JellyseerrURL": links.JellyseerrURL,

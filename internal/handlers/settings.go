@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
+	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
 // ── SettingsHandler ─────────────────────────────────────────────────────────
@@ -45,6 +47,15 @@ type SettingsHandler struct {
 // NewSettingsHandler crée un nouveau handler de paramètres.
 func NewSettingsHandler(db *database.DB, jellyfinURL string) *SettingsHandler {
 	return &SettingsHandler{db: db, jellyfinURL: strings.TrimSpace(jellyfinURL)}
+}
+
+func (h *SettingsHandler) ensureAdmin(w http.ResponseWriter, r *http.Request) bool {
+	sess := session.FromContext(r.Context())
+	if sess == nil || !sess.IsAdmin {
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces reserve aux administrateurs"})
+		return false
+	}
+	return true
 }
 
 type ldapUserTestInput struct {
@@ -107,6 +118,10 @@ func validateLDAPMinimalConfig(input config.LDAPConfig) error {
 
 // TestLDAPConnection teste la connexion et le bind LDAP sans sauvegarder la configuration.
 func (h *SettingsHandler) TestLDAPConnection(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input config.LDAPConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
@@ -130,6 +145,10 @@ func (h *SettingsHandler) TestLDAPConnection(w http.ResponseWriter, r *http.Requ
 
 // TestLDAPUserLookup teste la recherche d'un utilisateur LDAP par sAMAccountName.
 func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input ldapUserTestInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
@@ -175,6 +194,10 @@ func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Requ
 
 // TestJellyfinLDAPAuth vérifie que l'authentification LDAP via le plugin Jellyfin fonctionne.
 func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input jellyfinLDAPAuthTestInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
@@ -269,6 +292,7 @@ type settingsResponse struct {
 
 // generalInput est le corps JSON attendu par SaveGeneral.
 type generalInput struct {
+	JellyGateURL  string `json:"jellygate_url"`
 	DefaultLang   string `json:"default_lang"`
 	JellyfinURL   string `json:"jellyfin_url"`
 	JellyseerrURL string `json:"jellyseerr_url"`
@@ -279,6 +303,10 @@ type generalInput struct {
 
 // GetAll retourne toute la configuration stockée en base.
 func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	defaultLang := h.db.GetDefaultLang()
 
 	ldapCfg, err := h.db.GetLDAPConfig()
@@ -377,6 +405,10 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 // SaveGeneral sauvegarde les paramètres généraux (langue par défaut).
 func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input generalInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
@@ -407,6 +439,7 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.SavePortalLinksConfig(config.PortalLinksConfig{
+		JellyGateURL:  input.JellyGateURL,
 		JellyfinURL:   input.JellyfinURL,
 		JellyseerrURL: input.JellyseerrURL,
 		JellyTulliURL: input.JellyTulliURL,
@@ -428,10 +461,97 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type emailTemplatePreviewInput struct {
+	Template string            `json:"template"`
+	Context  map[string]string `json:"context"`
+}
+
+// PreviewEmailTemplate rend un modele d'email avec des donnees de demonstration.
+func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	var input emailTemplatePreviewInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
+		return
+	}
+
+	tplRaw := strings.TrimSpace(input.Template)
+	if tplRaw == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Template vide"})
+		return
+	}
+
+	links := resolvePortalLinks(nil, h.db)
+	if strings.TrimSpace(links.JellyGateURL) == "" {
+		links.JellyGateURL = "https://jellygate.example.com"
+	}
+	if strings.TrimSpace(links.JellyfinURL) == "" {
+		links.JellyfinURL = "https://jellyfin.example.com"
+	}
+	if strings.TrimSpace(links.JellyseerrURL) == "" {
+		links.JellyseerrURL = "https://jellyseerr.example.com"
+	}
+	if strings.TrimSpace(links.JellyTulliURL) == "" {
+		links.JellyTulliURL = "https://jellytulli.example.com"
+	}
+	sample := map[string]string{
+		"Username":      "demo.user",
+		"DisplayName":   "Demo User",
+		"Email":         "demo@example.com",
+		"InviteLink":    links.JellyGateURL + "/invite/ABC123",
+		"InviteURL":     links.JellyGateURL + "/invite/ABC123",
+		"InviteCode":    "ABC123",
+		"HelpURL":       links.JellyGateURL + "/help",
+		"ResetLink":     links.JellyGateURL + "/reset/XYZ789",
+		"ResetURL":      links.JellyGateURL + "/reset/XYZ789",
+		"ResetCode":     "XYZ789",
+		"ExpiresIn":     "15 minutes",
+		"ExpiryDate":    time.Now().AddDate(0, 0, 7).Format("02/01/2006 15:04"),
+		"JellyGateURL":  links.JellyGateURL,
+		"JellyfinURL":   links.JellyfinURL,
+		"JellyseerrURL": links.JellyseerrURL,
+		"JellyTulliURL": links.JellyTulliURL,
+		"Message":       "Bienvenue sur JellyGate. Ce message est un exemple d'aperçu.",
+	}
+	for k, v := range input.Context {
+		key := strings.TrimSpace(k)
+		if key == "" {
+			continue
+		}
+		sample[key] = v
+	}
+
+	tpl, err := template.New("email_preview").Parse(tplRaw)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Erreur de syntaxe template: " + err.Error()})
+		return
+	}
+
+	var out bytes.Buffer
+	if err := tpl.Execute(&out, sample); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Erreur de rendu template: " + err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"html": out.String(),
+		},
+	})
+}
+
 // ── POST /admin/api/settings/ldap ───────────────────────────────────────────
 
 // SaveLDAP sauvegarde la configuration LDAP.
 func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input config.LDAPConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
@@ -515,6 +635,10 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 
 // SaveSMTP sauvegarde la configuration SMTP.
 func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input config.SMTPConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
@@ -563,6 +687,10 @@ func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
 
 // SaveWebhooks sauvegarde la configuration Webhooks.
 func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input config.WebhooksConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
@@ -600,6 +728,10 @@ func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
 
 // SaveBackup sauvegarde la configuration des sauvegardes planifiées.
 func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	if !h.db.IsSQLite() {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
@@ -646,6 +778,10 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 
 // SaveEmailTemplates sauvegarde les modèles de courriels personnalisés.
 func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input config.EmailTemplatesConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
@@ -686,6 +822,10 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 
 // SaveInvitationProfile sauvegarde la politique globale appliquee aux invitations.
 func (h *SettingsHandler) SaveInvitationProfile(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
 	var input config.InvitationProfileConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{

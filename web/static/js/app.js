@@ -112,6 +112,52 @@ JG.esc = function (str) {
     return div.innerHTML;
 };
 
+// ── Clipboard helper ───────────────────────────────────────────────────────
+
+/**
+ * Copy plain text with modern API + legacy fallback.
+ * @param {string} text - Text to copy.
+ * @returns {Promise<boolean>} True if copy likely succeeded.
+ */
+JG.copyText = async function (text) {
+    const value = String(text || '');
+    if (!value) return false;
+
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(value);
+            return true;
+        }
+    } catch {
+        // Fall back to textarea/execCommand below.
+    }
+
+    try {
+        const ta = document.createElement('textarea');
+        ta.value = value;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        ta.style.pointerEvents = 'none';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, value.length);
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) return true;
+    } catch {
+        // Last resort prompt below.
+    }
+
+    try {
+        window.prompt('Copie manuelle (Ctrl+C):', value);
+        return false;
+    } catch {
+        return false;
+    }
+};
+
 // ── Modal helpers ───────────────────────────────────────────────────────────
 
 /**
