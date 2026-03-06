@@ -107,6 +107,7 @@ type InviteProfile struct {
 	EnableAllFolders   bool     `json:"enable_all_folders"`
 	EnabledFolderIDs   []string `json:"enabled_folder_ids"`
 	EnableDownload     bool     `json:"enable_download"`
+	RequireEmail       bool     `json:"require_email"`
 	EnableRemoteAccess bool     `json:"enable_remote_access"`
 	MaxSessions        int      `json:"max_sessions"`
 	BitrateLimit       int      `json:"bitrate_limit"`    // 0 = illimité

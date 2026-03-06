@@ -13,6 +13,11 @@
     --jg-border-strong: rgba(255, 255, 255, 0.2);
     --jg-border-focus: rgba(139, 92, 246, 0.5);
     --jg-accent: #8b5cf6;
+    --jg-accent-cyan: #22d3ee;
+    --jg-accent-sky: #38bdf8;
+    --jg-accent-emerald: #34d399;
+    --jg-accent-amber: #f59e0b;
+    --jg-accent-rose: #fb7185;
     --jg-accent-hover: #a78bfa;
     --jg-accent-glow: rgba(139, 92, 246, 0.25);
     --jg-success: #10b981;
@@ -317,16 +322,68 @@ select.jg-input optgroup {
     font-weight: 500;
     transition: var(--jg-transition);
     white-space: nowrap;
+    position: relative;
+    --nav-accent: var(--jg-accent);
+}
+
+.jg-nav-item:nth-child(1) {
+    --nav-accent: var(--jg-accent-cyan);
+}
+
+.jg-nav-item:nth-child(2) {
+    --nav-accent: var(--jg-accent-sky);
+}
+
+.jg-nav-item:nth-child(3) {
+    --nav-accent: var(--jg-accent-emerald);
+}
+
+.jg-nav-item:nth-child(4) {
+    --nav-accent: var(--jg-accent-amber);
+}
+
+.jg-nav-item:nth-child(5),
+.jg-nav-item:nth-child(6) {
+    --nav-accent: var(--jg-accent-rose);
+}
+
+.jg-nav-item::before {
+    content: "";
+    position: absolute;
+    left: 0.45rem;
+    top: 0.55rem;
+    bottom: 0.55rem;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--nav-accent);
+    opacity: 0;
+    transition: var(--jg-transition);
 }
 
 .jg-nav-item:hover {
-    background: var(--jg-bg-glass);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(148, 163, 184, 0.03));
     color: var(--jg-text);
+    box-shadow: inset 0 0 0 1px var(--jg-border);
+}
+
+.jg-nav-item:hover::before {
+    opacity: 0.75;
 }
 
 .jg-nav-item.active {
-    background: rgba(139, 92, 246, 0.12);
-    color: var(--jg-accent);
+    background: linear-gradient(135deg, rgba(15, 23, 42, 0.72), rgba(30, 41, 59, 0.6));
+    color: #f8fafc;
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+        0 12px 24px rgba(2, 6, 23, 0.32);
+}
+
+.jg-nav-item.active::before {
+    opacity: 1;
+}
+
+.jg-nav-item.active svg {
+    color: var(--nav-accent);
 }
 
 .jg-nav-item svg {
@@ -365,6 +422,24 @@ select.jg-input optgroup {
     display: flex;
     align-items: center;
     gap: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 30px rgba(2, 6, 23, 0.22);
+}
+
+.stat-card:nth-child(1) {
+    background: linear-gradient(145deg, rgba(34, 211, 238, 0.15), rgba(15, 23, 42, 0.6));
+}
+
+.stat-card:nth-child(2) {
+    background: linear-gradient(145deg, rgba(52, 211, 153, 0.14), rgba(15, 23, 42, 0.6));
+}
+
+.stat-card:nth-child(3) {
+    background: linear-gradient(145deg, rgba(245, 158, 11, 0.14), rgba(15, 23, 42, 0.6));
+}
+
+.stat-card:nth-child(4) {
+    background: linear-gradient(145deg, rgba(251, 113, 133, 0.14), rgba(15, 23, 42, 0.6));
 }
 
 .stat-icon {

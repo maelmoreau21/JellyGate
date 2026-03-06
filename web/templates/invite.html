@@ -38,16 +38,16 @@
             <p class="text-slate-300">{{ .SuccessMessage }}</p>
             <div class="mt-8 space-y-4">
                 <a href="{{ .Data.JellyfinURL }}" class="jg-btn jg-btn-primary w-full shadow-lg shadow-purple-500/20">
-                    Se connecter à Jellyfin
+                    {{ .T "invite_login_jellyfin" }}
                 </a>
                 {{ if .Data.JellyseerrURL }}
                 <a href="{{ .Data.JellyseerrURL }}" class="jg-btn jg-btn-ghost w-full">
-                    Ouvrir Jellyseerr
+                    {{ .T "invite_open_jellyseerr" }}
                 </a>
                 {{ end }}
                 {{ if .Data.JellyTulliURL }}
                 <a href="{{ .Data.JellyTulliURL }}" class="jg-btn jg-btn-ghost w-full">
-                    Ouvrir JellyTulli
+                    {{ .T "invite_open_jellytulli" }}
                 </a>
                 {{ end }}
             </div>
@@ -58,6 +58,7 @@
             <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate
                 data-username-min-length="{{ or .Data.UsernameMinLength 3 }}"
                 data-username-max-length="{{ or .Data.UsernameMaxLength 32 }}"
+                data-require-email="{{ if .Data.RequireEmail }}true{{ else }}false{{ end }}"
                 data-password-min-length="{{ or .Data.PasswordMinLength 8 }}"
                 data-password-max-length="{{ or .Data.PasswordMaxLength 128 }}"
                 data-password-require-upper="{{ .Data.PasswordRequireUpper }}"
@@ -75,18 +76,11 @@
                     <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }} ({{ or .Data.UsernameMinLength 3 }}-{{ or .Data.UsernameMaxLength 32 }} caractères)</p>
                 </div>
 
-                {{/* Display Name */}}
-                <div class="mb-5">
-                    <label class="jg-label" for="display_name">{{ .T "field_display_name" }}</label>
-                    <input type="text" id="display_name" name="display_name" class="jg-input"
-                        placeholder='{{ .T "field_display_name_placeholder" }}' maxlength="64" autocomplete="name">
-                </div>
-
                 {{/* Email */}}
                 <div class="mb-5">
-                    <label class="jg-label" for="email">{{ .T "field_email" }}</label>
+                    <label class="jg-label" for="email">{{ if .Data.RequireEmail }}{{ .T "field_email_required" }}{{ else }}{{ .T "field_email" }}{{ end }}</label>
                     <input type="email" id="email" name="email" class="jg-input"
-                        placeholder='{{ .T "field_email_placeholder" }}' autocomplete="email">
+                        placeholder='{{ .T "field_email_placeholder" }}' autocomplete="email" {{ if .Data.RequireEmail }}required{{ end }}>
                 </div>
 
                 {{/* Password */}}
@@ -96,7 +90,7 @@
                         placeholder='{{ .T "field_password_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
                         autocomplete="new-password">
                     <p id="password-policy-msg" class="text-xs mt-1 text-slate-500">
-                        Règles: {{ or .Data.PasswordMinLength 8 }}-{{ or .Data.PasswordMaxLength 128 }} caractères{{ if .Data.PasswordRequireUpper }}, 1 majuscule{{ end }}{{ if .Data.PasswordRequireLower }}, 1 minuscule{{ end }}{{ if .Data.PasswordRequireDigit }}, 1 chiffre{{ end }}{{ if .Data.PasswordRequireSpecial }}, 1 caractère spécial{{ end }}.
+                        {{ .T "password_rules_prefix" }} {{ or .Data.PasswordMinLength 8 }}-{{ or .Data.PasswordMaxLength 128 }} {{ .T "password_rules_chars" }}{{ if .Data.PasswordRequireUpper }}, {{ .T "password_rule_upper" }}{{ end }}{{ if .Data.PasswordRequireLower }}, {{ .T "password_rule_lower" }}{{ end }}{{ if .Data.PasswordRequireDigit }}, {{ .T "password_rule_digit" }}{{ end }}{{ if .Data.PasswordRequireSpecial }}, {{ .T "password_rule_special" }}{{ end }}.
                     </p>
                 </div>
 
@@ -120,7 +114,7 @@
         {{/* Footer */}}
         {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTulliURL }}
         <div class="jg-public-links mt-5">
-            <p class="jg-public-links-title">Raccourcis rapides</p>
+            <p class="jg-public-links-title">{{ .T "invite_quick_links" }}</p>
             <div class="jg-public-links-grid">
                 {{ if .Data.JellyfinURL }}
                 <a href="{{ .Data.JellyfinURL }}" class="jg-public-link-chip">Jellyfin</a>
@@ -146,6 +140,20 @@
 {{ define "scripts" }}
 <script>
     (function () {
+        window.__t = {
+            password_match: '{{ .T "password_match" }}',
+            password_mismatch: '{{ .T "password_mismatch" }}',
+            submitting: '{{ .T "submitting" }}',
+            password_policy_ok: '{{ .T "password_policy_ok" }}',
+            password_policy_missing: '{{ .T "password_policy_missing" }}',
+            password_rule_at_least: '{{ .T "password_rule_at_least" }}',
+            password_rule_at_most: '{{ .T "password_rule_at_most" }}',
+            password_rule_upper: '{{ .T "password_rule_upper" }}',
+            password_rule_lower: '{{ .T "password_rule_lower" }}',
+            password_rule_digit: '{{ .T "password_rule_digit" }}',
+            password_rule_special: '{{ .T "password_rule_special" }}',
+        };
+
         const form = document.getElementById('invite-form');
         if (!form) return;
 
@@ -157,6 +165,7 @@
         const policy = {
             usernameMinLength: parseInt(form.dataset.usernameMinLength || '3', 10) || 3,
             usernameMaxLength: parseInt(form.dataset.usernameMaxLength || '32', 10) || 32,
+            requireEmail: (form.dataset.requireEmail || '').toLowerCase() === 'true',
             minLength: parseInt(form.dataset.passwordMinLength || '8', 10) || 8,
             maxLength: parseInt(form.dataset.passwordMaxLength || '128', 10) || 128,
             requireUpper: (form.dataset.passwordRequireUpper || '').toLowerCase() === 'true',
@@ -165,25 +174,29 @@
             requireSpecial: (form.dataset.passwordRequireSpecial || '').toLowerCase() === 'true',
         };
 
+        function withCount(template, n) {
+            return (template || '').replace('{n}', String(n));
+        }
+
         function passwordPolicyErrors(value) {
             const errors = [];
             if (value.length < policy.minLength) {
-                errors.push(`au moins ${policy.minLength} caractères`);
+                errors.push(withCount(window.__t?.password_rule_at_least || 'at least {n} characters', policy.minLength));
             }
             if (value.length > policy.maxLength) {
-                errors.push(`au maximum ${policy.maxLength} caractères`);
+                errors.push(withCount(window.__t?.password_rule_at_most || 'at most {n} characters', policy.maxLength));
             }
             if (policy.requireUpper && !/[A-Z]/.test(value)) {
-                errors.push('une lettre majuscule');
+                errors.push(window.__t?.password_rule_upper || 'one uppercase letter');
             }
             if (policy.requireLower && !/[a-z]/.test(value)) {
-                errors.push('une lettre minuscule');
+                errors.push(window.__t?.password_rule_lower || 'one lowercase letter');
             }
             if (policy.requireDigit && !/[0-9]/.test(value)) {
-                errors.push('un chiffre');
+                errors.push(window.__t?.password_rule_digit || 'one digit');
             }
             if (policy.requireSpecial && !/[^A-Za-z0-9]/.test(value)) {
-                errors.push('un caractère spécial');
+                errors.push(window.__t?.password_rule_special || 'one special character');
             }
             return errors;
         }
@@ -202,14 +215,14 @@
                         input.classList.remove('is-invalid');
                         input.classList.add('is-valid');
                         if (policyMsg) {
-                            policyMsg.textContent = '✓ Règles de mot de passe respectées';
+                            policyMsg.textContent = `✓ ${window.__t?.password_policy_ok || 'Password rules satisfied'}`;
                             policyMsg.className = 'text-xs mt-1 text-emerald-400';
                         }
                     } else {
                         input.classList.remove('is-valid');
                         input.classList.add('is-invalid');
                         if (policyMsg) {
-                            policyMsg.textContent = 'Exigences manquantes: ' + errors.join(', ');
+                            policyMsg.textContent = `${window.__t?.password_policy_missing || 'Missing requirements'}: ` + errors.join(', ');
                             policyMsg.className = 'text-xs mt-1 text-red-400';
                         }
                     }
@@ -263,11 +276,20 @@
 
         // Submit button loading
         form.addEventListener('submit', function (e) {
+            const emailEl = document.getElementById('email');
+            if (policy.requireEmail && emailEl && !emailEl.value.trim()) {
+                e.preventDefault();
+                emailEl.classList.remove('is-valid');
+                emailEl.classList.add('is-invalid');
+                emailEl.focus();
+                return;
+            }
+
             const pwErrors = passwordPolicyErrors(pw.value || '');
             if (pwErrors.length > 0 || pw.value !== pwc.value) {
                 e.preventDefault();
                 if (pwErrors.length > 0 && policyMsg) {
-                    policyMsg.textContent = 'Exigences manquantes: ' + pwErrors.join(', ');
+                    policyMsg.textContent = `${window.__t?.password_policy_missing || 'Missing requirements'}: ` + pwErrors.join(', ');
                     policyMsg.className = 'text-xs mt-1 text-red-400';
                 }
                 return;

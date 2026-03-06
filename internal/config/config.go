@@ -340,6 +340,7 @@ type InvitationProfileConfig struct {
 	PolicyPresetID         string `json:"policy_preset_id"`
 	TemplateUserID         string `json:"template_user_id"`
 	EnableDownloads        bool   `json:"enable_downloads"`
+	RequireEmail           bool   `json:"require_email"`
 	DisableAfterDays       int    `json:"disable_after_days"`
 	DeleteAfterDays        int    `json:"delete_after_days"`
 	ExpiryAction           string `json:"expiry_action"`
@@ -367,6 +368,7 @@ func DefaultInvitationProfileConfig() InvitationProfileConfig {
 		PolicyPresetID:         "",
 		TemplateUserID:         "",
 		EnableDownloads:        true,
+		RequireEmail:           true,
 		DisableAfterDays:       0,
 		DeleteAfterDays:        0,
 		ExpiryAction:           "disable",

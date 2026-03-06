@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	netmail "net/mail"
 	"strings"
 	"time"
 
@@ -51,10 +52,9 @@ type invitation struct {
 
 // inviteFormData contient les données soumises par le formulaire d'inscription.
 type inviteFormData struct {
-	Username    string
-	Email       string
-	Password    string
-	DisplayName string
+	Username string
+	Email    string
+	Password string
 }
 
 // ── Invitation Handler ──────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
 	td.Data["JellyTulliURL"] = links.JellyTulliURL
-	profile := jellyfin.InviteProfile{UsernameMinLength: 3, UsernameMaxLength: 32, PasswordMinLength: 8, PasswordMaxLength: 128}
+	profile := jellyfin.InviteProfile{UsernameMinLength: 3, UsernameMaxLength: 32, PasswordMinLength: 8, PasswordMaxLength: 128, RequireEmail: true}
 
 	// Analyser le profil pour vérifier si un username est forcé (Flux B)
 	if inv.JellyfinProfile != "" {
@@ -124,6 +124,8 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 			td.Data["ForcedUsername"] = profile.ForcedUsername
 		}
 	}
+
+	td.Data["RequireEmail"] = profile.RequireEmail
 
 	pwdPolicy := resolveInvitePasswordPolicy(profile)
 	usernameMin, usernameMax := resolveInviteUsernamePolicy(profile)
@@ -189,7 +191,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Décoder le profil Jellyfin de l'invitation (si défini)
-	var profile jellyfin.InviteProfile
+	profile := jellyfin.InviteProfile{RequireEmail: true}
 	if inv.JellyfinProfile != "" {
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &profile); err != nil {
 			slog.Error("Profil Jellyfin invalide dans l'invitation", "code", code, "error", err)
@@ -199,6 +201,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	} else {
 		// Profil par défaut : accès à toutes les bibliothèques
 		profile = jellyfin.InviteProfile{
+			RequireEmail:       true,
 			EnableAllFolders:   true,
 			EnableDownload:     true,
 			EnableRemoteAccess: true,
@@ -251,7 +254,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	if h.ldClient != nil {
 		slog.Info("🔐 Étape 2/5 : Création du compte LDAP", "username", form.Username)
 
-		userDN, err = h.ldClient.CreateUser(form.Username, form.DisplayName, form.Email, form.Password, ldapProvisionRole)
+		userDN, err = h.ldClient.CreateUser(form.Username, form.Username, form.Email, form.Password, ldapProvisionRole)
 		if err != nil {
 			slog.Error("❌ Étape 2/5 échouée : création LDAP",
 				"username", form.Username,
@@ -383,7 +386,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	// Envoyer les webhooks (Discord, Telegram, Matrix) — asynchrone
 	h.notifier.NotifyUserRegistered(notify.UserRegisteredEvent{
 		Username:    form.Username,
-		DisplayName: form.DisplayName,
+		DisplayName: form.Username,
 		Email:       form.Email,
 		InviteCode:  code,
 		InvitedBy:   inv.CreatedBy,
@@ -408,7 +411,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		if combinedTemplate != "" {
 			emailData := map[string]string{
 				"Username":      form.Username,
-				"DisplayName":   form.DisplayName,
+				"DisplayName":   form.Username,
 				"Email":         form.Email,
 				"InviteCode":    code,
 				"InviteLink":    publicBaseURL + "/invite/" + code,
@@ -453,9 +456,9 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	// ── Réponse de succès ────────────────────────────────────────────────
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	if createJellyfinUser {
-		td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé avec succès dans Jellyfin et dans l'annuaire.", form.DisplayName)
+		td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé avec succès dans Jellyfin et dans l'annuaire.", form.Username)
 	} else {
-		td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé dans l'annuaire LDAP. Le compte Jellyfin sera utilisé via votre integration LDAP.", form.DisplayName)
+		td.SuccessMessage = fmt.Sprintf("Bienvenue %s ! Votre compte a été créé dans l'annuaire LDAP. Le compte Jellyfin sera utilisé via votre integration LDAP.", form.Username)
 	}
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -476,7 +479,6 @@ func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.Invi
 	email := strings.TrimSpace(r.FormValue("email"))
 	password := r.FormValue("password")
 	passwordConfirm := r.FormValue("password_confirm")
-	displayName := strings.TrimSpace(r.FormValue("display_name"))
 
 	// Validations
 	if err := validateInviteUsername(username, profile); err != nil {
@@ -495,15 +497,23 @@ func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.Invi
 		return nil, fmt.Errorf("les mots de passe ne correspondent pas")
 	}
 
-	if displayName == "" {
-		displayName = username // Fallback : utiliser le username
+	requireEmail := true
+	if profile != nil {
+		requireEmail = profile.RequireEmail
+	}
+	if requireEmail && email == "" {
+		return nil, fmt.Errorf("l'adresse email est obligatoire")
+	}
+	if email != "" {
+		if _, err := netmail.ParseAddress(email); err != nil {
+			return nil, fmt.Errorf("adresse email invalide")
+		}
 	}
 
 	return &inviteFormData{
-		Username:    username,
-		Email:       email,
-		Password:    password,
-		DisplayName: displayName,
+		Username: username,
+		Email:    email,
+		Password: password,
 	}, nil
 }
 

@@ -31,7 +31,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
           d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
-      <span class="jg-nav-label">My Account</span>
+      <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
     </a>
     {{ if .IsAdmin }}
     <a href="/admin/users" class="jg-nav-item">
@@ -45,7 +45,7 @@
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
-      <span class="jg-nav-label">Automation</span>
+      <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
     </a>
     {{ end }}
     {{ if .CanInvite }}
@@ -113,23 +113,23 @@
       </button>
       <button onclick="switchTab('ldap')" id="tab-ldap"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        🔐 LDAP
+        🔐 {{ .T "settings_tab_ldap" }}
       </button>
       <button onclick="switchTab('smtp')" id="tab-smtp"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        📧 SMTP
+        📧 {{ .T "settings_tab_smtp" }}
       </button>
       <button onclick="switchTab('webhooks')" id="tab-webhooks"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        🔔 Webhooks
+        🔔 {{ .T "settings_tab_webhooks" }}
       </button>
       <button onclick="switchTab('email-templates')" id="tab-email-templates"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        📝 Modèles Email
+        📝 {{ .T "settings_tab_email_templates" }}
       </button>
       <button onclick="switchTab('backup')" id="tab-backup"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        💾 Sauvegardes
+        💾 {{ .T "settings_tab_backup" }}
       </button>
     </div>
 
@@ -167,34 +167,34 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="general-jellygate-url">URL publique JellyGate</label>
+                <label class="jg-label" for="general-jellygate-url">{{ .T "settings_public_jellygate_url" }}</label>
                 <input type="url" id="general-jellygate-url" class="jg-input" placeholder="https://jellygate.example.com">
-                <p class="text-xs text-slate-500 mt-1">Utilisee pour les liens d'invitation et les templates via {{ "{{" }}.JellyGateURL{{ "}}" }}.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_public_jellygate_help" }} {{ "{{" }}.JellyGateURL{{ "}}" }}.</p>
               </div>
               <div>
-                <label class="jg-label" for="general-jellyfin-url">URL publique Jellyfin</label>
+                <label class="jg-label" for="general-jellyfin-url">{{ .T "settings_public_jellyfin_url" }}</label>
                 <input type="url" id="general-jellyfin-url" class="jg-input" placeholder="https://jellyfin.example.com">
-                <p class="text-xs text-slate-500 mt-1">Utilisée dans les boutons et templates emails ({{ "{{" }}.JellyfinURL{{ "}}" }}).</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_public_jellyfin_help" }} ({{ "{{" }}.JellyfinURL{{ "}}" }}).</p>
               </div>
               <div>
-                <label class="jg-label" for="general-jellyseerr-url">URL publique Jellyseerr</label>
+                <label class="jg-label" for="general-jellyseerr-url">{{ .T "settings_public_jellyseerr_url" }}</label>
                 <input type="url" id="general-jellyseerr-url" class="jg-input" placeholder="https://jellyseerr.example.com">
-                <p class="text-xs text-slate-500 mt-1">Disponible dans les templates via {{ "{{" }}.JellyseerrURL{{ "}}" }}.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_public_jellyseerr_help" }} {{ "{{" }}.JellyseerrURL{{ "}}" }}.</p>
               </div>
               <div>
-                <label class="jg-label" for="general-jellytulli-url">URL publique JellyTulli</label>
+                <label class="jg-label" for="general-jellytulli-url">{{ .T "settings_public_jellytulli_url" }}</label>
                 <input type="url" id="general-jellytulli-url" class="jg-input" placeholder="https://jellytulli.example.com">
-                <p class="text-xs text-slate-500 mt-1">Disponible dans les templates via {{ "{{" }}.JellyTulliURL{{ "}}" }}.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_public_jellytulli_help" }} {{ "{{" }}.JellyTulliURL{{ "}}" }}.</p>
               </div>
             </div>
 
             <div class="rounded-xl bg-white/5 border border-white/10 p-4">
-              <h3 class="text-sm font-semibold text-white mb-2">Raccourcis rapides</h3>
+              <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_quick_links" }}</h3>
               <div class="flex flex-wrap gap-2">
-                <a id="shortcut-jellygate" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir JellyGate public</a>
-                <a id="shortcut-jellyfin" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir Jellyfin</a>
-                <a id="shortcut-jellyseerr" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir Jellyseerr</a>
-                <a id="shortcut-jellytulli" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">Ouvrir JellyTulli</a>
+                <a id="shortcut-jellygate" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellygate_public" }}</a>
+                <a id="shortcut-jellyfin" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellyfin" }}</a>
+                <a id="shortcut-jellyseerr" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellyseerr" }}</a>
+                <a id="shortcut-jellytulli" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellytulli" }}</a>
               </div>
             </div>
           </div>
@@ -206,94 +206,98 @@
 
         <div class="mt-8 pt-6 border-t border-white/10">
           <div class="mb-4">
-            <h3 class="text-lg font-semibold text-white">Profil invitation</h3>
-            <p class="text-sm text-slate-400">Ces regles sont appliquees automatiquement a toute nouvelle invitation. Les utilisateurs non-admin ne peuvent plus les modifier depuis la creation d'invitation.</p>
+            <h3 class="text-lg font-semibold text-white">{{ .T "settings_invite_profile_title" }}</h3>
+            <p class="text-sm text-slate-400">{{ .T "settings_invite_profile_desc" }}</p>
           </div>
 
           <form id="form-invitation-profile" onsubmit="saveSettings('invitation-profile', event)">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="invite-profile-preset">Preset Jellyfin</label>
+                <label class="jg-label" for="invite-profile-preset">{{ .T "settings_invite_profile_preset" }}</label>
                 <select id="invite-profile-preset" class="jg-input">
-                  <option value="">Par defaut (aucun)</option>
+                  <option value="">{{ .T "settings_default_none" }}</option>
                 </select>
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-template-user">Cloner un profil Jellyfin</label>
+                <label class="jg-label" for="invite-profile-template-user">{{ .T "settings_invite_profile_clone_user" }}</label>
                 <select id="invite-profile-template-user" class="jg-input">
-                  <option value="">Par defaut (aucun)</option>
+                  <option value="">{{ .T "settings_default_none" }}</option>
                 </select>
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-disable-after">Desactiver le compte apres (jours)</label>
+                <label class="jg-label" for="invite-profile-disable-after">{{ .T "settings_invite_disable_after_days" }}</label>
                 <input type="number" id="invite-profile-disable-after" min="0" class="jg-input" value="0">
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-delete-after">Supprimer le compte apres (jours)</label>
+                <label class="jg-label" for="invite-profile-delete-after">{{ .T "settings_invite_delete_after_days" }}</label>
                 <input type="number" id="invite-profile-delete-after" min="0" class="jg-input" value="0">
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-inviter-max-uses">Limite d'utilisations (parrains non-admin)</label>
+                <label class="jg-label" for="invite-profile-inviter-max-uses">{{ .T "settings_invite_inviter_max_uses" }}</label>
                 <input type="number" id="invite-profile-inviter-max-uses" min="0" class="jg-input" value="0">
-                <p class="text-xs text-slate-500 mt-1">0 = pas de limite supplementaire.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_zero_no_extra_limit" }}</p>
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-inviter-max-link-hours">TTL max lien (heures, parrains non-admin)</label>
+                <label class="jg-label" for="invite-profile-inviter-max-link-hours">{{ .T "settings_invite_inviter_max_link_hours" }}</label>
                 <input type="number" id="invite-profile-inviter-max-link-hours" min="0" class="jg-input" value="0">
-                <p class="text-xs text-slate-500 mt-1">0 = pas de limite supplementaire.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_zero_no_extra_limit" }}</p>
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-inviter-quota-day">Quota liens / jour (parrain)</label>
+                <label class="jg-label" for="invite-profile-inviter-quota-day">{{ .T "settings_invite_inviter_quota_day" }}</label>
                 <input type="number" id="invite-profile-inviter-quota-day" min="0" class="jg-input" value="0">
-                <p class="text-xs text-slate-500 mt-1">0 = illimite.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_zero_unlimited" }}</p>
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-inviter-quota-week">Quota liens / semaine (parrain)</label>
+                <label class="jg-label" for="invite-profile-inviter-quota-week">{{ .T "settings_invite_inviter_quota_week" }}</label>
                 <input type="number" id="invite-profile-inviter-quota-week" min="0" class="jg-input" value="0">
-                <p class="text-xs text-slate-500 mt-1">0 = illimite.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_zero_unlimited" }}</p>
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-inviter-quota-month">Quota liens / mois (parrain)</label>
+                <label class="jg-label" for="invite-profile-inviter-quota-month">{{ .T "settings_invite_inviter_quota_month" }}</label>
                 <input type="number" id="invite-profile-inviter-quota-month" min="0" class="jg-input" value="0">
-                <p class="text-xs text-slate-500 mt-1">0 = illimite.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_zero_unlimited" }}</p>
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-expiry-action">Action a expiration</label>
+                <label class="jg-label" for="invite-profile-expiry-action">{{ .T "settings_invite_expiry_action" }}</label>
                 <select id="invite-profile-expiry-action" class="jg-input">
-                  <option value="disable">Desactiver</option>
-                  <option value="delete">Supprimer</option>
-                  <option value="disable_then_delete">Desactiver puis supprimer</option>
+                  <option value="disable">{{ .T "settings_expiry_action_disable" }}</option>
+                  <option value="delete">{{ .T "settings_expiry_action_delete" }}</option>
+                  <option value="disable_then_delete">{{ .T "settings_expiry_action_disable_then_delete" }}</option>
                 </select>
               </div>
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-enable-downloads" class="form-checkbox" checked>
-                <label class="text-sm text-slate-300" for="invite-profile-enable-downloads">Autoriser le telechargement direct</label>
+                <label class="text-sm text-slate-300" for="invite-profile-enable-downloads">{{ .T "settings_invite_enable_downloads" }}</label>
+              </div>
+              <div class="flex items-center gap-3 pt-6">
+                <input type="checkbox" id="invite-profile-require-email" class="form-checkbox" checked>
+                <label class="text-sm text-slate-300" for="invite-profile-require-email">{{ .T "settings_invite_require_email" }}</label>
               </div>
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-allow-inviter-grant" class="form-checkbox">
-                <label class="text-sm text-slate-300" for="invite-profile-allow-inviter-grant">Autoriser les parrains a donner le droit d'inviter</label>
+                <label class="text-sm text-slate-300" for="invite-profile-allow-inviter-grant">{{ .T "settings_invite_allow_inviter_grant" }}</label>
               </div>
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-allow-inviter-user-expiry" class="form-checkbox" checked>
-                <label class="text-sm text-slate-300" for="invite-profile-allow-inviter-user-expiry">Autoriser les parrains a personnaliser l'expiration utilisateur</label>
+                <label class="text-sm text-slate-300" for="invite-profile-allow-inviter-user-expiry">{{ .T "settings_invite_allow_inviter_user_expiry" }}</label>
               </div>
             </div>
 
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="invite-profile-user-min">Nom utilisateur min</label>
+                <label class="jg-label" for="invite-profile-user-min">{{ .T "settings_invite_username_min" }}</label>
                 <input type="number" id="invite-profile-user-min" min="1" class="jg-input" value="3">
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-user-max">Nom utilisateur max</label>
+                <label class="jg-label" for="invite-profile-user-max">{{ .T "settings_invite_username_max" }}</label>
                 <input type="number" id="invite-profile-user-max" min="1" class="jg-input" value="32">
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-pw-min">Mot de passe min</label>
+                <label class="jg-label" for="invite-profile-pw-min">{{ .T "settings_invite_password_min" }}</label>
                 <input type="number" id="invite-profile-pw-min" min="1" class="jg-input" value="8">
               </div>
               <div>
-                <label class="jg-label" for="invite-profile-pw-max">Mot de passe max</label>
+                <label class="jg-label" for="invite-profile-pw-max">{{ .T "settings_invite_password_max" }}</label>
                 <input type="number" id="invite-profile-pw-max" min="1" class="jg-input" value="128">
               </div>
             </div>
@@ -301,24 +305,24 @@
             <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-upper" class="form-checkbox">
-                Majuscule requise
+                {{ .T "settings_password_upper_required" }}
               </label>
               <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-lower" class="form-checkbox">
-                Minuscule requise
+                {{ .T "settings_password_lower_required" }}
               </label>
               <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-digit" class="form-checkbox">
-                Chiffre requis
+                {{ .T "settings_password_digit_required" }}
               </label>
               <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-special" class="form-checkbox">
-                Caractere special requis
+                {{ .T "settings_password_special_required" }}
               </label>
             </div>
 
             <div class="mt-6 flex justify-end">
-              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder profil invitation</button>
+              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "settings_save_invite_profile" }}</button>
             </div>
           </form>
         </div>
@@ -335,7 +339,7 @@
         {{/* Master Toggle */}}
         <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
           <div>
-            <h2 class="text-lg font-semibold text-white">Active Directory / LDAP</h2>
+            <h2 class="text-lg font-semibold text-white">{{ .T "settings_ldap_title" }}</h2>
             <p class="text-sm text-slate-400">{{ .T "settings_ldap_desc" }}</p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
@@ -350,11 +354,11 @@
           <div id="ldap-fields" class="space-y-4 transition-opacity">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="ldap-host">Host *</label>
+                <label class="jg-label" for="ldap-host">{{ .T "settings_host_required" }}</label>
                 <input type="text" id="ldap-host" class="jg-input" placeholder="nas.local">
               </div>
               <div>
-                <label class="jg-label" for="ldap-port">Port</label>
+                <label class="jg-label" for="ldap-port">{{ .T "settings_port" }}</label>
                 <input type="number" id="ldap-port" class="jg-input" value="636">
               </div>
             </div>
@@ -362,81 +366,81 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="flex items-center gap-3">
                 <input type="checkbox" id="ldap-tls" checked class="form-checkbox">
-                <label for="ldap-tls" class="text-sm text-slate-300">LDAPS (TLS)</label>
+                <label for="ldap-tls" class="text-sm text-slate-300">{{ .T "settings_ldap_tls" }}</label>
               </div>
               <div class="flex items-center gap-3">
                 <input type="checkbox" id="ldap-skip-verify" class="form-checkbox">
-                <label for="ldap-skip-verify" class="text-sm text-slate-300">Ignorer cert. TLS</label>
+                <label for="ldap-skip-verify" class="text-sm text-slate-300">{{ .T "settings_ldap_skip_verify" }}</label>
               </div>
             </div>
 
             <div>
-              <label class="jg-label" for="ldap-bind-dn">Bind DN *</label>
+              <label class="jg-label" for="ldap-bind-dn">{{ .T "settings_ldap_bind_dn" }}</label>
               <input type="text" id="ldap-bind-dn" class="jg-input" placeholder="CN=admin,CN=Users,DC=example,DC=com">
             </div>
             <div>
-              <label class="jg-label" for="ldap-bind-password">Bind Password *</label>
+              <label class="jg-label" for="ldap-bind-password">{{ .T "settings_ldap_bind_password" }}</label>
               <input type="password" id="ldap-bind-password" class="jg-input" placeholder="••••••••">
             </div>
             <div>
-              <label class="jg-label" for="ldap-base-dn">Base DN *</label>
+              <label class="jg-label" for="ldap-base-dn">{{ .T "settings_ldap_base_dn" }}</label>
               <input type="text" id="ldap-base-dn" class="jg-input" placeholder="DC=example,DC=com">
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="ldap-provision-mode">Mode de provisioning</label>
+                <label class="jg-label" for="ldap-provision-mode">{{ .T "settings_ldap_provision_mode" }}</label>
                 <select id="ldap-provision-mode" class="jg-input">
-                  <option value="hybrid">Hybride (LDAP + Jellyfin)</option>
-                  <option value="ldap_only">LDAP only (pas de creation API Jellyfin)</option>
+                  <option value="hybrid">{{ .T "settings_ldap_mode_hybrid" }}</option>
+                  <option value="ldap_only">{{ .T "settings_ldap_mode_ldap_only" }}</option>
                 </select>
               </div>
               <div>
-                <label class="jg-label" for="ldap-user-ou">User OU</label>
+                <label class="jg-label" for="ldap-user-ou">{{ .T "settings_ldap_user_ou" }}</label>
                 <input type="text" id="ldap-user-ou" class="jg-input" value="CN=Users">
               </div>
               <div>
-                <label class="jg-label" for="ldap-domain">Domaine AD *</label>
+                <label class="jg-label" for="ldap-domain">{{ .T "settings_ldap_domain" }}</label>
                 <input type="text" id="ldap-domain" class="jg-input" placeholder="example.com">
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="jg-label" for="ldap-jellyfin-group">Groupe LDAP utilisateurs</label>
+                <label class="jg-label" for="ldap-jellyfin-group">{{ .T "settings_ldap_group_users" }}</label>
                 <input type="text" id="ldap-jellyfin-group" class="jg-input" placeholder="jellyfin ou CN=...,DC=...">
-                <p class="text-xs text-slate-500 mt-1">Affecte automatiquement les utilisateurs standards.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_ldap_group_users_help" }}</p>
               </div>
               <div>
-                <label class="jg-label" for="ldap-inviter-group">Groupe LDAP parrainage</label>
+                <label class="jg-label" for="ldap-inviter-group">{{ .T "settings_ldap_group_inviter" }}</label>
                 <input type="text" id="ldap-inviter-group" class="jg-input" placeholder="jellyfin-Parrainage ou CN=...,DC=...">
-                <p class="text-xs text-slate-500 mt-1">Ce groupe donne l'accès normal + droits d'invitation.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_ldap_group_inviter_help" }}</p>
               </div>
               <div>
-                <label class="jg-label" for="ldap-admin-group">Groupe LDAP administrateurs</label>
+                <label class="jg-label" for="ldap-admin-group">{{ .T "settings_ldap_group_admin" }}</label>
                 <input type="text" id="ldap-admin-group" class="jg-input" placeholder="jellyfin-administrateur ou CN=...,DC=...">
-                <p class="text-xs text-slate-500 mt-1">Ce groupe cible les comptes à contrôle complet.</p>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "settings_ldap_group_admin_help" }}</p>
               </div>
             </div>
 
             <div class="rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
-              <h3 class="text-sm font-semibold text-purple-100 mb-2">Tests LDAP & plugin Jellyfin LDAP</h3>
-              <p class="text-xs text-purple-200/80 mb-3">Ces tests n'enregistrent pas la configuration. Ils valident la connexion LDAP, la recherche d'utilisateur AD, puis l'authentification via le plugin LDAP de Jellyfin.</p>
+              <h3 class="text-sm font-semibold text-purple-100 mb-2">{{ .T "settings_ldap_tests_title" }}</h3>
+              <p class="text-xs text-purple-200/80 mb-3">{{ .T "settings_ldap_tests_desc" }}</p>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                 <div>
-                  <label class="jg-label" for="ldap-test-username">Utilisateur de test (sAMAccountName)</label>
+                  <label class="jg-label" for="ldap-test-username">{{ .T "settings_ldap_test_username" }}</label>
                   <input type="text" id="ldap-test-username" class="jg-input" placeholder="jdoe">
                 </div>
                 <div>
-                  <label class="jg-label" for="ldap-test-password">Mot de passe de test</label>
+                  <label class="jg-label" for="ldap-test-password">{{ .T "settings_ldap_test_password" }}</label>
                   <input type="password" id="ldap-test-password" class="jg-input" placeholder="••••••••">
                 </div>
               </div>
 
               <div class="flex flex-wrap gap-2">
-                <button type="button" id="btn-ldap-test-conn" class="jg-btn jg-btn-ghost jg-btn-sm">Tester connexion LDAP</button>
-                <button type="button" id="btn-ldap-test-user" class="jg-btn jg-btn-ghost jg-btn-sm">Tester recherche utilisateur</button>
-                <button type="button" id="btn-ldap-test-jf" class="jg-btn jg-btn-sm">Tester login Jellyfin (plugin LDAP)</button>
+                <button type="button" id="btn-ldap-test-conn" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_connection_btn" }}</button>
+                <button type="button" id="btn-ldap-test-user" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_user_btn" }}</button>
+                <button type="button" id="btn-ldap-test-jf" class="jg-btn jg-btn-sm">{{ .T "settings_ldap_test_jellyfin_btn" }}</button>
               </div>
 
               <div id="ldap-test-result" class="hidden mt-3 text-xs rounded-lg border px-3 py-2"></div>
@@ -444,7 +448,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder LDAP</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "settings_save_ldap" }}</button>
           </div>
         </form>
 
@@ -458,7 +462,7 @@
       <div class="glass-card p-6 md:p-8">
 
         <div class="mb-6 pb-4 border-b border-white/10">
-          <h2 class="text-lg font-semibold text-white">Serveur SMTP</h2>
+          <h2 class="text-lg font-semibold text-white">{{ .T "settings_smtp_title" }}</h2>
           <p class="text-sm text-slate-400">{{ .T "settings_smtp_desc" }}</p>
         </div>
 
@@ -466,38 +470,38 @@
           <div class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="smtp-host">Host *</label>
+                <label class="jg-label" for="smtp-host">{{ .T "settings_host_required" }}</label>
                 <input type="text" id="smtp-host" class="jg-input" placeholder="smtp.gmail.com">
               </div>
               <div>
-                <label class="jg-label" for="smtp-port">Port</label>
+                <label class="jg-label" for="smtp-port">{{ .T "settings_port" }}</label>
                 <input type="number" id="smtp-port" class="jg-input" value="587">
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="smtp-username">Utilisateur *</label>
+                <label class="jg-label" for="smtp-username">{{ .T "settings_smtp_username" }}</label>
                 <input type="text" id="smtp-username" class="jg-input" placeholder="noreply@example.com">
               </div>
               <div>
-                <label class="jg-label" for="smtp-password">Mot de passe *</label>
+                <label class="jg-label" for="smtp-password">{{ .T "settings_smtp_password" }}</label>
                 <input type="password" id="smtp-password" class="jg-input" placeholder="••••••••">
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="smtp-from">Adresse expéditeur *</label>
+                <label class="jg-label" for="smtp-from">{{ .T "settings_smtp_from" }}</label>
                 <input type="text" id="smtp-from" class="jg-input" placeholder="noreply@example.com">
               </div>
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="smtp-tls" checked class="form-checkbox">
-                <label for="smtp-tls" class="text-sm text-slate-300">STARTTLS / TLS</label>
+                <label for="smtp-tls" class="text-sm text-slate-300">{{ .T "settings_smtp_starttls" }}</label>
               </div>
             </div>
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder SMTP</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "settings_save_smtp" }}</button>
           </div>
         </form>
 
@@ -511,7 +515,7 @@
       <div class="glass-card p-6 md:p-8">
 
         <div class="mb-6 pb-4 border-b border-white/10">
-          <h2 class="text-lg font-semibold text-white">Notifications Webhooks</h2>
+          <h2 class="text-lg font-semibold text-white">{{ .T "settings_webhooks_title" }}</h2>
           <p class="text-sm text-slate-400">{{ .T "settings_webhooks_desc" }}</p>
         </div>
 
@@ -521,7 +525,7 @@
             {{/* Discord */}}
             <div class="p-4 rounded-xl bg-white/5 border border-white/10">
               <h3 class="text-sm font-semibold text-purple-400 mb-3">🎮 Discord</h3>
-              <label class="jg-label" for="wh-discord-url">Webhook URL</label>
+              <label class="jg-label" for="wh-discord-url">{{ .T "settings_webhook_url" }}</label>
               <input type="url" id="wh-discord-url" class="jg-input" placeholder="https://discord.com/api/webhooks/...">
             </div>
 
@@ -530,11 +534,11 @@
               <h3 class="text-sm font-semibold text-blue-400 mb-3">📱 Telegram</h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label class="jg-label" for="wh-telegram-token">Bot Token</label>
+                  <label class="jg-label" for="wh-telegram-token">{{ .T "settings_telegram_bot_token" }}</label>
                   <input type="text" id="wh-telegram-token" class="jg-input" placeholder="123456:ABC-DEF...">
                 </div>
                 <div>
-                  <label class="jg-label" for="wh-telegram-chat">Chat ID</label>
+                  <label class="jg-label" for="wh-telegram-chat">{{ .T "settings_telegram_chat_id" }}</label>
                   <input type="text" id="wh-telegram-chat" class="jg-input" placeholder="-1001234567890">
                 </div>
               </div>
@@ -545,16 +549,16 @@
               <h3 class="text-sm font-semibold text-green-400 mb-3">🔗 Matrix</h3>
               <div class="space-y-3">
                 <div>
-                  <label class="jg-label" for="wh-matrix-url">Homeserver URL</label>
+                  <label class="jg-label" for="wh-matrix-url">{{ .T "settings_matrix_homeserver_url" }}</label>
                   <input type="url" id="wh-matrix-url" class="jg-input" placeholder="https://matrix.example.com">
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label class="jg-label" for="wh-matrix-room">Room ID</label>
+                    <label class="jg-label" for="wh-matrix-room">{{ .T "settings_matrix_room_id" }}</label>
                     <input type="text" id="wh-matrix-room" class="jg-input" placeholder="!abcdef:example.com">
                   </div>
                   <div>
-                    <label class="jg-label" for="wh-matrix-token">Access Token</label>
+                    <label class="jg-label" for="wh-matrix-token">{{ .T "settings_matrix_access_token" }}</label>
                     <input type="text" id="wh-matrix-token" class="jg-input" placeholder="syt_...">
                   </div>
                 </div>
@@ -564,7 +568,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder Webhooks</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "settings_save_webhooks" }}</button>
           </div>
         </form>
 
@@ -577,36 +581,35 @@
     <div id="panel-email-templates" class="tab-panel settings-panel settings-panel-email hidden">
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-white/10">
-          <h2 class="text-lg font-semibold text-white">Modèles de courriels (Templates)</h2>
-          <p class="text-sm text-slate-400">Chaque carte correspond à un scénario précis. Tu peux personnaliser le texte et utiliser les variables indiquées dans la carte.</p>
+          <h2 class="text-lg font-semibold text-white">{{ .T "settings_email_templates_title" }}</h2>
+          <p class="text-sm text-slate-400">{{ .T "settings_email_templates_desc" }}</p>
         </div>
 
         <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
-          <h3 class="text-sm font-semibold text-purple-200 mb-2">Variables disponibles</h3>
+          <h3 class="text-sm font-semibold text-purple-200 mb-2">{{ .T "settings_email_variables_title" }}</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-300">
-            <div><span class="text-purple-200">{{ "{{" }}.Username{{ "}}" }}</span> : nom d'utilisateur</div>
-            <div><span class="text-purple-200">{{ "{{" }}.Email{{ "}}" }}</span> : adresse email</div>
-            <div><span class="text-purple-200">{{ "{{" }}.DisplayName{{ "}}" }}</span> : nom affiché</div>
-            <div><span class="text-purple-200">{{ "{{" }}.InviteLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.InviteURL{{ "}}" }}</span> : lien d'invitation</div>
-            <div><span class="text-purple-200">{{ "{{" }}.InviteCode{{ "}}" }}</span> : code d'invitation</div>
-            <div><span class="text-purple-200">{{ "{{" }}.HelpURL{{ "}}" }}</span> : URL d'aide (JellyGate)</div>
-            <div><span class="text-purple-200">{{ "{{" }}.ResetLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.ResetURL{{ "}}" }}</span> : lien reset</div>
-            <div><span class="text-purple-200">{{ "{{" }}.ResetCode{{ "}}" }}</span> : code reset</div>
-            <div><span class="text-purple-200">{{ "{{" }}.ExpiresIn{{ "}}" }}</span> : durée de validité</div>
-            <div><span class="text-purple-200">{{ "{{" }}.ExpiryDate{{ "}}" }}</span> : date d'expiration</div>
-            <div><span class="text-purple-200">{{ "{{" }}.JellyGateURL{{ "}}" }}</span> : URL JellyGate public</div>
-            <div><span class="text-purple-200">{{ "{{" }}.JellyfinURL{{ "}}" }}</span> : URL Jellyfin</div>
-            <div><span class="text-purple-200">{{ "{{" }}.JellyseerrURL{{ "}}" }}</span> : URL Jellyseerr</div>
-            <div><span class="text-purple-200">{{ "{{" }}.JellyTulliURL{{ "}}" }}</span> : URL JellyTulli</div>
-            <div><span class="text-purple-200">{{ "{{" }}.Message{{ "}}" }}</span> : message personnalisé (invitation admin)</div>
+            <div><span class="text-purple-200">{{ "{{" }}.Username{{ "}}" }}</span> : {{ .T "settings_email_var_username" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.Email{{ "}}" }}</span> : {{ .T "settings_email_var_email" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.InviteLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.InviteURL{{ "}}" }}</span> : {{ .T "settings_email_var_invite_link" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.InviteCode{{ "}}" }}</span> : {{ .T "settings_email_var_invite_code" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.HelpURL{{ "}}" }}</span> : {{ .T "settings_email_var_help_url" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ResetLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.ResetURL{{ "}}" }}</span> : {{ .T "settings_email_var_reset_link" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ResetCode{{ "}}" }}</span> : {{ .T "settings_email_var_reset_code" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ExpiresIn{{ "}}" }}</span> : {{ .T "settings_email_var_expires_in" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.ExpiryDate{{ "}}" }}</span> : {{ .T "settings_email_var_expiry_date" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyGateURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellygate_url" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyfinURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellyfin_url" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyseerrURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellyseerr_url" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyTulliURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellytulli_url" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.Message{{ "}}" }}</span> : {{ .T "settings_email_var_message" }}</div>
           </div>
         </div>
 
         <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
-          <h3 class="text-sm font-semibold text-white mb-2">Planification des rappels d'expiration</h3>
-          <p class="text-xs text-slate-400 mb-3">Definis combien de jours avant la date d'expiration un rappel est envoye automatiquement.</p>
+          <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_reminder_schedule_title" }}</h3>
+          <p class="text-xs text-slate-400 mb-3">{{ .T "settings_email_reminder_schedule_desc" }}</p>
           <div class="max-w-xs">
-            <label class="jg-label" for="tpl-expiry-reminder-days">N jours avant expiration</label>
+            <label class="jg-label" for="tpl-expiry-reminder-days">{{ .T "settings_email_reminder_days" }}</label>
             <input type="number" id="tpl-expiry-reminder-days" class="jg-input" min="1" max="365" value="3">
           </div>
         </div>
@@ -614,117 +617,117 @@
         <form id="form-email-templates" onsubmit="saveSettings('email-templates', event)">
           <div class="space-y-6">
             <div class="space-y-4">
-              <div class="text-xs uppercase tracking-wide text-slate-400">Onboarding et invitations</div>
+              <div class="text-xs uppercase tracking-wide text-slate-400">{{ .T "settings_email_section_onboarding" }}</div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-confirmation">Email de confirmation</label>
-                <p class="text-xs text-slate-400 mb-2">Envoyé pour confirmer l'inscription.</p>
+                <label class="jg-label" for="tpl-confirmation">{{ .T "settings_email_tpl_confirmation" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_confirmation_desc" }}</p>
                 <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-expiry-reminder">Rappel d'expiration</label>
-                <p class="text-xs text-slate-400 mb-2">Notification automatique avant expiration du compte.</p>
+                <label class="jg-label" for="tpl-expiry-reminder">{{ .T "settings_email_tpl_expiry_reminder" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_desc" }}</p>
                 <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-expiry-reminder-14">Rappel d'expiration J-14</label>
-                <p class="text-xs text-slate-400 mb-2">Template specifique envoye 14 jours avant expiration.</p>
+                <label class="jg-label" for="tpl-expiry-reminder-14">{{ .T "settings_email_tpl_expiry_reminder_14" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_14_desc" }}</p>
                 <textarea id="tpl-expiry-reminder-14" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-expiry-reminder-7">Rappel d'expiration J-7</label>
-                <p class="text-xs text-slate-400 mb-2">Template specifique envoye 7 jours avant expiration.</p>
+                <label class="jg-label" for="tpl-expiry-reminder-7">{{ .T "settings_email_tpl_expiry_reminder_7" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_7_desc" }}</p>
                 <textarea id="tpl-expiry-reminder-7" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-expiry-reminder-1">Rappel d'expiration J-1</label>
-                <p class="text-xs text-slate-400 mb-2">Template specifique envoye la veille de l'expiration.</p>
+                <label class="jg-label" for="tpl-expiry-reminder-1">{{ .T "settings_email_tpl_expiry_reminder_1" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_1_desc" }}</p>
                 <textarea id="tpl-expiry-reminder-1" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-invitation">Courriel d'invitation</label>
-                <p class="text-xs text-slate-400 mb-2">Message principal quand un admin envoie un lien d'invitation.</p>
+                <label class="jg-label" for="tpl-invitation">{{ .T "settings_email_tpl_invitation" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_invitation_desc" }}</p>
                 <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-invite-expiry">Expiration de l'invitation</label>
-                <p class="text-xs text-slate-400 mb-2">Rappel qu'un lien d'invitation va expirer.</p>
+                <label class="jg-label" for="tpl-invite-expiry">{{ .T "settings_email_tpl_invite_expiry" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_invite_expiry_desc" }}</p>
                 <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
 
-              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">Securite et assistance</div>
+              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">{{ .T "settings_email_section_security" }}</div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-password-reset">Réinitialisation du mot de passe</label>
-                <p class="text-xs text-slate-400 mb-2">Contient le lien/code de reset envoyé à l'utilisateur.</p>
+                <label class="jg-label" for="tpl-password-reset">{{ .T "settings_email_tpl_password_reset" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_password_reset_desc" }}</p>
                 <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-pre-signup-help">Aide avant inscription</label>
-                <p class="text-xs text-slate-400 mb-2">Conseils avant de créer le compte.</p>
+                <label class="jg-label" for="tpl-pre-signup-help">{{ .T "settings_email_tpl_pre_signup_help" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_pre_signup_help_desc" }}</p>
                 <textarea id="tpl-pre-signup-help" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-post-signup-help">Aide après inscription</label>
-                <p class="text-xs text-slate-400 mb-2">Instructions après création du compte.</p>
+                <label class="jg-label" for="tpl-post-signup-help">{{ .T "settings_email_tpl_post_signup_help" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_post_signup_help_desc" }}</p>
                 <textarea id="tpl-post-signup-help" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
 
-              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">Cycle de vie du compte</div>
+              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">{{ .T "settings_email_section_lifecycle" }}</div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-user-creation">Création d'utilisateur</label>
-                <p class="text-xs text-slate-400 mb-2">Confirme la création d'un compte par un administrateur.</p>
+                <label class="jg-label" for="tpl-user-creation">{{ .T "settings_email_tpl_user_creation" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_creation_desc" }}</p>
                 <textarea id="tpl-user-creation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-user-deletion">Suppression de l'utilisateur</label>
-                <p class="text-xs text-slate-400 mb-2">Notification de suppression de compte.</p>
+                <label class="jg-label" for="tpl-user-deletion">{{ .T "settings_email_tpl_user_deletion" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_deletion_desc" }}</p>
                 <label class="inline-flex items-center gap-2 text-xs text-slate-300 mb-3">
                   <input type="checkbox" id="tpl-disable-user-deletion-email" class="form-checkbox">
-                  Ne pas envoyer cet email lors d'une suppression utilisateur
+                  {{ .T "settings_email_tpl_user_deletion_disable_notice" }}
                 </label>
                 <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-user-disabled">Utilisateur désactivé</label>
-                <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte est désactivé.</p>
+                <label class="jg-label" for="tpl-user-disabled">{{ .T "settings_email_tpl_user_disabled" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_disabled_desc" }}</p>
                 <textarea id="tpl-user-disabled" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-user-enabled">Utilisateur activé</label>
-                <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte est réactivé.</p>
+                <label class="jg-label" for="tpl-user-enabled">{{ .T "settings_email_tpl_user_enabled" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_enabled_desc" }}</p>
                 <textarea id="tpl-user-enabled" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-user-expired">Utilisateur expiré</label>
-                <p class="text-xs text-slate-400 mb-2">Envoyé quand un compte expire automatiquement.</p>
+                <label class="jg-label" for="tpl-user-expired">{{ .T "settings_email_tpl_user_expired" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_expired_desc" }}</p>
                 <textarea id="tpl-user-expired" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-expiry-adjusted">Expiration ajustée</label>
-                <p class="text-xs text-slate-400 mb-2">Envoyé quand la date d'expiration est modifiée.</p>
+                <label class="jg-label" for="tpl-expiry-adjusted">{{ .T "settings_email_tpl_expiry_adjusted" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_adjusted_desc" }}</p>
                 <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-                <label class="jg-label" for="tpl-welcome">Bienvenue</label>
-                <p class="text-xs text-slate-400 mb-2">Message d'accueil global post-inscription.</p>
+                <label class="jg-label" for="tpl-welcome">{{ .T "settings_email_tpl_welcome" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_welcome_desc" }}</p>
                 <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
             </div>
 
           </div>
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 Sauvegarder les modèles</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "settings_save_templates" }}</button>
           </div>
         </form>
 
         <div id="email-preview-modal" class="modal-overlay" style="display:none">
           <div class="glass-card modal-content modal-content-lg relative">
-            <button type="button" id="email-preview-close" class="absolute top-4 right-4 text-slate-400 hover:text-white" aria-label="Fermer l'aperçu">
+            <button type="button" id="email-preview-close" class="absolute top-4 right-4 text-slate-400 hover:text-white" aria-label='{{ .T "settings_email_preview_close_aria" }}'>
               <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <h3 class="text-lg font-semibold text-white mb-1">Aperçu du modèle e-mail</h3>
-            <p class="text-xs text-slate-400 mb-4">Rendu de test avec des valeurs de démonstration.</p>
+            <h3 class="text-lg font-semibold text-white mb-1">{{ .T "settings_email_preview_title" }}</h3>
+            <p class="text-xs text-slate-400 mb-4">{{ .T "settings_email_preview_desc" }}</p>
             <iframe id="email-preview-frame" class="w-full rounded-lg border border-white/10 bg-white" style="min-height:420px"></iframe>
           </div>
         </div>
@@ -737,8 +740,8 @@
     <div id="panel-backup" class="tab-panel settings-panel settings-panel-backup hidden">
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-white/10">
-          <h2 class="text-lg font-semibold text-white">Sauvegardes & restauration</h2>
-          <p class="text-sm text-slate-400">Configure les sauvegardes automatiques, crée des sauvegardes manuelles, importe des archives et prépare une restauration.</p>
+          <h2 class="text-lg font-semibold text-white">{{ .T "settings_backup_title" }}</h2>
+          <p class="text-sm text-slate-400">{{ .T "settings_backup_desc" }}</p>
         </div>
 
         <div id="backup-db-note" class="hidden mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100"></div>
@@ -747,54 +750,54 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <label class="inline-flex items-center gap-2 text-sm text-slate-200 md:col-span-3">
               <input type="checkbox" id="backup-enabled" class="form-checkbox">
-              Activer les sauvegardes automatiques
+              {{ .T "settings_backup_enable_auto" }}
             </label>
             <div>
-              <label class="jg-label" for="backup-time">Heure d'exécution quotidienne</label>
+              <label class="jg-label" for="backup-time">{{ .T "settings_backup_daily_time" }}</label>
               <input id="backup-time" type="time" class="jg-input" value="03:00">
             </div>
             <div>
-              <label class="jg-label" for="backup-retention">Sauvegardes conservées (fixe)</label>
+              <label class="jg-label" for="backup-retention">{{ .T "settings_backup_retention_fixed" }}</label>
               <input id="backup-retention" type="number" min="7" max="7" class="jg-input" value="7" readonly>
-              <p class="text-xs text-slate-400 mt-1">JellyGate conserve automatiquement les 7 dernières sauvegardes (imports inclus).</p>
+              <p class="text-xs text-slate-400 mt-1">{{ .T "settings_backup_retention_help" }}</p>
             </div>
             <div class="flex items-end">
-              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">💾 Sauvegarder la planification</button>
+              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">💾 {{ .T "settings_backup_save_schedule" }}</button>
             </div>
           </div>
         </form>
 
         <div id="backup-actions-grid" class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-            <h3 class="text-sm font-semibold text-white mb-3">Sauvegarde manuelle</h3>
-            <p class="text-xs text-slate-400 mb-3">Crée une archive ZIP exportable (base SQLite + paramètres + templates).</p>
-            <button id="backup-create-btn" class="jg-btn">Créer une sauvegarde maintenant</button>
+            <h3 class="text-sm font-semibold text-white mb-3">{{ .T "settings_backup_manual_title" }}</h3>
+            <p class="text-xs text-slate-400 mb-3">{{ .T "settings_backup_manual_desc" }}</p>
+            <button id="backup-create-btn" class="jg-btn">{{ .T "settings_backup_create_now" }}</button>
           </div>
           <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-            <h3 class="text-sm font-semibold text-white mb-3">Importer une sauvegarde</h3>
-            <p class="text-xs text-slate-400 mb-3">Importe une archive ZIP dans JellyGate pour la restaurer plus tard. Les actions Exporter/Supprimer restent disponibles dans la liste ci-dessous.</p>
+            <h3 class="text-sm font-semibold text-white mb-3">{{ .T "settings_backup_import_title" }}</h3>
+            <p class="text-xs text-slate-400 mb-3">{{ .T "settings_backup_import_desc" }}</p>
             <div class="flex flex-col sm:flex-row gap-3">
               <input id="backup-import-file" type="file" accept=".zip" class="jg-input">
-              <button id="backup-import-btn" class="jg-btn jg-btn-ghost" type="button">Importer</button>
+              <button id="backup-import-btn" class="jg-btn jg-btn-ghost" type="button">{{ .T "settings_backup_import_btn" }}</button>
             </div>
           </div>
         </div>
 
         <div id="backup-list-section" class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
-          <h3 class="text-sm font-semibold text-white mb-3">Archives disponibles</h3>
-          <p class="text-xs text-slate-400 mb-4">La restauration est préparée puis appliquée au prochain redémarrage de JellyGate.</p>
+          <h3 class="text-sm font-semibold text-white mb-3">{{ .T "settings_backup_archives_title" }}</h3>
+          <p class="text-xs text-slate-400 mb-4">{{ .T "settings_backup_archives_desc" }}</p>
           <div class="jg-table-wrap">
             <table class="jg-table">
               <thead>
                 <tr>
-                  <th>Archive</th>
-                  <th>Taille</th>
-                  <th>Date</th>
-                  <th class="text-right">Actions</th>
+                  <th>{{ .T "settings_backup_col_archive" }}</th>
+                  <th>{{ .T "settings_backup_col_size" }}</th>
+                  <th>{{ .T "settings_backup_col_date" }}</th>
+                  <th class="text-right">{{ .T "settings_backup_col_actions" }}</th>
                 </tr>
               </thead>
               <tbody id="backup-list-body">
-                <tr><td colspan="4" class="text-center text-slate-500 py-8">Chargement...</td></tr>
+                <tr><td colspan="4" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
               </tbody>
             </table>
           </div>
@@ -809,6 +812,49 @@
 {{ define "scripts" }}
 <script>
   let backupDatabaseType = 'sqlite';
+
+  const i18n = {
+    ldap_test_running: '{{ .T "settings_ldap_test_running" }}',
+    ldap_test_success: '{{ .T "settings_ldap_test_success" }}',
+    ldap_test_failed: '{{ .T "settings_ldap_test_failed" }}',
+    default_none: '{{ .T "settings_default_none" }}',
+    preset_fallback: '{{ .T "settings_preset_fallback" }}',
+    backup_pg_mode_title: '{{ .T "settings_backup_pg_mode_title" }}',
+    backup_pg_mode_desc_1: '{{ .T "settings_backup_pg_mode_desc_1" }}',
+    backup_pg_mode_desc_2: '{{ .T "settings_backup_pg_mode_desc_2" }}',
+    backup_pg_plan_unavailable: '{{ .T "settings_backup_pg_plan_unavailable" }}',
+    settings_saved: '{{ .T "settings_saved" }}',
+    settings_save_error: '{{ .T "settings_save_error" }}',
+    template_empty: '{{ .T "settings_template_empty" }}',
+    preview_loading: '{{ .T "settings_preview_loading" }}',
+    preview_impossible: '{{ .T "settings_preview_impossible" }}',
+    preview_button: '{{ .T "settings_preview_button" }}',
+    backup_pg_not_supported: '{{ .T "settings_backup_pg_not_supported" }}',
+    backup_list_pg_unavailable: '{{ .T "settings_backup_list_pg_unavailable" }}',
+    backup_list_load_error: '{{ .T "settings_backup_list_load_error" }}',
+    backup_list_empty: '{{ .T "settings_backup_list_empty" }}',
+    backup_action_export: '{{ .T "settings_backup_action_export" }}',
+    backup_action_restore: '{{ .T "settings_backup_action_restore" }}',
+    backup_action_delete: '{{ .T "settings_backup_action_delete" }}',
+    backup_created: '{{ .T "settings_backup_created" }}',
+    backup_error: '{{ .T "settings_backup_error" }}',
+    backup_select_zip: '{{ .T "settings_backup_select_zip" }}',
+    backup_imported: '{{ .T "settings_backup_imported" }}',
+    backup_import_error: '{{ .T "settings_backup_import_error" }}',
+    backup_restore_confirm_prefix: '{{ .T "settings_backup_restore_confirm_prefix" }}',
+    backup_restore_confirm_suffix: '{{ .T "settings_backup_restore_confirm_suffix" }}',
+    backup_restore_ready: '{{ .T "settings_backup_restore_ready" }}',
+    backup_restore_error: '{{ .T "settings_backup_restore_error" }}',
+    backup_delete_confirm_prefix: '{{ .T "settings_backup_delete_confirm_prefix" }}',
+    backup_deleted: '{{ .T "settings_backup_deleted" }}',
+    backup_delete_error: '{{ .T "settings_backup_delete_error" }}',
+    ldap_test_username_required: '{{ .T "settings_ldap_test_username_required" }}',
+    ldap_test_credentials_required: '{{ .T "settings_ldap_test_credentials_required" }}'
+  };
+
+  function t(key, fallback) {
+    return i18n[key] || fallback || key;
+  }
 
   // ── Tab switching ───────────────────────────────────────────────────────
   function switchTab(name) {
@@ -867,7 +913,7 @@
   }
 
   async function runLDAPTest(endpoint, payload) {
-    showLDAPTestResult('Test en cours...', 'info');
+    showLDAPTestResult(t('ldap_test_running', 'Test in progress...'), 'info');
     const res = await JG.api(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -875,10 +921,10 @@
     });
 
     if (res && res.success) {
-      showLDAPTestResult(res.message || 'Test réussi', 'success');
+      showLDAPTestResult(res.message || t('ldap_test_success', 'Test succeeded'), 'success');
       return;
     }
-    showLDAPTestResult((res && res.message) || 'Test échoué', 'error');
+    showLDAPTestResult((res && res.message) || t('ldap_test_failed', 'Test failed'), 'error');
   }
 
   // ── Load settings from API ──────────────────────────────────────────────
@@ -904,7 +950,7 @@
     });
   }
 
-  function setSelectOptions(selectId, options, emptyLabel = 'Par defaut (aucun)') {
+  function setSelectOptions(selectId, options, emptyLabel = t('default_none', 'Default (none)')) {
     const select = document.getElementById(selectId);
     if (!select) return;
 
@@ -925,7 +971,7 @@
     if (presetsRes && presetsRes.success && Array.isArray(presetsRes.data)) {
       const presetOptions = presetsRes.data.map(p => ({
         value: p.id || '',
-        label: p.name || p.id || 'Preset',
+        label: p.name || p.id || t('preset_fallback', 'Preset'),
       }));
       setSelectOptions('invite-profile-preset', presetOptions);
     }
@@ -946,6 +992,7 @@
     document.getElementById('invite-profile-preset').value = p.policy_preset_id || '';
     document.getElementById('invite-profile-template-user').value = p.template_user_id || '';
     document.getElementById('invite-profile-enable-downloads').checked = p.enable_downloads !== false;
+    document.getElementById('invite-profile-require-email').checked = p.require_email !== false;
     document.getElementById('invite-profile-allow-inviter-grant').checked = !!p.allow_inviter_grant_invite;
     document.getElementById('invite-profile-allow-inviter-user-expiry').checked = p.allow_inviter_user_expiry !== false;
     document.getElementById('invite-profile-disable-after').value = Number.isInteger(p.disable_after_days) ? p.disable_after_days : 0;
@@ -982,9 +1029,9 @@
       } else {
         note.classList.remove('hidden');
         note.innerHTML = [
-          '<div class="font-semibold mb-1">Mode PostgreSQL détecté</div>',
-          '<div>Les sauvegardes ZIP natives JellyGate (SQLite) sont désactivées.</div>',
-          '<div class="mt-2">Utilise plutôt <code>pg_dump</code> et <code>pg_restore</code> pour la base PostgreSQL.</div>'
+          `<div class="font-semibold mb-1">${JG.esc(t('backup_pg_mode_title', 'PostgreSQL mode detected'))}</div>`,
+          `<div>${JG.esc(t('backup_pg_mode_desc_1', 'Native JellyGate ZIP backups (SQLite) are disabled.'))}</div>`,
+          `<div class="mt-2">${JG.esc(t('backup_pg_mode_desc_2', 'Use pg_dump and pg_restore for PostgreSQL.'))}</div>`
         ].join('');
       }
     }
@@ -1090,7 +1137,7 @@
     event.preventDefault();
 
     if (section === 'backup' && backupDatabaseType !== 'sqlite') {
-      JG.toast('Planification backup locale indisponible en mode PostgreSQL (utiliser pg_dump/pg_restore)', 'error');
+      JG.toast(t('backup_pg_plan_unavailable', 'Local backup scheduler unavailable in PostgreSQL mode'), 'error');
       return;
     }
 
@@ -1110,6 +1157,7 @@
         policy_preset_id: (document.getElementById('invite-profile-preset').value || '').trim(),
         template_user_id: (document.getElementById('invite-profile-template-user').value || '').trim(),
         enable_downloads: document.getElementById('invite-profile-enable-downloads').checked,
+        require_email: document.getElementById('invite-profile-require-email').checked,
         allow_inviter_grant_invite: document.getElementById('invite-profile-allow-inviter-grant').checked,
         allow_inviter_user_expiry: document.getElementById('invite-profile-allow-inviter-user-expiry').checked,
         disable_after_days: parseInt(document.getElementById('invite-profile-disable-after').value, 10) || 0,
@@ -1195,7 +1243,7 @@
     });
 
     if (res && res.success) {
-      JG.toast(res.message || 'Configuration sauvegardée', 'success');
+      JG.toast(res.message || t('settings_saved', 'Settings saved'), 'success');
       if (section === 'general') {
         refreshPortalShortcuts(body);
         const lang = (body.default_lang || '').trim().toLowerCase();
@@ -1205,7 +1253,7 @@
         window.location.reload();
       }
     } else {
-      JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
+      JG.toast((res && res.message) || t('settings_save_error', 'Save failed'), 'error');
     }
   }
 
@@ -1217,25 +1265,36 @@
 
     const template = field.value || '';
     if (!template.trim()) {
-      JG.toast('Le template est vide.', 'error');
+      JG.toast(t('template_empty', 'Template is empty.'), 'error');
       return;
     }
 
-    frame.srcdoc = '<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#0f172a;">Chargement de l\'aperçu...</div>';
+    frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#0f172a;">${JG.esc(t('preview_loading', 'Loading preview...'))}</div>`;
     modal.style.display = '';
+
+    const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
+    const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
 
     const res = await JG.api('/admin/api/settings/email-templates/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ template }),
+      body: JSON.stringify({
+        template,
+        context: {
+          JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
+          JellyGateURL: jellygateURL || 'https://jellygate.example.com',
+          HelpURL: jellyfinURL || 'https://jellyfin.example.com',
+        },
+      }),
     });
 
     if (!res || !res.success || !res.data || typeof res.data.html !== 'string') {
-      frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#b91c1c;">${JG.esc((res && res.message) || 'Aperçu impossible')}</div>`;
+      frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#b91c1c;">${JG.esc((res && res.message) || t('preview_impossible', 'Preview failed'))}</div>`;
       return;
     }
 
-    frame.srcdoc = res.data.html;
+    const html = String(res.data.html || '');
+    frame.srcdoc = html;
   }
 
   function closeEmailPreviewModal() {
@@ -1255,7 +1314,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'jg-btn jg-btn-sm jg-btn-ghost jg-preview-btn mt-2';
-      btn.textContent = 'Aperçu';
+      btn.textContent = t('preview_button', 'Preview');
       btn.addEventListener('click', () => previewEmailTemplate(area.id));
       label.insertAdjacentElement('afterend', btn);
     });
@@ -1298,19 +1357,19 @@
   async function loadBackups() {
     const tbody = document.getElementById('backup-list-body');
     if (backupDatabaseType !== 'sqlite') {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-amber-200 py-8">Mode PostgreSQL: archives SQLite non disponibles. Utilise pg_dump/pg_restore.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-amber-200 py-8">${JG.esc(t('backup_list_pg_unavailable', 'PostgreSQL mode: SQLite archives are unavailable.'))}</td></tr>`;
       return;
     }
 
     const res = await JG.api('/admin/api/backups');
     if (!res || !res.success) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-red-300 py-8">Impossible de charger les sauvegardes.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-red-300 py-8">${JG.esc(t('backup_list_load_error', 'Unable to load backups.'))}</td></tr>`;
       return;
     }
 
     const backups = res.data || [];
     if (backups.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-slate-500 py-8">Aucune sauvegarde disponible.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">${JG.esc(t('backup_list_empty', 'No backup available.'))}</td></tr>`;
       return;
     }
 
@@ -1321,9 +1380,9 @@
         <td class="text-slate-400">${JG.esc(fmtDateTime(b.created_at))}</td>
         <td class="text-right">
           <div class="flex justify-end gap-2 flex-wrap">
-            <button class="jg-btn jg-btn-sm jg-btn-ghost" onclick="downloadBackup('${JG.esc(b.name)}')">Exporter</button>
-            <button class="jg-btn jg-btn-sm" onclick="restoreBackup('${JG.esc(b.name)}')">Restaurer</button>
-            <button class="jg-btn jg-btn-sm jg-btn-danger" onclick="deleteBackup('${JG.esc(b.name)}')">Supprimer</button>
+            <button class="jg-btn jg-btn-sm jg-btn-ghost" onclick="downloadBackup('${JG.esc(b.name)}')">${JG.esc(t('backup_action_export', 'Export'))}</button>
+            <button class="jg-btn jg-btn-sm" onclick="restoreBackup('${JG.esc(b.name)}')">${JG.esc(t('backup_action_restore', 'Restore'))}</button>
+            <button class="jg-btn jg-btn-sm jg-btn-danger" onclick="deleteBackup('${JG.esc(b.name)}')">${JG.esc(t('backup_action_delete', 'Delete'))}</button>
           </div>
         </td>
       </tr>
@@ -1332,29 +1391,29 @@
 
   async function createBackupNow() {
     if (backupDatabaseType !== 'sqlite') {
-      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
       return;
     }
 
     const res = await JG.api('/admin/api/backups/create', { method: 'POST' });
     if (res && res.success) {
-      JG.toast(res.message || 'Sauvegarde créée', 'success');
+      JG.toast(res.message || t('backup_created', 'Backup created'), 'success');
       await loadBackups();
       return;
     }
-    JG.toast((res && res.message) || 'Erreur de sauvegarde', 'error');
+    JG.toast((res && res.message) || t('backup_error', 'Backup failed'), 'error');
   }
 
   async function importBackup() {
     if (backupDatabaseType !== 'sqlite') {
-      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
       return;
     }
 
     const input = document.getElementById('backup-import-file');
     const file = input.files && input.files[0];
     if (!file) {
-      JG.toast('Sélectionne un fichier .zip', 'error');
+      JG.toast(t('backup_select_zip', 'Select a .zip file'), 'error');
       return;
     }
 
@@ -1362,17 +1421,17 @@
     formData.append('file', file);
     const res = await JG.api('/admin/api/backups/import', { method: 'POST', body: formData });
     if (res && res.success) {
-      JG.toast(res.message || 'Sauvegarde importée', 'success');
+      JG.toast(res.message || t('backup_imported', 'Backup imported'), 'success');
       input.value = '';
       await loadBackups();
       return;
     }
-    JG.toast((res && res.message) || 'Import impossible', 'error');
+    JG.toast((res && res.message) || t('backup_import_error', 'Import failed'), 'error');
   }
 
   window.downloadBackup = function (name) {
     if (backupDatabaseType !== 'sqlite') {
-      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
       return;
     }
     window.location.href = `/admin/api/backups/${encodeURIComponent(name)}/download`;
@@ -1380,31 +1439,31 @@
 
   window.restoreBackup = async function (name) {
     if (backupDatabaseType !== 'sqlite') {
-      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
       return;
     }
-    if (!confirm(`Préparer la restauration de ${name} ? Un redémarrage sera requis.`)) return;
+    if (!confirm(`${t('backup_restore_confirm_prefix', 'Prepare restoration for')} ${name}? ${t('backup_restore_confirm_suffix', 'A restart is required.')}`)) return;
     const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' });
     if (res && res.success) {
-      JG.toast('Restauration préparée. Redémarre JellyGate.', 'success');
+      JG.toast(t('backup_restore_ready', 'Restoration prepared. Restart JellyGate.'), 'success');
       return;
     }
-    JG.toast((res && res.message) || 'Restauration impossible', 'error');
+    JG.toast((res && res.message) || t('backup_restore_error', 'Restore failed'), 'error');
   };
 
   window.deleteBackup = async function (name) {
     if (backupDatabaseType !== 'sqlite') {
-      JG.toast('Action non supportée en mode PostgreSQL', 'error');
+      JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
       return;
     }
-    if (!confirm(`Supprimer définitivement ${name} ?`)) return;
+    if (!confirm(`${t('backup_delete_confirm_prefix', 'Delete permanently')} ${name}?`)) return;
     const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' });
     if (res && res.success) {
-      JG.toast('Sauvegarde supprimée', 'success');
+      JG.toast(t('backup_deleted', 'Backup deleted'), 'success');
       await loadBackups();
       return;
     }
-    JG.toast((res && res.message) || 'Suppression impossible', 'error');
+    JG.toast((res && res.message) || t('backup_delete_error', 'Delete failed'), 'error');
   };
 
   // ── Init ────────────────────────────────────────────────────────────────
@@ -1434,7 +1493,7 @@
       ldapUserBtn.addEventListener('click', async () => {
         const username = (document.getElementById('ldap-test-username').value || '').trim();
         if (!username) {
-          showLDAPTestResult('Renseigne un utilisateur de test (sAMAccountName).', 'error');
+          showLDAPTestResult(t('ldap_test_username_required', 'Enter a test username (sAMAccountName).'), 'error');
           return;
         }
         const payload = collectLDAPPayload();
@@ -1449,7 +1508,7 @@
         const username = (document.getElementById('ldap-test-username').value || '').trim();
         const password = document.getElementById('ldap-test-password').value || '';
         if (!username || !password) {
-          showLDAPTestResult('Renseigne utilisateur + mot de passe de test pour valider le plugin LDAP Jellyfin.', 'error');
+          showLDAPTestResult(t('ldap_test_credentials_required', 'Enter username and password to validate Jellyfin LDAP plugin.'), 'error');
           return;
         }
         await runLDAPTest('/admin/api/settings/ldap/test-jellyfin-auth', { username, password });

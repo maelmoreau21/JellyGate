@@ -615,14 +615,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
-
-	if td.IsAdmin {
-		td.CanInvite = true
-	} else {
-		var canInvite bool
-		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
-		td.CanInvite = canInvite
-	}
+	td.CanInvite = h.resolveCanInviteForSession(sess)
 
 	if err := h.renderer.Render(w, "admin/dashboard.html", td); err != nil {
 		slog.Error("Erreur rendu dashboard", "error", err)
@@ -636,14 +629,7 @@ func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
-
-	if td.IsAdmin {
-		td.CanInvite = true
-	} else {
-		var canInvite bool
-		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
-		td.CanInvite = canInvite
-	}
+	td.CanInvite = h.resolveCanInviteForSession(sess)
 
 	if err := h.renderer.Render(w, "admin/my_account.html", td); err != nil {
 		slog.Error("Erreur rendu my account page", "error", err)
@@ -695,6 +681,34 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		sess.IsAdmin,
 	)
 	return err
+}
+
+func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
+	if sess == nil {
+		return false
+	}
+	if sess.IsAdmin {
+		return true
+	}
+
+	_ = h.ensureUserRowForSession(sess)
+
+	var canInvite bool
+	err := h.db.QueryRow(
+		`SELECT can_invite
+		 FROM users
+		 WHERE jellyfin_id = ? OR username = ?
+		 ORDER BY CASE WHEN jellyfin_id = ? THEN 0 ELSE 1 END
+		 LIMIT 1`,
+		sess.UserID,
+		sess.Username,
+		sess.UserID,
+	).Scan(&canInvite)
+	if err != nil {
+		return false
+	}
+
+	return canInvite
 }
 
 // GetMyAccount retourne les informations éditables de l'utilisateur connecté.
@@ -998,13 +1012,12 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	td.Data["InviteInviterQuotaWeek"] = inviteCfg.InviterQuotaWeek
 	td.Data["InviteInviterQuotaMonth"] = inviteCfg.InviterQuotaMonth
 	td.Data["InviteDefaultDisableAfterDays"] = inviteCfg.DisableAfterDays
+	td.Data["InviteRequireEmail"] = inviteCfg.RequireEmail
 
 	if td.IsAdmin {
 		td.CanInvite = true
 	} else {
-		var canInvite bool
-		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
-		td.CanInvite = canInvite
+		td.CanInvite = h.resolveCanInviteForSession(sess)
 
 		if !td.CanInvite {
 			http.Error(w, "Accès interdit au programme de parrainage", http.StatusForbidden)
@@ -2971,6 +2984,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		EnableAllFolders:       len(req.Libraries) == 0,
 		EnabledFolderIDs:       req.Libraries,
 		EnableDownload:         inviteCfg.EnableDownloads,
+		RequireEmail:           inviteCfg.RequireEmail,
 		EnableRemoteAccess:     true,
 		UserExpiryDays:         effectiveDisableAfterDays,
 		UserExpiresAt:          effectiveUserExpiresAtRaw,
@@ -3020,6 +3034,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 
 	// Les options exposees dans "Profil utilisateur" sont forcees par les paramètres admin.
 	jfProfile.EnableDownload = inviteCfg.EnableDownloads
+	jfProfile.RequireEmail = inviteCfg.RequireEmail
 	if strings.TrimSpace(inviteCfg.TemplateUserID) != "" {
 		jfProfile.TemplateUserID = strings.TrimSpace(inviteCfg.TemplateUserID)
 	}

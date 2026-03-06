@@ -499,12 +499,12 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 	}
 	sample := map[string]string{
 		"Username":      "demo.user",
-		"DisplayName":   "Demo User",
+		"DisplayName":   "demo.user",
 		"Email":         "demo@example.com",
 		"InviteLink":    links.JellyGateURL + "/invite/ABC123",
 		"InviteURL":     links.JellyGateURL + "/invite/ABC123",
 		"InviteCode":    "ABC123",
-		"HelpURL":       links.JellyGateURL + "/help",
+		"HelpURL":       links.JellyfinURL,
 		"ResetLink":     links.JellyGateURL + "/reset/XYZ789",
 		"ResetURL":      links.JellyGateURL + "/reset/XYZ789",
 		"ResetCode":     "XYZ789",
@@ -514,7 +514,7 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		"JellyfinURL":   links.JellyfinURL,
 		"JellyseerrURL": links.JellyseerrURL,
 		"JellyTulliURL": links.JellyTulliURL,
-		"Message":       "Bienvenue sur JellyGate. Ce message est un exemple d'aperçu.",
+		"Message":       "Ton acces Jellyfin est pret. Utilise les liens ci-dessous.",
 	}
 	for k, v := range input.Context {
 		key := strings.TrimSpace(k)
@@ -524,7 +524,7 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		sample[key] = v
 	}
 
-	tpl, err := template.New("email_preview").Parse(tplRaw)
+	tpl, err := template.New("email_preview").Option("missingkey=zero").Parse(tplRaw)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Erreur de syntaxe template: " + err.Error()})
 		return
@@ -536,10 +536,17 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	htmlOut := strings.TrimSpace(out.String())
+	if htmlOut == "" {
+		htmlOut = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#334155;">Apercu vide.</div>`
+	} else if !strings.Contains(strings.ToLower(htmlOut), "<html") && !strings.Contains(htmlOut, "<body") && !strings.Contains(htmlOut, "<div") {
+		htmlOut = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;background:#f8fafc;color:#0f172a;white-space:pre-wrap;line-height:1.55;">` + template.HTMLEscapeString(htmlOut) + `</div>`
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"html": out.String(),
+			"html": htmlOut,
 		},
 	})
 }
