@@ -115,7 +115,6 @@ web/
 - détection par cookie `lang`, puis `Accept-Language`, puis `default_lang`
 - fallback `lang demandée -> en -> fr`
 - commande CI `go run ./cmd/i18ncheck`
-- page admin `/admin/i18n`
 
 ### 4.8 Roadmap produit validée
 
@@ -156,7 +155,6 @@ web/
 | GET | `/admin/logs` | journaux |
 | GET | `/admin/automation` | automatisation |
 | GET | `/admin/my-account` | profil utilisateur |
-| GET | `/admin/i18n` | rapport qualité i18n |
 
 ### Admin API
 
@@ -169,7 +167,6 @@ web/
 | `/admin/api/backups` | sauvegardes |
 | `/admin/api/logs` | audit logs et exports |
 | `/admin/api/automation` | presets, mappings, tâches |
-| `/admin/api/i18n/report` | rapport qualité des locales |
 
 ## 6. Base de données
 

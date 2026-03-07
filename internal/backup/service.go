@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 )
 
@@ -157,7 +158,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 	meta := map[string]string{
 		"created_at": now.Format(time.RFC3339),
 		"reason":     sanitizeReason(reason),
-		"version":    "0.1.0-alpha",
+		"version":    config.AppVersion,
 	}
 	metaJSON, _ := json.MarshalIndent(meta, "", "  ")
 	if err := writeZipEntry(zw, "metadata.json", metaJSON); err != nil {

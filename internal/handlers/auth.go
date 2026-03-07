@@ -223,7 +223,7 @@ func (h *AuthHandler) authenticateWithJellyfin(username, password string) (*jell
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Emby-Authorization",
-		`MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="0.1.0"`)
+		fmt.Sprintf(`MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="%s"`, config.AppVersion))
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

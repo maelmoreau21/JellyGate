@@ -82,13 +82,6 @@
       </svg>
       <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
     </a>
-    <a href="/admin/i18n" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M3 5h12M9 3v2m1 13 4-10 4 10m-1-3h-6M3 19h12" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "i18n_report_title" }}</span>
-    </a>
     {{ end }}
   </nav>
   <div class="jg-sidebar-footer">
@@ -105,57 +98,16 @@
 </aside>
 
 {{/* ── Main content ────────────────────────────────────────────────────── */}}
-<main class="jg-main">
-  <div class="max-w-4xl mx-auto">
-    {{/* Header */}}
-    <div class="jg-hero-grid mb-8">
-      <div class="glass-card jg-hero-panel p-6 md:p-8">
-        <button id="sidebar-toggle"
-          class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
-        <span class="jg-kicker">{{ .T "settings_overview_title" }}</span>
-        <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_settings" }}</h1>
-        <p class="text-slate-300 mt-3 max-w-2xl">{{ .T "settings_subheading" }}</p>
-        <p class="text-sm text-slate-500 mt-3">{{ .T "settings_overview_desc" }}</p>
-      </div>
-      <div class="glass-card p-5 jg-aside-card">
-        <h2 class="text-lg font-semibold text-white">{{ .T "settings_general_title" }}</h2>
-        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_general_desc" }}</p>
-        <div class="mt-5 flex flex-wrap gap-2">
-          <button type="button" data-tab-target="general" class="jg-btn jg-btn-sm">{{ .T "settings_tab_general" }}</button>
-          <button type="button" data-tab-target="backup" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_tab_backup" }}</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="jg-feature-grid mb-8">
-      <button type="button" data-tab-target="general" class="glass-card jg-feature-card p-5 text-left">
-        <div class="text-sm font-semibold text-cyan-300">{{ .T "settings_tab_general" }}</div>
-        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_general_desc" }}</p>
+<main class="jg-main jg-settings-main">
+  <div class="w-full">
+    <div class="glass-card p-5 md:p-6 mb-6">
+      <button id="sidebar-toggle"
+        class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
       </button>
-      <button type="button" data-tab-target="ldap" class="glass-card jg-feature-card p-5 text-left">
-        <div class="text-sm font-semibold text-sky-300">{{ .T "settings_tab_ldap" }}</div>
-        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_ldap_desc" }}</p>
-      </button>
-      <button type="button" data-tab-target="smtp" class="glass-card jg-feature-card p-5 text-left">
-        <div class="text-sm font-semibold text-emerald-300">{{ .T "settings_tab_smtp" }}</div>
-        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_smtp_desc" }}</p>
-      </button>
-      <button type="button" data-tab-target="webhooks" class="glass-card jg-feature-card p-5 text-left">
-        <div class="text-sm font-semibold text-amber-300">{{ .T "settings_tab_webhooks" }}</div>
-        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_webhooks_desc" }}</p>
-      </button>
-      <button type="button" data-tab-target="email-templates" class="glass-card jg-feature-card p-5 text-left">
-        <div class="text-sm font-semibold text-fuchsia-300">{{ .T "settings_tab_email_templates" }}</div>
-        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_templates_desc" }}</p>
-      </button>
-      <button type="button" data-tab-target="backup" class="glass-card jg-feature-card p-5 text-left">
-        <div class="text-sm font-semibold text-rose-300">{{ .T "settings_tab_backup" }}</div>
-        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_backup_desc" }}</p>
-      </button>
+      <h1 class="text-2xl md:text-3xl font-bold text-white inline-block align-middle">{{ .T "nav_settings" }}</h1>
     </div>
 
     {{/* ── Tabs ───────────────────────────────────────────────────────── */}}
@@ -285,6 +237,11 @@
                 <label class="jg-label" for="invite-profile-delete-after">{{ .T "settings_invite_delete_after_days" }}</label>
                 <input type="number" id="invite-profile-delete-after" min="0" class="jg-input" value="0">
               </div>
+            </div>
+
+            <details class="settings-collapsible mt-4">
+              <summary>Options avancees invitation et mot de passe</summary>
+              <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="jg-label" for="invite-profile-inviter-max-uses">{{ .T "settings_invite_inviter_max_uses" }}</label>
                 <input type="number" id="invite-profile-inviter-max-uses" min="0" class="jg-input" value="0">
@@ -334,9 +291,7 @@
                 <input type="checkbox" id="invite-profile-allow-inviter-user-expiry" class="form-checkbox" checked>
                 <label class="text-sm text-slate-300" for="invite-profile-allow-inviter-user-expiry">{{ .T "settings_invite_allow_inviter_user_expiry" }}</label>
               </div>
-            </div>
 
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="jg-label" for="invite-profile-user-min">{{ .T "settings_invite_username_min" }}</label>
                 <input type="number" id="invite-profile-user-min" min="1" class="jg-input" value="3">
@@ -353,9 +308,7 @@
                 <label class="jg-label" for="invite-profile-pw-max">{{ .T "settings_invite_password_max" }}</label>
                 <input type="number" id="invite-profile-pw-max" min="1" class="jg-input" value="128">
               </div>
-            </div>
 
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
               <label class="inline-flex items-center gap-2 text-sm text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-upper" class="form-checkbox">
                 {{ .T "settings_password_upper_required" }}
@@ -372,7 +325,8 @@
                 <input type="checkbox" id="invite-profile-pw-special" class="form-checkbox">
                 {{ .T "settings_password_special_required" }}
               </label>
-            </div>
+              </div>
+            </details>
 
             <div class="mt-6 flex justify-end">
               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "settings_save_invite_profile" }}</button>
@@ -439,6 +393,10 @@
               <label class="jg-label" for="ldap-base-dn">{{ .T "settings_ldap_base_dn" }}</label>
               <input type="text" id="ldap-base-dn" class="jg-input" placeholder="DC=example,DC=com">
             </div>
+
+            <details class="settings-collapsible">
+              <summary>Options LDAP avancees</summary>
+              <div class="mt-4 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="jg-label" for="ldap-provision-mode">{{ .T "settings_ldap_provision_mode" }}</label>
@@ -496,29 +454,35 @@
               </div>
             </div>
 
-            <div class="rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
-              <h3 class="text-sm font-semibold text-purple-100 mb-2">{{ .T "settings_ldap_tests_title" }}</h3>
-              <p class="text-xs text-purple-200/80 mb-3">{{ .T "settings_ldap_tests_desc" }}</p>
+            <details class="settings-collapsible">
+              <summary>{{ .T "settings_ldap_tests_title" }}</summary>
+              <div class="mt-4">
+                <div class="rounded-xl border border-purple-400/30 bg-purple-500/10 p-4">
+                  <p class="text-xs text-purple-200/80 mb-3">{{ .T "settings_ldap_tests_desc" }}</p>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label class="jg-label" for="ldap-test-username">{{ .T "settings_ldap_test_username" }}</label>
-                  <input type="text" id="ldap-test-username" class="jg-input" placeholder="jdoe">
-                </div>
-                <div>
-                  <label class="jg-label" for="ldap-test-password">{{ .T "settings_ldap_test_password" }}</label>
-                  <input type="password" id="ldap-test-password" class="jg-input" placeholder="••••••••">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                    <div>
+                      <label class="jg-label" for="ldap-test-username">{{ .T "settings_ldap_test_username" }}</label>
+                      <input type="text" id="ldap-test-username" class="jg-input" placeholder="jdoe">
+                    </div>
+                    <div>
+                      <label class="jg-label" for="ldap-test-password">{{ .T "settings_ldap_test_password" }}</label>
+                      <input type="password" id="ldap-test-password" class="jg-input" placeholder="••••••••">
+                    </div>
+                  </div>
+
+                  <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btn-ldap-test-conn" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_connection_btn" }}</button>
+                    <button type="button" id="btn-ldap-test-user" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_user_btn" }}</button>
+                    <button type="button" id="btn-ldap-test-jf" class="jg-btn jg-btn-sm">{{ .T "settings_ldap_test_jellyfin_btn" }}</button>
+                  </div>
+
+                  <div id="ldap-test-result" class="hidden mt-3 text-xs rounded-lg border px-3 py-2"></div>
                 </div>
               </div>
-
-              <div class="flex flex-wrap gap-2">
-                <button type="button" id="btn-ldap-test-conn" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_connection_btn" }}</button>
-                <button type="button" id="btn-ldap-test-user" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_user_btn" }}</button>
-                <button type="button" id="btn-ldap-test-jf" class="jg-btn jg-btn-sm">{{ .T "settings_ldap_test_jellyfin_btn" }}</button>
+            </details>
               </div>
-
-              <div id="ldap-test-result" class="hidden mt-3 text-xs rounded-lg border px-3 py-2"></div>
-            </div>
+            </details>
           </div>
 
           <div class="mt-6 flex justify-end">
@@ -550,6 +514,7 @@
               <div>
                 <label class="jg-label" for="smtp-port">{{ .T "settings_port" }}</label>
                 <input type="number" id="smtp-port" class="jg-input" value="587">
+                <p class="text-xs text-slate-500 mt-1">587 = STARTTLS (recommande), 465 = TLS implicite, 25 = relais interne non chiffree.</p>
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -597,16 +562,18 @@
           <div class="space-y-6">
 
             {{/* Discord */}}
-            <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-              <h3 class="text-sm font-semibold text-purple-400 mb-3">🎮 Discord</h3>
-              <label class="jg-label" for="wh-discord-url">{{ .T "settings_webhook_url" }}</label>
-              <input type="url" id="wh-discord-url" class="jg-input" placeholder="https://discord.com/api/webhooks/...">
-            </div>
+            <details class="settings-collapsible" open>
+              <summary>Discord</summary>
+              <div class="mt-3">
+                <label class="jg-label" for="wh-discord-url">{{ .T "settings_webhook_url" }}</label>
+                <input type="url" id="wh-discord-url" class="jg-input" placeholder="https://discord.com/api/webhooks/...">
+              </div>
+            </details>
 
             {{/* Telegram */}}
-            <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-              <h3 class="text-sm font-semibold text-blue-400 mb-3">📱 Telegram</h3>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <details class="settings-collapsible">
+              <summary>Telegram</summary>
+              <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="jg-label" for="wh-telegram-token">{{ .T "settings_telegram_bot_token" }}</label>
                   <input type="text" id="wh-telegram-token" class="jg-input" placeholder="123456:ABC-DEF...">
@@ -616,12 +583,12 @@
                   <input type="text" id="wh-telegram-chat" class="jg-input" placeholder="-1001234567890">
                 </div>
               </div>
-            </div>
+            </details>
 
             {{/* Matrix */}}
-            <div class="p-4 rounded-xl bg-white/5 border border-white/10">
-              <h3 class="text-sm font-semibold text-green-400 mb-3">🔗 Matrix</h3>
-              <div class="space-y-3">
+            <details class="settings-collapsible">
+              <summary>Matrix</summary>
+              <div class="mt-3 space-y-3">
                 <div>
                   <label class="jg-label" for="wh-matrix-url">{{ .T "settings_matrix_homeserver_url" }}</label>
                   <input type="url" id="wh-matrix-url" class="jg-input" placeholder="https://matrix.example.com">
@@ -637,7 +604,7 @@
                   </div>
                 </div>
               </div>
-            </div>
+            </details>
 
           </div>
 
@@ -659,9 +626,9 @@
           <p class="text-sm text-slate-400">{{ .T "settings_email_templates_desc" }}</p>
         </div>
 
-        <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
-          <h3 class="text-sm font-semibold text-purple-200 mb-2">{{ .T "settings_email_variables_title" }}</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-300">
+        <details class="settings-collapsible mb-6">
+          <summary>{{ .T "settings_email_variables_title" }}</summary>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-300 mt-4">
             <div><span class="text-purple-200">{{ "{{" }}.Username{{ "}}" }}</span> : {{ .T "settings_email_var_username" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.Email{{ "}}" }}</span> : {{ .T "settings_email_var_email" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.InviteLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.InviteURL{{ "}}" }}</span> : {{ .T "settings_email_var_invite_link" }}</div>
@@ -679,7 +646,7 @@
             <div><span class="text-purple-200">{{ "{{" }}.JellyTulliURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellytulli_url" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.Message{{ "}}" }}</span> : {{ .T "settings_email_var_message" }}</div>
           </div>
-        </div>
+        </details>
 
         <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
           <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_reminder_schedule_title" }}</h3>
@@ -691,10 +658,16 @@
         </div>
 
         <form id="form-email-templates">
-          <div class="space-y-6">
-            <div class="space-y-4">
-              <div class="text-xs uppercase tracking-wide text-slate-400">{{ .T "settings_email_section_onboarding" }}</div>
-              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+          <div class="email-templates-layout">
+            <aside class="email-templates-nav">
+              <button type="button" class="email-submenu-btn active" data-email-section-target="onboarding">{{ .T "settings_email_section_onboarding" }}</button>
+              <button type="button" class="email-submenu-btn" data-email-section-target="security">{{ .T "settings_email_section_security" }}</button>
+              <button type="button" class="email-submenu-btn" data-email-section-target="lifecycle">{{ .T "settings_email_section_lifecycle" }}</button>
+            </aside>
+
+            <div class="email-templates-content">
+              <section id="email-section-onboarding" class="email-template-section space-y-4">
+                <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-confirmation">{{ .T "settings_email_tpl_confirmation" }}</label>
                 <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_confirmation_desc" }}</p>
                 <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="7"></textarea>
@@ -729,8 +702,9 @@
                 <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_invite_expiry_desc" }}</p>
                 <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
+              </section>
 
-              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">{{ .T "settings_email_section_security" }}</div>
+              <section id="email-section-security" class="email-template-section space-y-4 hidden">
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-password-reset">{{ .T "settings_email_tpl_password_reset" }}</label>
                 <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_password_reset_desc" }}</p>
@@ -756,8 +730,9 @@
                 <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_post_signup_help_desc" }}</p>
                 <textarea id="tpl-post-signup-help" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
+              </section>
 
-              <div class="text-xs uppercase tracking-wide text-slate-400 pt-2">{{ .T "settings_email_section_lifecycle" }}</div>
+              <section id="email-section-lifecycle" class="email-template-section space-y-4 hidden">
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-creation">{{ .T "settings_email_tpl_user_creation" }}</label>
                 <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_creation_desc" }}</p>
@@ -797,9 +772,10 @@
                 <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_welcome_desc" }}</p>
                 <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
+              </section>
             </div>
-
           </div>
+
           <div class="mt-6 flex justify-end">
             <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">💾 {{ .T "settings_save_templates" }}</button>
           </div>
@@ -944,19 +920,22 @@
 {{ define "head" }}
 <style>
   .tab-btn {
-    color: rgb(148 163 184);
-    background: transparent;
+    color: rgb(203 213 225);
+    background: rgba(2, 6, 23, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.24);
     border-bottom: 2px solid transparent;
   }
 
   .tab-btn:hover {
-    color: rgb(226 232 240);
-    background: rgba(255, 255, 255, 0.05);
+    color: rgb(241 245 249);
+    background: rgba(15, 23, 42, 0.86);
+    border-color: rgba(148, 163, 184, 0.4);
   }
 
   .tab-btn.active {
-    color: rgb(226 232 240);
-    background: rgba(255, 255, 255, 0.08);
+    color: rgb(248 250 252);
+    background: rgba(15, 23, 42, 0.96);
+    border-color: rgba(148, 163, 184, 0.48);
   }
 
   #tab-general.active { border-bottom-color: #22d3ee; box-shadow: inset 0 -1px 0 rgba(34, 211, 238, 0.3); }
@@ -967,7 +946,42 @@
   #tab-backup.active { border-bottom-color: #fb7185; box-shadow: inset 0 -1px 0 rgba(251, 113, 133, 0.3); }
 
   .settings-panel .glass-card {
-    border-top: 3px solid rgba(255, 255, 255, 0.18);
+    border-top: 3px solid rgba(255, 255, 255, 0.28);
+    background: linear-gradient(180deg, rgba(16, 26, 46, 0.96), rgba(8, 14, 28, 0.98));
+  }
+
+  .jg-settings-main .text-slate-400,
+  .jg-settings-main .text-slate-500 {
+    color: rgb(189 201 219);
+  }
+
+  .settings-collapsible {
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.5);
+    padding: 0.9rem 1rem;
+  }
+
+  .settings-collapsible > summary {
+    cursor: pointer;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: rgb(226 232 240);
+    list-style: none;
+  }
+
+  .settings-collapsible > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .settings-collapsible > summary::after {
+    content: "+";
+    float: right;
+    color: rgb(148 163 184);
+  }
+
+  .settings-collapsible[open] > summary::after {
+    content: "-";
   }
 
   .settings-panel-general .glass-card { border-top-color: rgba(34, 211, 238, 0.7); }
@@ -983,6 +997,61 @@
     font-weight: 500;
     color: rgb(148 163 184);
     margin-bottom: 0.35rem;
+  }
+
+  .email-templates-layout {
+    display: grid;
+    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .email-templates-nav {
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 14px;
+    padding: 0.65rem;
+  }
+
+  .email-submenu-btn {
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: 0.62rem 0.75rem;
+    color: rgb(148 163 184);
+    text-align: left;
+    font-size: 0.84rem;
+    font-weight: 600;
+    background: transparent;
+    transition: 0.2s ease;
+  }
+
+  .email-submenu-btn:hover {
+    color: rgb(226 232 240);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(148, 163, 184, 0.2);
+  }
+
+  .email-submenu-btn.active {
+    color: rgb(226 232 240);
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+
+  @media (max-width: 960px) {
+    .email-templates-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .email-templates-nav {
+      position: static;
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
   }
 
 </style>

@@ -32,7 +32,6 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	"github.com/maelmoreau21/JellyGate/internal/i18nreport"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
@@ -1100,29 +1099,6 @@ func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur rendu logs page", "error", err)
 		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
 	}
-}
-
-// I18nReportPage affiche la page du rapport de traduction.
-func (h *AdminHandler) I18nReportPage(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
-	td.AdminUsername = sess.Username
-	td.IsAdmin = true
-	td.CanInvite = true
-	if err := h.renderer.Render(w, "admin/i18n.html", td); err != nil {
-		slog.Error("Erreur rendu i18n page", "error", err)
-		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
-	}
-}
-
-// I18nReportAPI retourne un rapport de qualite des traductions.
-func (h *AdminHandler) I18nReportAPI(w http.ResponseWriter, r *http.Request) {
-	report, err := i18nreport.Generate("web/templates", "web/i18n", "en")
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur generation rapport i18n"})
-		return
-	}
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: report})
 }
 
 // ── GET /admin/api/logs ─────────────────────────────────────────────────────

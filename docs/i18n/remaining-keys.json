@@ -1,0 +1,51 @@
+﻿{
+    "base_locale":  "en",
+    "i18n_dir":  "web/i18n",
+    "locales":  [
+                    {
+                        "locale":  "de",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "es",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "fr",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "it",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "nl",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "pl",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "pt-br",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "ru",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    },
+                    {
+                        "locale":  "zh",
+                        "total_keys":  741,
+                        "same_as_base":  0
+                    }
+                ]
+}

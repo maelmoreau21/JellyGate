@@ -1,0 +1,3 @@
+﻿# ru
+same_as_base=0
+

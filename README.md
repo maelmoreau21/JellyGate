@@ -17,7 +17,7 @@ JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-ho
 - administration web complète
 - notifications email et webhooks
 - audit logs exploitables et exportables
-- i18n pilotée par fichiers JSON et rapport qualité intégré
+- i18n pilotée par fichiers JSON avec vérification de cohérence en CI
 
 ## Fonctionnalités principales
 
@@ -29,7 +29,7 @@ JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-ho
 | Reset mot de passe | Demande publique, lien/token, mise à jour Jellyfin + LDAP |
 | Sécurité | CSRF sur routes admin mutables, rate limiting, headers HTTP centralisés, cookies signés |
 | Audit | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
-| i18n | `web/i18n/*.json`, fallback `lang demandée -> en -> fr`, check CI, rapport admin |
+| i18n | `web/i18n/*.json`, fallback `lang demandée -> en -> fr`, check CI |
 | Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
 | Intégrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, Ombi, JellyTulli |
 | Base de données | SQLite par défaut, PostgreSQL supporté |
@@ -149,13 +149,13 @@ LDAP, SMTP, webhooks et templates email se configurent ensuite depuis l'admin et
 ```text
 cmd/
   i18ncheck/         # Vérification i18n pour CI
+  i18ncoverage/      # Couverture de traduction (valeurs identiques à en)
   jellygate/         # Entrée principale
 internal/
   backup/
   config/
   database/
   handlers/
-  i18nreport/        # Rapport i18n
   integrations/
   jellyfin/
   ldap/
@@ -179,7 +179,11 @@ npm run build:css
 go build ./...
 go test ./...
 go run ./cmd/i18ncheck
+go run ./cmd/i18ncoverage
 ```
+
+Le workflow `.github/workflows/i18n-quality.yml` exécute `i18ncheck` et `i18ncoverage`.
+Le seuil de blocage est piloté par la variable de dépôt `I18N_MAX_SAME_AS_BASE` (mettre `0` quand les locales sont nettoyées).
 
 ## Licence
 

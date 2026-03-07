@@ -229,7 +229,6 @@ func main() {
 
 				r.Get("/users", adminHandler.UsersPage)
 				r.Get("/automation", automationHandler.AutomationPage)
-				r.Get("/i18n", adminHandler.I18nReportPage)
 				r.Route("/api/users", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)
@@ -275,8 +274,6 @@ func main() {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.LogsAPI)
 				})
-
-				r.With(jgmw.RequireCSRF()).Get("/api/i18n/report", adminHandler.I18nReportAPI)
 
 				r.Route("/api/automation", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
@@ -386,7 +383,8 @@ func main() {
 func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, `{"status":"ok","app":"JellyGate","version":"0.1.0"}`)
+	fmt.Fprintf(w, `{"status":"ok","app":"JellyGate","version":"%s"}`,
+		config.AppVersion)
 }
 
 // handlePlaceholder génère un handler temporaire qui renvoie un message

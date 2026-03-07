@@ -7,10 +7,10 @@
 :root {
     --jg-bg-primary: #050816;
     --jg-bg-secondary: rgba(5, 10, 22, 0.88);
-    --jg-bg-card: linear-gradient(180deg, rgba(12, 19, 36, 0.92), rgba(7, 12, 24, 0.94));
-    --jg-bg-glass: rgba(148, 163, 184, 0.07);
-    --jg-border: rgba(148, 163, 184, 0.13);
-    --jg-border-strong: rgba(148, 163, 184, 0.26);
+    --jg-bg-card: linear-gradient(180deg, rgba(18, 27, 48, 0.97), rgba(10, 17, 33, 0.98));
+    --jg-bg-glass: rgba(148, 163, 184, 0.14);
+    --jg-border: rgba(148, 163, 184, 0.3);
+    --jg-border-strong: rgba(148, 163, 184, 0.5);
     --jg-border-focus: rgba(45, 212, 191, 0.38);
     --jg-accent: #14b8a6;
     --jg-accent-cyan: #22d3ee;
@@ -23,8 +23,8 @@
     --jg-success: #10b981;
     --jg-danger: #ef4444;
     --jg-warning: #f59e0b;
-    --jg-text: #e6eef8;
-    --jg-text-muted: #93a5c1;
+    --jg-text: #f3f7ff;
+    --jg-text-muted: #c2cee2;
     --jg-sidebar-width: 260px;
     --jg-sidebar-collapsed: 72px;
     --jg-radius: 22px;
@@ -35,9 +35,9 @@
 /* ── Base ────────────────────────────────────────────────────────────────── */
 body {
     background:
-        radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.1), transparent 30%),
-        radial-gradient(circle at 88% 8%, rgba(245, 158, 11, 0.12), transparent 28%),
-        radial-gradient(circle at 50% 100%, rgba(20, 184, 166, 0.1), transparent 34%),
+        radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.14), transparent 30%),
+        radial-gradient(circle at 88% 8%, rgba(245, 158, 11, 0.16), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(20, 184, 166, 0.13), transparent 34%),
         linear-gradient(180deg, #030712 0%, #040816 45%, #02050d 100%);
     color: var(--jg-text);
     font-family: 'Sora', system-ui, -apple-system, sans-serif;
@@ -91,8 +91,8 @@ body::before {
     border: 1px solid var(--jg-border);
     border-radius: var(--jg-radius);
     box-shadow:
-        0 18px 48px rgba(2, 6, 23, 0.42),
-        inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        0 20px 52px rgba(2, 6, 23, 0.52),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .glass-card-sm {
@@ -192,7 +192,7 @@ body::before {
 
 /* ── Form inputs ─────────────────────────────────────────────────────────── */
 .jg-input {
-    background: linear-gradient(135deg, rgba(10, 17, 31, 0.92), rgba(17, 24, 39, 0.88));
+    background: linear-gradient(135deg, rgba(13, 21, 38, 0.98), rgba(24, 34, 54, 0.95));
     border: 1px solid var(--jg-border-strong);
     border-radius: var(--jg-radius-sm);
     color: var(--jg-text);
@@ -221,7 +221,7 @@ body::before {
 
 .jg-input::placeholder {
     color: var(--jg-text-muted);
-    opacity: 0.6;
+    opacity: 0.8;
 }
 
 select.jg-input {
@@ -419,7 +419,7 @@ select.jg-input optgroup {
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     border-radius: var(--jg-radius-sm);
-    color: var(--jg-text-muted);
+    color: #c8d5ea;
     text-decoration: none;
     font-size: 0.9rem;
     font-weight: 500;
@@ -464,9 +464,9 @@ select.jg-input optgroup {
 }
 
 .jg-nav-item:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(20, 184, 166, 0.06));
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(20, 184, 166, 0.14));
     color: var(--jg-text);
-    box-shadow: inset 0 0 0 1px var(--jg-border);
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
 }
 
 .jg-nav-item:hover::before {
@@ -474,11 +474,11 @@ select.jg-input optgroup {
 }
 
 .jg-nav-item.active {
-    background: linear-gradient(135deg, rgba(9, 17, 31, 0.9), rgba(15, 118, 110, 0.12));
+    background: linear-gradient(135deg, rgba(17, 28, 48, 0.95), rgba(15, 118, 110, 0.2));
     color: #f8fafc;
     box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-        0 12px 24px rgba(2, 6, 23, 0.32);
+        inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+        0 12px 24px rgba(2, 6, 23, 0.42);
 }
 
 .jg-nav-item.active::before {

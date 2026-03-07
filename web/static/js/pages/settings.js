@@ -14,6 +14,13 @@
         document.getElementById(`tab-${name}`)?.classList.add('active');
     }
 
+    function switchEmailTemplateSection(name) {
+        document.querySelectorAll('.email-template-section').forEach((section) => section.classList.add('hidden'));
+        document.querySelectorAll('.email-submenu-btn').forEach((button) => button.classList.remove('active'));
+        document.getElementById(`email-section-${name}`)?.classList.remove('hidden');
+        document.querySelector(`.email-submenu-btn[data-email-section-target="${name}"]`)?.classList.add('active');
+    }
+
     function toggleLDAPFields() {
         const enabled = document.getElementById('ldap-enabled')?.checked;
         const fields = document.getElementById('ldap-fields');
@@ -643,6 +650,10 @@
             btn.addEventListener('click', () => switchTab(btn.dataset.tabTarget || 'general'));
         });
 
+        document.querySelectorAll('[data-email-section-target]').forEach((btn) => {
+            btn.addEventListener('click', () => switchEmailTemplateSection(btn.dataset.emailSectionTarget || 'onboarding'));
+        });
+
         [
             ['form-general', 'general'],
             ['form-invitation-profile', 'invitation-profile'],
@@ -670,6 +681,7 @@
 
         await loadInvitationProfileLookups();
         await loadSettings();
+        switchEmailTemplateSection('onboarding');
         attachTemplatePreviewButtons();
         await loadBackups();
 
