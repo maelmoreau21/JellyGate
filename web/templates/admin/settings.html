@@ -1,5 +1,7 @@
 {{/* settings.html — Page de configuration admin JellyGate */}}
 {{/* 4 onglets : Général, LDAP, SMTP, Webhooks — Dark Theme + Glassmorphism */}}
+{{ template "layouts/base.html" . }}
+
 {{ define "title" }}{{ .T "nav_settings" }} — JellyGate{{ end }}
 
 {{ define "body" }}
@@ -32,6 +34,13 @@
           d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
       </svg>
       <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
+    </a>
+    <a href="/admin/messages" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M8 10h8m-8 4h5m-7 7l-4 3V5a2 2 0 012-2h16a2 2 0 012 2v14a2 2 0 01-2 2H8z" />
+      </svg>
+      <span class="jg-nav-label">{{ .T "messages_title" }}</span>
     </a>
     {{ if .IsAdmin }}
     <a href="/admin/users" class="jg-nav-item">
@@ -72,6 +81,13 @@
           d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
       </svg>
       <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
+    </a>
+    <a href="/admin/i18n" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+          d="M3 5h12M9 3v2m1 13 4-10 4 10m-1-3h-6M3 19h12" />
+      </svg>
+      <span class="jg-nav-label">{{ .T "i18n_report_title" }}</span>
     </a>
     {{ end }}
   </nav>
@@ -925,6 +941,7 @@
 <script src="/static/js/pages/settings.js"></script>
 {{ end }}
 
+{{ define "head" }}
 <style>
   .tab-btn {
     color: rgb(148 163 184);

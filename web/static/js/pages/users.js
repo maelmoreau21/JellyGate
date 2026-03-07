@@ -274,11 +274,16 @@
 
             const summary = document.getElementById('bulk-summary');
             const selectedUsers = allUsers.filter((user) => selectedIds.has(user.id));
-            const firstUsers = selectedUsers.slice(0, 3).map((user) => user.username).join(', ');
-            const hiddenCount = selectedUsers.length > 3 ? ` et ${selectedUsers.length - 3} autre(s)` : '';
-            const actionTxt = action ? actionLabel(action) : i18n.bulkChooseAction;
-            const validationTxt = validationError ? `${i18n.bulkBlockedPrefix}: ${validationError}.` : `${i18n.bulkValidPrefix}: ${i18n.bulkReadySuffix}.`;
-            summary.textContent = `${actionTxt} ${i18n.bulkActionOn} ${selectedUsers.length} [${firstUsers || i18n.bulkNone}${hiddenCount}]. ${validationTxt}`;
+            if (selectedUsers.length === 0) {
+                summary.textContent = i18n.bulkSelectOne;
+            } else if (!action) {
+                summary.textContent = i18n.bulkChooseAction;
+            } else {
+                const firstUsers = selectedUsers.slice(0, 3).map((user) => user.username).join(', ');
+                const hiddenCount = selectedUsers.length > 3 ? ` +${selectedUsers.length - 3}` : '';
+                const header = `${actionLabel(action)} (${selectedUsers.length}) [${firstUsers || i18n.bulkNone}${hiddenCount}]`;
+                summary.textContent = validationError ? `${header}. ${validationError}` : `${header}. ${i18n.bulkConfigReady}`;
+            }
 
             const applyButton = document.getElementById('bulk-apply');
             const isReady = !validationError;

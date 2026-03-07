@@ -3,9 +3,82 @@
 {{ define "title" }}{{ .T "i18n_report_title" }} — JellyGate{{ end }}
 
 {{ define "body" }}
+<aside id="sidebar" class="jg-sidebar">
+  <div class="jg-sidebar-logo">
+    <svg viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="14" fill="url(#grd)" />
+      <defs>
+        <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
+          <stop stop-color="#8b5cf6" />
+          <stop offset="1" stop-color="#6366f1" />
+        </linearGradient>
+      </defs>
+      <path d="M10 22V10l12 6-12 6z" fill="#fff" />
+    </svg>
+    <span>JellyGate</span>
+  </div>
+
+  <nav class="jg-nav">
+    <a href="/admin/" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+      <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
+    </a>
+    <a href="/admin/my-account" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+      <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
+    </a>
+    <a href="/admin/messages" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8m-8 4h5m-7 7l-4 3V5a2 2 0 012-2h16a2 2 0 012 2v14a2 2 0 01-2 2H8z" /></svg>
+      <span class="jg-nav-label">{{ .T "messages_title" }}</span>
+    </a>
+    {{ if .IsAdmin }}
+    <a href="/admin/users" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+      <span class="jg-nav-label">{{ .T "nav_users" }}</span>
+    </a>
+    <a href="/admin/automation" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+      <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
+    </a>
+    {{ end }}
+    {{ if .CanInvite }}
+    <a href="/admin/invitations" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+      <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
+    </a>
+    {{ end }}
+    {{ if .IsAdmin }}
+    <a href="/admin/settings" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
+      <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
+    </a>
+    <a href="/admin/logs" class="jg-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+      <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
+    </a>
+    <a href="/admin/i18n" class="jg-nav-item active">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1 13 4-10 4 10m-1-3h-6M3 19h12" /></svg>
+      <span class="jg-nav-label">{{ .T "i18n_report_title" }}</span>
+    </a>
+    {{ end }}
+  </nav>
+
+  <div class="jg-sidebar-footer">
+    <form method="POST" action="/admin/logout">
+      <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+        <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
+      </button>
+    </form>
+  </div>
+</aside>
+
 <main class="jg-main">
   <div class="max-w-6xl mx-auto space-y-6">
     <section class="glass-card p-6 md:p-7">
+      <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+      </button>
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <p class="text-[11px] uppercase tracking-[0.32em] text-teal-300/80">JellyGate</p>

@@ -33,6 +33,14 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
+        <a href="/admin/messages" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M8 10h8m-8 4h5m-7 7l-4 3V5a2 2 0 012-2h16a2 2 0 012 2v14a2 2 0 01-2 2H8z" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "messages_title" }}</span>
+        </a>
+        {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item active">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -46,6 +54,8 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
         </a>
+        {{ end }}
+        {{ if .CanInvite }}
         <a href="/admin/invitations" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -53,6 +63,8 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
         </a>
+        {{ end }}
+        {{ if .IsAdmin }}
         <a href="/admin/settings" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -68,6 +80,14 @@
             </svg>
             <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
         </a>
+        <a href="/admin/i18n" class="jg-nav-item">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M3 5h12M9 3v2m1 13 4-10 4 10m-1-3h-6M3 19h12" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "i18n_report_title" }}</span>
+        </a>
+        {{ end }}
     </nav>
     <div class="jg-sidebar-footer">
         <form method="POST" action="/admin/logout">

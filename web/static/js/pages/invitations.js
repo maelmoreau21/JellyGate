@@ -197,23 +197,10 @@
                     : (disableAfter > 0 ? fmt(i18n.disableAfterDays, { n: disableAfter }) : i18n.unlimited);
                 const deleteLabel = deleteAfter > 0 ? fmt(i18n.deleteAfterDays, { n: deleteAfter }) : i18n.noDeletePlanned;
                 const inviteRole = rawProfile.can_invite ? i18n.roleCanInvite : i18n.roleStandard;
-                const pwRules = [];
-                if (Number(rawProfile.password_min_length || 0) > 0) pwRules.push(`min ${rawProfile.password_min_length}`);
-                if (Number(rawProfile.password_max_length || 0) > 0) pwRules.push(`max ${rawProfile.password_max_length}`);
-                if (rawProfile.password_require_upper) pwRules.push('MAJ');
-                if (rawProfile.password_require_lower) pwRules.push('min');
-                if (rawProfile.password_require_digit) pwRules.push('chiffre');
-                if (rawProfile.password_require_special) pwRules.push('special');
-                const unMin = Number(rawProfile.username_min_length || 0);
-                const unMax = Number(rawProfile.username_max_length || 0);
-                if (unMin > 0 || unMax > 0) {
-                    pwRules.push(`user ${unMin || 3}-${unMax || 32}`);
-                }
-                const policyLabel = pwRules.length > 0 ? pwRules.join(', ') : i18n.defaultPolicy;
                 const groupLabel = groupName ? fmt(i18n.groupPrefix, { group: groupName }) : i18n.groupDefault;
-                const userExp = `<div>${JG.esc(userExpiry)} · ${JG.esc(inviteRole)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)} · ${JG.esc(policyLabel)}</div>`;
+                const userExp = `<div>${JG.esc(userExpiry)} · ${JG.esc(inviteRole)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)}</div>`;
 
-                const usesStr = invitation.max_uses > 0 ? `${invitation.used_count} / ${invitation.max_uses}` : `${invitation.used_count} / ∞`;
+                const usesStr = invitation.max_uses > 0 ? `${invitation.used_count} / ${invitation.max_uses}` : `${invitation.used_count} / ${i18n.unlimited}`;
                 const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
                 const overBadge = isOver ? `<span class="ml-2 badge badge-danger">${JG.esc(i18n.badgeExpired)}</span>` : `<span class="ml-2 badge badge-success">${JG.esc(i18n.badgeActive)}</span>`;
 
