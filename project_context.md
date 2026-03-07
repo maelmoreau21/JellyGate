@@ -19,7 +19,7 @@ Le projet remplace l'approche jfa-go par une intégration plus directe avec Jell
 
 | Domaine | Technologie |
 |---|---|
-| Backend | Go 1.22+, net/http, Chi v5 |
+| Backend | Go 1.26+, net/http, Chi v5 |
 | Templates | `html/template` |
 | Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
 | Base | SQLite (`modernc.org/sqlite`) ou PostgreSQL |

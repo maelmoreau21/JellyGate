@@ -5,7 +5,7 @@
 # =============================================================================
 
 # ── Étape 1 : Compilation du binaire Go ─────────────────────────────────────
-FROM golang:1.25-alpine AS builder
+FROM golang:1.26.1-alpine AS builder
 
 # Arguments injectés automatiquement par Docker Buildx pour le cross-compile
 ARG TARGETOS=linux
@@ -38,7 +38,7 @@ RUN CGO_ENABLED=0 \
       ./cmd/jellygate
 
 # ── Étape 2 : Image finale minimale ─────────────────────────────────────────
-FROM alpine:3.19
+FROM alpine:3.21
 
 # Certificats TLS (nécessaires pour LDAPS et SMTP TLS)
 RUN apk add --no-cache ca-certificates tzdata wget
