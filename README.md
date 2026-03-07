@@ -1,265 +1,184 @@
 [![Docker Build](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml)
 [![GHCR Image](https://img.shields.io/badge/GHCR-ghcr.io%2Fmaelmoreau21%2Fjellygate-blue?logo=github)](https://ghcr.io/maelmoreau21/jellygate)
 
-<h1 align="center">🎬 JellyGate</h1>
+<h1 align="center">JellyGate</h1>
 
 <p align="center">
-  <strong>Gestionnaire d'invitations, de récupération de mots de passe et d'utilisateurs pour Jellyfin.</strong><br>
-  Alternative moderne à <a href="https://github.com/hrfee/jfa-go">jfa-go</a>, avec support natif de <strong>Active Directory</strong> (LDAP).
+  <strong>Portail d'invitations, de récupération de mot de passe et de gestion d'utilisateurs pour Jellyfin, avec LDAP/Active Directory natif.</strong>
 </p>
 
----
+## Vue d'ensemble
 
-## ✨ Fonctionnalités
+JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-hosted:
 
-| Fonctionnalité | Description |
+- invitations avec quotas, expiration, profils et automatisation
+- création de comptes en mode hybride LDAP + Jellyfin ou LDAP only
+- récupération de mot de passe unifiée
+- administration web complète
+- notifications email et webhooks
+- audit logs exploitables et exportables
+- i18n pilotée par fichiers JSON et rapport qualité intégré
+
+## Fonctionnalités principales
+
+| Domaine | Détail |
 |---|---|
-| 🎫 **Invitations** | Liens d'invitation avec quotas, expiration et profils Jellyfin personnalisés |
-| 🔐 **Active Directory natif** | Création automatique des comptes dans l'annuaire LDAP/LDAPS (unicodePwd UTF-16LE) |
-| 👥 **Gestion utilisateurs** | Dashboard admin : activation, désactivation, suppression (AD + Jellyfin + SQLite) |
-| 🔑 **Réinitialisation MDP** | Flux sécurisé par email avec reset simultané AD + Jellyfin |
-| 📨 **Notifications** | Discord, Telegram et Matrix en temps réel (webhooks asynchrones) |
-| 🌍 **i18n** | Français / Anglais avec détection automatique (cookie, `Accept-Language`, défaut) |
-| 🎨 **UI moderne** | Dark theme, glassmorphism, Tailwind CSS, animations fluides |
-| 🐳 **Docker multi-arch** | Images `amd64` + `arm64` (~15 Mo), CI/CD via GitHub Actions |
-| 📧 **Emails** | Templates HTML modernes (bienvenue, reset, invitation) via SMTP |
-| 🔒 **Sécurité** | Sessions HMAC-SHA256, cookies HttpOnly/Secure/SameSite, auth déléguée à Jellyfin |
+| Invitations | Liens uniques, expiration, quotas, groupe cible, preset Jellyfin, provisioning tiers |
+| Comptes | Création atomique LDAP + Jellyfin + SQL, rollback en cas d'échec |
+| Utilisateurs | Listing, toggle, suppression, synchronisation Jellyfin, profil utilisateur |
+| Reset mot de passe | Demande publique, lien/token, mise à jour Jellyfin + LDAP |
+| Sécurité | CSRF sur routes admin mutables, rate limiting, headers HTTP centralisés, cookies signés |
+| Audit | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
+| i18n | `web/i18n/*.json`, fallback `lang demandée -> en -> fr`, check CI, rapport admin |
+| Intégrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, Ombi, JellyTulli |
+| Base de données | SQLite par défaut, PostgreSQL supporté |
 
-## 🏗️ Architecture
+## Langues
 
-```
-JellyGate
-│
-├── Jellyfin (API REST) ←── Authentification admin + gestion utilisateurs
-├── Active Directory (LDAPS) ←── Création comptes + mots de passe (unicodePwd)
-├── SQLite (local)      ←── Invitations, utilisateurs, logs, tokens
-├── SMTP                ←── Emails transactionnels
-└── Webhooks            ←── Discord / Telegram / Matrix
-```
+Le changement de langue fonctionne selon cette priorité:
 
-## 🚀 Démarrage rapide
+1. cookie `lang`
+2. header `Accept-Language`
+3. paramètre global `default_lang`
+
+Le sélecteur est disponible dans l'interface admin et reste visible sur les pages publiques. Le moteur de rendu applique ensuite les traductions côté serveur sur chaque requête.
+
+Note: plusieurs locales non `fr`/`en` existent déjà, mais certaines chaînes restent encore proches de l'anglais dans les fichiers JSON. Le mécanisme fonctionne, mais la qualité de traduction dépend du contenu de chaque locale.
+
+## Sécurité actuellement en place
+
+- authentification admin déléguée à Jellyfin
+- session signée HMAC-SHA256
+- token CSRF pour les routes admin d'écriture
+- rate limiting mémoire sur `/admin/login`, `/invite/*`, `/reset/request`, `/reset/*`
+- headers `Content-Security-Policy`, `Strict-Transport-Security` quand HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`
+- journaux d'audit avec `request_id`
+
+Reste à durcir côté production:
+
+- cookies `Secure` derrière reverse proxy TLS non généralisés partout
+- secrets LDAP/SMTP/Webhooks encore stockés en clair dans `settings`
+- PostgreSQL TLS à imposer explicitement en prod
+
+## Docker et publication GHCR
+
+Le workflow GitHub Actions publie une image multi-arch pour:
+
+- `linux/amd64`
+- `linux/arm64`
+
+Tags publiés:
+
+- `latest` sur la branche par défaut
+- `vX.Y.Z` sur les tags Git semver
+
+Il n'y a plus de tags `sha-*`, `vX.Y` ou `vX`.
+
+## Démarrage rapide
 
 ### 1. Prérequis
 
-- Docker et Docker Compose installés
-- Un serveur **Jellyfin** accessible avec une **clé API**
-- Un serveur **Active Directory** 
-- Un serveur **SMTP** fonctionnel
+- Docker
+- une instance Jellyfin avec clé API admin
+- LDAP/Active Directory si tu utilises le mode annuaire
+- SMTP si tu veux les emails transactionnels
 
 ### 2. Configuration
 
 ```bash
-# Cloner le dépôt
 git clone https://github.com/maelmoreau21/JellyGate.git
 cd JellyGate
-
-# Copier et éditer la configuration
 cp .env.example .env
-nano .env
+```
 
-# Générer la clé secrète
-echo "JELLYGATE_SECRET_KEY=$(openssl rand -hex 32)" >> .env
+Variables minimales:
+
+```bash
+JELLYGATE_SECRET_KEY=...
+JELLYFIN_URL=http://jellyfin:8096
+JELLYFIN_API_KEY=...
 ```
 
 ### 3. Lancement
-
-```yaml
-# docker-compose.yml
-services:
-  jellygate:
-    image: ghcr.io/maelmoreau21/jellygate:latest
-    container_name: jellygate
-    restart: unless-stopped
-    ports:
-      - "8097:8097"
-    volumes:
-      - jellygate_data:/data
-    env_file:
-      - .env
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8097/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-
-volumes:
-  jellygate_data:
-    driver: local
-```
 
 ```bash
 docker compose up -d
 ```
 
-### 4. Connexion admin
-
-1. Accédez à `http://votre-ip:8097/admin/login`
-2. Connectez-vous avec vos **identifiants Jellyfin administrateur**
-3. JellyGate vérifie vos identifiants via l'API Jellyfin et crée une session sécurisée
-
-> **Note** : JellyGate n'a **pas de base d'utilisateurs admin propre**. L'authentification est entièrement déléguée à Jellyfin. Tout utilisateur Jellyfin ayant `Policy.IsAdministrator = true` peut accéder au dashboard.
-
-### 5. Créer une invitation
-
-1. Dans le dashboard, créez une nouvelle invitation
-2. Partagez le lien généré (`http://votre-ip:8097/invite/{code}`)
-3. L'utilisateur remplit le formulaire → son compte est créé atomiquement dans **AD + Jellyfin + base SQL**
-
-## ⚙️ Variables d'environnement
-
-Voir [`.env.example`](.env.example) pour la liste complète.
-
-> LDAP, SMTP et Webhooks se configurent désormais dans l'interface admin (stockage SQLite), pas via `.env`.
-
-| Variable | Requis | Défaut | Description |
-|---|---|---|---|
-| `JELLYGATE_SECRET_KEY` | ✅ | — | Clé de signature des sessions (min. 32 car.) |
-| `JELLYFIN_URL` | ✅ | — | URL du serveur Jellyfin |
-| `JELLYFIN_API_KEY` | ✅ | — | Clé API Jellyfin |
-| `JELLYGATE_PORT` | ❌ | `8097` | Port d'écoute |
-| `JELLYGATE_BASE_URL` | ❌ | `http://localhost:8097` | URL publique JellyGate |
-| `JELLYGATE_DATA_DIR` | ❌ | `/data` | Dossier de persistance |
-| `JELLYGATE_DEFAULT_LANG` | ❌ | `fr` | Langue par défaut (`fr`, `en`, `de`, `es`, `it`, `nl`, `pl`, `pt-BR`, `ru`, `zh`) |
-| `DB_TYPE` | ❌ | `sqlite` | Type de base SQL (`sqlite` ou `postgres`) |
-| `DB_HOST` | ❌ | `postgres` | Hôte PostgreSQL (si `DB_TYPE=postgres`) |
-| `DB_PORT` | ❌ | `5432` | Port PostgreSQL |
-| `DB_USER` | ❌ | `jellygate` | Utilisateur PostgreSQL |
-| `DB_PASSWORD` | ❌ | — | Mot de passe PostgreSQL |
-| `DB_NAME` | ❌ | `jellygate` | Nom de base PostgreSQL |
-| `DB_SSLMODE` | ❌ | `disable` | SSL mode PostgreSQL |
-| `JELLYSEERR_URL` | ❌ | — | URL Jellyseerr (provisionnement + fallback liens) |
-| `JELLYSEERR_API_KEY` | ❌ | — | Clé API Jellyseerr |
-| `OMBI_URL` | ❌ | — | URL Ombi (provisionnement) |
-| `OMBI_API_KEY` | ❌ | — | Clé API Ombi |
-| `JELLYTULLI_URL` | ❌ | — | URL JellyTulli (raccourcis UI + templates emails) |
-
-## 🗄️ SQLite ou PostgreSQL
-
-- Mode simple par défaut: `DB_TYPE=sqlite`
-- Mode scalable: `DB_TYPE=postgres` + variables `DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME`
-
-Le `docker-compose.yml` fournit maintenant les deux services (`jellygate` + `postgres`) et des variables commentées prêtes pour la bascule.
-
-Pour une bascule sans toucher au compose principal, utilisez le fichier dédié:
+Pour PostgreSQL:
 
 ```bash
 docker compose -f docker-compose.postgres.yml up -d
 ```
 
-En mode PostgreSQL, l'onglet Sauvegardes masque automatiquement les actions SQLite natives et affiche une guidance `pg_dump`/`pg_restore`.
+### 4. Connexion admin
 
-## 🔐 Modes LDAP
+1. ouvre `/admin/login`
+2. connecte-toi avec un compte Jellyfin administrateur
+3. JellyGate crée la session et charge la langue préférée utilisateur si elle existe
 
-Dans `Admin > Paramètres > LDAP`, tu peux maintenant choisir:
+## Variables d'environnement utiles
 
-- `Hybride (LDAP + Jellyfin)` : création du compte dans LDAP puis Jellyfin (comportement historique).
-- `LDAP only` : création uniquement dans LDAP (pas de création via API Jellyfin).
+| Variable | Requis | Défaut | Description |
+|---|---|---|---|
+| `JELLYGATE_SECRET_KEY` | Oui | - | Clé de signature de session |
+| `JELLYGATE_PORT` | Non | `8097` | Port HTTP |
+| `JELLYGATE_BASE_URL` | Non | `http://localhost:8097` | URL publique |
+| `JELLYGATE_DATA_DIR` | Non | `/data` | Répertoire de persistance |
+| `JELLYGATE_DEFAULT_LANG` | Non | `fr` | Langue par défaut |
+| `JELLYFIN_URL` | Oui | - | URL Jellyfin |
+| `JELLYFIN_API_KEY` | Oui | - | Clé API Jellyfin |
+| `DB_TYPE` | Non | `sqlite` | `sqlite` ou `postgres` |
+| `DB_HOST` | Non | `postgres` | Hôte PostgreSQL |
+| `DB_PORT` | Non | `5432` | Port PostgreSQL |
+| `DB_USER` | Non | `jellygate` | Utilisateur PostgreSQL |
+| `DB_PASSWORD` | Non | - | Mot de passe PostgreSQL |
+| `DB_NAME` | Non | `jellygate` | Base PostgreSQL |
+| `DB_SSLMODE` | Non | `disable` | Mode SSL PostgreSQL |
+| `JELLYSEERR_URL` | Non | - | URL Jellyseerr |
+| `JELLYSEERR_API_KEY` | Non | - | Clé API Jellyseerr |
+| `OMBI_URL` | Non | - | URL Ombi |
+| `OMBI_API_KEY` | Non | - | Clé API Ombi |
+| `JELLYTULLI_URL` | Non | - | URL JellyTulli |
 
-Groupes LDAP configurables:
+LDAP, SMTP, webhooks et templates email se configurent ensuite depuis l'admin et sont stockés en base.
 
-- `Groupe LDAP utilisateurs` (ex: `jellyfin`)
-- `Groupe LDAP parrainage` (ex: `jellyfin-Parrainage`)
-- `Groupe LDAP administrateurs` (ex: `jellyfin-administrateur`)
+## Structure du projet
 
-En `LDAP only`, JellyGate stocke l'utilisateur localement sans `jellyfin_id` puis rattache automatiquement le compte quand Jellyfin fournit un ID (première connexion/activation côté Jellyfin).
+```text
+cmd/
+  i18ncheck/         # Vérification i18n pour CI
+  jellygate/         # Entrée principale
+internal/
+  backup/
+  config/
+  database/
+  handlers/
+  i18nreport/        # Rapport i18n
+  integrations/
+  jellyfin/
+  ldap/
+  mail/
+  middleware/
+  notify/
+  render/
+  scheduler/
+  session/
+web/
+  i18n/
+  static/
+  templates/
+.github/workflows/
+```
 
-## 🏠 Mode Home Server (Groupes + Expiration + Provisioning)
-
-### 1. Activer Jellyseerr/Ombi (optionnel)
-
-Ajoutez dans `.env` au moins un couple URL + API key :
+## Vérifications utiles
 
 ```bash
-JELLYSEERR_URL=http://jellyseerr:5055
-JELLYSEERR_API_KEY=...
-
-# ou
-OMBI_URL=http://ombi:3579
-OMBI_API_KEY=...
+go build ./...
+go test ./...
+go run ./cmd/i18ncheck
 ```
 
-Si ces variables sont absentes, l'inscription continue normalement sans provisioning tiers.
+## Licence
 
-Pour les liens publics (emails + raccourcis UI), configurez dans `Admin > Paramètres > Général`:
-
-- URL publique Jellyfin
-- URL publique Jellyseerr
-- URL publique JellyTulli
-
-### 2. Configurer les presets et mappings de groupes
-
-1. Ouvrez `Admin > Automatisation`.
-2. Créez/éditez un preset Jellyfin (bibliothèques, remote access, bitrate, etc.).
-3. Renseignez au besoin `disable_after_days` et `delete_after_days`.
-4. Dans `Mapping de groupes`, liez un `group_name` à un `policy_preset_id`.
-5. Pour une source LDAP, renseignez aussi le DN du groupe LDAP.
-
-### 3. Créer une invitation alignée sur le groupe
-
-Dans `Admin > Invitations`, renseignez :
-
-- `group_name` (ex: `famille`, `amis`, `kids`)
-- `disable_after_days` (désactivation auto)
-- `delete_after_days` (suppression auto)
-
-À la validation de l'invitation, JellyGate applique le preset mappé, enregistre les dates d'expiration, et provisionne Jellyseerr/Ombi si activé.
-
-## 🧪 Test E2E (5 minutes)
-
-1. Définissez un mapping `kids -> limited` dans `Admin > Automatisation`.
-2. Créez une invitation avec `group_name=kids`, `disable_after_days=2`, `delete_after_days=5`.
-3. Inscrivez un compte test via le lien d'invitation.
-4. Vérifiez dans `Admin > Utilisateurs` : colonne groupe = `kids`.
-5. Vérifiez dans Jellyfin : la policy du compte correspond au preset `limited`.
-6. Vérifiez les logs admin : présence de l'action `invite.integration.provisioned` si Jellyseerr/Ombi est configuré.
-
-Résultat attendu : utilisateur créé et mappé correctement, expiration planifiée, provisioning tiers effectué sans bloquer le flux d'inscription.
-
-## 🛠️ Stack technique
-
-| Composant | Technologie |
-|---|---|
-| Backend | Go 1.22 + Chi v5 |
-| Base de données | SQLite (`modernc.org/sqlite`) ou PostgreSQL (`pgx`) |
-| LDAP | `go-ldap/ldap/v3` (LDAPS, unicodePwd) |
-| Email | `wneessen/go-mail` (STARTTLS / TLS) |
-| Frontend | HTML/CSS/JS vanilla + Tailwind CDN |
-| Conteneurisation | Docker multi-stage (~15 Mo), Buildx multi-arch |
-| CI/CD | GitHub Actions → GHCR |
-
-## 📂 Structure du projet
-
-```
-JellyGate/
-├── cmd/jellygate/         # Point d'entrée Go
-├── internal/
-│   ├── config/            # Chargement des variables d'environnement
-│   ├── database/          # SQLite (migrations, CRUD)
-│   ├── handlers/          # Handlers HTTP (auth, invitations, admin, reset)
-│   ├── jellyfin/          # Client API Jellyfin
-│   ├── ldap/              # Client LDAPS (Active Directory)
-│   ├── mail/              # Client SMTP (go-mail)
-│   ├── middleware/        # Auth, i18n, rate limiting
-│   ├── notify/            # Webhooks (Discord, Telegram, Matrix)
-│   ├── render/            # Moteur de templates HTML + i18n
-│   └── session/           # Gestion des sessions (HMAC-SHA256)
-├── web/
-│   ├── i18n/              # Traductions (fr.json, en.json)
-│   ├── static/            # CSS, JS
-│   └── templates/         # Templates HTML (Go html/template)
-├── .github/workflows/     # CI/CD
-├── Dockerfile             # Multi-stage, multi-arch
-├── docker-compose.yml
-└── .env.example
-```
-
-## 📄 Licence
-
-Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
-
----
-
-<p align="center">
-  <sub>Construit avec ❤️ pour la communauté Jellyfin</sub>
-</p>
+MIT

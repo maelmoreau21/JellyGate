@@ -16,11 +16,13 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
 	"net/http"
+	netmail "net/mail"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,6 +32,7 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	"github.com/maelmoreau21/JellyGate/internal/i18nreport"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
@@ -86,6 +89,8 @@ type adminUserRecord struct {
 	ID              int64
 	Username        string
 	Email           string
+	PendingEmail    string
+	EmailVerified   bool
 	JellyfinID      string
 	LdapDN          string
 	GroupName       string
@@ -722,6 +727,8 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	var (
 		id              int64
 		email           sql.NullString
+		pendingEmail    sql.NullString
+		emailVerified   bool
 		contactDiscord  sql.NullString
 		contactTelegram sql.NullString
 		preferredLang   string
@@ -736,6 +743,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	err := h.db.QueryRow(
 		`SELECT id, email, contact_discord, contact_telegram,
+		        pending_email, email_verified,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram,
 		        access_expires_at, created_at
@@ -746,6 +754,8 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		&email,
 		&contactDiscord,
 		&contactTelegram,
+		&pendingEmail,
+		&emailVerified,
 		&preferredLang,
 		&notifyExpiry,
 		&notifyEvents,
@@ -770,6 +780,8 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 			"id":                     id,
 			"username":               sess.Username,
 			"email":                  email.String,
+			"pending_email":          pendingEmail.String,
+			"email_verified":         emailVerified,
 			"contact_discord":        contactDiscord.String,
 			"contact_telegram":       contactTelegram.String,
 			"preferred_lang":         preferredLang,
@@ -800,7 +812,10 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
+		userID          int64
 		currentEmail    sql.NullString
+		currentPending  sql.NullString
+		emailVerified   bool
 		currentDiscord  sql.NullString
 		currentTelegram sql.NullString
 		preferredLang   string
@@ -811,13 +826,16 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		optInTelegram   bool
 	)
 	err := h.db.QueryRow(
-		`SELECT email, contact_discord, contact_telegram,
+		`SELECT id, email, pending_email, email_verified, contact_discord, contact_telegram,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram
 		 FROM users WHERE jellyfin_id = ?`,
 		sess.UserID,
 	).Scan(
+		&userID,
 		&currentEmail,
+		&currentPending,
+		&emailVerified,
 		&currentDiscord,
 		&currentTelegram,
 		&preferredLang,
@@ -833,8 +851,32 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newEmail := strings.TrimSpace(currentEmail.String)
+	newPendingEmail := strings.TrimSpace(currentPending.String)
+	newEmailVerified := emailVerified
+	shouldSendVerification := false
 	if req.Email != nil {
-		newEmail = strings.TrimSpace(*req.Email)
+		requestedEmail := strings.TrimSpace(*req.Email)
+		if requestedEmail != "" {
+			if _, err := netmail.ParseAddress(requestedEmail); err != nil {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Adresse email invalide"})
+				return
+			}
+		}
+
+		switch {
+		case requestedEmail == "":
+			newEmail = ""
+			newPendingEmail = ""
+			newEmailVerified = false
+		case strings.EqualFold(requestedEmail, newEmail):
+			newPendingEmail = ""
+			if !emailVerified {
+				shouldSendVerification = true
+			}
+		default:
+			newPendingEmail = requestedEmail
+			shouldSendVerification = true
+		}
 	}
 	newDiscord := strings.TrimSpace(currentDiscord.String)
 	if req.ContactDiscord != nil {
@@ -880,12 +922,15 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.db.Exec(
 		`UPDATE users
-		 SET email = ?, contact_discord = ?, contact_telegram = ?,
+		 SET email = ?, pending_email = ?, email_verified = ?, contact_discord = ?, contact_telegram = ?,
 		     preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
 		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?,
+		     email_verification_sent_at = CASE WHEN ? THEN NULL ELSE email_verification_sent_at END,
 		     updated_at = datetime('now')
 		 WHERE jellyfin_id = ?`,
 		newEmail,
+		newPendingEmail,
+		newEmailVerified,
 		newDiscord,
 		newTelegram,
 		newPreferredLang,
@@ -894,11 +939,22 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		newOptInEmail,
 		newOptInDiscord,
 		newOptInTelegram,
+		req.Email != nil,
 		sess.UserID,
 	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise à jour des préférences"})
 		return
+	}
+
+	message := "Profil mis à jour"
+	if shouldSendVerification {
+		if err := sendEmailVerification(h.cfg, h.db, h.mailer, userID, true); err != nil {
+			slog.Error("Erreur envoi verification email apres mise a jour profil", "user_id", userID, "error", err)
+			message = "Profil mis à jour, mais l'email de vérification n'a pas pu être envoyé"
+		} else {
+			message = "Profil mis à jour, email de vérification envoyé"
+		}
 	}
 
 	if req.PreferredLang != nil {
@@ -941,9 +997,11 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Profil mis à jour",
+		Message: message,
 		Data: map[string]interface{}{
 			"email":                  newEmail,
+			"pending_email":          newPendingEmail,
+			"email_verified":         newEmailVerified && newPendingEmail == "",
 			"contact_discord":        newDiscord,
 			"contact_telegram":       newTelegram,
 			"preferred_lang":         newPreferredLang,
@@ -1044,6 +1102,29 @@ func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// I18nReportPage affiche la page du rapport de traduction.
+func (h *AdminHandler) I18nReportPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td.AdminUsername = sess.Username
+	td.IsAdmin = true
+	td.CanInvite = true
+	if err := h.renderer.Render(w, "admin/i18n.html", td); err != nil {
+		slog.Error("Erreur rendu i18n page", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+	}
+}
+
+// I18nReportAPI retourne un rapport de qualite des traductions.
+func (h *AdminHandler) I18nReportAPI(w http.ResponseWriter, r *http.Request) {
+	report, err := i18nreport.Generate("web/templates", "web/i18n", "en")
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur generation rapport i18n"})
+		return
+	}
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: report})
+}
+
 // ── GET /admin/api/logs ─────────────────────────────────────────────────────
 
 // AuditLogResponse représente une ligne formatée du journal d'audit JSON.
@@ -1052,80 +1133,120 @@ type AuditLogResponse struct {
 	Action    string `json:"action"`
 	Actor     string `json:"actor"`
 	Target    string `json:"target"`
+	RequestID string `json:"request_id,omitempty"`
 	Details   string `json:"details"`
 	CreatedAt string `json:"created_at"`
 }
 
 // ── GET /admin/api/logs ─────────────────────────────────────────────────────
 
-// LogsAPI retourne le journal d'audit en JSON avec pagination, recherche et tri.
+// LogsAPI retourne le journal d'audit en JSON avec filtres avances et export CSV/JSON.
 func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
-	// Récupérer les paramètres de pagination/recherche
-	pageStr := r.URL.Query().Get("page")
-	limitStr := r.URL.Query().Get("limit")
-	search := r.URL.Query().Get("search")
-	sortCol := r.URL.Query().Get("sort")
-	orderDir := r.URL.Query().Get("order")
+	q := r.URL.Query()
 
-	// Valeurs par défaut
 	page := 1
 	limit := 50
-
-	if p, err := strconv.Atoi(pageStr); err == nil && p > 0 {
+	if p, err := strconv.Atoi(q.Get("page")); err == nil && p > 0 {
 		page = p
 	}
-	if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+	if l, err := strconv.Atoi(q.Get("limit")); err == nil && l > 0 {
 		limit = l
 	}
-	if limit > 500 { // Sécurité max
+	if limit > 500 {
 		limit = 500
 	}
 
-	// Tri par défaut
+	sortCol := strings.TrimSpace(q.Get("sort"))
 	if sortCol == "" {
 		sortCol = "created_at"
 	}
-	if orderDir == "" {
-		orderDir = "desc"
-	}
-
-	// Validation du tri pour éviter injections SQL
-	validCols := map[string]bool{"id": true, "action": true, "actor": true, "target": true, "created_at": true}
-	if !validCols[sortCol] {
-		sortCol = "created_at"
-	}
+	orderDir := strings.ToLower(strings.TrimSpace(q.Get("order")))
 	if orderDir != "asc" && orderDir != "desc" {
 		orderDir = "desc"
 	}
 
-	// Construction de la requête
-	var args []interface{}
-	whereClause := ""
-
-	if search != "" {
-		whereClause = "WHERE action LIKE ? OR actor LIKE ? OR target LIKE ? OR details LIKE ?"
-		searchTerm := "%" + search + "%"
-		args = append(args, searchTerm, searchTerm, searchTerm, searchTerm)
+	validCols := map[string]bool{"id": true, "action": true, "actor": true, "target": true, "created_at": true}
+	if !validCols[sortCol] {
+		sortCol = "created_at"
 	}
 
-	// 1. Compter le total des résultats
+	search := strings.TrimSpace(q.Get("search"))
+	actionFilter := strings.TrimSpace(q.Get("action"))
+	actorFilter := strings.TrimSpace(q.Get("actor"))
+	targetFilter := strings.TrimSpace(q.Get("target"))
+	resultFilter := strings.ToLower(strings.TrimSpace(q.Get("result")))
+	requestIDFilter := strings.TrimSpace(q.Get("request_id"))
+	fromDate := strings.TrimSpace(q.Get("from"))
+	toDate := strings.TrimSpace(q.Get("to"))
+	exportFmt := strings.ToLower(strings.TrimSpace(q.Get("export")))
+
+	whereParts := make([]string, 0, 10)
+	args := make([]interface{}, 0, 20)
+
+	if search != "" {
+		term := "%" + search + "%"
+		whereParts = append(whereParts, "(action LIKE ? OR actor LIKE ? OR target LIKE ? OR details LIKE ?)")
+		args = append(args, term, term, term, term)
+	}
+	if actionFilter != "" {
+		whereParts = append(whereParts, "action LIKE ?")
+		args = append(args, "%"+actionFilter+"%")
+	}
+	if actorFilter != "" {
+		whereParts = append(whereParts, "actor LIKE ?")
+		args = append(args, "%"+actorFilter+"%")
+	}
+	if targetFilter != "" {
+		whereParts = append(whereParts, "target LIKE ?")
+		args = append(args, "%"+targetFilter+"%")
+	}
+	if requestIDFilter != "" {
+		whereParts = append(whereParts, "details LIKE ?")
+		args = append(args, "%request_id="+requestIDFilter+"%")
+	}
+	if fromDate != "" {
+		whereParts = append(whereParts, "created_at >= ?")
+		args = append(args, fromDate+" 00:00:00")
+	}
+	if toDate != "" {
+		whereParts = append(whereParts, "created_at <= ?")
+		args = append(args, toDate+" 23:59:59")
+	}
+	if resultFilter != "" {
+		switch resultFilter {
+		case "success":
+			whereParts = append(whereParts, "(action LIKE ? OR action LIKE ? OR action LIKE ?)")
+			args = append(args, "%success%", "%created%", "%enabled%")
+		case "failure", "error":
+			whereParts = append(whereParts, "(action LIKE ? OR action LIKE ? OR action LIKE ?)")
+			args = append(args, "%failed%", "%error%", "%denied%")
+		}
+	}
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM audit_log %s", whereClause)
-	err := h.db.QueryRow(countQuery, args...).Scan(&total)
-	if err != nil {
+	if err := h.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
 		slog.Error("Erreur comptage des logs", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture base de données"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture base de donnees"})
 		return
 	}
 
-	// 2. Récupérer les données avec Pagination
-	offset := (page - 1) * limit
-	query := fmt.Sprintf("SELECT id, action, actor, target, details, created_at FROM audit_log %s ORDER BY %s %s LIMIT ? OFFSET ?", whereClause, sortCol, orderDir)
+	baseQuery := fmt.Sprintf("SELECT id, action, actor, target, details, created_at FROM audit_log %s ORDER BY %s %s", whereClause, sortCol, orderDir)
+	queryArgs := append([]interface{}{}, args...)
+	query := baseQuery
 
-	// Ajouter limit et offset aux arguments existants
-	args = append(args, limit, offset)
+	if exportFmt != "csv" && exportFmt != "json" {
+		offset := (page - 1) * limit
+		query += " LIMIT ? OFFSET ?"
+		queryArgs = append(queryArgs, limit, offset)
+	}
 
-	rows, err := h.db.Query(query, args...)
+	rows, err := h.db.Query(query, queryArgs...)
 	if err != nil {
 		slog.Error("Erreur lecture table audit_log", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur traitement journaux"})
@@ -1134,35 +1255,60 @@ func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type LogEntry struct {
-		ID        int    `json:"id"`
+		ID        int64  `json:"id"`
 		Action    string `json:"action"`
 		Actor     string `json:"actor"`
 		Target    string `json:"target"`
+		RequestID string `json:"request_id,omitempty"`
 		Details   string `json:"details"`
 		CreatedAt string `json:"created_at"`
 	}
 
-	var logs []LogEntry
+	logs := make([]LogEntry, 0)
 	for rows.Next() {
 		var l LogEntry
 		if err := rows.Scan(&l.ID, &l.Action, &l.Actor, &l.Target, &l.Details, &l.CreatedAt); err != nil {
 			continue
 		}
+		l.RequestID = extractRequestIDFromDetails(l.Details)
 		logs = append(logs, l)
 	}
 
-	// Toujours renvoyer un tableau vide plutôt que set null frontend
-	if logs == nil {
-		logs = make([]LogEntry, 0)
+	if exportFmt == "json" {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"audit_logs.json\"")
+		_ = json.NewEncoder(w).Encode(logs)
+		return
 	}
 
-	// Calculer le nombre de pages total
-	totalPages := total / limit
-	if total%limit != 0 {
-		totalPages++
+	if exportFmt == "csv" {
+		w.Header().Set("Content-Type", "text/csv; charset=utf-8")
+		w.Header().Set("Content-Disposition", "attachment; filename=\"audit_logs.csv\"")
+		csvWriter := csv.NewWriter(w)
+		_ = csvWriter.Write([]string{"id", "created_at", "action", "actor", "target", "request_id", "details"})
+		for _, l := range logs {
+			_ = csvWriter.Write([]string{
+				strconv.FormatInt(l.ID, 10),
+				l.CreatedAt,
+				l.Action,
+				l.Actor,
+				l.Target,
+				l.RequestID,
+				l.Details,
+			})
+		}
+		csvWriter.Flush()
+		return
 	}
 
-	// Envoi du JSON avec métadonnées de pagination
+	totalPages := 1
+	if total > 0 {
+		totalPages = total / limit
+		if total%limit != 0 {
+			totalPages++
+		}
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
@@ -1175,6 +1321,24 @@ func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
 			},
 		},
 	})
+}
+
+func extractRequestIDFromDetails(details string) string {
+	details = strings.TrimSpace(details)
+	if details == "" {
+		return ""
+	}
+	idx := strings.Index(details, "request_id=")
+	if idx < 0 {
+		return ""
+	}
+	start := idx + len("request_id=")
+	rest := details[start:]
+	end := strings.IndexAny(rest, ",; }\"")
+	if end < 0 {
+		return strings.TrimSpace(rest)
+	}
+	return strings.TrimSpace(rest[:end])
 }
 
 // ── POST /admin/api/users/sync ──────────────────────────────────────────────

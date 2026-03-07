@@ -90,37 +90,70 @@
 </aside>
 
 <main class="jg-main">
-    <div class="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
-        <div>
-            <button id="sidebar-toggle"
-                class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-            <h1 class="text-3xl font-bold text-white inline-block align-middle">📜 {{ .T "nav_logs" }}</h1>
-        </div>
-        <div class="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-            <div class="relative w-full sm:w-64">
-                <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}'
-                    class="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all">
-                <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5" fill="none" stroke="currentColor"
-                    viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+    <section class="jg-page-stack">
+        <div class="jg-hero-grid mb-6">
+            <div class="glass-card jg-hero-panel p-6 md:p-8">
+                <button id="sidebar-toggle"
+                    class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <span class="jg-kicker">{{ .T "nav_logs" }}</span>
+                <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_logs" }}</h1>
+                <div class="mt-5 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] gap-3 items-center">
+                    <div class="relative w-full">
+                        <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}'
+                            class="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all">
+                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <select id="limit-select"
+                        class="w-full xl:w-auto px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white appearance-none focus:outline-none focus:border-purple-500/50">
+                        <option value="50" class="bg-gray-800 text-white">50 {{ .T "logs_per_page_suffix" }}</option>
+                        <option value="100" class="bg-gray-800 text-white">100 {{ .T "logs_per_page_suffix" }}</option>
+                    </select>
+                </div>
             </div>
-            <select id="limit-select"
-                class="w-full sm:w-auto px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white appearance-none focus:outline-none focus:border-purple-500/50">
-                <option value="50" class="bg-gray-800 text-white">50 {{ .T "logs_per_page_suffix" }}</option>
-                <option value="100" class="bg-gray-800 text-white">100 {{ .T "logs_per_page_suffix" }}</option>
-            </select>
-        </div>
-    </div>
 
-    <div class="glass-card p-0 overflow-hidden flex flex-col h-[calc(100vh-160px)]">
-        <div class="jg-table-wrap flex-1 overflow-auto">
-            <table class="jg-table w-full text-left border-collapse">
+            <div class="glass-card p-5 jg-aside-card">
+                <h2 class="text-lg font-semibold text-white">{{ .T "logs_total_label" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">request_id, {{ .T "logs_col_action" }}, {{ .T "logs_col_actor" }}, {{ .T "logs_col_target" }}</p>
+                <div class="mt-5 flex flex-wrap gap-2">
+                    <button id="export-json" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} JSON</button>
+                    <button id="export-csv" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-5 mb-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+                <input id="filter-action" type="text" placeholder='{{ .T "logs_col_action" }}' class="jg-input" />
+                <input id="filter-actor" type="text" placeholder='{{ .T "logs_col_actor" }}' class="jg-input" />
+                <input id="filter-target" type="text" placeholder='{{ .T "logs_col_target" }}' class="jg-input" />
+                <input id="filter-request-id" type="text" placeholder="request_id" class="jg-input" />
+                <select id="filter-result" class="jg-input">
+                    <option value="">{{ .T "view_all" }}</option>
+                    <option value="success">{{ .T "success" }}</option>
+                    <option value="failure">{{ .T "failure" }}</option>
+                </select>
+                <div class="flex gap-2">
+                    <input id="filter-from" type="date" class="jg-input" />
+                    <input id="filter-to" type="date" class="jg-input" />
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-0 overflow-hidden flex flex-col h-[calc(100vh-190px)]">
+            <div class="px-5 py-5 border-b border-white/10">
+                <h2 class="text-lg font-semibold text-white">{{ .T "nav_logs" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "logs_loading" }}</p>
+            </div>
+            <div class="jg-table-wrap flex-1 overflow-auto">
+                <table class="jg-table w-full text-left border-collapse">
                 <thead class="sticky top-0 bg-[#1e1e2e] z-10 border-b border-white/10">
                     <tr>
                         <th class="w-48 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
@@ -148,18 +181,21 @@
                             </div>
                         </th>
                         <th class="px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                            request_id
+                        </th>
+                        <th class="px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
                             {{ .T "logs_col_details" }}
                         </th>
                     </tr>
                 </thead>
                 <tbody id="logs-tbody" class="divide-y divide-white/5">
                     <tr>
-                        <td colspan="5" class="text-center py-8 text-slate-400">{{ .T "logs_loading" }}</td>
+                        <td colspan="6" class="text-center py-8 text-slate-400">{{ .T "logs_loading" }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        <div class="border-t border-white/10 bg-black/20 p-4 flex items-center justify-between mt-auto">
+            <div class="border-t border-white/10 bg-black/20 p-4 flex items-center justify-between mt-auto">
             <span class="text-sm text-slate-400" id="pagination-info">{{ .T "logs_pagination_loading" }}</span>
             <div class="flex gap-2">
                 <button id="btn-prev" onclick="changePage(-1)"
@@ -172,7 +208,8 @@
                 </button>
             </div>
         </div>
-    </div>
+        </div>
+    </section>
 </main>
 {{ end }}
 
@@ -184,6 +221,13 @@
         sort: 'created_at',
         order: 'desc',
         search: '',
+        action: '',
+        actor: '',
+        target: '',
+        request_id: '',
+        result: '',
+        from: '',
+        to: '',
         totalPages: 1
     };
 
@@ -219,8 +263,45 @@
             fetchLogs();
         });
 
+        ['filter-action', 'filter-actor', 'filter-target', 'filter-request-id', 'filter-result', 'filter-from', 'filter-to'].forEach((id) => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', () => {
+                state.action = document.getElementById('filter-action').value.trim();
+                state.actor = document.getElementById('filter-actor').value.trim();
+                state.target = document.getElementById('filter-target').value.trim();
+                state.request_id = document.getElementById('filter-request-id').value.trim();
+                state.result = document.getElementById('filter-result').value;
+                state.from = document.getElementById('filter-from').value;
+                state.to = document.getElementById('filter-to').value;
+                state.page = 1;
+                fetchLogs();
+            });
+            el.addEventListener('change', () => el.dispatchEvent(new Event('input')));
+        });
+
+        document.getElementById('export-json').addEventListener('click', () => triggerExport('json'));
+        document.getElementById('export-csv').addEventListener('click', () => triggerExport('csv'));
+
         fetchLogs();
     });
+
+    function triggerExport(format) {
+        const params = new URLSearchParams({
+            sort: state.sort,
+            order: state.order,
+            search: state.search,
+            action: state.action,
+            actor: state.actor,
+            target: state.target,
+            request_id: state.request_id,
+            result: state.result,
+            from: state.from,
+            to: state.to,
+            export: format,
+        });
+        window.open(`/admin/api/logs?${params.toString()}`, '_blank');
+    }
 
     function toggleSort(col) {
         if (state.sort === col) {
@@ -265,7 +346,14 @@
                 limit: state.limit,
                 sort: state.sort,
                 order: state.order,
-                search: state.search
+                search: state.search,
+                action: state.action,
+                actor: state.actor,
+                target: state.target,
+                request_id: state.request_id,
+                result: state.result,
+                from: state.from,
+                to: state.to,
             });
 
             const res = await fetch(`/admin/api/logs?${params}`);
@@ -273,7 +361,7 @@
             const data = await res.json();
 
             if (!data.success || !data.data || !data.data.logs || data.data.logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">${escapeHtml(i18n.noResults)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">${escapeHtml(i18n.noResults)}</td></tr>`;
                 pageInfo.textContent = i18n.noResultsShort;
                 state.totalPages = 1;
                 return;
@@ -320,13 +408,14 @@
                     <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-medium border ${actionBadge}">${escapeHtml(log.action)}</span></td>
                     <td class="px-4 py-3 text-sm">${actorHtml}</td>
                     <td class="px-4 py-3 text-sm text-slate-300">${escapeHtml(log.target || "-")}</td>
+                    <td class="px-4 py-3 text-xs text-cyan-300 font-mono">${escapeHtml(log.request_id || "-")}</td>
                     <td class="px-4 py-3 text-xs text-slate-500 truncate max-w-xs font-mono" title="${escapeHtml(log.details)}">${escapeHtml(log.details || "-")}</td>
                 `;
                 tbody.appendChild(tr);
             });
         } catch (err) {
             console.error(err);
-            document.getElementById("logs-tbody").innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-400">${escapeHtml(i18n.loadError)}</td></tr>`;
+            document.getElementById("logs-tbody").innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-400">${escapeHtml(i18n.loadError)}</td></tr>`;
         }
     }
 

@@ -10,6 +10,8 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <meta name="description" content='{{ block "meta_description" . }}{{ .T "app_description" }}{{ end }}'>
 
+    <meta name="theme-color" content="#050816">
+
     {{/* Tailwind CSS via CDN */}}
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -17,12 +19,17 @@
             darkMode: 'class',
             theme: {
                 extend: {
+                    fontFamily: {
+                        sans: ['Sora', 'system-ui', 'sans-serif'],
+                    },
                     colors: {
                         jg: {
-                            bg: '#0f0f1a',
-                            card: '#1a1a2e',
-                            accent: '#8b5cf6',
-                            'accent-light': '#a78bfa',
+                            bg: '#050816',
+                            card: '#0c1324',
+                            accent: '#14b8a6',
+                            'accent-light': '#2dd4bf',
+                            gold: '#f59e0b',
+                            ink: '#e5eefb',
                         }
                     }
                 }
@@ -30,10 +37,10 @@
         }
     </script>
 
-    {{/* Google Fonts — Inter */}}
+    {{/* Google Fonts — Sora */}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     {{/* Custom CSS */}}
     <link rel="stylesheet" href="/static/css/custom.css">
@@ -41,7 +48,7 @@
     {{ block "head" . }}{{ end }}
 </head>
 
-<body class="bg-jg-bg min-h-screen antialiased">
+<body class="bg-jg-bg min-h-screen antialiased text-slate-100">
 
     {{/* Background blobs — decoration */}}
     <div class="bg-blobs">
@@ -56,7 +63,7 @@
     {{ block "body" . }}{{ end }}
 
     {{/* Language selector — moved into admin sidebar footer by app.js when available */}}
-    <div id="lang-switcher" class="jg-lang-switcher px-3 py-2">
+    <div id="lang-switcher" class="jg-lang-switcher jg-lang-switcher-floating px-3 py-2">
         <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-300 block mb-1">{{ .T "base_language_label" }}</label>
         <select id="lang-select" class="jg-input jg-lang-select" onchange="JG.setLang(this.value)">
             <option value="fr" {{ if eq .Lang "fr" }}selected{{ end }}>fr - Français</option>

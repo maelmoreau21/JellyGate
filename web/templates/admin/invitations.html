@@ -90,110 +90,137 @@
 </aside>
 
 <main class="jg-main">
-    <div class="flex items-center justify-between mb-8">
-        <div>
-            <button id="sidebar-toggle"
-                class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-            <h1 class="text-3xl font-bold text-white inline-block align-middle">🎟️ {{ .T "nav_invitations" }}</h1>
-            <p class="text-slate-400 text-sm mt-1">{{ .T "invitations_subheading" }}</p>
-        </div>
-        <button onclick="JG.openCreateModal()" class="jg-btn jg-btn-primary">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            {{ .T "invitations_new_invitation" }}
-        </button>
-    </div>
-
-    <div class="glass-card p-4 mb-6">
-        <div class="flex flex-col gap-3">
-            <div class="text-xs text-slate-400" id="invite-policy-summary">{{ .T "invitations_policy_loading" }}</div>
-            <div class="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-                <div>
-                    <label class="jg-label" for="last-created-link">{{ .T "invitations_last_link_label" }}</label>
-                    <input type="text" id="last-created-link" class="jg-input" readonly placeholder='{{ .T "invitations_last_link_placeholder" }}'>
+    <section class="jg-page-stack">
+        <div class="jg-hero-grid mb-8">
+            <div class="glass-card jg-hero-panel p-6 md:p-8">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <button id="sidebar-toggle"
+                            class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <span class="jg-kicker">{{ .T "nav_invitations" }}</span>
+                        <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_invitations" }}</h1>
+                        <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "invitations_subheading" }}</p>
+                        <div class="mt-5 flex flex-wrap gap-2">
+                            <button onclick="JG.openCreateModal()" class="jg-btn jg-btn-primary">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                {{ .T "invitations_new_invitation" }}
+                            </button>
+                            <button type="button" class="jg-btn jg-btn-ghost" onclick="document.getElementById('invites-tbody').scrollIntoView({ behavior: 'smooth', block: 'start' })">
+                                {{ .T "view_all" }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <button id="copy-last-created-link" type="button" class="jg-btn jg-btn-ghost">{{ .T "invitations_copy" }}</button>
             </div>
-        </div>
-    </div>
 
-    <div class="glass-card p-4 mb-6">
-        <div class="flex items-center justify-between mb-3">
-            <h2 class="text-base font-semibold text-white">{{ .T "invitations_sponsor_dashboard" }}</h2>
-            <span class="text-xs text-slate-400" id="sponsor-stats-generated-at">--</span>
-        </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
-            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">{{ .T "invitations_links_created" }}</div>
-                <div class="text-xl font-semibold text-white" id="sponsor-total-links">0</div>
-            </div>
-            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">{{ .T "invitations_links_active" }}</div>
-                <div class="text-xl font-semibold text-emerald-300" id="sponsor-active-links">0</div>
-            </div>
-            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">{{ .T "invitations_links_closed" }}</div>
-                <div class="text-xl font-semibold text-rose-300" id="sponsor-closed-links">0</div>
-            </div>
-            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">{{ .T "invitations_conversions" }}</div>
-                <div class="text-xl font-semibold text-cyan-300" id="sponsor-conversions">0</div>
-            </div>
-            <div class="rounded-lg bg-white/5 border border-white/10 p-3">
-                <div class="text-xs text-slate-400">{{ .T "invitations_conversion_rate" }}</div>
-                <div class="text-xl font-semibold text-amber-300" id="sponsor-conversion-rate">0%</div>
+            <div class="glass-card p-5 jg-aside-card">
+                <h2 class="text-lg font-semibold text-white">{{ .T "invitations_last_link_label" }}</h2>
+                <p class="text-sm text-slate-400 mt-2" id="invite-policy-summary">{{ .T "invitations_policy_loading" }}</p>
+                <div class="mt-5 space-y-3">
+                    <div>
+                        <label class="jg-label" for="last-created-link">{{ .T "invitations_last_link_label" }}</label>
+                        <input type="text" id="last-created-link" class="jg-input" readonly placeholder='{{ .T "invitations_last_link_placeholder" }}'>
+                    </div>
+                    <button id="copy-last-created-link" type="button" class="jg-btn jg-btn-ghost w-full justify-center">{{ .T "invitations_copy" }}</button>
+                </div>
             </div>
         </div>
 
-        <div class="jg-table-wrap">
-            <table class="jg-table">
-                <thead>
-                    <tr>
-                        <th>{{ .T "invitations_sponsor" }}</th>
-                        <th>{{ .T "invitations_links_created" }}</th>
-                        <th>{{ .T "invitations_links_active" }}</th>
-                        <th>{{ .T "invitations_links_closed" }}</th>
-                        <th>{{ .T "invitations_uses" }}</th>
-                        <th>{{ .T "invitations_conversions" }}</th>
-                        <th>{{ .T "invitations_rate" }}</th>
-                    </tr>
-                </thead>
-                <tbody id="sponsor-stats-body">
-                    <tr>
-                        <td colspan="7" class="text-center text-slate-500 py-8">{{ .T "invitations_stats_loading" }}</td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="stats-grid mb-6">
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value" id="sponsor-total-links">0</div>
+                    <div class="stat-label">{{ .T "invitations_links_created" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value text-emerald-300" id="sponsor-active-links">0</div>
+                    <div class="stat-label">{{ .T "invitations_links_active" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value text-rose-300" id="sponsor-closed-links">0</div>
+                    <div class="stat-label">{{ .T "invitations_links_closed" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value text-cyan-300" id="sponsor-conversions">0</div>
+                    <div class="stat-label">{{ .T "invitations_conversions" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value text-amber-300" id="sponsor-conversion-rate">0%</div>
+                    <div class="stat-label">{{ .T "invitations_conversion_rate" }}</div>
+                </div>
+            </div>
         </div>
-    </div>
 
-    {{/* Tableau des invitations */}}
-    <div class="glass-card p-0 overflow-hidden">
-        <div class="jg-table-wrap">
-            <table class="jg-table">
-                <thead>
-                    <tr>
-                        <th>{{ .T "invitations_col_link_code" }}</th>
-                        <th>{{ .T "invitations_uses" }}</th>
-                        <th>{{ .T "invitations_col_link_expiry" }}</th>
-                        <th>{{ .T "invitations_col_profile_expiry" }}</th>
-                        <th>{{ .T "invitations_col_email" }}</th>
-                        <th class="text-right">{{ .T "col_actions" }}</th>
-                    </tr>
-                </thead>
-                <tbody id="invites-tbody">
-                    <tr>
-                        <td colspan="6" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="glass-card p-0 overflow-hidden mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-5 py-5 border-b border-white/10">
+                <div>
+                    <h2 class="text-lg font-semibold text-white">{{ .T "invitations_sponsor_dashboard" }}</h2>
+                    <p class="text-sm text-slate-400 mt-1">{{ .T "invitations_stats_loading" }}</p>
+                </div>
+                <span class="text-xs text-slate-400" id="sponsor-stats-generated-at">--</span>
+            </div>
+            <div class="jg-table-wrap">
+                <table class="jg-table">
+                    <thead>
+                        <tr>
+                            <th>{{ .T "invitations_sponsor" }}</th>
+                            <th>{{ .T "invitations_links_created" }}</th>
+                            <th>{{ .T "invitations_links_active" }}</th>
+                            <th>{{ .T "invitations_links_closed" }}</th>
+                            <th>{{ .T "invitations_uses" }}</th>
+                            <th>{{ .T "invitations_conversions" }}</th>
+                            <th>{{ .T "invitations_rate" }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sponsor-stats-body">
+                        <tr>
+                            <td colspan="7" class="text-center text-slate-500 py-8">{{ .T "invitations_stats_loading" }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="px-5 py-5 border-b border-white/10">
+                <h2 class="text-lg font-semibold text-white">{{ .T "invitations_create_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "invitations_create_desc" }}</p>
+            </div>
+            <div class="jg-table-wrap">
+                <table class="jg-table">
+                    <thead>
+                        <tr>
+                            <th>{{ .T "invitations_col_link_code" }}</th>
+                            <th>{{ .T "invitations_uses" }}</th>
+                            <th>{{ .T "invitations_col_link_expiry" }}</th>
+                            <th>{{ .T "invitations_col_profile_expiry" }}</th>
+                            <th>{{ .T "invitations_col_email" }}</th>
+                            <th class="text-right">{{ .T "col_actions" }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invites-tbody">
+                        <tr>
+                            <td colspan="6" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 </main>
 
 {{/* Modale de création */}}
@@ -350,6 +377,7 @@
         }
 
         const inviteBaseCandidate = ("{{ .Data.InviteBaseURL }}" || '').trim();
+        const uiLocale = '{{ .Lang }}' || undefined;
         const inviteBaseURL = (inviteBaseCandidate && inviteBaseCandidate !== '<no value>') ? inviteBaseCandidate : window.location.origin;
         const isAdmin = "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true";
         const allowInviterGrant = "{{ if .Data.InviteAllowInviterGrant }}true{{ else }}false{{ end }}" === "true";
@@ -481,7 +509,7 @@
 
             const generatedAt = document.getElementById('sponsor-stats-generated-at');
             if (generatedAt) {
-                generatedAt.textContent = data.generated_at ? fmt(i18n.statsUpdatedAt, { at: new Date(data.generated_at).toLocaleString() }) : '--';
+                generatedAt.textContent = data.generated_at ? fmt(i18n.statsUpdatedAt, { at: new Date(data.generated_at).toLocaleString(uiLocale) }) : '--';
             }
 
             const sponsors = Array.isArray(data.by_sponsor) ? data.by_sponsor : [];
@@ -515,7 +543,7 @@
 
             tbody.innerHTML = list.map(inv => {
                 const link = `${getBaseURL()}/invite/${inv.code}`;
-                const expDate = inv.expires_at ? new Date(inv.expires_at).toLocaleDateString() : '—';
+                const expDate = inv.expires_at ? new Date(inv.expires_at).toLocaleDateString(uiLocale) : '—';
 
                 // Expiration Utilisateur depuis le JSON Profile
                 const rawProfile = inv.jellyfin_profile || {};
@@ -526,7 +554,7 @@
                 let absoluteUserExpiryLabel = '';
                 if (absoluteUserExpiry) {
                     const parsedAbs = new Date(absoluteUserExpiry);
-                    absoluteUserExpiryLabel = Number.isNaN(parsedAbs.getTime()) ? absoluteUserExpiry : parsedAbs.toLocaleString();
+                    absoluteUserExpiryLabel = Number.isNaN(parsedAbs.getTime()) ? absoluteUserExpiry : parsedAbs.toLocaleString(uiLocale);
                 }
                 const userExpiry = absoluteUserExpiry
                     ? fmt(i18n.expiresOn, { date: absoluteUserExpiryLabel })

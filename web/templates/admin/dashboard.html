@@ -93,38 +93,84 @@
 
 {{/* ── Main content ────────────────────────────────────────────────────── */}}
 <main class="jg-main">
-    {{/* Header */}}
-    <div class="flex items-center justify-between mb-8">
-        <div>
-            <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-            <h1 class="text-2xl font-bold inline">{{ .T "dashboard_heading" }}</h1>
-            <p class="text-sm text-slate-400 mt-1">{{ .T "dashboard_welcome" }}, <span
-                    class="text-purple-400 font-semibold">{{ .AdminUsername }}</span></p>
-        </div>
-    </div>
+    <section class="jg-page-stack">
+        <div class="jg-hero-grid mb-8">
+            <div class="glass-card jg-hero-panel p-6 md:p-8">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <span class="jg-kicker">{{ .T "dashboard_kicker" }}</span>
+                        <h1 class="text-3xl font-bold mt-3">{{ .T "dashboard_intro_title" }}</h1>
+                        <p class="text-sm text-slate-300 mt-3 max-w-2xl">{{ .T "dashboard_intro_desc" }}</p>
+                        <p class="text-sm text-slate-400 mt-4">{{ .T "dashboard_welcome" }}, <span class="text-cyan-300 font-semibold">{{ .AdminUsername }}</span></p>
+                    </div>
+                    <div class="hidden lg:flex flex-col gap-2 min-w-[220px]">
+                        <a href="/admin/my-account" class="jg-btn jg-btn-primary w-full">{{ .T "dashboard_open_my_account" }}</a>
+                        {{ if .IsAdmin }}
+                        <a href="/admin/settings" class="jg-btn jg-btn-ghost w-full">{{ .T "nav_settings" }}</a>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
 
-    {{/* My Account quick access */}}
-    <div class="glass-card mb-8 p-6">
-        <h2 class="text-xl font-bold mb-4">🔐 {{ .T "dashboard_my_account_title" }}</h2>
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <p class="text-slate-400 text-sm max-w-2xl">
-                {{ .T "dashboard_my_account_desc" }}
-            </p>
-            <div class="flex flex-wrap gap-2">
-                <a href="/admin/my-account" class="jg-btn">{{ .T "dashboard_open_my_account" }}</a>
-                
-                {{ if .IsAdmin }}
-                <a href="/admin/automation" class="jg-btn jg-btn-ghost">{{ .T "nav_automation" }}</a>
-                {{ end }}
+            <div class="glass-card p-5 jg-aside-card">
+                <h2 class="text-lg font-semibold text-white">{{ .T "dashboard_my_account_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_my_account_desc" }}</p>
+                <div class="mt-5 flex flex-wrap gap-2">
+                    <a href="/admin/my-account" class="jg-btn jg-btn-sm">{{ .T "dashboard_open_my_account" }}</a>
+                    {{ if .IsAdmin }}
+                    <a href="/admin/automation" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "nav_automation" }}</a>
+                    {{ end }}
+                </div>
             </div>
         </div>
-    </div>
 
-    {{ if .IsAdmin }}
+        {{ if .IsAdmin }}
+        <div class="jg-feature-grid mb-8">
+            <a href="/admin/users" class="glass-card jg-feature-card p-5">
+                <div class="jg-feature-icon bg-cyan-500/15 text-cyan-300">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </div>
+                <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_users_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_panel_users_desc" }}</p>
+            </a>
+            <a href="/admin/invitations" class="glass-card jg-feature-card p-5">
+                <div class="jg-feature-icon bg-amber-500/15 text-amber-300">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_invites_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_panel_invites_desc" }}</p>
+            </a>
+            <a href="/admin/settings" class="glass-card jg-feature-card p-5">
+                <div class="jg-feature-icon bg-emerald-500/15 text-emerald-300">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
+                    </svg>
+                </div>
+                <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_settings_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_panel_settings_desc" }}</p>
+            </a>
+        </div>
+
+        <div class="flex items-end justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-xl font-semibold">{{ .T "dashboard_stats_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "dashboard_stats_desc" }}</p>
+            </div>
+        </div>
+
     {{/* Stats cards */}}
     <div class="stats-grid mb-8" id="stats-grid">
         <div class="glass-card-sm stat-card">
@@ -179,8 +225,11 @@
 
     {{/* Recent users */}}
     <div class="glass-card p-0 overflow-hidden">
-        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between">
-            <h2 class="font-semibold">{{ .T "dashboard_recent_users" }}</h2>
+        <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between gap-4">
+            <div>
+                <h2 class="font-semibold">{{ .T "dashboard_recent_users" }}</h2>
+                <p class="text-xs text-slate-500 mt-1">{{ .T "dashboard_recent_users_desc" }}</p>
+            </div>
             <a href="/admin/users" class="jg-btn jg-btn-ghost jg-btn-sm">
                 {{ .T "view_all" }} →
             </a>
@@ -204,6 +253,7 @@
         </div>
     </div>
     {{ end }}
+</section>
 </main>
 {{ end }}
 
@@ -229,12 +279,17 @@
 
         // Load stats
         // {{ if .IsAdmin }}
-        JG.api('/admin/api/users').then(res => {
-            if (!res.success) return;
-            const users = res.data || [];
+        Promise.all([
+            JG.api('/admin/api/users'),
+            JG.api('/admin/api/invitations')
+        ]).then(([usersRes, invitationsRes]) => {
+            if (!usersRes.success) return;
+            const users = usersRes.data || [];
+            const invitations = invitationsRes && invitationsRes.success ? (invitationsRes.data || []) : [];
             document.getElementById('stat-users').textContent = users.length;
             document.getElementById('stat-active').textContent = users.filter(u => u.is_active && !u.is_banned).length;
             document.getElementById('stat-banned').textContent = users.filter(u => u.is_banned).length;
+            document.getElementById('stat-invitations').textContent = invitations.length;
 
             // Recent 5
             const tbody = document.getElementById('recent-users-body');

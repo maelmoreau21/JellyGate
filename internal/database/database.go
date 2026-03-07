@@ -438,6 +438,9 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_email BOOLEAN NOT NULL DEFAULT 1`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_discord BOOLEAN NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_telegram BOOLEAN NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN pending_email TEXT NOT NULL DEFAULT ''`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN email_verification_sent_at DATETIME`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN group_name TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN delete_at DATETIME`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_action TEXT NOT NULL DEFAULT 'disable'`)
@@ -453,6 +456,9 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_email BOOLEAN NOT NULL DEFAULT TRUE`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_discord BOOLEAN NOT NULL DEFAULT FALSE`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_telegram BOOLEAN NOT NULL DEFAULT FALSE`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email TEXT NOT NULL DEFAULT ''`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMPTZ`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS group_name TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS delete_at TIMESTAMPTZ`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_action TEXT NOT NULL DEFAULT 'disable'`)
@@ -460,7 +466,49 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ`)
 	}
 
+	if err := db.backfillExistingEmailVerificationState(); err != nil {
+		return fmt.Errorf("backfill email verification historique: %w", err)
+	}
+
 	slog.Info("Migrations terminees", "count", len(migrations), "driver", db.driver)
+	return nil
+}
+
+func (db *DB) backfillExistingEmailVerificationState() error {
+	status, err := db.GetSetting(SettingEmailVerificationBackfillV1)
+	if err != nil {
+		return err
+	}
+	if strings.EqualFold(strings.TrimSpace(status), "done") {
+		return nil
+	}
+
+	query := `UPDATE users
+		SET email_verified = 1, updated_at = datetime('now')
+		WHERE email_verified = 0
+		  AND TRIM(COALESCE(email, '')) <> ''
+		  AND TRIM(COALESCE(pending_email, '')) = ''
+		  AND email_verification_sent_at IS NULL`
+	if db.IsPostgres() {
+		query = `UPDATE users
+			SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP
+			WHERE email_verified = FALSE
+			  AND BTRIM(COALESCE(email, '')) <> ''
+			  AND BTRIM(COALESCE(pending_email, '')) = ''
+			  AND email_verification_sent_at IS NULL`
+	}
+
+	result, err := db.Exec(query)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if err := db.SetSetting(SettingEmailVerificationBackfillV1, "done"); err != nil {
+		return err
+	}
+
+	slog.Info("Backfill verification email historique termine", "rows", rowsAffected)
 	return nil
 }
 
@@ -473,6 +521,9 @@ func (db *DB) sqliteMigrations() []migration {
 				jellyfin_id       TEXT    UNIQUE,
 				username          TEXT    UNIQUE NOT NULL,
 				email             TEXT,
+				email_verified    BOOLEAN NOT NULL DEFAULT 0,
+				pending_email     TEXT    NOT NULL DEFAULT '',
+				email_verification_sent_at DATETIME,
 				ldap_dn           TEXT,
 				group_name        TEXT    NOT NULL DEFAULT '',
 				invited_by        TEXT,
@@ -507,6 +558,18 @@ func (db *DB) sqliteMigrations() []migration {
 			sql: `CREATE TABLE IF NOT EXISTS password_resets (
 				id         INTEGER PRIMARY KEY AUTOINCREMENT,
 				user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				code       TEXT    UNIQUE NOT NULL,
+				expires_at DATETIME NOT NULL,
+				used       BOOLEAN NOT NULL DEFAULT 0,
+				created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+			)`,
+		},
+		{
+			name: "create_email_verifications",
+			sql: `CREATE TABLE IF NOT EXISTS email_verifications (
+				id         INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				email      TEXT    NOT NULL,
 				code       TEXT    UNIQUE NOT NULL,
 				expires_at DATETIME NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT 0,
@@ -610,6 +673,9 @@ func (db *DB) postgresMigrations() []migration {
 				jellyfin_id       TEXT UNIQUE,
 				username          TEXT UNIQUE NOT NULL,
 				email             TEXT,
+				email_verified    BOOLEAN NOT NULL DEFAULT FALSE,
+				pending_email     TEXT NOT NULL DEFAULT '',
+				email_verification_sent_at TIMESTAMPTZ,
 				ldap_dn           TEXT,
 				group_name        TEXT NOT NULL DEFAULT '',
 				invited_by        TEXT,
@@ -644,6 +710,18 @@ func (db *DB) postgresMigrations() []migration {
 			sql: `CREATE TABLE IF NOT EXISTS password_resets (
 				id         BIGSERIAL PRIMARY KEY,
 				user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				code       TEXT UNIQUE NOT NULL,
+				expires_at TIMESTAMPTZ NOT NULL,
+				used       BOOLEAN NOT NULL DEFAULT FALSE,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+		},
+		{
+			name: "create_email_verifications",
+			sql: `CREATE TABLE IF NOT EXISTS email_verifications (
+				id         BIGSERIAL PRIMARY KEY,
+				user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				email      TEXT NOT NULL,
 				code       TEXT UNIQUE NOT NULL,
 				expires_at TIMESTAMPTZ NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT FALSE,

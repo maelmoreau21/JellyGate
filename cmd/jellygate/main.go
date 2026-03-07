@@ -162,6 +162,7 @@ func main() {
 	r := chi.NewRouter()
 
 	// Middlewares globaux
+	r.Use(jgmw.SecurityHeaders())          // Headers de securite HTTP
 	r.Use(chimw.RequestID)                 // ID unique par requête
 	r.Use(chimw.RealIP)                    // IP réelle derrière proxy
 	r.Use(chimw.Logger)                    // Log de chaque requête
@@ -181,28 +182,37 @@ func main() {
 		w.Write([]byte(`{"status":"ok"}`))
 	})
 
+	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "web/static/favicon.svg")
+	})
+
 	// Fichiers statiques
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
 	// Routes d'invitation (publiques)
 	r.Route("/invite", func(r chi.Router) {
 		r.Get("/{code}", inviteHandler.InvitePage)
-		r.Post("/{code}", inviteHandler.InviteSubmit)
+		r.With(jgmw.RateLimitByIP(15, 5*time.Minute)).Post("/{code}", inviteHandler.InviteSubmit)
 	})
 
 	// Routes de réinitialisation de mot de passe (publiques)
 	r.Route("/reset", func(r chi.Router) {
 		r.Get("/", resetHandler.RequestPage)
-		r.Post("/request", resetHandler.SubmitRequest)
+		r.With(jgmw.RateLimitByIP(10, 10*time.Minute)).Post("/request", resetHandler.SubmitRequest)
 		r.Get("/{code}", resetHandler.ResetPage)
-		r.Post("/{code}", resetHandler.SubmitReset)
+		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", resetHandler.SubmitReset)
+	})
+
+	r.Route("/verify-email", func(r chi.Router) {
+		r.Get("/{code}", adminHandler.VerifyEmailPage)
 	})
 
 	// ── Routes admin (authentification requise) ─────────────────────────────
 	r.Route("/admin", func(r chi.Router) {
+		r.Use(jgmw.EnsureCSRFCookie())
 		// Routes publiques (login/logout) — pas de middleware auth
 		r.Get("/login", authHandler.LoginPage)
-		r.Post("/login", authHandler.LoginSubmit)
+		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/login", authHandler.LoginSubmit)
 		r.Post("/logout", authHandler.Logout)
 
 		// Routes protégées par le middleware d'authentification global (standard + admin)
@@ -219,7 +229,9 @@ func main() {
 
 				r.Get("/users", adminHandler.UsersPage)
 				r.Get("/automation", automationHandler.AutomationPage)
+				r.Get("/i18n", adminHandler.I18nReportPage)
 				r.Route("/api/users", func(r chi.Router) {
+					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)
 					r.Get("/{id}/timeline", adminHandler.UserTimeline)
 					r.Post("/bulk", adminHandler.BulkUsersAction)
@@ -234,6 +246,7 @@ func main() {
 				})
 
 				r.Route("/api/settings", func(r chi.Router) {
+					r.Use(jgmw.RequireCSRF())
 					r.Get("/", settingsHandler.GetAll)
 					r.Post("/general", settingsHandler.SaveGeneral)
 					r.Post("/ldap", settingsHandler.SaveLDAP)
@@ -249,6 +262,7 @@ func main() {
 				})
 
 				r.Route("/api/backups", func(r chi.Router) {
+					r.Use(jgmw.RequireCSRF())
 					r.Get("/", backupHandler.ListBackups)
 					r.Post("/create", backupHandler.CreateBackup)
 					r.Post("/import", backupHandler.ImportBackup)
@@ -258,10 +272,14 @@ func main() {
 				})
 
 				r.Route("/api/logs", func(r chi.Router) {
+					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.LogsAPI)
 				})
 
+				r.With(jgmw.RequireCSRF()).Get("/api/i18n/report", adminHandler.I18nReportAPI)
+
 				r.Route("/api/automation", func(r chi.Router) {
+					r.Use(jgmw.RequireCSRF())
 					r.Route("/presets", func(r chi.Router) {
 						r.Get("/", automationHandler.ListPresets)
 						r.Post("/", automationHandler.SavePresets)
@@ -290,6 +308,7 @@ func main() {
 				r.Get("/", adminHandler.InvitationsPage)
 			})
 			r.Route("/api/invitations", func(r chi.Router) {
+				r.Use(jgmw.RequireCSRF())
 				r.Get("/", adminHandler.ListInvitations)
 				r.Get("/stats", adminHandler.InvitationStats)
 				r.Post("/", adminHandler.CreateInvitation)
@@ -298,6 +317,7 @@ func main() {
 
 			r.Get("/messages", adminHandler.MessagesPage)
 			r.Route("/api/messages", func(r chi.Router) {
+				r.Use(jgmw.RequireCSRF())
 				r.Get("/", adminHandler.ListMessages)
 				r.Post("/", adminHandler.CreateMessage)
 				r.Delete("/{id}", adminHandler.DeleteMessage)
@@ -306,9 +326,11 @@ func main() {
 
 			// ── Route de profil (Changement MDP, par tout le monde) ─────────
 			r.Route("/api/users/me", func(r chi.Router) {
+				r.Use(jgmw.RequireCSRF())
 				r.Get("/", adminHandler.GetMyAccount)
 				r.Patch("/", adminHandler.UpdateMyAccount)
 				r.Post("/password", adminHandler.ChangeMyPassword)
+				r.Post("/email-verification/resend", adminHandler.ResendMyEmailVerification)
 			})
 
 		}) // fin Group RequireAuth

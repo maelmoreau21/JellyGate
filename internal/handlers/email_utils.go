@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"strings"
+	texttemplate "text/template"
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
@@ -28,6 +30,21 @@ func joinTemplateSections(sections ...string) string {
 	return strings.Join(parts, "\n\n")
 }
 
+func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
+	if strings.TrimSpace(tpl) == "" {
+		return "", nil
+	}
+	tmpl, err := texttemplate.New("inline").Parse(tpl)
+	if err != nil {
+		return "", err
+	}
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, tpl string, data map[string]string) error {
 	if mailer == nil {
 		return nil
@@ -35,7 +52,11 @@ func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, tpl string, data
 	if strings.TrimSpace(to) == "" || strings.TrimSpace(tpl) == "" {
 		return nil
 	}
-	return mailer.SendTemplateString(to, subject, tpl, data)
+	renderedSubject, err := renderInlineTemplate(subject, data)
+	if err != nil {
+		return err
+	}
+	return mailer.SendTemplateString(to, strings.TrimSpace(renderedSubject), tpl, data)
 }
 
 func emailTime(t time.Time) string {

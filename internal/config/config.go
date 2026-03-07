@@ -166,6 +166,8 @@ func DefaultBackupConfig() BackupConfig {
 // EmailTemplatesConfig contient les modèles de courriels personnalisés configurables (JFA-Go).
 type EmailTemplatesConfig struct {
 	Confirmation             string `json:"confirmation"`
+	EmailVerificationSubject string `json:"email_verification_subject"`
+	EmailVerification        string `json:"email_verification"`
 	ExpiryReminder           string `json:"expiry_reminder"`
 	ExpiryReminderDays       int    `json:"expiry_reminder_days"`
 	ExpiryReminder14         string `json:"expiry_reminder_14"`
@@ -217,6 +219,15 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
 <p>Ton inscription est bien validee. Ton acces JellyGate est actif.</p>
 <p style="margin:20px 0 0 0;">Si besoin, tu peux contacter l'equipe via <a href="{{.HelpURL}}" style="color:#0284c7;">ce lien d'aide</a>.</p>
+`),
+		EmailVerificationSubject: `Verifie ton adresse e-mail - JellyGate`,
+		EmailVerification: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Verifie ton adresse e-mail</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Confirme ton adresse e-mail pour finaliser la securisation de ton compte JellyGate.</p>
+<p style="margin:20px 0;"><a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verifier mon e-mail</a></p>
+<p style="font-size:13px;color:#475569;">Lien direct: {{.VerificationURL}}</p>
+<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expire dans {{.ExpiresIn}}</p>
 `),
 		ExpiryReminder: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel d'expiration</h2>

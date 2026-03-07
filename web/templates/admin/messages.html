@@ -53,53 +53,93 @@
 </aside>
 
 <main class="jg-main">
-    <div class="flex flex-col gap-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-            <div>
+    <section class="jg-page-stack">
+        <div class="jg-hero-grid mb-8">
+            <div class="glass-card jg-hero-panel p-6 md:p-8">
                 <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
-                <h1 class="text-3xl font-bold inline-block align-middle">{{ .T "messages_heading" }}</h1>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "messages_subheading" }}</p>
+                <span class="jg-kicker">{{ .T "messages_heading" }}</span>
+                <h1 class="text-3xl font-bold text-white mt-3">{{ .T "messages_heading" }}</h1>
+                <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "messages_subheading" }}</p>
+                <div class="mt-5 flex flex-wrap gap-2">
+                    <button id="btn-view-inbox" class="jg-btn jg-btn-ghost">{{ .T "messages_inbox" }}</button>
+                    {{ if .IsAdmin }}
+                    <button id="btn-view-admin" class="jg-btn jg-btn-ghost">{{ .T "messages_admin_view" }}</button>
+                    {{ end }}
+                </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button id="btn-view-inbox" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "messages_inbox" }}</button>
-                {{ if .IsAdmin }}
-                <button id="btn-view-admin" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "messages_admin_view" }}</button>
-                {{ end }}
+
+            <div class="glass-card p-5 jg-aside-card">
+                <h2 class="text-lg font-semibold text-white">{{ .T "messages_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-2" id="messages-view-label">{{ .T "messages_inbox" }}</p>
+                <div class="mt-5 space-y-4">
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "messages_title" }}</div>
+                        <div class="text-3xl font-semibold text-white mt-2" id="messages-total">0</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "messages_unread" }}</div>
+                            <div class="text-2xl font-semibold text-amber-300 mt-2" id="messages-unread">0</div>
+                        </div>
+                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "messages_col_channels" }}</div>
+                            <div class="text-sm font-medium text-slate-200 mt-2" id="messages-channels-summary">-</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
         {{ if .IsAdmin }}
-        <section class="glass-card p-4">
-            <h2 class="text-lg font-semibold mb-3">{{ .T "messages_new_message" }}</h2>
-            <form id="message-create-form" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input id="msg-title" class="jg-input md:col-span-2" placeholder='{{ .T "messages_title_placeholder" }}'>
-                <textarea id="msg-body" class="jg-input md:col-span-2" rows="4" placeholder='{{ .T "messages_body_placeholder" }}'></textarea>
-                <select id="msg-target-group" class="jg-input">
-                    <option value="all">{{ .T "messages_target_all" }}</option>
-                    <option value="active">{{ .T "messages_target_active" }}</option>
-                    <option value="inactive">{{ .T "messages_target_inactive" }}</option>
-                    <option value="admins">{{ .T "messages_target_admins" }}</option>
-                    <option value="inviters">{{ .T "messages_target_inviters" }}</option>
-                </select>
-                <input id="msg-target-users" class="jg-input" placeholder='{{ .T "messages_target_users_placeholder" }}'>
-                <div class="md:col-span-2 flex flex-wrap items-center gap-4 text-sm text-slate-300">
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-email" class="form-checkbox">{{ .T "messages_channel_email" }}</label>
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-discord" class="form-checkbox">{{ .T "messages_channel_discord" }}</label>
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-telegram" class="form-checkbox">{{ .T "messages_channel_telegram" }}</label>
-                    <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-campaign" class="form-checkbox">{{ .T "messages_campaign_mode" }}</label>
+        <div class="jg-feature-grid mb-6">
+            <section class="glass-card jg-feature-card p-5 md:col-span-2">
+                <h2 class="text-lg font-semibold text-white">{{ .T "messages_new_message" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "messages_body_placeholder" }}</p>
+                <form id="message-create-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
+                    <input id="msg-title" class="jg-input md:col-span-2" placeholder='{{ .T "messages_title_placeholder" }}'>
+                    <textarea id="msg-body" class="jg-input md:col-span-2 min-h-[150px]" rows="5" placeholder='{{ .T "messages_body_placeholder" }}'></textarea>
+                    <select id="msg-target-group" class="jg-input">
+                        <option value="all">{{ .T "messages_target_all" }}</option>
+                        <option value="active">{{ .T "messages_target_active" }}</option>
+                        <option value="inactive">{{ .T "messages_target_inactive" }}</option>
+                        <option value="admins">{{ .T "messages_target_admins" }}</option>
+                        <option value="inviters">{{ .T "messages_target_inviters" }}</option>
+                    </select>
+                    <input id="msg-target-users" class="jg-input" placeholder='{{ .T "messages_target_users_placeholder" }}'>
+                    <div class="md:col-span-2 rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500 mb-3">{{ .T "messages_col_channels" }}</div>
+                        <div class="flex flex-wrap items-center gap-4 text-sm text-slate-300">
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-email" class="form-checkbox">{{ .T "messages_channel_email" }}</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-discord" class="form-checkbox">{{ .T "messages_channel_discord" }}</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-telegram" class="form-checkbox">{{ .T "messages_channel_telegram" }}</label>
+                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-campaign" class="form-checkbox">{{ .T "messages_campaign_mode" }}</label>
+                        </div>
+                    </div>
+                    <input type="datetime-local" id="msg-starts-at" class="jg-input" placeholder='{{ .T "messages_starts_at" }}'>
+                    <input type="datetime-local" id="msg-ends-at" class="jg-input" placeholder='{{ .T "messages_ends_at" }}'>
+                    <div class="md:col-span-2 flex justify-end">
+                        <button type="submit" class="jg-btn">{{ .T "messages_publish" }}</button>
+                    </div>
+                </form>
+            </section>
+            <section class="glass-card jg-feature-card p-5">
+                <h2 class="text-lg font-semibold text-white">{{ .T "messages_admin_view" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "messages_target_all" }}, {{ .T "messages_target_active" }}, {{ .T "messages_target_admins" }}, {{ .T "messages_target_inactive" }}</p>
+                <div class="mt-5 space-y-3 text-sm text-slate-300">
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">{{ .T "messages_channel_email" }}, {{ .T "messages_channel_discord" }}, {{ .T "messages_channel_telegram" }}</div>
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">{{ .T "messages_campaign_mode" }}</div>
                 </div>
-                <input type="datetime-local" id="msg-starts-at" class="jg-input" placeholder='{{ .T "messages_starts_at" }}'>
-                <input type="datetime-local" id="msg-ends-at" class="jg-input" placeholder='{{ .T "messages_ends_at" }}'>
-                <div class="md:col-span-2 flex justify-end">
-                    <button type="submit" class="jg-btn">{{ .T "messages_publish" }}</button>
-                </div>
-            </form>
-        </section>
+            </section>
+        </div>
         {{ end }}
 
         <section class="glass-card p-0 overflow-hidden">
+            <div class="px-5 py-5 border-b border-white/10">
+                <h2 class="text-lg font-semibold text-white">{{ .T "messages_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "messages_subheading" }}</p>
+            </div>
             <div class="jg-table-wrap">
                 <table class="jg-table">
                     <thead>
@@ -118,7 +158,7 @@
                 </table>
             </div>
         </section>
-    </div>
+    </section>
 </main>
 {{ end }}
 
@@ -141,7 +181,66 @@ document.addEventListener('DOMContentLoaded', () => {
         deleted: '{{ .T "messages_deleted" }}',
         createFailed: '{{ .T "messages_create_failed" }}',
         created: '{{ .T "messages_created" }}',
+        inbox: '{{ .T "messages_inbox" }}',
+        adminView: '{{ .T "messages_admin_view" }}',
+        targetAll: '{{ .T "messages_target_all" }}',
+        targetActive: '{{ .T "messages_target_active" }}',
+        targetInactive: '{{ .T "messages_target_inactive" }}',
+        targetAdmins: '{{ .T "messages_target_admins" }}',
+        targetInviters: '{{ .T "messages_target_inviters" }}',
+        channelEmail: '{{ .T "messages_channel_email" }}',
+        channelDiscord: '{{ .T "messages_channel_discord" }}',
+        channelTelegram: '{{ .T "messages_channel_telegram" }}',
     };
+    const uiLocale = '{{ .Lang }}' || undefined;
+
+    function formatDateTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString(uiLocale);
+    }
+
+    function translateTarget(group) {
+        if (group === 'active') return i18n.targetActive;
+        if (group === 'inactive') return i18n.targetInactive;
+        if (group === 'admins') return i18n.targetAdmins;
+        if (group === 'inviters') return i18n.targetInviters;
+        return i18n.targetAll;
+    }
+
+    function translateChannels(channels) {
+        const labels = (channels || []).map((channel) => {
+            if (channel === 'email') return i18n.channelEmail;
+            if (channel === 'discord') return i18n.channelDiscord;
+            if (channel === 'telegram') return i18n.channelTelegram;
+            return i18n.defaultChannel;
+        });
+        return labels.length ? labels.join(', ') : i18n.defaultChannel;
+    }
+
+    function updateViewButtons() {
+        const inboxBtn = document.getElementById('btn-view-inbox');
+        const adminBtn = document.getElementById('btn-view-admin');
+        if (inboxBtn) inboxBtn.classList.toggle('jg-btn-primary', currentView === 'inbox');
+        if (inboxBtn) inboxBtn.classList.toggle('jg-btn-ghost', currentView !== 'inbox');
+        if (adminBtn) adminBtn.classList.toggle('jg-btn-primary', currentView === 'admin');
+        if (adminBtn) adminBtn.classList.toggle('jg-btn-ghost', currentView !== 'admin');
+        const viewLabel = document.getElementById('messages-view-label');
+        if (viewLabel) viewLabel.textContent = currentView === 'admin' ? i18n.adminView : i18n.inbox;
+    }
+
+    function updateSummary(rows) {
+        const unreadCount = rows.filter((message) => !message.read).length;
+        const channelSet = new Set();
+        rows.forEach((message) => (message.channels || []).forEach((channel) => channelSet.add(channel)));
+        const totalNode = document.getElementById('messages-total');
+        const unreadNode = document.getElementById('messages-unread');
+        const channelsNode = document.getElementById('messages-channels-summary');
+        if (totalNode) totalNode.textContent = String(rows.length);
+        if (unreadNode) unreadNode.textContent = String(unreadCount);
+        if (channelsNode) channelsNode.textContent = channelSet.size ? translateChannels(Array.from(channelSet)) : i18n.defaultChannel;
+    }
 
     function channelsForPayload() {
         const channels = ['in_app'];
@@ -166,6 +265,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const rows = Array.isArray(res.data) ? res.data : [];
+        updateViewButtons();
+        updateSummary(rows);
         const tbody = document.getElementById('messages-body');
         if (rows.length === 0) {
             tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-10">${JG.esc(i18n.noMessages)}</td></tr>`;
@@ -176,8 +277,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const readBadge = m.read
                 ? `<span class="badge badge-success">${JG.esc(i18n.read)}</span>`
                 : `<span class="badge badge-warning">${JG.esc(i18n.unread)}</span>`;
-            const target = (m.target_group || 'all') + (m.target_user_ids && m.target_user_ids.length ? ` + ${m.target_user_ids.length} ${i18n.usersSuffix}` : '');
-            const channels = (m.channels || []).join(', ');
+            const target = translateTarget(m.target_group || 'all') + (m.target_user_ids && m.target_user_ids.length ? ` + ${m.target_user_ids.length} ${i18n.usersSuffix}` : '');
+            const channels = translateChannels(m.channels || []);
             const canDelete = "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true";
 
             return `<tr>
@@ -186,9 +287,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="text-xs text-slate-400 mt-1">${JG.esc(m.body || '')}</div>
                 </td>
                 <td class="text-sm text-slate-300">${JG.esc(target)}</td>
-                <td class="text-sm text-slate-400">${JG.esc(channels || i18n.defaultChannel)}</td>
+                <td class="text-sm text-slate-400">${JG.esc(channels)}</td>
                 <td>${readBadge}</td>
-                <td class="text-sm text-slate-500">${JG.esc(m.created_at || '')}</td>
+                <td class="text-sm text-slate-500">${JG.esc(formatDateTime(m.created_at || ''))}</td>
                 <td class="text-right">
                     <div class="flex justify-end gap-2">
                         ${!m.read ? `<button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="read" data-id="${m.id}">${JG.esc(i18n.markRead)}</button>` : ''}
@@ -280,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    updateViewButtons();
     loadMessages();
 });
 </script>

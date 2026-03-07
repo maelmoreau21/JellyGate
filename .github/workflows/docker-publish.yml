@@ -4,7 +4,7 @@
 #
 # Déclenché sur :
 #   - Push sur main → tag "latest"
-#   - Nouveau tag vX.Y.Z → tags "vX.Y.Z", "vX.Y", "vX", "latest"
+#   - Nouveau tag vX.Y.Z → tags "vX.Y.Z" et "latest"
 #
 # Compile pour linux/amd64 et linux/arm64 via QEMU + Docker Buildx.
 # Publie sur GitHub Container Registry (ghcr.io).
@@ -61,12 +61,8 @@ jobs:
           tags: |
             # Push sur main → latest
             type=raw,value=latest,enable={{is_default_branch}}
-            # Tag vX.Y.Z → vX.Y.Z, vX.Y, vX
+            # Tag vX.Y.Z → vX.Y.Z
             type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            # SHA court pour traçabilité
-            type=sha,prefix=sha-
 
       # ── 6. Build & Push multi-architecture ──────────────────────────────
       - name: Build and push Docker image

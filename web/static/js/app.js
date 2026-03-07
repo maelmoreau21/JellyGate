@@ -23,6 +23,10 @@ JG.api = async function (url, opts = {}) {
         const mergedHeaders = {
             ...(opts.headers || {}),
         };
+        const csrfToken = JG.getCookie('jg_csrf');
+        if (csrfToken && !mergedHeaders['X-CSRF-Token']) {
+            mergedHeaders['X-CSRF-Token'] = csrfToken;
+        }
         if (!isFormData && !mergedHeaders['Content-Type']) {
             mergedHeaders['Content-Type'] = 'application/json';
         }
@@ -73,6 +77,15 @@ JG.api = async function (url, opts = {}) {
         console.error('[JG.api]', url, err);
         return { success: false, message: 'Erreur réseau' };
     }
+};
+
+JG.getCookie = function (name) {
+    const key = String(name || '').trim();
+    if (!key) return '';
+
+    const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const match = document.cookie.match(new RegExp('(?:^|; )' + escaped + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
 };
 
 // ── Toast notifications ─────────────────────────────────────────────────────
@@ -180,7 +193,7 @@ JG.setLang = function (lang) {
 
     const normalized = raw === 'pt' ? 'pt-br' : raw;
     document.cookie = `lang=${normalized};path=/;max-age=31536000;SameSite=Lax`;
-    window.location.reload();
+    window.location.assign(window.location.pathname + window.location.search + window.location.hash);
 };
 
 // ── Keyboard shortcuts ──────────────────────────────────────────────────────
@@ -197,12 +210,15 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('DOMContentLoaded', () => {
     const langSwitcher = document.getElementById('lang-switcher');
     if (langSwitcher) {
+        const sidebar = document.querySelector('.jg-sidebar');
         const sidebarFooter = document.querySelector('.jg-sidebar .jg-sidebar-footer');
+        if (sidebar) {
+            document.body.classList.add('jg-has-sidebar');
+        }
         if (sidebarFooter) {
             langSwitcher.classList.add('jg-lang-switcher-sidebar');
+            langSwitcher.classList.remove('jg-lang-switcher-floating');
             sidebarFooter.appendChild(langSwitcher);
-        } else {
-            langSwitcher.style.display = 'none';
         }
     }
 

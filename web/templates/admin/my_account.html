@@ -91,129 +91,218 @@
 </aside>
 
 <main class="jg-main">
-    <div class="max-w-4xl mx-auto flex flex-col gap-6">
-        <div>
-            <button id="sidebar-toggle"
-                class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
-            <h1 class="text-3xl font-bold text-white inline-block align-middle">{{ .T "nav_my_account" }}</h1>
-            <p class="text-slate-400 mt-1">{{ .T "my_account_subheading" }}</p>
-        </div>
-
-        <section class="glass-card p-6">
-            <h2 class="text-lg font-semibold mb-4">{{ .T "my_account_section_profile" }}</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div class="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div class="text-slate-400">{{ .T "my_account_label_user" }}</div>
-                    <div class="font-semibold mt-1" id="account-username">-</div>
-                </div>
-                <div class="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div class="text-slate-400">{{ .T "my_account_label_role" }}</div>
-                    <div class="font-semibold mt-1" id="account-role">-</div>
-                </div>
-                <div class="rounded-lg border border-white/10 bg-white/5 p-3 md:col-span-2">
-                    <div class="text-slate-400">{{ .T "my_account_label_access_expiry" }}</div>
-                    <div class="font-semibold mt-1" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
+    <section class="jg-page-stack">
+        <div class="jg-hero-grid mb-8">
+            <div class="glass-card jg-hero-panel p-6 md:p-8">
+                <button id="sidebar-toggle"
+                    class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
+                <span class="jg-kicker">{{ .T "nav_my_account" }}</span>
+                <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_my_account" }}</h1>
+                <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "my_account_subheading" }}</p>
+                <div class="mt-5 flex flex-wrap gap-2">
+                    <button type="button" class="jg-btn jg-btn-ghost" onclick="document.getElementById('contact-card').scrollIntoView({ behavior: 'smooth', block: 'start' })">{{ .T "my_account_section_contact" }}</button>
+                    <button type="button" class="jg-btn jg-btn-ghost" onclick="document.getElementById('password-card').scrollIntoView({ behavior: 'smooth', block: 'start' })">{{ .T "my_account_section_password" }}</button>
                 </div>
             </div>
-        </section>
 
-        <section class="glass-card p-6">
-            <h2 class="text-lg font-semibold mb-4">{{ .T "my_account_section_contact" }}</h2>
-            <form id="my-account-form" class="space-y-4">
-                <div>
-                    <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
-                    <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="jg-label" for="my-discord">{{ .T "my_account_label_discord" }}</label>
-                        <input type="text" id="my-discord" class="jg-input" placeholder="ex: mael#1234">
+            <div class="glass-card p-5 jg-aside-card">
+                <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_profile" }}</h2>
+                <p class="text-sm text-slate-400 mt-2" id="account-email-summary">-</p>
+                <div class="mt-5 space-y-3 text-sm">
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_user" }}</div>
+                        <div class="font-semibold text-white mt-2" id="account-username">-</div>
                     </div>
-                    <div>
-                        <label class="jg-label" for="my-telegram">{{ .T "my_account_label_telegram" }}</label>
-                        <input type="text" id="my-telegram" class="jg-input" placeholder="ex: @mael">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_role" }}</div>
+                            <div class="font-semibold text-slate-100 mt-2" id="account-role">-</div>
+                        </div>
+                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_preferred_lang" }}</div>
+                            <div class="font-semibold text-slate-100 mt-2" id="account-language">-</div>
+                        </div>
                     </div>
-                </div>
-                <div class="max-w-xs">
-                    <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
-                    <select id="my-lang" class="jg-input">
-                        <option value="">{{ .T "my_account_default_server_lang" }}</option>
-                        <option value="fr">Francais</option>
-                        <option value="en">English</option>
-                        <option value="de">Deutsch</option>
-                        <option value="es">Espanol</option>
-                        <option value="it">Italiano</option>
-                        <option value="nl">Nederlands</option>
-                        <option value="pl">Polski</option>
-                        <option value="pt-br">Portugues (Brasil)</option>
-                        <option value="ru">Russkii</option>
-                        <option value="zh">Zhongwen</option>
-                    </select>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                        <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
-                        {{ .T "my_account_notify_expiry" }}
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                        <input type="checkbox" id="my-notify-events" class="form-checkbox">
-                        {{ .T "my_account_notify_events" }}
-                    </label>
-                </div>
-                <div class="rounded-lg border border-white/10 bg-white/5 p-3">
-                    <div class="text-xs uppercase tracking-wide text-slate-400 mb-2">{{ .T "my_account_channel_optin" }}</div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                            <input type="checkbox" id="my-opt-email" class="form-checkbox">
-                            {{ .T "my_account_channel_email" }}
-                        </label>
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                            <input type="checkbox" id="my-opt-discord" class="form-checkbox">
-                            {{ .T "my_account_channel_discord" }}
-                        </label>
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                            <input type="checkbox" id="my-opt-telegram" class="form-checkbox">
-                            {{ .T "my_account_channel_telegram" }}
-                        </label>
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_access_expiry" }}</div>
+                        <div class="font-semibold text-slate-100 mt-2" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
                     </div>
                 </div>
-                <div class="flex justify-end">
-                    <button type="submit" class="jg-btn">{{ .T "my_account_save_preferences" }}</button>
-                </div>
-            </form>
-        </section>
+            </div>
+        </div>
 
-        <section class="glass-card p-6">
-            <h2 class="text-lg font-semibold mb-4">{{ .T "my_account_section_password" }}</h2>
-            <form id="my-password-form" class="space-y-4">
-                <div>
-                    <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
-                    <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
-                </div>
-                <div>
-                    <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
-                    <input type="password" id="my-password-confirm" class="jg-input" required>
-                </div>
-                <div class="flex justify-end">
-                    <button type="submit" class="jg-btn">{{ .T "my_account_update_password" }}</button>
-                </div>
-            </form>
-        </section>
-    </div>
+        <div class="jg-feature-grid">
+            <section id="contact-card" class="glass-card jg-feature-card p-6 md:col-span-2">
+                <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_contact" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "my_account_subheading" }}</p>
+                <form id="my-account-form" class="space-y-4 mt-5">
+                    <div>
+                        <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
+                        <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
+                        <div class="mt-3 rounded-xl border border-white/10 bg-white/5 p-4">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_email_verification_label" }}</div>
+                                    <div class="mt-2 text-sm font-semibold text-white" id="email-verification-status">{{ .T "my_account_email_status_unverified" }}</div>
+                                    <p class="mt-2 text-sm text-slate-400" id="email-verification-help">{{ .T "my_account_email_verification_help" }}</p>
+                                    <p class="mt-2 text-sm text-amber-300 hidden" id="email-pending-value"></p>
+                                </div>
+                                <button type="button" id="email-verification-resend" class="jg-btn jg-btn-ghost">{{ .T "my_account_email_verification_resend" }}</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="jg-label" for="my-discord">{{ .T "my_account_label_discord" }}</label>
+                            <input type="text" id="my-discord" class="jg-input" placeholder="ex: mael#1234">
+                        </div>
+                        <div>
+                            <label class="jg-label" for="my-telegram">{{ .T "my_account_label_telegram" }}</label>
+                            <input type="text" id="my-telegram" class="jg-input" placeholder="ex: @mael">
+                        </div>
+                    </div>
+                    <div class="max-w-xs">
+                        <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
+                        <select id="my-lang" class="jg-input">
+                            <option value="">{{ .T "my_account_default_server_lang" }}</option>
+                            <option value="fr">Francais</option>
+                            <option value="en">English</option>
+                            <option value="de">Deutsch</option>
+                            <option value="es">Espanol</option>
+                            <option value="it">Italiano</option>
+                            <option value="nl">Nederlands</option>
+                            <option value="pl">Polski</option>
+                            <option value="pt-br">Portugues (Brasil)</option>
+                            <option value="ru">Russkii</option>
+                            <option value="zh">Zhongwen</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
+                            {{ .T "my_account_notify_expiry" }}
+                        </label>
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" id="my-notify-events" class="form-checkbox">
+                            {{ .T "my_account_notify_events" }}
+                        </label>
+                    </div>
+                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500 mb-3">{{ .T "my_account_channel_optin" }}</div>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                                <input type="checkbox" id="my-opt-email" class="form-checkbox">
+                                {{ .T "my_account_channel_email" }}
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                                <input type="checkbox" id="my-opt-discord" class="form-checkbox">
+                                {{ .T "my_account_channel_discord" }}
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                                <input type="checkbox" id="my-opt-telegram" class="form-checkbox">
+                                {{ .T "my_account_channel_telegram" }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="jg-btn">{{ .T "my_account_save_preferences" }}</button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="password-card" class="glass-card jg-feature-card p-6">
+                <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_password" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "my_account_password_min_hint" }}</p>
+                <form id="my-password-form" class="space-y-4 mt-5">
+                    <div>
+                        <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
+                        <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
+                    </div>
+                    <div>
+                        <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
+                        <input type="password" id="my-password-confirm" class="jg-input" required>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="jg-btn">{{ .T "my_account_update_password" }}</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </section>
 </main>
 {{ end }}
 
 {{ define "scripts" }}
 <script>
+    const uiLocale = '{{ .Lang }}' || undefined;
+    const languageLabels = {
+        '': '{{ .T "my_account_default_server_lang" }}',
+        'fr': 'Francais',
+        'en': 'English',
+        'de': 'Deutsch',
+        'es': 'Espanol',
+        'it': 'Italiano',
+        'nl': 'Nederlands',
+        'pl': 'Polski',
+        'pt-br': 'Portugues (Brasil)',
+        'ru': 'Russkii',
+        'zh': 'Zhongwen',
+    };
+
+    function updateEmailVerification(profile) {
+        const statusEl = document.getElementById('email-verification-status');
+        const helpEl = document.getElementById('email-verification-help');
+        const pendingEl = document.getElementById('email-pending-value');
+        const resendBtn = document.getElementById('email-verification-resend');
+
+        const email = String(profile.email || '').trim();
+        const pending = String(profile.pending_email || '').trim();
+        const verified = !!profile.email_verified && !pending;
+
+        if (!email && !pending) {
+            statusEl.textContent = '{{ .T "my_account_email_status_missing" }}';
+            helpEl.textContent = '{{ .T "my_account_email_verification_missing" }}';
+            pendingEl.classList.add('hidden');
+            pendingEl.textContent = '';
+            resendBtn.disabled = true;
+            resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            return;
+        }
+
+        resendBtn.disabled = verified;
+        resendBtn.classList.toggle('opacity-50', verified);
+        resendBtn.classList.toggle('cursor-not-allowed', verified);
+
+        if (pending) {
+            statusEl.textContent = '{{ .T "my_account_email_status_pending" }}';
+            helpEl.textContent = '{{ .T "my_account_email_verification_pending" }}';
+            pendingEl.textContent = '{{ .T "my_account_email_pending_label" }} ' + pending;
+            pendingEl.classList.remove('hidden');
+            return;
+        }
+
+        pendingEl.classList.add('hidden');
+        pendingEl.textContent = '';
+
+        if (verified) {
+            statusEl.textContent = '{{ .T "my_account_email_status_verified" }}';
+            helpEl.textContent = '{{ .T "my_account_email_verification_ok" }}';
+            return;
+        }
+
+        statusEl.textContent = '{{ .T "my_account_email_status_unverified" }}';
+        helpEl.textContent = '{{ .T "my_account_email_verification_help" }}';
+    }
+
     function formatDateTime(value) {
         if (!value) return '{{ .T "my_account_no_expiry" }}';
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return value;
-        return date.toLocaleString();
+        return date.toLocaleString(uiLocale);
     }
 
     async function loadMyAccount() {
@@ -227,6 +316,8 @@
         document.getElementById('account-username').textContent = profile.username || '-';
         document.getElementById('account-role').textContent = profile.is_admin ? '{{ .T "role_admin" }}' : '{{ .T "role_user" }}';
         document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at);
+        document.getElementById('account-email-summary').textContent = profile.email || '-';
+        document.getElementById('account-language').textContent = languageLabels[String(profile.preferred_lang || '').toLowerCase()] || languageLabels[''];
 
         document.getElementById('my-email').value = profile.email || '';
         document.getElementById('my-discord').value = profile.contact_discord || '';
@@ -237,6 +328,7 @@
         document.getElementById('my-opt-email').checked = profile.opt_in_email !== false;
         document.getElementById('my-opt-discord').checked = !!profile.opt_in_discord;
         document.getElementById('my-opt-telegram').checked = !!profile.opt_in_telegram;
+        updateEmailVerification(profile);
     }
 
     async function saveMyAccount(event) {
@@ -302,6 +394,29 @@
         JG.toast(res.message || '{{ .T "my_account_password_update_error" }}', 'error');
     }
 
+    async function resendEmailVerification() {
+        const btn = document.getElementById('email-verification-resend');
+        if (btn.disabled) return;
+        btn.disabled = true;
+        let shouldRestoreButton = true;
+        try {
+            const res = await JG.api('/admin/api/users/me/email-verification/resend', {
+                method: 'POST',
+            });
+            if (res.success) {
+                JG.toast(res.message || '{{ .T "my_account_email_verification_sent" }}', 'success');
+                await loadMyAccount();
+                shouldRestoreButton = false;
+                return;
+            }
+            JG.toast(res.message || '{{ .T "my_account_email_verification_send_error" }}', 'error');
+        } finally {
+            if (shouldRestoreButton) {
+                btn.disabled = false;
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
         const toggle = document.getElementById('sidebar-toggle');
         if (toggle) {
@@ -313,6 +428,7 @@
 
         document.getElementById('my-account-form').addEventListener('submit', saveMyAccount);
         document.getElementById('my-password-form').addEventListener('submit', updateMyPassword);
+        document.getElementById('email-verification-resend').addEventListener('click', resendEmailVerification);
         await loadMyAccount();
     });
 </script>

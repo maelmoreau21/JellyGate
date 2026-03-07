@@ -1,0 +1,76 @@
+{{ template "layouts/base.html" . }}
+
+{{ define "title" }}{{ .T "i18n_report_title" }} — JellyGate{{ end }}
+
+{{ define "body" }}
+<main class="jg-main">
+  <div class="max-w-6xl mx-auto space-y-6">
+    <section class="glass-card p-6 md:p-7">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-[11px] uppercase tracking-[0.32em] text-teal-300/80">JellyGate</p>
+          <h1 class="text-3xl font-bold text-white">{{ .T "i18n_report_title" }}</h1>
+          <p class="mt-2 max-w-3xl text-sm text-slate-300">{{ .T "i18n_report_intro" }}</p>
+        </div>
+        <a href="/admin/settings" class="jg-btn jg-btn-ghost">{{ .T "i18n_report_back_settings" }}</a>
+      </div>
+    </section>
+
+    <section class="glass-card p-0 overflow-hidden">
+      <div class="overflow-auto">
+        <table class="jg-table w-full text-left border-collapse">
+          <thead class="bg-white/5 border-b border-white/10">
+            <tr>
+              <th class="px-4 py-3 text-sm text-slate-300">{{ .T "i18n_report_col_locale" }}</th>
+              <th class="px-4 py-3 text-sm text-slate-300">{{ .T "i18n_report_col_total_keys" }}</th>
+              <th class="px-4 py-3 text-sm text-slate-300">{{ .T "i18n_report_col_missing_template" }}</th>
+              <th class="px-4 py-3 text-sm text-slate-300">{{ .T "i18n_report_col_missing_base" }}</th>
+              <th class="px-4 py-3 text-sm text-slate-300">{{ .T "i18n_report_col_placeholder" }}</th>
+              <th class="px-4 py-3 text-sm text-slate-300">{{ .T "i18n_report_col_fallback" }}</th>
+            </tr>
+          </thead>
+          <tbody id="i18n-tbody" class="divide-y divide-white/5">
+            <tr><td colspan="6" class="px-4 py-6 text-slate-400">{{ .T "settings_loading" }}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+{{ end }}
+
+{{ define "scripts" }}
+<script>
+  async function loadI18nReport() {
+    const tbody = document.getElementById('i18n-tbody');
+    const res = await JG.api('/admin/api/i18n/report');
+    if (!res || !res.success || !res.data) {
+      tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-red-300">{{ .T "i18n_report_load_error" }}</td></tr>';
+      return;
+    }
+
+    const rows = (res.data.locales || []).map((row) => {
+      const issues =
+        (row.missing_template_keys?.length || 0) +
+        (row.missing_from_base?.length || 0) +
+        (row.placeholder_mismatches?.length || 0) +
+        (row.fallback_values?.length || 0);
+      const statusClass = issues > 0 ? 'text-amber-300' : 'text-emerald-300';
+      return `
+        <tr>
+          <td class="px-4 py-3 text-sm text-white font-semibold">${JG.esc(row.locale)}</td>
+          <td class="px-4 py-3 text-sm text-slate-300">${row.total_keys || 0}</td>
+          <td class="px-4 py-3 text-sm ${statusClass}">${(row.missing_template_keys || []).length}</td>
+          <td class="px-4 py-3 text-sm ${statusClass}">${(row.missing_from_base || []).length}</td>
+          <td class="px-4 py-3 text-sm ${statusClass}">${(row.placeholder_mismatches || []).length}</td>
+          <td class="px-4 py-3 text-sm ${statusClass}">${(row.fallback_values || []).length}</td>
+        </tr>
+      `;
+    }).join('');
+
+    tbody.innerHTML = rows || '<tr><td colspan="6" class="px-4 py-6 text-slate-400">{{ .T "i18n_report_no_data" }}</td></tr>';
+  }
+
+  document.addEventListener('DOMContentLoaded', loadI18nReport);
+</script>
+{{ end }}

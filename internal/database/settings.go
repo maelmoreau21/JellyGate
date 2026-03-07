@@ -19,17 +19,18 @@ import (
 // ── Clés de settings ────────────────────────────────────────────────────────
 
 const (
-	SettingLDAPConfig      = "ldap_config"      // JSON: config.LDAPConfig
-	SettingSMTPConfig      = "smtp_config"      // JSON: config.SMTPConfig
-	SettingWebhooksConfig  = "webhooks_config"  // JSON: config.WebhooksConfig
-	SettingPortalLinks     = "portal_links"     // JSON: config.PortalLinksConfig
-	SettingEmailTemplates  = "email_templates"  // JSON: config.EmailTemplatesConfig
-	SettingBackupConfig    = "backup_config"    // JSON: config.BackupConfig
-	SettingJellyfinPresets = "jellyfin_presets" // JSON: []config.JellyfinPolicyPreset
-	SettingGroupMappings   = "group_mappings"   // JSON: []config.GroupPolicyMapping
-	SettingInviteProfile   = "invite_profile"   // JSON: config.InvitationProfileConfig
-	SettingBackupLastRun   = "backup_last_run"  // Date locale YYYY-MM-DD
-	SettingDefaultLang     = "default_lang"     // Langue par defaut du serveur (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
+	SettingLDAPConfig                  = "ldap_config"                    // JSON: config.LDAPConfig
+	SettingSMTPConfig                  = "smtp_config"                    // JSON: config.SMTPConfig
+	SettingWebhooksConfig              = "webhooks_config"                // JSON: config.WebhooksConfig
+	SettingPortalLinks                 = "portal_links"                   // JSON: config.PortalLinksConfig
+	SettingEmailTemplates              = "email_templates"                // JSON: config.EmailTemplatesConfig
+	SettingBackupConfig                = "backup_config"                  // JSON: config.BackupConfig
+	SettingJellyfinPresets             = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
+	SettingGroupMappings               = "group_mappings"                 // JSON: []config.GroupPolicyMapping
+	SettingInviteProfile               = "invite_profile"                 // JSON: config.InvitationProfileConfig
+	SettingBackupLastRun               = "backup_last_run"                // Date locale YYYY-MM-DD
+	SettingDefaultLang                 = "default_lang"                   // Langue par defaut du serveur (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
+	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
 )
 
 // GetDefaultLang retourne la langue par défaut du serveur.

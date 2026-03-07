@@ -92,18 +92,55 @@
 <main class="jg-main">
   <div class="max-w-4xl mx-auto">
     {{/* Header */}}
-    <div class="mb-8 flex items-center justify-between">
-      <div>
+    <div class="jg-hero-grid mb-8">
+      <div class="glass-card jg-hero-panel p-6 md:p-8">
         <button id="sidebar-toggle"
           class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h1 class="text-3xl font-bold text-white inline-block align-middle">⚙️ {{ .T "nav_settings" }}</h1>
+        <span class="jg-kicker">{{ .T "settings_overview_title" }}</span>
+        <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_settings" }}</h1>
+        <p class="text-slate-300 mt-3 max-w-2xl">{{ .T "settings_subheading" }}</p>
+        <p class="text-sm text-slate-500 mt-3">{{ .T "settings_overview_desc" }}</p>
+      </div>
+      <div class="glass-card p-5 jg-aside-card">
+        <h2 class="text-lg font-semibold text-white">{{ .T "settings_general_title" }}</h2>
+        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_general_desc" }}</p>
+        <div class="mt-5 flex flex-wrap gap-2">
+          <button type="button" onclick="switchTab('general')" class="jg-btn jg-btn-sm">{{ .T "settings_tab_general" }}</button>
+          <button type="button" onclick="switchTab('backup')" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_tab_backup" }}</button>
+        </div>
       </div>
     </div>
-    <p class="text-slate-400 mt-1 mb-8">{{ .T "settings_subheading" }}</p>
+
+    <div class="jg-feature-grid mb-8">
+      <button type="button" onclick="switchTab('general')" class="glass-card jg-feature-card p-5 text-left">
+        <div class="text-sm font-semibold text-cyan-300">{{ .T "settings_tab_general" }}</div>
+        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_general_desc" }}</p>
+      </button>
+      <button type="button" onclick="switchTab('ldap')" class="glass-card jg-feature-card p-5 text-left">
+        <div class="text-sm font-semibold text-sky-300">{{ .T "settings_tab_ldap" }}</div>
+        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_ldap_desc" }}</p>
+      </button>
+      <button type="button" onclick="switchTab('smtp')" class="glass-card jg-feature-card p-5 text-left">
+        <div class="text-sm font-semibold text-emerald-300">{{ .T "settings_tab_smtp" }}</div>
+        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_smtp_desc" }}</p>
+      </button>
+      <button type="button" onclick="switchTab('webhooks')" class="glass-card jg-feature-card p-5 text-left">
+        <div class="text-sm font-semibold text-amber-300">{{ .T "settings_tab_webhooks" }}</div>
+        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_webhooks_desc" }}</p>
+      </button>
+      <button type="button" onclick="switchTab('email-templates')" class="glass-card jg-feature-card p-5 text-left">
+        <div class="text-sm font-semibold text-fuchsia-300">{{ .T "settings_tab_email_templates" }}</div>
+        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_templates_desc" }}</p>
+      </button>
+      <button type="button" onclick="switchTab('backup')" class="glass-card jg-feature-card p-5 text-left">
+        <div class="text-sm font-semibold text-rose-300">{{ .T "settings_tab_backup" }}</div>
+        <p class="text-sm text-slate-400 mt-2">{{ .T "settings_overview_backup_desc" }}</p>
+      </button>
+    </div>
 
     {{/* ── Tabs ───────────────────────────────────────────────────────── */}}
     <div class="flex gap-2 mb-6 border-b border-white/10 pb-2 overflow-x-auto">
@@ -616,6 +653,8 @@
             <div><span class="text-purple-200">{{ "{{" }}.HelpURL{{ "}}" }}</span> : {{ .T "settings_email_var_help_url" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.ResetLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.ResetURL{{ "}}" }}</span> : {{ .T "settings_email_var_reset_link" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.ResetCode{{ "}}" }}</span> : {{ .T "settings_email_var_reset_code" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.VerificationLink{{ "}}" }}</span> / <span class="text-purple-200">{{ "{{" }}.VerificationURL{{ "}}" }}</span> : {{ .T "settings_email_var_verification_link" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.VerificationCode{{ "}}" }}</span> : {{ .T "settings_email_var_verification_code" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.ExpiresIn{{ "}}" }}</span> : {{ .T "settings_email_var_expires_in" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.ExpiryDate{{ "}}" }}</span> : {{ .T "settings_email_var_expiry_date" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.JellyGateURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellygate_url" }}</div>
@@ -680,6 +719,16 @@
                 <label class="jg-label" for="tpl-password-reset">{{ .T "settings_email_tpl_password_reset" }}</label>
                 <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_password_reset_desc" }}</p>
                 <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="7"></textarea>
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-email-verification-subject">{{ .T "settings_email_tpl_email_verification_subject" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_email_verification_subject_desc" }}</p>
+                <input id="tpl-email-verification-subject" class="jg-input" type="text" />
+              </div>
+              <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+                <label class="jg-label" for="tpl-email-verification">{{ .T "settings_email_tpl_email_verification" }}</label>
+                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_email_verification_desc" }}</p>
+                <textarea id="tpl-email-verification" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-pre-signup-help">{{ .T "settings_email_tpl_pre_signup_help" }}</label>
@@ -1138,6 +1187,8 @@
     // Modèles Email
     if (d.email_templates) {
       document.getElementById('tpl-confirmation').value = d.email_templates.confirmation || '';
+      document.getElementById('tpl-email-verification-subject').value = d.email_templates.email_verification_subject || '';
+      document.getElementById('tpl-email-verification').value = d.email_templates.email_verification || '';
       document.getElementById('tpl-expiry-reminder').value = d.email_templates.expiry_reminder || '';
       document.getElementById('tpl-expiry-reminder-days').value = d.email_templates.expiry_reminder_days || 3;
       document.getElementById('tpl-expiry-reminder-14').value = d.email_templates.expiry_reminder_14 || '';
@@ -1233,6 +1284,8 @@
       const reminderDays = Number.isInteger(reminderDaysRaw) ? reminderDaysRaw : 3;
       body = {
         confirmation: document.getElementById('tpl-confirmation').value,
+        email_verification_subject: document.getElementById('tpl-email-verification-subject').value,
+        email_verification: document.getElementById('tpl-email-verification').value,
         expiry_reminder: document.getElementById('tpl-expiry-reminder').value,
         expiry_reminder_days: Math.max(1, Math.min(365, reminderDays)),
         expiry_reminder_14: document.getElementById('tpl-expiry-reminder-14').value,

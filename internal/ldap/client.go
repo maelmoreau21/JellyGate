@@ -19,6 +19,7 @@ package ldap
 import (
 	"crypto/tls"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -148,58 +149,115 @@ func (c *Client) CreateUser(username, displayName, email, password, role string)
 	}
 	defer conn.Close()
 
-	// Construire le DN de l'utilisateur
-	// Ex: CN=jdoe,CN=Users,DC=home,DC=lan
-	userDN := fmt.Sprintf("CN=%s,%s,%s",
+	profile := c.detectDirectoryProfile(conn)
+	loginAttr := c.effectiveUsernameAttribute(profile)
+	if loginAttr == "" {
+		loginAttr = defaultUsernameAttribute
+	}
+
+	rdnAttr := "cn"
+	if strings.EqualFold(loginAttr, "uid") && profile != directoryProfileAD {
+		rdnAttr = "uid"
+	}
+
+	// Construire le DN de l'utilisateur.
+	// Ex: CN=jdoe,CN=Users,DC=home,DC=lan ou uid=jdoe,OU=People,dc=home,dc=lan
+	userDN := fmt.Sprintf("%s=%s,%s,%s",
+		rdnAttr,
 		goldap.EscapeDN(username),
 		c.cfg.UserOU,
 		c.cfg.BaseDN,
 	)
 
-	// Construire le userPrincipalName : jdoe@home.lan
-	upn := fmt.Sprintf("%s@%s", username, c.cfg.Domain)
+	objectClassCandidates := c.createObjectClassCandidates(profile)
+	var lastCreateErr error
 
-	// Encoder le mot de passe en UTF-16LE (requis par Active Directory)
-	encodedPassword, err := encodeADPassword(password)
-	if err != nil {
-		return "", fmt.Errorf("ldap.CreateUser: %w", err)
+	for _, objectClass := range objectClassCandidates {
+		classes := objectClassHierarchy(objectClass)
+		addReq := goldap.NewAddRequest(userDN, nil)
+		addReq.Attribute("objectClass", classes)
+
+		addedAttrs := map[string]struct{}{}
+		addAttribute := func(attr string, values ...string) {
+			attr = strings.TrimSpace(attr)
+			if attr == "" || len(values) == 0 {
+				return
+			}
+			key := strings.ToLower(attr)
+			if _, exists := addedAttrs[key]; exists {
+				return
+			}
+			cleanValues := make([]string, 0, len(values))
+			for _, value := range values {
+				v := strings.TrimSpace(value)
+				if v != "" {
+					cleanValues = append(cleanValues, v)
+				}
+			}
+			if len(cleanValues) == 0 {
+				return
+			}
+			addReq.Attribute(attr, cleanValues)
+			addedAttrs[key] = struct{}{}
+		}
+
+		// Attributs communs, valides sur AD/OpenLDAP/Synology.
+		addAttribute("cn", username)
+		addAttribute("displayName", displayName)
+		addAttribute("sn", username)
+		addAttribute(loginAttr, username)
+		if email != "" {
+			addAttribute("mail", email)
+		}
+
+		if objectClassLooksLikeAD(objectClass) {
+			addAttribute("sAMAccountName", username)
+			addAttribute("name", displayName)
+
+			if domain := strings.TrimSpace(c.cfg.Domain); domain != "" {
+				addAttribute("userPrincipalName", fmt.Sprintf("%s@%s", username, domain))
+			}
+
+			// AD impose unicodePwd encode en UTF-16LE via LDAPS.
+			encodedPassword, err := encodeADPassword(password)
+			if err != nil {
+				return "", fmt.Errorf("ldap.CreateUser: %w", err)
+			}
+			addReq.Attribute("unicodePwd", []string{string(encodedPassword)})
+			addAttribute("userAccountControl", fmt.Sprintf("%d", UAC_NORMAL_ACCOUNT))
+		} else {
+			// Sur OpenLDAP/Synology LDAP, userPassword est l'attribut standard.
+			addAttribute("userPassword", password)
+		}
+
+		err = conn.Add(addReq)
+		if err == nil {
+			slog.Info("Utilisateur LDAP créé",
+				"dn", userDN,
+				"username", username,
+				"profile", profile,
+				"object_class", objectClass,
+				"login_attr", loginAttr,
+			)
+			lastCreateErr = nil
+			break
+		}
+
+		lastCreateErr = err
+		if !isObjectClassFallbackError(err) {
+			return "", fmt.Errorf("ldap.CreateUser: échec de la création de %q: %w", userDN, err)
+		}
+
+		slog.Warn("Echec creation LDAP, tentative avec objectClass alternatif",
+			"dn", userDN,
+			"object_class", objectClass,
+			"error", err,
+		)
 	}
 
-	// Construire la requête d'ajout
-	addReq := goldap.NewAddRequest(userDN, nil)
-
-	// Classes d'objet requises pour un utilisateur AD
-	addReq.Attribute("objectClass", []string{
-		objectClassTop,
-		objectClassPerson,
-		objectClassOrgPerson,
-		objectClassUser,
-	})
-
-	// Attributs obligatoires
-	addReq.Attribute("sAMAccountName", []string{username})
-	addReq.Attribute("userPrincipalName", []string{upn})
-	addReq.Attribute("displayName", []string{displayName})
-	addReq.Attribute("cn", []string{username})
-	addReq.Attribute("name", []string{displayName})
-
-	// Email (si fourni)
-	if email != "" {
-		addReq.Attribute("mail", []string{email})
+	if lastCreateErr != nil {
+		return "", fmt.Errorf("ldap.CreateUser: échec de la création de %q: %w", userDN, lastCreateErr)
 	}
-
-	// Mot de passe — DOIT être transmis via LDAPS
-	addReq.Attribute("unicodePwd", []string{string(encodedPassword)})
-
-	// Activer le compte immédiatement (512 = NORMAL_ACCOUNT)
-	addReq.Attribute("userAccountControl", []string{fmt.Sprintf("%d", UAC_NORMAL_ACCOUNT)})
-
-	// Exécuter la création
-	if err := conn.Add(addReq); err != nil {
-		return "", fmt.Errorf("ldap.CreateUser: échec de la création de %q: %w", userDN, err)
-	}
-
-	slog.Info("Utilisateur AD créé", "dn", userDN, "username", username, "upn", upn)
 
 	if err := c.assignUserToDefaultGroup(conn, userDN, role); err != nil {
 		// Log l'erreur mais ne fait pas échouer la création
@@ -553,6 +611,71 @@ func resolveEntryUsername(entry *goldap.Entry, attrs []string) (string, string) 
 	}
 
 	return "", ""
+}
+
+func (c *Client) createObjectClassCandidates(profile string) []string {
+	configured := normalizeLDAPObjectClass(c.cfg.UserObjectClass)
+	if configured != "" && !isAutoLDAPValue(configured) {
+		return []string{configured}
+	}
+
+	switch profile {
+	case directoryProfileAD:
+		return []string{"user", "person"}
+	case directoryProfileLDAP:
+		return []string{"person", "inetOrgPerson", "organizationalPerson", "user"}
+	default:
+		return []string{"person", "inetOrgPerson", "user"}
+	}
+}
+
+func objectClassHierarchy(objectClass string) []string {
+	switch strings.ToLower(strings.TrimSpace(objectClass)) {
+	case "user":
+		return []string{objectClassTop, objectClassPerson, objectClassOrgPerson, objectClassUser}
+	case "inetorgperson":
+		return []string{objectClassTop, objectClassPerson, objectClassOrgPerson, "inetOrgPerson"}
+	case "organizationalperson":
+		return []string{objectClassTop, objectClassPerson, objectClassOrgPerson}
+	case "person":
+		return []string{objectClassTop, objectClassPerson}
+	case "top":
+		return []string{objectClassTop}
+	default:
+		clean := strings.TrimSpace(objectClass)
+		if clean == "" {
+			return []string{objectClassTop, objectClassPerson}
+		}
+		return []string{objectClassTop, clean}
+	}
+}
+
+func objectClassLooksLikeAD(objectClass string) bool {
+	return strings.EqualFold(strings.TrimSpace(objectClass), "user")
+}
+
+func isObjectClassFallbackError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var ldapErr *goldap.Error
+	if errors.As(err, &ldapErr) {
+		switch ldapErr.ResultCode {
+		case goldap.LDAPResultInvalidAttributeSyntax,
+			goldap.LDAPResultObjectClassViolation,
+			goldap.LDAPResultUndefinedAttributeType,
+			goldap.LDAPResultInvalidDNSyntax:
+			return true
+		}
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	if strings.Contains(errMsg, "objectclass") && (strings.Contains(errMsg, "invalid") || strings.Contains(errMsg, "syntax") || strings.Contains(errMsg, "violation")) {
+		return true
+	}
+
+	return false
 }
 
 // ── Opérations internes ─────────────────────────────────────────────────────

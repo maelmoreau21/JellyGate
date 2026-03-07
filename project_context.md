@@ -1,405 +1,252 @@
-# JellyGate — Project Context (Bible)
+# JellyGate — Project Context
 
-> **Dernière mise à jour :** 2026-03-06
-> **Version :** 0.1.0-alpha
-> **Auteur :** Mael Moreau
+> Dernière mise à jour : 2026-03-07
+> Version : 0.1.0-alpha
+> Auteur : Mael Moreau
 
----
+## 1. Vision
 
-## 1. Vision du projet
+JellyGate est un portail d'administration et d'onboarding pour serveurs Jellyfin, pensé pour des déploiements self-hosted qui veulent:
 
-**JellyGate** est un gestionnaire d'invitations, de récupération de mots de passe et d'utilisateurs pour **Jellyfin / Emby**, écrit entièrement en **Go**.
-Il remplace [jfa-go](https://github.com/hrfee/jfa-go) en intégrant nativement la création et la gestion des comptes dans un annuaire **Active Directory (LDAP/LDAPS)**.
+- centraliser invitations, création de comptes et reset mot de passe
+- intégrer nativement LDAP / Active Directory
+- garder une stack simple à déployer en binaire Go ou Docker
+- exposer une interface admin moderne sans dépendance frontend lourde
 
-### Objectifs principaux
+Le projet remplace l'approche jfa-go par une intégration plus directe avec Jellyfin, LDAP, la persistance SQL et les workflows d'automatisation maison.
 
-| # | Objectif | Détail |
-|---|----------|--------|
-| 1 | Invitations avancées | Liens uniques, limites d'utilisation, expiration, profil par défaut |
-| 2 | Gestion utilisateurs | Dashboard admin : liste, activation/désactivation, ban, suppression (Jellyfin + AD) |
-| 3 | Récupération MDP | Réinitialisation via PIN / lien email → MAJ Jellyfin **ET** Active Directory (LDAPS) |
-| 4 | Notifications | SMTP complet + webhooks Discord / Telegram / Matrix |
-| 5 | Personnalisation UI | Messages d'accueil, CSS custom depuis l'admin |
-| 6 | i18n | Français (défaut) + Anglais via fichiers JSON |
+## 2. Stack actuelle
 
----
+| Domaine | Technologie |
+|---|---|
+| Backend | Go 1.22+, net/http, Chi v5 |
+| Templates | `html/template` |
+| Frontend | HTML, Tailwind CDN, JS vanilla, CSS custom |
+| Base | SQLite (`modernc.org/sqlite`) ou PostgreSQL |
+| LDAP | `go-ldap/ldap/v3` |
+| Jellyfin | API REST |
+| Email | `wneessen/go-mail` |
+| Notifications | Discord, Telegram, Matrix |
+| CI/CD | GitHub Actions, Docker Buildx, GHCR |
 
-## 2. Stack technique
+## 3. Arborescence logique
 
-```
-┌──────────────────────────────────────────────┐
-│                   Docker                     │
-│  ┌────────────────────────────────────────┐  │
-│  │         Go Binary (JellyGate)         │  │
-│  │                                        │  │
-│  │  ┌──────────┐  ┌──────────────────┐   │  │
-│  │  │ Chi v5   │  │ HTML/JS/CSS      │   │  │
-│  │  │ Router   │  │ (Vanilla ou      │   │  │
-│  │  │          │  │  Vue.js léger)   │   │  │
-│  │  └──────────┘  └──────────────────┘   │  │
-│  │                                        │  │
-│  │  ┌──────────┐  ┌──────────────────┐   │  │
-│  │  │ SQLite   │  │ go-ldap/ldap     │   │  │
-│  │  │ (data)   │  │ (Active Directory) │   │  │
-│  │  └──────────┘  └──────────────────┘   │  │
-│  └────────────────────────────────────────┘  │
-│                                              │
-│  Services externes :                         │
-│  • Jellyfin API REST                         │
-│  • Active Directory (LDAPS :636)             │
-│  • SMTP (email)                              │
-│  • Webhooks (Discord, Telegram, Matrix)      │
-└──────────────────────────────────────────────┘
-```
-
-| Composant | Technologie | Justification |
-|-----------|-------------|---------------|
-| Langage | Go 1.22+ | Performance, binaire unique, typage fort |
-| Routeur HTTP | [go-chi/chi](https://github.com/go-chi/chi) v5 | Léger, idiomatique, middleware-friendly |
-| Base de données | SQLite via [modernc.org/sqlite](https://pkg.go.dev/modernc.org/sqlite) | Sans serveur, embarquée, **pure Go (sans CGO)** |
-| LDAP | [go-ldap/ldap](https://github.com/go-ldap/ldap) v3 | Client LDAP complet, support LDAPS/StartTLS |
-| Frontend | HTML / CSS / JS vanilla | Simple, rapide, pas de build JS nécessaire |
-| Templating | `html/template` (stdlib Go) | Sécurisé par défaut (auto-escaping) |
-| Emails | `net/smtp` + [go-mail/mail](https://github.com/wneessen/go-mail) | SMTP avec TLS/STARTTLS |
-| Config | Variables d'environnement + fichier YAML | 12-factor app, Docker-friendly |
-| Déploiement | Docker multi-stage | Image finale légère (~10-15 Mo, sans CGO) |
-| i18n | Fichiers JSON (`locales/fr.json`, `locales/en.json`) | Simple, extensible |
-
----
-
-## 3. Architecture des dossiers
-
-```
-JellyGate/
-├── cmd/
-│   └── jellygate/
-│       └── main.go              # Point d'entrée
-├── internal/
-│   ├── config/
-│   │   └── config.go            # Chargement configuration (env + YAML)
-│   ├── database/
-│   │   ├── database.go          # Connexion SQLite, migrations
-│   │   └── models.go            # Structures de données (User, Invitation, etc.)
-│   ├── handlers/
-│   │   ├── admin.go             # Endpoints admin (dashboard, gestion users)
-│   │   ├── auth.go              # Login, sessions, middleware auth
-│   │   ├── invitations.go       # CRUD invitations + validation publique
-│   │   ├── password_reset.go    # Récupération mot de passe
-│   │   └── webhooks.go          # Gestion webhooks sortants
-│   ├── jellyfin/
-│   │   └── client.go            # Client API REST Jellyfin
-│   ├── ldap/
-│   │   └── client.go            # Client LDAP/LDAPS (Active Directory)
-│   ├── mail/
-│   │   └── mailer.go            # Service d'envoi d'emails
-│   ├── i18n/
-│   │   └── i18n.go              # Chargement et résolution des traductions
-│   └── middleware/
-│       ├── auth.go              # Middleware d'authentification
-│       └── i18n.go              # Détection de langue
-├── web/
-│   ├── static/
-│   │   ├── css/
-│   │   │   └── style.css        # Styles principaux
-│   │   └── js/
-│   │       └── app.js           # JavaScript principal
-│   ├── templates/
-│   │   ├── layouts/
-│   │   │   └── base.html        # Layout de base
-│   │   ├── admin/
-│   │   │   ├── dashboard.html   # Dashboard admin
-│   │   │   ├── users.html       # Gestion utilisateurs
-│   │   │   ├── invitations.html # Gestion invitations
-│   │   │   └── settings.html    # Paramètres
-│   │   ├── public/
-│   │   │   ├── invite.html      # Page d'inscription (invitation)
-│   │   │   └── reset.html       # Page de réinitialisation MDP
-│   │   └── emails/
-│   │       ├── invitation.html  # Template email invitation
-│   │       └── reset.html       # Template email reset MDP
-│   └── locales/
-│       ├── fr.json              # Traductions françaises (défaut)
-│       └── en.json              # Traductions anglaises
-├── data/                        # Volume Docker : SQLite + config runtime
-│   └── jellygate.db
-├── Dockerfile
-├── docker-compose.yml
-├── Makefile
-├── go.mod
-├── go.sum
-├── .env.example
-├── project_context.md           # ← CE FICHIER (bible du projet)
-└── README.md
+```text
+cmd/
+  i18ncheck/               # check i18n CI
+  jellygate/               # point d'entrée HTTP
+internal/
+  backup/                  # sauvegarde / restauration
+  config/                  # config runtime et structs métiers
+  database/                # migrations, accès SQL, settings
+  handlers/                # pages et API admin/public
+  i18nreport/              # rapport qualité des traductions
+  integrations/            # provisioning tiers
+  jellyfin/                # client Jellyfin
+  ldap/                    # client LDAP / AD
+  mail/                    # mailer SMTP
+  middleware/              # auth, i18n, sécurité, rate limit
+  notify/                  # webhooks
+  render/                  # moteur de rendu + traduction
+  scheduler/               # tâches périodiques
+  session/                 # cookies signés
+web/
+  i18n/                    # locales JSON
+  static/                  # css, js, favicon
+  templates/               # pages, layouts, emails
 ```
 
----
+## 4. Capacités produit
 
-## 4. Modèle de données (SQLite)
+### 4.1 Invitations
 
-### Table `users`
-| Colonne | Type | Description |
-|---------|------|-------------|
-| `id` | INTEGER PK | Auto-increment |
-| `jellyfin_id` | TEXT UNIQUE | ID Jellyfin de l'utilisateur |
-| `username` | TEXT UNIQUE NOT NULL | Nom d'utilisateur |
-| `email` | TEXT | Adresse email |
-| `ldap_dn` | TEXT | Distinguished Name dans l'AD |
-| `invited_by` | TEXT | Code invitation utilisé |
-| `is_active` | BOOLEAN | Compte actif/désactivé |
-| `is_banned` | BOOLEAN | Compte banni |
-| `access_expires_at` | DATETIME | Date d'expiration de l'accès |
-| `created_at` | DATETIME | Date de création |
-| `updated_at` | DATETIME | Dernière modification |
+- codes uniques avec quota, expiration et label
+- profils Jellyfin associés à l'invitation
+- mapping groupe/preset d'automatisation
+- flux atomique avec rollback LDAP/Jellyfin si une étape échoue
+- corrélation audit par `request_id`
+- base technique prête pour un futur mode parrainage utilisateur depuis `Mon compte`
 
-### Table `invitations`
-| Colonne | Type | Description |
-|---------|------|-------------|
-| `id` | INTEGER PK | Auto-increment |
-| `code` | TEXT UNIQUE NOT NULL | Code unique de l'invitation |
-| `label` | TEXT | Libellé de l'invitation (admin) |
-| `max_uses` | INTEGER | Nombre max d'utilisations (0 = illimité) |
-| `used_count` | INTEGER DEFAULT 0 | Nombre d'utilisations actuelles |
-| `jellyfin_profile` | TEXT | Profil Jellyfin JSON (droits, bibliothèques) |
-| `expires_at` | DATETIME | Date d'expiration |
-| `created_by` | TEXT | Admin qui a créé l'invitation |
-| `created_at` | DATETIME | Date de création |
+### 4.2 Utilisateurs
 
-### Table `password_resets`
-| Colonne | Type | Description |
-|---------|------|-------------|
-| `id` | INTEGER PK | Auto-increment |
-| `user_id` | INTEGER FK | Référence vers `users.id` |
-| `code` | TEXT UNIQUE NOT NULL | Code PIN / token unique |
-| `expires_at` | DATETIME NOT NULL | Expiration du code |
-| `used` | BOOLEAN DEFAULT FALSE | Déjà utilisé ? |
-| `created_at` | DATETIME | Date de création |
+- listing admin
+- synchronisation Jellyfin
+- suppression compte
+- toggle d'accès
+- profil personnel avec langue préférée et préférences de notification
+- refonte admin en cours page par page pour homogénéiser toute l'interface
 
-### ~Table `admin_users`~ → Supprimée
+### 4.3 Réinitialisation mot de passe
 
-> **Authentification admin déléguée à Jellyfin** : le login admin appelle
-> `POST /Users/AuthenticateByName` sur Jellyfin. Seuls les utilisateurs avec
-> `Policy.IsAdministrator == true` sont autorisés. La session est maintenue
-> via un cookie signé (HMAC-SHA256) côté JellyGate.
+- page publique de demande
+- token/code temporaire
+- update Jellyfin + LDAP
+- anti-énumération côté message utilisateur
 
-### Table `settings`
-| Colonne | Type | Description |
-|---------|------|-------------|
-| `key` | TEXT PK | Clé du paramètre |
-| `value` | TEXT | Valeur (JSON ou texte brut) |
-| `updated_at` | DATETIME | Dernière modification |
+### 4.4 Vérification des canaux de contact
 
-### Table `audit_log`
-| Colonne | Type | Description |
-|---------|------|-------------|
-| `id` | INTEGER PK | Auto-increment |
-| `action` | TEXT NOT NULL | Type d'action (ex: `user.created`, `invite.used`) |
-| `actor` | TEXT | Qui a effectué l'action |
-| `target` | TEXT | Sur qui/quoi porte l'action |
-| `details` | TEXT | Détails JSON |
-| `created_at` | DATETIME | Horodatage |
+- statut vérifié / en attente exposé sur le profil utilisateur
+- lien public `/verify-email/{code}` avec gestion des états valide / expiré / déjà utilisé / invalide
+- envoi initial au signup et renvoi depuis `Mon compte`
+- changement d'adresse géré via `pending_email` jusqu'à confirmation
+- corps HTML et sujet de l'e-mail de vérification configurables depuis l'admin
+- politique historique: les comptes déjà présents avant cette feature, avec e-mail existant et sans vérification en cours, sont marqués vérifiés une seule fois au démarrage
+- objectif cible: étendre ensuite le même modèle de vérification à Discord / Telegram / Matrix
 
----
+### 4.5 Automatisation et home server
 
-## 5. Routes API
+- presets Jellyfin
+- mappings groupes LDAP / groupes fonctionnels
+- tâches planifiées
+- provisioning Jellyseerr / Ombi optionnel
 
-### Routes publiques (pas d'authentification)
+### 4.6 Audit et observabilité
 
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| `GET` | `/invite/{code}` | Page d'inscription via invitation |
-| `POST` | `/invite/{code}` | Soumettre le formulaire d'inscription |
-| `GET` | `/reset` | Page de demande de réinitialisation MDP |
-| `POST` | `/reset/request` | Envoyer un code de réinitialisation |
-| `GET` | `/reset/{code}` | Page de saisie du nouveau MDP |
-| `POST` | `/reset/{code}` | Soumettre le nouveau MDP |
+- `audit_log` SQL
+- filtres avancés sur l'API logs
+- export CSV / JSON
+- extraction et affichage `request_id`
 
-### Routes admin (authentification requise)
+### 4.7 i18n
 
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| `GET` | `/admin/login` | Page de login admin |
-| `POST` | `/admin/login` | Authentification admin |
-| `POST` | `/admin/logout` | Déconnexion admin |
-| `GET` | `/admin/` | Dashboard principal |
-| `GET` | `/admin/users` | Liste des utilisateurs |
-| `POST` | `/admin/users/{id}/toggle` | Activer/désactiver un utilisateur |
-| `POST` | `/admin/users/{id}/ban` | Bannir un utilisateur |
-| `DELETE` | `/admin/users/{id}` | Supprimer un utilisateur (Jellyfin + AD) |
-| `POST` | `/admin/users/{id}/extend` | Prolonger l'accès d'un utilisateur |
-| `GET` | `/admin/invitations` | Liste des invitations |
-| `POST` | `/admin/invitations` | Créer une nouvelle invitation |
-| `DELETE` | `/admin/invitations/{id}` | Supprimer une invitation |
-| `GET` | `/admin/settings` | Page des paramètres |
-| `POST` | `/admin/settings` | Sauvegarder les paramètres |
-| `GET` | `/admin/logs` | Page du journal d'audit |
-| `GET` | `/admin/api/logs` | Récupérer l'historique d'audit (JSON) |
+- locales JSON sous `web/i18n`
+- détection par cookie `lang`, puis `Accept-Language`, puis `default_lang`
+- fallback `lang demandée -> en -> fr`
+- commande CI `go run ./cmd/i18ncheck`
+- page admin `/admin/i18n`
 
-### Routes statiques
+### 4.8 Roadmap produit validée
 
-| Méthode | Route | Description |
-|---------|-------|-------------|
-| `GET` | `/static/*` | Fichiers statiques (CSS, JS, images) |
+- parrainage utilisateur depuis `Mon compte` avec quotas, durée de vie et traçabilité sponsor -> invité
+- vérification d'e-mail obligatoire ou configurable selon la politique d'instance
+- création directe d'utilisateur côté admin avec preset complet, expiration et message de bienvenue
+- centre de tâches manuelles pour lancer housekeeping, sync Jellyfin, sync intégrations et sauvegardes
+- intégration Jellyseerr plus profonde: sync profil, préférences de notification et resync manuel
+- contenu produit personnalisable depuis l'admin pour onboarding, aide post-inscription et messages réutilisables
+- timeline utilisateur enrichie basée sur l'audit log existant
 
----
+## 5. Routes importantes
 
-## 6. Variables d'environnement
+### Public
 
-### Application
+| Méthode | Route | Usage |
+|---|---|---|
+| GET | `/invite/{code}` | page d'inscription |
+| POST | `/invite/{code}` | validation inscription |
+| GET | `/reset` | page de demande reset |
+| POST | `/reset/request` | émission du reset |
+| GET | `/reset/{code}` | formulaire nouveau mot de passe |
+| POST | `/reset/{code}` | soumission reset |
+| GET | `/verify-email/{code}` | validation d'adresse e-mail |
 
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `JELLYGATE_PORT` | `8097` | Port d'écoute HTTP |
-| `JELLYGATE_BASE_URL` | `http://localhost:8097` | URL de base publique |
-| `JELLYGATE_DATA_DIR` | `/data` | Répertoire des données (SQLite, config) |
-| `JELLYGATE_SECRET_KEY` | *(requis)* | Clé secrète pour les sessions/tokens |
+### Admin UI
 
-### Jellyfin
+| Méthode | Route | Usage |
+|---|---|---|
+| GET | `/admin/login` | login |
+| POST | `/admin/login` | authentification |
+| POST | `/admin/logout` | logout |
+| GET | `/admin/` | dashboard |
+| GET | `/admin/users` | utilisateurs |
+| GET | `/admin/invitations` | invitations |
+| GET | `/admin/messages` | messages |
+| GET | `/admin/settings` | paramètres |
+| GET | `/admin/logs` | journaux |
+| GET | `/admin/automation` | automatisation |
+| GET | `/admin/my-account` | profil utilisateur |
+| GET | `/admin/i18n` | rapport qualité i18n |
 
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `JELLYFIN_URL` | *(requis)* | URL de l'instance Jellyfin |
-| `JELLYFIN_API_KEY` | *(requis)* | Clé API d'administration Jellyfin |
+### Admin API
 
-### LDAP / Active Directory
+| Préfixe | Description |
+|---|---|
+| `/admin/api/users` | gestion utilisateurs |
+| `/admin/api/invitations` | CRUD invitations |
+| `/admin/api/messages` | centre de messages |
+| `/admin/api/settings` | paramètres applicatifs |
+| `/admin/api/backups` | sauvegardes |
+| `/admin/api/logs` | audit logs et exports |
+| `/admin/api/automation` | presets, mappings, tâches |
+| `/admin/api/i18n/report` | rapport qualité des locales |
 
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `LDAP_HOST` | *(requis)* | Hostname du serveur LDAP (Active Directory) |
-| `LDAP_PORT` | `636` | Port LDAP (636 pour LDAPS) |
-| `LDAP_USE_TLS` | `true` | Utiliser LDAPS (TLS) |
-| `LDAP_SKIP_VERIFY` | `false` | Ignorer la vérification du certificat TLS |
-| `LDAP_BIND_DN` | *(requis)* | DN de l'utilisateur pour se connecter (bind) |
-| `LDAP_BIND_PASSWORD` | *(requis)* | Mot de passe de bind |
-| `LDAP_BASE_DN` | *(requis)* | Base DN de recherche (ex: `dc=home,dc=lan`) |
-| `LDAP_USER_OU` | `CN=Users` | OU pour la création des utilisateurs |
-| `LDAP_USER_GROUP` | *(optionnel)* | Groupe AD auquel ajouter les utilisateurs |
-| `LDAP_DOMAIN` | *(requis)* | Domaine AD (ex: `home.lan`) — pour `userPrincipalName` |
+## 6. Base de données
 
-### SMTP
+Tables principales:
 
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `SMTP_HOST` | *(requis)* | Serveur SMTP |
-| `SMTP_PORT` | `587` | Port SMTP |
-| `SMTP_USERNAME` | *(requis)* | Utilisateur SMTP |
-| `SMTP_PASSWORD` | *(requis)* | Mot de passe SMTP |
-| `SMTP_FROM` | *(requis)* | Adresse expéditeur |
-| `SMTP_TLS` | `true` | Utiliser STARTTLS |
+- `users`
+- `invitations`
+- `password_resets`
+- `email_verifications`
+- `settings`
+- `audit_log`
 
-### Webhooks (optionnels)
+Le projet supporte SQLite et PostgreSQL. SQLite reste la cible de déploiement la plus simple. PostgreSQL est utile quand on veut séparer la persistance ou scaler le service.
 
-| Variable | Défaut | Description |
-|----------|--------|-------------|
-| `WEBHOOK_DISCORD_URL` | *(vide)* | URL du webhook Discord |
-| `WEBHOOK_TELEGRAM_TOKEN` | *(vide)* | Token du bot Telegram |
-| `WEBHOOK_TELEGRAM_CHAT_ID` | *(vide)* | ID du chat Telegram |
-| `WEBHOOK_MATRIX_URL` | *(vide)* | URL du serveur Matrix |
-| `WEBHOOK_MATRIX_ROOM_ID` | *(vide)* | ID de la room Matrix |
-| `WEBHOOK_MATRIX_TOKEN` | *(vide)* | Token d'accès Matrix |
+## 7. Sécurité
 
----
+### 7.1 Mesures en place
 
-## 7. Flux critique : Validation d'une invitation
+- authentification admin déléguée à Jellyfin
+- cookies de session signés HMAC-SHA256
+- middleware CSRF pour les routes admin mutables
+- middleware de rate limiting mémoire sur login/invite/reset
+- headers HTTP centralisés: CSP, HSTS conditionnel, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`
+- journalisation des actions sensibles
 
-Ce flux est le cœur de JellyGate. Les opérations doivent être **atomiques** — en cas d'échec d'une étape, les précédentes sont annulées (rollback).
+### 7.2 Écarts encore ouverts
 
-```
-Utilisateur soumet le formulaire d'invitation
-        │
-        ▼
-┌─────────────────────────────┐
-│ 1. Valider l'invitation     │  → Code valide ? Non expiré ? Quota non atteint ?
-│    (base SQLite)            │
-└────────────┬────────────────┘
-             │ OK
-             ▼
-┌─────────────────────────────┐
-│ 2. Créer le compte dans     │  → sAMAccountName, userPrincipalName, displayName
-│    Active Directory (LDAPS:636)│  → Mot de passe encodé UTF-16LE
-└────────────┬────────────────┘
-             │ OK
-             ▼
-┌─────────────────────────────┐
-│ 3. Créer le compte dans     │  → POST /Users/New (API REST Jellyfin)
-│    Jellyfin                 │  → Appliquer le profil d'invitation
-└────────────┬────────────────┘
-             │ OK
-             ▼
-┌─────────────────────────────┐
-│ 4. Enregistrer l'utilisateur│  → INSERT dans la table `users`
-│    dans SQLite              │  → INCREMENT `used_count` sur l'invitation
-└────────────┬────────────────┘
-             │ OK
-             ▼
-┌─────────────────────────────┐
-│ 5. Notifications            │  → Email de bienvenue à l'utilisateur
-│                             │  → Webhook Discord/Telegram/Matrix à l'admin
-└─────────────────────────────┘
+- cookies `Secure` encore dépendants de `r.TLS != nil` sur certains chemins et pas de stratégie proxy TLS uniforme
+- secrets LDAP/SMTP/Webhooks stockés en clair dans `settings`
+- `DB_SSLMODE=disable` reste le défaut PostgreSQL
+- pas encore de suite de tests métier significative
 
-⚠️  Rollback en cas d'erreur :
-    - Étape 3 échoue → Supprimer le compte AD créé à l'étape 2
-    - Étape 4 échoue → Supprimer le compte Jellyfin (étape 3) + AD (étape 2)
+## 8. Expérience utilisateur
+
+L'interface suit actuellement ces principes:
+
+- fond noir conservé
+- pages publiques centrées et simples
+- sidebar admin fixe
+- actions fréquentes mises en avant
+- sélecteur de langue visible hors sidebar et intégré à l'admin quand la sidebar existe
+
+Le design system partagé est porté par `web/static/css/custom.css` et `web/templates/layouts/base.html`.
+
+## 9. CI / Docker
+
+Le workflow `docker-publish.yml` publie une image multi-arch:
+
+- `linux/amd64`
+- `linux/arm64`
+
+Tags conservés:
+
+- `latest`
+- `vX.Y.Z`
+
+Le workflow exécute aussi le check i18n via `cmd/i18ncheck` pour empêcher l'introduction de clés manquantes, placeholders incohérents ou valeurs fallback.
+
+## 10. Commandes de validation
+
+```bash
+go build ./...
+go test ./...
+go run ./cmd/i18ncheck
 ```
 
----
+## 11. Points d'attention pour les prochaines évolutions
 
-## 8. Sécurité
+- améliorer la qualité réelle des traductions non `fr`/`en`
+- finir le durcissement proxy HTTPS / cookies sécurisés
+- chiffrer les secrets stockés en base
+- ajouter des tests de handlers et de flux invitation/reset
+- étendre la vérification d'e-mail vers une politique d'instance configurable plus fine
+- ouvrir la voie au parrainage utilisateur et à la création directe d'utilisateur par l'admin
 
-### 8.1 Mesures actuellement en place
+## 12. Priorités produit court terme
 
-| Mesure | Détail |
-|--------|--------|
-| Authentification admin | Déléguée à **Jellyfin** (`AuthenticateByName` + vérification `IsAdministrator`) |
-| Sessions | Cookie signé HMAC-SHA256, `HttpOnly`, `SameSite=Strict` |
-| LDAPS | Support LDAPS/TLS pour AD, mot de passe AD encodé UTF-16LE |
-| Injection SQL | Requêtes paramétrées quasi systématiques (`?` placeholders) |
-| XSS | Auto-escaping via `html/template` |
-| Clé secrète | `JELLYGATE_SECRET_KEY` requis, min 32 caractères |
-| Audit | Actions sensibles journalisées dans `audit_log` |
-
-### 8.2 Ecarts AppSec identifiés (audit 2026-03-06)
-
-| Domaine | Etat | Risque |
-|--------|------|--------|
-| CSRF | Protection implicite via `SameSite`, **pas de token CSRF serveur** sur les endpoints JSON state-changing | Moyen à élevé selon déploiement |
-| Rate limiting | **Non implémenté** sur login/reset/invite | Elevé (bruteforce/abus) |
-| Cookie `Secure` derrière reverse proxy | Dépend de `r.TLS != nil` uniquement, pas de prise en compte proxy TLS termination | Elevé |
-| Chiffrement des secrets en base | Config LDAP/SMTP/Webhooks stockée en clair dans `settings` | Elevé |
-| PostgreSQL transport security | `sslmode=disable` par défaut | Moyen à élevé |
-| Durcissement HTTP headers | CSP/HSTS/X-Frame-Options non centralisés | Moyen |
-
-### 8.3 Priorités de remédiation
-
-1. Ajouter un middleware CSRF robuste pour toutes les routes admin en écriture.
-2. Mettre en place du rate limiting sur `/admin/login`, `/reset/request`, `/reset/{code}`, `/invite/{code}`.
-3. Forcer les cookies de session en `Secure` derrière proxy TLS (`X-Forwarded-Proto=https` validé) et envisager HSTS.
-4. Chiffrer les secrets applicatifs au repos (AES-GCM avec clé maître hors base, idéalement via secret manager).
-5. Exiger TLS vérifié pour PostgreSQL et LDAP en production (`sslmode=require` min, `verify-full` recommandé).
-6. Ajouter des en-têtes de sécurité HTTP globaux (CSP, X-Content-Type-Options, X-Frame-Options/`frame-ancestors`, Referrer-Policy).
-
----
-
-## 9. État d'avancement
-
-| Phase | Statut | Détail |
-|-------|--------|--------|
-| ✅ Rédaction `project_context.md` | **Terminé** | Ce fichier |
-| ✅ `docker-compose.yml` | **Terminé** | Port 8097, toutes les variables |
-| ✅ `Dockerfile` | **Terminé** | Multi-stage, pure Go (sans CGO) |
-| ✅ Squelette Go (cmd/internal) | **Terminé** | main.go + routeur Chi v5 |
-| ✅ Configuration (config.go) | **Refactorisé** | 4 env vars (App+JF), LDAP/SMTP/Webhooks en SQLite via UI admin |
-| ✅ Base de données (SQLite) | **Terminé** | modernc.org/sqlite + 6 tables + index |
-| ✅ Authentification admin | **Terminé** | Déléguée à Jellyfin + cookie HMAC |
-| ✅ Client Jellyfin | **Terminé** | CRUD users, policy, profils, reset MDP |
-| ✅ Client LDAP/LDAPS | **Terminé** | LDAPS, unicodePwd UTF-16LE, UAC, rollback-ready |
-| ✅ Système d'invitations | **Terminé** | Flux atomique 5 étapes + rollback strict |
-| ✅ Gestion utilisateurs | **Terminé** | API JSON : list, toggle AD+JF, delete |
-| ✅ Récupération MDP | **Terminé** | Token crypto, dual reset AD+JF, anti-énumération |
-| ✅ Service SMTP | **Terminé** | go-mail, templates HTML, Ping au démarrage |
-| ✅ Webhooks | **Terminé** | Discord, Telegram, Matrix — async goroutines |
-| ✅ Frontend (templates) | **Terminé** | Dark theme, glassmorphism, Tailwind, fetch API, i18n-ready |
-| ✅ Internationalisation | **Terminé** | fr.json + en.json, middleware détection, fallback FR, sélecteur UI |
-| ⚠️ Audit AppSec OWASP Top 10 | **Réalisé (écarts détectés)** | CSRF token absent, rate limit absent, secrets en clair, cookie secure proxy à corriger |
-| ⬜ Personnalisation UI | À faire | CSS custom depuis l'admin |
-| ⬜ Tests | À faire | Unitaires + intégration |
-| ✅ Docker / CI | **Terminé** | Buildx multi-arch, GHCR, semver tags, GHA cache |
+1. Parrainage utilisateur depuis `Mon compte`
+2. Création directe d'utilisateur côté admin
+3. Centre de tâches manuelles
+4. Intégration Jellyseerr enrichie
+5. Politique avancée de vérification d'e-mail

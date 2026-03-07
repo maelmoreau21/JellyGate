@@ -84,18 +84,24 @@
 
 <main class="jg-main">
     <div class="flex flex-col gap-6">
-        <div class="flex items-start justify-between gap-4">
-            <div>
+        <div class="jg-hero-grid">
+            <div class="glass-card jg-hero-panel p-6 md:p-8">
+                <div>
                 <button id="sidebar-toggle"
                     class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-                <h1 class="text-2xl font-bold">{{ .T "users_heading" }}</h1>
-                <p class="text-sm text-slate-400">{{ .T "users_subheading_extended" }}</p>
+                    <span class="jg-kicker">{{ .T "users_toolbar_title" }}</span>
+                    <h1 class="text-3xl font-bold mt-3">{{ .T "users_heading" }}</h1>
+                    <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "users_subheading_extended" }}</p>
+                </div>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="glass-card p-5 jg-aside-card">
+                <h2 class="text-lg font-semibold">{{ .T "users_toolbar_desc" }}</h2>
+                <p class="text-sm text-slate-400 mt-2">{{ .T "users_bulk_assistant_desc" }}</p>
+                <div class="flex flex-wrap gap-2 mt-5">
                 <button onclick="openBulkEmailComposer()" class="jg-btn shadow-sm" title='{{ .T "users_bulk_email_open" }}'>
                     {{ .T "users_bulk_email" }}
                 </button>
@@ -106,10 +112,47 @@
                     </svg>
                     {{ .T "users_sync_jellyfin" }}
                 </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value" id="users-stat-total">0</div>
+                    <div class="stat-label">{{ .T "users_overview_total" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value" id="users-stat-filtered">0</div>
+                    <div class="stat-label">{{ .T "users_overview_filtered" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value" id="users-stat-inviters">0</div>
+                    <div class="stat-label">{{ .T "users_overview_inviters" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value" id="users-stat-expiring">0</div>
+                    <div class="stat-label">{{ .T "users_overview_expiring" }}</div>
+                </div>
             </div>
         </div>
 
         <div class="glass-card p-4">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold">{{ .T "users_filters_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "users_filters_desc" }}</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
+                <span>{{ .T "users_segment_accounts" }}</span>
+                <span>{{ .T "users_segment_delivery" }}</span>
+                <span>{{ .T "users_segment_access" }}</span>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
                 <input type="text" id="search-users" class="jg-input xl:col-span-2" placeholder='{{ .T "users_search_placeholder" }}'>
                 <select id="filter-status" class="jg-input">
@@ -141,6 +184,10 @@
         </div>
 
         <div class="glass-card p-4" id="bulk-card">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold">{{ .T "users_bulk_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "users_bulk_desc" }}</p>
+            </div>
             <div class="flex flex-col gap-4">
                 <div class="bulk-steps-grid">
                     <div id="bulk-step-select" class="bulk-step-card active">
@@ -195,6 +242,10 @@
         </div>
 
         <div class="glass-card p-0 overflow-hidden">
+            <div class="px-6 py-4 border-b border-white/5">
+                <h2 class="text-lg font-semibold">{{ .T "users_table_title" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "users_table_desc" }}</p>
+            </div>
             <div class="jg-table-wrap">
                 <table class="jg-table">
                     <thead>
@@ -465,6 +516,10 @@
             filteredUsers = users;
             const tbody = document.getElementById('users-tbody');
             document.getElementById('user-count').textContent = `${users.length} ${i18n.usersDisplayed} ${allUsers.length}`;
+            document.getElementById('users-stat-total').textContent = allUsers.length;
+            document.getElementById('users-stat-filtered').textContent = users.length;
+            document.getElementById('users-stat-inviters').textContent = allUsers.filter(u => u.can_invite).length;
+            document.getElementById('users-stat-expiring').textContent = allUsers.filter(u => isExpired(u)).length;
 
             if (users.length === 0) {
                 const help = allUsers.length === 0
