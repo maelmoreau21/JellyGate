@@ -97,37 +97,30 @@
 
 <main class="jg-main">
     <div class="flex flex-col gap-6">
-        <div class="jg-hero-grid">
-            <div class="glass-card jg-hero-panel p-6 md:p-8">
-                <div>
+        <section class="glass-card jg-hero-panel p-6 md:p-8">
+            <div>
                 <button id="sidebar-toggle"
                     class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-                    <span class="jg-kicker">{{ .T "users_toolbar_title" }}</span>
-                    <h1 class="text-3xl font-bold mt-3">{{ .T "users_heading" }}</h1>
-                    <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "users_subheading_extended" }}</p>
-                </div>
-            </div>
-            <div class="glass-card p-5 jg-aside-card">
-                <h2 class="text-lg font-semibold">{{ .T "users_toolbar_desc" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "users_bulk_assistant_desc" }}</p>
+                <span class="jg-kicker">{{ .T "users_toolbar_title" }}</span>
+                <h1 class="text-3xl font-bold mt-3">{{ .T "users_heading" }}</h1>
+                <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "users_toolbar_desc" }}</p>
                 <div class="flex flex-wrap gap-2 mt-5">
-                <button id="btn-open-bulk-email" class="jg-btn shadow-sm" title='{{ .T "users_bulk_email_open" }}'>
-                    {{ .T "users_bulk_email" }}
-                </button>
-                <button id="btn-sync-users" class="jg-btn jg-btn-ghost shadow-sm" title='{{ .T "users_sync_jellyfin_title" }}'>
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    {{ .T "users_sync_jellyfin" }}
-                </button>
+                    <button id="btn-open-bulk-email" class="jg-btn" title='{{ .T "users_bulk_email_open" }}'>{{ .T "users_bulk_email" }}</button>
+                    <button id="btn-sync-users" class="jg-btn jg-btn-ghost" title='{{ .T "users_sync_jellyfin_title" }}'>
+                        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        {{ .T "users_sync_jellyfin" }}
+                    </button>
+                    <a href="#users-filters" class="jg-btn jg-btn-ghost">{{ .T "users_filters_title" }}</a>
                 </div>
             </div>
-        </div>
+        </section>
 
         <div class="stats-grid">
             <div class="glass-card-sm stat-card">
@@ -156,35 +149,12 @@
             </div>
         </div>
 
-        <div class="jg-section-nav">
-            <a href="#users-filters" class="jg-section-anchor">{{ .T "users_filters_title" }}</a>
-            <a href="#bulk-card" class="jg-section-anchor">{{ .T "users_bulk_title" }}</a>
-            <a href="#users-table-card" class="jg-section-anchor">{{ .T "users_table_title" }}</a>
-        </div>
-
-        <div class="glass-card-sm jg-focus-band">
-            <div class="jg-focus-block">
-                <span class="jg-focus-label">{{ .T "users_table_title" }}</span>
-                <span class="jg-focus-value" id="users-focus-filtered">0</span>
-                <span class="jg-focus-text">{{ .T "users_displayed_count" }}</span>
-            </div>
-            <div class="jg-focus-block">
-                <span class="jg-focus-label">{{ .T "users_bulk_title" }}</span>
-                <span class="jg-focus-value" id="users-focus-selected">0</span>
-                <span class="jg-focus-text">{{ .T "users_bulk_selected_suffix" }}</span>
-            </div>
-            <div class="jg-focus-actions">
-                <a href="#bulk-card" class="jg-section-anchor">{{ .T "users_bulk_title" }}</a>
-                <a href="#users-table-card" class="jg-section-anchor">{{ .T "users_table_title" }}</a>
-            </div>
-        </div>
-
-        <div class="jg-insight-grid">
-            <div class="glass-card-sm jg-insight-card">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div class="glass-card-sm p-4">
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                        <h2 class="text-lg font-semibold">{{ .T "users_live_filters_title" }}</h2>
-                        <p class="text-sm text-slate-400 mt-1">{{ .T "users_live_filters_desc" }}</p>
+                        <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "users_live_filters_title" }}</div>
+                        <div class="text-sm text-slate-300 mt-2"><span id="users-focus-filtered">0</span> {{ .T "users_displayed_count" }}</div>
                     </div>
                     <button id="btn-clear-filters" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "users_filters_clear" }}</button>
                 </div>
@@ -192,11 +162,11 @@
                     <span class="jg-chip jg-chip-muted">{{ .T "users_filters_none" }}</span>
                 </div>
             </div>
-            <div class="glass-card-sm jg-insight-card">
+            <div class="glass-card-sm p-4">
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                        <h2 class="text-lg font-semibold">{{ .T "users_selection_title" }}</h2>
-                        <p class="text-sm text-slate-400 mt-1">{{ .T "users_selection_desc" }}</p>
+                        <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "users_selection_title" }}</div>
+                        <div class="text-sm text-slate-300 mt-2"><span id="users-focus-selected">0</span> {{ .T "users_bulk_selected_suffix" }}</div>
                     </div>
                     <button id="btn-clear-selection" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "users_selection_clear" }}</button>
                 </div>
@@ -210,11 +180,6 @@
             <div class="mb-4">
                 <h2 class="text-lg font-semibold">{{ .T "users_filters_title" }}</h2>
                 <p class="text-sm text-slate-400 mt-1">{{ .T "users_filters_desc" }}</p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs uppercase tracking-[0.18em] text-slate-500 mb-3">
-                <span>{{ .T "users_segment_accounts" }}</span>
-                <span>{{ .T "users_segment_delivery" }}</span>
-                <span>{{ .T "users_segment_access" }}</span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
                 <input type="text" id="search-users" class="jg-input xl:col-span-2" placeholder='{{ .T "users_search_placeholder" }}'>

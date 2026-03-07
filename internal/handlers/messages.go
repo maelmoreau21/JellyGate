@@ -44,6 +44,15 @@ type MessageResponse struct {
 	ReadCount     int      `json:"read_count"`
 }
 
+type messageEmailRecipient struct {
+	ID         int64
+	Username   string
+	Email      string
+	IsActive   bool
+	CanInvite  bool
+	OptInEmail bool
+}
+
 func (h *AdminHandler) MessagesPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
@@ -135,6 +144,54 @@ func splitChannels(raw string) []string {
 	return result
 }
 
+func (h *AdminHandler) loadMessageEmailRecipients(targetGroup string, targetUserIDs []int64) ([]messageEmailRecipient, error) {
+	targetUsersCSV := csvTargetUserIDs(targetUserIDs)
+	rows, err := h.db.Query(`SELECT id, username, email, is_active, can_invite, opt_in_email FROM users`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	recipients := make([]messageEmailRecipient, 0)
+	for rows.Next() {
+		var rec messageEmailRecipient
+		if err := rows.Scan(&rec.ID, &rec.Username, &rec.Email, &rec.IsActive, &rec.CanInvite, &rec.OptInEmail); err != nil {
+			continue
+		}
+		if !rec.OptInEmail || strings.TrimSpace(rec.Email) == "" {
+			continue
+		}
+		if !messageTargetsUser(targetGroup, targetUsersCSV, rec.ID, false, rec.CanInvite, rec.IsActive) {
+			continue
+		}
+		recipients = append(recipients, rec)
+	}
+
+	return recipients, nil
+}
+
+func (h *AdminHandler) sendImmediateMessageEmails(recipients []messageEmailRecipient, title, body, actor string) int {
+	if h.mailer == nil {
+		return 0
+	}
+
+	sentCount := 0
+	for _, rec := range recipients {
+		err := h.mailer.SendTemplateString(rec.Email, title, body, map[string]string{
+			"Username": rec.Username,
+			"Email":    rec.Email,
+			"Actor":    actor,
+		})
+		if err != nil {
+			slog.Warn("envoi message utilisateur impossible", "user_id", rec.ID, "email", rec.Email, "error", err)
+			continue
+		}
+		sentCount++
+	}
+
+	return sentCount
+}
+
 func (h *AdminHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
@@ -180,6 +237,29 @@ func (h *AdminHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	channels := normalizeChannels(req.Channels)
+	if !strings.Contains(channels, "email") {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Le canal email est requis"})
+		return
+	}
+	if h.mailer == nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "SMTP non configuré"})
+		return
+	}
+
+	var recipients []messageEmailRecipient
+	if !req.IsCampaign {
+		resolvedRecipients, resolveErr := h.loadMessageEmailRecipients(targetGroup, req.TargetUserIDs)
+		if resolveErr != nil {
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur résolution destinataires"})
+			return
+		}
+		recipients = resolvedRecipients
+		if len(recipients) == 0 {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun destinataire email valide"})
+			return
+		}
+	}
+
 	targetUsers := csvTargetUserIDs(req.TargetUserIDs)
 
 	res, err := h.db.Exec(
@@ -201,6 +281,19 @@ func (h *AdminHandler) CreateMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	msgID, _ := res.LastInsertId()
+	if !req.IsCampaign {
+		sentCount := h.sendImmediateMessageEmails(recipients, title, body, sess.Username)
+		if sentCount == 0 {
+			_, _ = h.db.Exec(`DELETE FROM user_messages WHERE id = ?`, msgID)
+			writeJSON(w, http.StatusBadGateway, APIResponse{Success: false, Message: "Aucun email n'a pu être envoyé"})
+			return
+		}
+		_, _ = h.db.Exec(`UPDATE user_messages SET sent_at = datetime('now') WHERE id = ?`, msgID)
+		_ = h.db.LogAction("message.sent", sess.Username, strconv.FormatInt(msgID, 10), fmt.Sprintf("%d emails envoyes", sentCount))
+		writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Message envoyé"})
+		return
+	}
+
 	_ = h.db.LogAction("message.created", sess.Username, strconv.FormatInt(msgID, 10), title)
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Message cree"})
 }

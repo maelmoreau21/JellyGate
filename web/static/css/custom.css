@@ -277,6 +277,25 @@ select.jg-input optgroup {
     margin-top: 0.75rem;
 }
 
+.jg-sidebar-footer .jg-lang-switcher {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.jg-sidebar-footer .jg-lang-switcher label {
+    margin-bottom: 0.45rem;
+    color: rgba(194, 206, 226, 0.86);
+}
+
+.jg-sidebar-footer .jg-lang-select {
+    border-color: rgba(148, 163, 184, 0.22);
+    box-shadow: none;
+}
+
 /* ── Labels ──────────────────────────────────────────────────────────────── */
 .jg-label {
     font-size: 0.8rem;

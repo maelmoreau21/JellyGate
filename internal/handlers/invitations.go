@@ -426,12 +426,20 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		if publicBaseURL == "" {
 			publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
 		}
-		combinedTemplate := joinTemplateSections(
-			emailCfg.Welcome,
-			emailCfg.Confirmation,
-			emailCfg.PostSignupHelp,
-			emailCfg.UserCreation,
-		)
+		sections := make([]string, 0, 4)
+		if !emailCfg.DisableWelcomeEmail {
+			sections = append(sections, emailCfg.Welcome)
+		}
+		if !emailCfg.DisableConfirmationEmail {
+			sections = append(sections, emailCfg.Confirmation)
+		}
+		if !emailCfg.DisablePostSignupHelpEmail {
+			sections = append(sections, emailCfg.PostSignupHelp)
+		}
+		if !emailCfg.DisableUserCreationEmail {
+			sections = append(sections, emailCfg.UserCreation)
+		}
+		combinedTemplate := joinTemplateSections(sections...)
 
 		if combinedTemplate != "" {
 			emailData := map[string]string{

@@ -657,6 +657,25 @@
           </div>
         </div>
 
+        <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
+          <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_delivery_title" }}</h3>
+          <p class="text-xs text-slate-400 mb-3">{{ .T "settings_email_delivery_desc" }}</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm text-slate-300">
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-confirmation-email" class="form-checkbox"> {{ .T "settings_email_tpl_confirmation" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-expiry-reminder-email" class="form-checkbox"> {{ .T "settings_email_tpl_expiry_reminder" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-invite-expiry-email" class="form-checkbox"> {{ .T "settings_email_tpl_invite_expiry" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-pre-signup-help-email" class="form-checkbox"> {{ .T "settings_email_tpl_pre_signup_help" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-post-signup-help-email" class="form-checkbox"> {{ .T "settings_email_tpl_post_signup_help" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-welcome-email" class="form-checkbox"> {{ .T "settings_email_tpl_welcome" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-user-creation-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_creation" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-user-deletion-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_deletion" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-user-disabled-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_disabled" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-user-enabled-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_enabled" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-user-expired-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_expired" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-expiry-adjusted-email" class="form-checkbox"> {{ .T "settings_email_tpl_expiry_adjusted" }}</label>
+          </div>
+        </div>
+
         <form id="form-email-templates">
           <div class="email-templates-layout">
             <aside class="email-templates-nav">
@@ -669,37 +688,30 @@
               <section id="email-section-onboarding" class="email-template-section space-y-4">
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-confirmation">{{ .T "settings_email_tpl_confirmation" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_confirmation_desc" }}</p>
                 <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder">{{ .T "settings_email_tpl_expiry_reminder" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_desc" }}</p>
                 <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder-14">{{ .T "settings_email_tpl_expiry_reminder_14" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_14_desc" }}</p>
                 <textarea id="tpl-expiry-reminder-14" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder-7">{{ .T "settings_email_tpl_expiry_reminder_7" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_7_desc" }}</p>
                 <textarea id="tpl-expiry-reminder-7" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-reminder-1">{{ .T "settings_email_tpl_expiry_reminder_1" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_reminder_1_desc" }}</p>
                 <textarea id="tpl-expiry-reminder-1" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-invitation">{{ .T "settings_email_tpl_invitation" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_invitation_desc" }}</p>
                 <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-invite-expiry">{{ .T "settings_email_tpl_invite_expiry" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_invite_expiry_desc" }}</p>
                 <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               </section>
@@ -707,27 +719,22 @@
               <section id="email-section-security" class="email-template-section space-y-4 hidden">
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-password-reset">{{ .T "settings_email_tpl_password_reset" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_password_reset_desc" }}</p>
                 <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-email-verification-subject">{{ .T "settings_email_tpl_email_verification_subject" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_email_verification_subject_desc" }}</p>
                 <input id="tpl-email-verification-subject" class="jg-input" type="text" />
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-email-verification">{{ .T "settings_email_tpl_email_verification" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_email_verification_desc" }}</p>
                 <textarea id="tpl-email-verification" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-pre-signup-help">{{ .T "settings_email_tpl_pre_signup_help" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_pre_signup_help_desc" }}</p>
                 <textarea id="tpl-pre-signup-help" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-post-signup-help">{{ .T "settings_email_tpl_post_signup_help" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_post_signup_help_desc" }}</p>
                 <textarea id="tpl-post-signup-help" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               </section>
@@ -735,41 +742,30 @@
               <section id="email-section-lifecycle" class="email-template-section space-y-4 hidden">
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-creation">{{ .T "settings_email_tpl_user_creation" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_creation_desc" }}</p>
                 <textarea id="tpl-user-creation" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-deletion">{{ .T "settings_email_tpl_user_deletion" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_deletion_desc" }}</p>
-                <label class="inline-flex items-center gap-2 text-xs text-slate-300 mb-3">
-                  <input type="checkbox" id="tpl-disable-user-deletion-email" class="form-checkbox">
-                  {{ .T "settings_email_tpl_user_deletion_disable_notice" }}
-                </label>
                 <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-disabled">{{ .T "settings_email_tpl_user_disabled" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_disabled_desc" }}</p>
                 <textarea id="tpl-user-disabled" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-enabled">{{ .T "settings_email_tpl_user_enabled" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_enabled_desc" }}</p>
                 <textarea id="tpl-user-enabled" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-user-expired">{{ .T "settings_email_tpl_user_expired" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_user_expired_desc" }}</p>
                 <textarea id="tpl-user-expired" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-expiry-adjusted">{{ .T "settings_email_tpl_expiry_adjusted" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_expiry_adjusted_desc" }}</p>
                 <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                 <label class="jg-label" for="tpl-welcome">{{ .T "settings_email_tpl_welcome" }}</label>
-                <p class="text-xs text-slate-400 mb-2">{{ .T "settings_email_tpl_welcome_desc" }}</p>
                 <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="7"></textarea>
               </div>
               </section>

@@ -18,7 +18,7 @@ Le projet remplace l'approche jfa-go par une intégration plus directe avec Jell
 ## 2. Stack actuelle
 
 | Domaine | Technologie |
-|---|---|
+| --- | --- |
 | Backend | Go 1.26+, net/http, Chi v5 |
 | Templates | `html/template` |
 | Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
@@ -67,6 +67,8 @@ web/
 - mapping groupe/preset d'automatisation
 - flux atomique avec rollback LDAP/Jellyfin si une étape échoue
 - corrélation audit par `request_id`
+- l'e-mail d'invitation n'ajoute plus de bloc d'expiration si aucun delai n'est defini
+- les blocs d'aide et d'expiration peuvent etre desactives depuis l'admin
 - base technique prête pour un futur mode parrainage utilisateur depuis `Mon compte`
 
 ### 4.2 Utilisateurs
@@ -102,21 +104,36 @@ web/
 - tâches planifiées
 - provisioning Jellyseerr / Ombi optionnel
 
-### 4.6 Audit et observabilité
+### 4.6 Messages administrateur
+
+- page Messages recentrée sur l'envoi par les administrateurs
+- envoi email direct quand le message est immédiat
+- mode campagne conservé pour les diffusions planifiées
+- la boîte de réception n'est plus l'usage produit prioritaire côté admin
+
+### 4.7 Modeles e-mail
+
+- page `Parametres > Modeles e-mail` simplifiee avec sous-sections onboarding, securite et cycle de vie
+- panneau central d'activation pour couper proprement certains e-mails ou blocs automatiques
+- contenu d'aide avant/apres inscription simplifie pour eviter les messages type documentation interne
+- le comportement produit privilegie l'envoi utile uniquement, sans fragments "Non definie"
+
+### 4.8 Audit et observabilite
 
 - `audit_log` SQL
 - filtres avancés sur l'API logs
 - export CSV / JSON
 - extraction et affichage `request_id`
 
-### 4.7 i18n
+### 4.9 i18n
 
 - locales JSON sous `web/i18n`
 - détection par cookie `lang`, puis `Accept-Language`, puis `default_lang`
 - fallback `lang demandée -> en -> fr`
 - commande CI `go run ./cmd/i18ncheck`
+- labels de navigation et de `Modeles e-mail` homogenises sur les locales admin principales
 
-### 4.8 Roadmap produit validée
+### 4.10 Roadmap produit validee
 
 - parrainage utilisateur depuis `Mon compte` avec quotas, durée de vie et traçabilité sponsor -> invité
 - vérification d'e-mail obligatoire ou configurable selon la politique d'instance
@@ -131,7 +148,7 @@ web/
 ### Public
 
 | Méthode | Route | Usage |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/invite/{code}` | page d'inscription |
 | POST | `/invite/{code}` | validation inscription |
 | GET | `/reset` | page de demande reset |
@@ -143,7 +160,7 @@ web/
 ### Admin UI
 
 | Méthode | Route | Usage |
-|---|---|---|
+| --- | --- | --- |
 | GET | `/admin/login` | login |
 | POST | `/admin/login` | authentification |
 | POST | `/admin/logout` | logout |
@@ -159,7 +176,7 @@ web/
 ### Admin API
 
 | Préfixe | Description |
-|---|---|
+| --- | --- |
 | `/admin/api/users` | gestion utilisateurs |
 | `/admin/api/invitations` | CRUD invitations |
 | `/admin/api/messages` | centre de messages |
@@ -207,7 +224,8 @@ L'interface suit actuellement ces principes:
 - pages publiques centrées et simples
 - sidebar admin fixe
 - actions fréquentes mises en avant
-- sélecteur de langue visible hors sidebar et intégré à l'admin quand la sidebar existe
+- pages `Utilisateurs`, `Automatisation` et `Messages` simplifiées pour réduire la densité d'information au premier écran
+- selecteur de langue visible hors sidebar et integre proprement dans le footer de sidebar quand la sidebar existe
 
 Le design system partagé est porté par `web/static/css/custom.css` et `web/templates/layouts/base.html`.
 
@@ -232,6 +250,8 @@ npm run build:css
 go build ./...
 go test ./...
 go run ./cmd/i18ncheck
+go run ./cmd/i18ncoverage --max-same-as-base 195
+docker build -t jellygate:local .
 ```
 
 ## 11. Points d'attention pour les prochaines évolutions

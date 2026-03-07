@@ -252,9 +252,15 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 	var subject, body string
 	switch templateKey {
 	case "user_enabled":
+		if emailCfg.DisableUserEnabledEmail {
+			return nil
+		}
 		subject = "Compte réactivé — JellyGate"
 		body = emailCfg.UserEnabled
 	case "user_disabled":
+		if emailCfg.DisableUserDisabledEmail {
+			return nil
+		}
 		subject = "Compte désactivé — JellyGate"
 		body = emailCfg.UserDisabled
 	case "user_deleted":
@@ -264,12 +270,21 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 		subject = "Compte supprimé — JellyGate"
 		body = emailCfg.UserDeletion
 	case "user_expired":
+		if emailCfg.DisableUserExpiredEmail {
+			return nil
+		}
 		subject = "Compte expiré — JellyGate"
 		body = emailCfg.UserExpired
 	case "expiry_adjusted":
+		if emailCfg.DisableExpiryAdjustedEmail {
+			return nil
+		}
 		subject = "Expiration ajustée — JellyGate"
 		body = emailCfg.ExpiryAdjusted
 	case "expiry_reminder":
+		if emailCfg.DisableExpiryReminderEmails {
+			return nil
+		}
 		subject = "Rappel d'expiration — JellyGate"
 		body = emailCfg.ExpiryReminder
 	default:
@@ -343,6 +358,9 @@ func (h *AdminHandler) runExpirationCheck() {
 	now := time.Now()
 
 	emailCfg, _ := h.db.GetEmailTemplatesConfig()
+	if emailCfg.DisableExpiryReminderEmails {
+		return
+	}
 	reminderStages := []int{14, 7, 1}
 	if emailCfg.ExpiryReminderDays > 0 && !containsInt(reminderStages, emailCfg.ExpiryReminderDays) {
 		reminderStages = append(reminderStages, emailCfg.ExpiryReminderDays)
@@ -3251,11 +3269,14 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 
 			go func(recipient, username, expiryDate, customBody string) {
 				emailCfg, _ := h.db.GetEmailTemplatesConfig()
-				combinedTemplate := joinTemplateSections(
-					emailCfg.Invitation,
-					emailCfg.InviteExpiry,
-					emailCfg.PreSignupHelp,
-				)
+				sections := []string{emailCfg.Invitation}
+				if expiryDate != "" && !emailCfg.DisableInviteExpiryEmail {
+					sections = append(sections, emailCfg.InviteExpiry)
+				}
+				if !emailCfg.DisablePreSignupHelpEmail {
+					sections = append(sections, emailCfg.PreSignupHelp)
+				}
+				combinedTemplate := joinTemplateSections(sections...)
 
 				if strings.TrimSpace(customBody) != "" {
 					combinedTemplate = joinTemplateSections(combinedTemplate, "{{.Message}}")
@@ -3278,8 +3299,6 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				}
 				if expiryDate != "" {
 					emailData["ExpiryDate"] = expiryDate
-				} else {
-					emailData["ExpiryDate"] = "Non définie"
 				}
 				if strings.TrimSpace(customBody) != "" {
 					emailData["Message"] = customBody

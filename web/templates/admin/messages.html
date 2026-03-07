@@ -70,91 +70,83 @@
 
 <main class="jg-main">
     <section class="jg-page-stack">
-        <div class="jg-hero-grid mb-8">
-            <div class="glass-card jg-hero-panel p-6 md:p-8">
-                <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                </button>
-                <span class="jg-kicker">{{ .T "messages_heading" }}</span>
-                <h1 class="text-3xl font-bold text-white mt-3">{{ .T "messages_heading" }}</h1>
-                <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "messages_subheading" }}</p>
-                <div class="mt-5 flex flex-wrap gap-2">
-                    <button id="btn-view-inbox" class="jg-btn jg-btn-ghost">{{ .T "messages_inbox" }}</button>
-                    {{ if .IsAdmin }}
-                    <button id="btn-view-admin" class="jg-btn jg-btn-ghost">{{ .T "messages_admin_view" }}</button>
-                    {{ end }}
-                </div>
+        <section class="glass-card jg-hero-panel p-6 md:p-8 mb-6">
+            <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <span class="jg-kicker">{{ .T "messages_admin_view" }}</span>
+            <h1 class="text-3xl font-bold text-white mt-3">{{ .T "messages_title" }}</h1>
+            {{ if .IsAdmin }}
+            <div class="mt-5 flex flex-wrap gap-2">
+                <a href="#message-compose" class="jg-btn">{{ .T "messages_new_message" }}</a>
+                <a href="#messages-history" class="jg-btn jg-btn-ghost">{{ .T "messages_admin_view" }}</a>
             </div>
-
-            <div class="glass-card p-5 jg-aside-card">
-                <h2 class="text-lg font-semibold text-white">{{ .T "messages_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-2" id="messages-view-label">{{ .T "messages_inbox" }}</p>
-                <div class="mt-5 space-y-4">
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "messages_title" }}</div>
-                        <div class="text-3xl font-semibold text-white mt-2" id="messages-total">0</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "messages_unread" }}</div>
-                            <div class="text-2xl font-semibold text-amber-300 mt-2" id="messages-unread">0</div>
-                        </div>
-                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
-                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "messages_col_channels" }}</div>
-                            <div class="text-sm font-medium text-slate-200 mt-2" id="messages-channels-summary">-</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            {{ else }}
+            <p class="text-sm text-slate-300 mt-3">{{ .T "messages_admin_view" }}</p>
+            {{ end }}
+        </section>
 
         {{ if .IsAdmin }}
-        <div class="jg-feature-grid mb-6">
-            <section class="glass-card jg-feature-card p-5 md:col-span-2">
-                <h2 class="text-lg font-semibold text-white">{{ .T "messages_new_message" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "messages_body_placeholder" }}</p>
-                <form id="message-create-form" class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
-                    <input id="msg-title" class="jg-input md:col-span-2" placeholder='{{ .T "messages_title_placeholder" }}'>
-                    <textarea id="msg-body" class="jg-input md:col-span-2 min-h-[150px]" rows="5" placeholder='{{ .T "messages_body_placeholder" }}'></textarea>
-                    <select id="msg-target-group" class="jg-input">
-                        <option value="all">{{ .T "messages_target_all" }}</option>
-                        <option value="active">{{ .T "messages_target_active" }}</option>
-                        <option value="inactive">{{ .T "messages_target_inactive" }}</option>
-                        <option value="admins">{{ .T "messages_target_admins" }}</option>
-                        <option value="inviters">{{ .T "messages_target_inviters" }}</option>
-                    </select>
-                    <input id="msg-target-users" class="jg-input" placeholder='{{ .T "messages_target_users_placeholder" }}'>
-                    <div class="md:col-span-2 rounded-xl border border-white/10 bg-white/5 p-4">
-                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500 mb-3">{{ .T "messages_col_channels" }}</div>
-                        <div class="flex flex-wrap items-center gap-4 text-sm text-slate-300">
-                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-email" class="form-checkbox">{{ .T "messages_channel_email" }}</label>
-                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-discord" class="form-checkbox">{{ .T "messages_channel_discord" }}</label>
-                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-ch-telegram" class="form-checkbox">{{ .T "messages_channel_telegram" }}</label>
-                            <label class="inline-flex items-center gap-2"><input type="checkbox" id="msg-campaign" class="form-checkbox">{{ .T "messages_campaign_mode" }}</label>
-                        </div>
-                    </div>
-                    <input type="datetime-local" id="msg-starts-at" class="jg-input" placeholder='{{ .T "messages_starts_at" }}'>
-                    <input type="datetime-local" id="msg-ends-at" class="jg-input" placeholder='{{ .T "messages_ends_at" }}'>
-                    <div class="md:col-span-2 flex justify-end">
-                        <button type="submit" class="jg-btn">{{ .T "messages_publish" }}</button>
-                    </div>
-                </form>
-            </section>
-            <section class="glass-card jg-feature-card p-5">
-                <h2 class="text-lg font-semibold text-white">{{ .T "messages_admin_view" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "messages_target_all" }}, {{ .T "messages_target_active" }}, {{ .T "messages_target_admins" }}, {{ .T "messages_target_inactive" }}</p>
-                <div class="mt-5 space-y-3 text-sm text-slate-300">
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">{{ .T "messages_channel_email" }}, {{ .T "messages_channel_discord" }}, {{ .T "messages_channel_telegram" }}</div>
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">{{ .T "messages_campaign_mode" }}</div>
+        <div class="stats-grid mb-6">
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value" id="messages-total">0</div>
+                    <div class="stat-label">{{ .T "messages_title" }}</div>
                 </div>
-            </section>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="stat-value" id="messages-campaigns">0</div>
+                    <div class="stat-label">{{ .T "messages_campaign_mode" }}</div>
+                </div>
+            </div>
+            <div class="glass-card-sm stat-card">
+                <div>
+                    <div class="text-sm font-medium text-slate-200" id="messages-channels-summary">{{ .T "messages_channel_email" }}</div>
+                    <div class="stat-label">{{ .T "messages_col_channels" }}</div>
+                </div>
+            </div>
         </div>
-        {{ end }}
 
-        <section class="glass-card p-0 overflow-hidden">
+        <section id="message-compose" class="glass-card p-5 mb-6">
+            <div class="mb-4">
+                <h2 class="text-lg font-semibold text-white">{{ .T "messages_new_message" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "messages_publish" }}</p>
+            </div>
+            <form id="message-create-form" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input id="msg-title" class="jg-input md:col-span-2" placeholder='{{ .T "messages_title_placeholder" }}'>
+                <select id="msg-target-group" class="jg-input">
+                    <option value="active" selected>{{ .T "messages_target_active" }}</option>
+                    <option value="all">{{ .T "messages_target_all" }}</option>
+                    <option value="inactive">{{ .T "messages_target_inactive" }}</option>
+                    <option value="inviters">{{ .T "messages_target_inviters" }}</option>
+                </select>
+                <input id="msg-target-users" class="jg-input" placeholder='{{ .T "messages_target_users_placeholder" }}'>
+                <textarea id="msg-body" class="jg-input md:col-span-2 min-h-[160px]" rows="6" placeholder='{{ .T "messages_body_placeholder" }}'></textarea>
+                <div class="md:col-span-2 rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="flex flex-wrap items-center gap-6 text-sm text-slate-300">
+                        <label class="inline-flex items-center gap-2">
+                            <input type="checkbox" id="msg-ch-email" class="form-checkbox" checked>
+                            {{ .T "messages_channel_email" }}
+                        </label>
+                        <label class="inline-flex items-center gap-2">
+                            <input type="checkbox" id="msg-campaign" class="form-checkbox">
+                            {{ .T "messages_campaign_mode" }}
+                        </label>
+                    </div>
+                </div>
+                <input type="datetime-local" id="msg-starts-at" class="jg-input" placeholder='{{ .T "messages_starts_at" }}'>
+                <input type="datetime-local" id="msg-ends-at" class="jg-input" placeholder='{{ .T "messages_ends_at" }}'>
+                <div class="md:col-span-2 flex justify-end">
+                    <button type="submit" class="jg-btn">{{ .T "messages_publish" }}</button>
+                </div>
+            </form>
+        </section>
+
+        <section id="messages-history" class="glass-card p-0 overflow-hidden">
             <div class="px-5 py-5 border-b border-white/10">
-                <h2 class="text-lg font-semibold text-white">{{ .T "messages_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "messages_subheading" }}</p>
+                <h2 class="text-lg font-semibold text-white">{{ .T "messages_admin_view" }}</h2>
+                <p class="text-sm text-slate-400 mt-1">{{ .T "messages_title" }}</p>
             </div>
             <div class="jg-table-wrap">
                 <table class="jg-table">
@@ -163,17 +155,22 @@
                             <th>{{ .T "messages_col_title" }}</th>
                             <th>{{ .T "messages_col_target" }}</th>
                             <th>{{ .T "messages_col_channels" }}</th>
-                            <th>{{ .T "messages_col_state" }}</th>
                             <th>{{ .T "messages_col_created_at" }}</th>
                             <th class="text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
                     <tbody id="messages-body">
-                        <tr><td colspan="6" class="text-center text-slate-500 py-10">{{ .T "settings_loading" }}</td></tr>
+                        <tr><td colspan="5" class="text-center text-slate-500 py-10">{{ .T "settings_loading" }}</td></tr>
                     </tbody>
                 </table>
             </div>
         </section>
+        {{ else }}
+        <section class="glass-card p-6">
+            <h2 class="text-lg font-semibold text-white">{{ .T "messages_admin_view" }}</h2>
+            <p class="text-sm text-slate-400 mt-2">{{ .T "messages_new_message" }}</p>
+        </section>
+        {{ end }}
     </section>
 </main>
 {{ end }}
@@ -186,11 +183,8 @@
         i18n: {
             errorLoading: '{{ .T "messages_error_loading" }}',
             noMessages: '{{ .T "messages_no_messages" }}',
-            read: '{{ .T "messages_read" }}',
-            unread: '{{ .T "messages_unread" }}',
             usersSuffix: '{{ .T "messages_users_suffix" }}',
             defaultChannel: '{{ .T "messages_default_channel" }}',
-            markRead: '{{ .T "messages_mark_read" }}',
             delete: '{{ .T "messages_delete" }}',
             genericError: '{{ .T "messages_generic_error" }}',
             confirmDelete: '{{ .T "messages_confirm_delete" }}',
@@ -198,16 +192,13 @@
             deleted: '{{ .T "messages_deleted" }}',
             createFailed: '{{ .T "messages_create_failed" }}',
             created: '{{ .T "messages_created" }}',
-            inbox: '{{ .T "messages_inbox" }}',
             adminView: '{{ .T "messages_admin_view" }}',
             targetAll: '{{ .T "messages_target_all" }}',
             targetActive: '{{ .T "messages_target_active" }}',
             targetInactive: '{{ .T "messages_target_inactive" }}',
-            targetAdmins: '{{ .T "messages_target_admins" }}',
             targetInviters: '{{ .T "messages_target_inviters" }}',
             channelEmail: '{{ .T "messages_channel_email" }}',
-            channelDiscord: '{{ .T "messages_channel_discord" }}',
-            channelTelegram: '{{ .T "messages_channel_telegram" }}',
+            campaignMode: '{{ .T "messages_campaign_mode" }}',
         },
     };
 </script>
