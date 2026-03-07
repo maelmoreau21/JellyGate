@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -60,6 +61,7 @@ func NewAuthHandler(cfg *config.Config, db *database.DB, renderer *render.Engine
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.Error = r.URL.Query().Get("error")
+	td.Data["SubmittedUsername"] = strings.TrimSpace(r.URL.Query().Get("username"))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
@@ -69,6 +71,15 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur rendu login", "error", err)
 		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
 	}
+}
+
+func (h *AuthHandler) redirectLoginError(w http.ResponseWriter, r *http.Request, code, username string) {
+	query := url.Values{}
+	query.Set("error", code)
+	if trimmed := strings.TrimSpace(username); trimmed != "" {
+		query.Set("username", trimmed)
+	}
+	http.Redirect(w, r, "/admin/login?"+query.Encode(), http.StatusSeeOther)
 }
 
 // LoginSubmit traite la soumission du formulaire de connexion (POST /admin/login).
@@ -83,7 +94,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	// ── 1. Récupérer les identifiants ───────────────────────────────────
 	if err := r.ParseForm(); err != nil {
 		slog.Error("Erreur parsing formulaire login", "error", err)
-		http.Error(w, "Requête invalide", http.StatusBadRequest)
+		h.redirectLoginError(w, r, "invalid", "")
 		return
 	}
 
@@ -92,7 +103,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	if username == "" || password == "" {
 		slog.Warn("Tentative de login avec champs vides", "remote", r.RemoteAddr)
-		http.Error(w, "Nom d'utilisateur et mot de passe requis", http.StatusBadRequest)
+		h.redirectLoginError(w, r, "required", username)
 		return
 	}
 
@@ -106,7 +117,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		)
 		_ = h.db.LogAction("admin.login.failed", username, "", fmt.Sprintf("IP: %s, erreur: %s", r.RemoteAddr, err))
 
-		http.Redirect(w, r, "/admin/login?error=invalid", http.StatusSeeOther)
+		h.redirectLoginError(w, r, "invalid", username)
 		return
 	}
 

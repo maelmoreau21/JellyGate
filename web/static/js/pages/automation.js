@@ -1,11 +1,66 @@
 (() => {
     const config = window.JGPageAutomation || {};
     const i18n = config.i18n || {};
+    const taskTypeDescriptions = config.taskTypeDescriptions || {};
 
     document.addEventListener('DOMContentLoaded', () => {
         let presets = [];
         let groupMappings = [];
         let tasks = [];
+
+        function updateTaskPreview() {
+            const name = (document.getElementById('task-name')?.value || '').trim();
+            const type = document.getElementById('task-type')?.value || '';
+            const hour = document.getElementById('task-hour')?.value;
+            const minute = document.getElementById('task-minute')?.value;
+            const payload = (document.getElementById('task-payload')?.value || '').trim();
+            const enabled = !!document.getElementById('task-enabled')?.checked;
+
+            const previewName = document.getElementById('automation-task-preview-name');
+            const previewType = document.getElementById('automation-task-preview-type');
+            const previewSchedule = document.getElementById('automation-task-preview-schedule');
+            const previewPayload = document.getElementById('automation-task-preview-payload');
+            const previewState = document.getElementById('automation-task-preview-state');
+            const previewNote = document.getElementById('automation-task-preview-note');
+            const previewEmpty = document.getElementById('automation-task-preview-empty');
+
+            if (previewName) {
+                previewName.textContent = name || i18n.taskPreviewEmpty;
+            }
+            if (previewType) {
+                previewType.textContent = type || '—';
+            }
+            if (previewSchedule) {
+                if (hour === '' || minute === '') {
+                    previewSchedule.textContent = '--:--';
+                } else {
+                    previewSchedule.textContent = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+                }
+            }
+            if (previewPayload) {
+                previewPayload.textContent = payload ? i18n.taskPayloadReady : i18n.taskPayloadEmpty;
+            }
+            if (previewState) {
+                previewState.textContent = enabled ? i18n.taskEnabled : i18n.taskDisabled;
+                previewState.classList.toggle('badge-success', enabled);
+                previewState.classList.toggle('badge-muted', !enabled);
+            }
+            if (previewNote) {
+                previewNote.textContent = taskTypeDescriptions[type] || i18n.taskPreviewEmpty;
+            }
+            if (previewEmpty) {
+                previewEmpty.textContent = name || payload || hour !== '' || minute !== '' ? (taskTypeDescriptions[type] || i18n.taskPreviewEmpty) : i18n.taskPreviewEmpty;
+            }
+        }
+
+        function updateOverview() {
+            const presetCount = document.getElementById('automation-presets-count');
+            const mappingCount = document.getElementById('automation-mappings-count');
+            const taskCount = document.getElementById('automation-tasks-count');
+            if (presetCount) presetCount.textContent = `${presets.length}`;
+            if (mappingCount) mappingCount.textContent = `${groupMappings.length}`;
+            if (taskCount) taskCount.textContent = `${tasks.length}`;
+        }
 
         function presetRow(preset, idx) {
             return `<tr>
@@ -26,6 +81,7 @@
             if (!tbody) {
                 return;
             }
+            updateOverview();
             if (!presets.length) {
                 tbody.innerHTML = `<tr><td colspan="9" class="text-center text-slate-500 py-8">${JG.esc(i18n.noPresets)}</td></tr>`;
                 return;
@@ -112,6 +168,7 @@
             if (!tbody) {
                 return;
             }
+            updateOverview();
             if (!groupMappings.length) {
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-8">${JG.esc(i18n.noGroupMappings)}</td></tr>`;
                 return;
@@ -156,6 +213,7 @@
             if (!tbody) {
                 return;
             }
+            updateOverview();
             if (!tasks.length) {
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-8">${JG.esc(i18n.noTasks)}</td></tr>`;
                 return;
@@ -294,6 +352,7 @@
             JG.toast(i18n.taskCreated, 'success');
             event.target.reset();
             document.getElementById('task-enabled').checked = true;
+            updateTaskPreview();
             await loadTasks();
         });
 
@@ -359,7 +418,17 @@
             });
         }
 
+        ['task-name', 'task-type', 'task-hour', 'task-minute', 'task-payload', 'task-enabled'].forEach((id) => {
+            const element = document.getElementById(id);
+            if (!element) {
+                return;
+            }
+            element.addEventListener('input', updateTaskPreview);
+            element.addEventListener('change', updateTaskPreview);
+        });
+
         (async () => {
+            updateTaskPreview();
             await loadPresets();
             await loadGroupMappings();
             await loadTasks();

@@ -47,12 +47,75 @@
 
         function updateSelectionUI() {
             document.getElementById('bulk-selected-count').textContent = selectedIds.size;
+            const focusSelected = document.getElementById('users-focus-selected');
+            if (focusSelected) {
+                focusSelected.textContent = `${selectedIds.size}`;
+            }
             const checkAll = document.getElementById('check-all');
             const selectable = filteredUsers.map((user) => user.id);
             const selectedVisible = selectable.filter((id) => selectedIds.has(id)).length;
             checkAll.checked = selectable.length > 0 && selectedVisible === selectable.length;
             checkAll.indeterminate = selectedVisible > 0 && selectedVisible < selectable.length;
+            renderSelectionPreview();
             updateBulkWizardState();
+        }
+
+        function renderFilterSnapshot() {
+            const container = document.getElementById('users-active-filters');
+            if (!container) {
+                return;
+            }
+
+            const query = document.getElementById('search-users').value.trim();
+            const status = document.getElementById('filter-status');
+            const jellyfin = document.getElementById('filter-jellyfin');
+            const invite = document.getElementById('filter-invite');
+            const extra = document.getElementById('filter-extra');
+            const chips = [];
+
+            if (query) {
+                chips.push(`“${JG.esc(query)}”`);
+            }
+            [status, jellyfin, invite, extra].forEach((select) => {
+                if (select && select.value !== 'all') {
+                    chips.push(JG.esc(select.options[select.selectedIndex].text));
+                }
+            });
+
+            if (!chips.length) {
+                container.innerHTML = `<span class="jg-chip jg-chip-muted">${JG.esc(i18n.filtersNone)}</span>`;
+                return;
+            }
+
+            container.innerHTML = chips.map((chip) => `<span class="jg-chip">${chip}</span>`).join('');
+        }
+
+        function renderSelectionPreview() {
+            const container = document.getElementById('users-selected-preview');
+            if (!container) {
+                return;
+            }
+
+            const selectedUsers = allUsers.filter((user) => selectedIds.has(user.id));
+            if (!selectedUsers.length) {
+                container.innerHTML = `<span class="jg-chip jg-chip-muted">${JG.esc(i18n.selectionEmpty)}</span>`;
+                return;
+            }
+
+            const chips = selectedUsers.slice(0, 5).map((user) => `<span class="jg-chip">${JG.esc(user.username)}</span>`);
+            if (selectedUsers.length > 5) {
+                chips.push(`<span class="jg-chip jg-chip-muted">${JG.esc(fmtTemplate(i18n.selectionMore, { count: selectedUsers.length - 5 }))}</span>`);
+            }
+            container.innerHTML = chips.join('');
+        }
+
+        function clearFilters() {
+            document.getElementById('search-users').value = '';
+            document.getElementById('filter-status').value = 'all';
+            document.getElementById('filter-jellyfin').value = 'all';
+            document.getElementById('filter-invite').value = 'all';
+            document.getElementById('filter-extra').value = 'all';
+            applyFilters();
         }
 
         function openBulkEmailComposer() {
@@ -87,6 +150,10 @@
             document.getElementById('users-stat-filtered').textContent = users.length;
             document.getElementById('users-stat-inviters').textContent = allUsers.filter((user) => user.can_invite).length;
             document.getElementById('users-stat-expiring').textContent = allUsers.filter((user) => isExpired(user)).length;
+            const focusFiltered = document.getElementById('users-focus-filtered');
+            if (focusFiltered) {
+                focusFiltered.textContent = `${users.length}`;
+            }
 
             if (users.length === 0) {
                 const help = allUsers.length === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
@@ -97,11 +164,12 @@
 
             tbody.innerHTML = users.map((user) => {
                 const checked = selectedIds.has(user.id) ? 'checked' : '';
+                const rowClass = selectedIds.has(user.id) ? ' class="is-selected"' : '';
                 const toggleLabel = user.is_active ? i18n.deactivate : i18n.activate;
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '—';
                 const expiryClass = isExpired(user) ? 'text-red-300' : 'text-slate-400';
 
-                return `<tr>
+                return `<tr${rowClass}>
                     <td><input type="checkbox" class="form-checkbox row-check" data-id="${user.id}" ${checked}></td>
                     <td><span class="font-medium">${JG.esc(user.username)}</span></td>
                     <td class="text-slate-300">${JG.esc(user.email || '—')}</td>
@@ -171,6 +239,7 @@
                 return textMatch && statusMatch && jellyfinMatch && inviteMatch && extraMatch;
             });
 
+            renderFilterSnapshot();
             renderUsers(result);
         }
 
@@ -649,6 +718,11 @@
 
         document.getElementById('btn-open-bulk-email')?.addEventListener('click', openBulkEmailComposer);
         document.getElementById('btn-sync-users')?.addEventListener('click', syncUsers);
+        document.getElementById('btn-clear-filters')?.addEventListener('click', clearFilters);
+        document.getElementById('btn-clear-selection')?.addEventListener('click', () => {
+            selectedIds.clear();
+            renderUsers(filteredUsers);
+        });
         document.getElementById('edit-cancel-btn')?.addEventListener('click', closeEditModal);
         document.getElementById('delete-cancel-btn')?.addEventListener('click', closeDeleteModal);
         document.getElementById('timeline-close-btn')?.addEventListener('click', closeTimelineModal);
@@ -670,6 +744,8 @@
         (async () => {
             await loadPresets();
             resetBulkFields();
+            renderFilterSnapshot();
+            renderSelectionPreview();
             await loadUsers();
         })();
 

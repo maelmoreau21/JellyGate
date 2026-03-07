@@ -572,6 +572,268 @@ select.jg-input optgroup {
     max-width: 12rem;
 }
 
+.jg-section-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.jg-section-anchor {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.65rem 0.95rem;
+    border-radius: 999px;
+    border: 1px solid rgba(34, 211, 238, 0.18);
+    background: rgba(15, 23, 42, 0.55);
+    color: var(--jg-text);
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: var(--jg-transition);
+}
+
+.jg-section-anchor:hover {
+    border-color: rgba(45, 212, 191, 0.35);
+    background: rgba(20, 184, 166, 0.12);
+    transform: translateY(-1px);
+}
+
+.jg-section-card {
+    scroll-margin-top: 1.5rem;
+}
+
+.jg-hero-actions {
+    align-items: center;
+}
+
+.jg-guidance-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.jg-guidance-item {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+}
+
+.jg-guidance-step {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: rgba(20, 184, 166, 0.18);
+    border: 1px solid rgba(34, 211, 238, 0.22);
+    color: var(--jg-text);
+    font-weight: 700;
+}
+
+.jg-guidance-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.jg-process-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.jg-process-step {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--jg-radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(7, 12, 24, 0.82));
+    box-shadow: 0 18px 34px rgba(2, 6, 23, 0.24);
+}
+
+.jg-process-step:nth-child(1) {
+    border-color: rgba(34, 211, 238, 0.16);
+}
+
+.jg-process-step:nth-child(2) {
+    border-color: rgba(16, 185, 129, 0.16);
+}
+
+.jg-process-step:nth-child(3) {
+    border-color: rgba(245, 158, 11, 0.18);
+}
+
+.jg-process-count {
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.28), rgba(34, 211, 238, 0.18));
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    color: var(--jg-text);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.jg-process-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--jg-text);
+}
+
+.jg-process-meta {
+    font-size: 0.74rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--jg-text-muted);
+    margin-top: 0.2rem;
+}
+
+.jg-focus-band {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    align-items: center;
+}
+
+.jg-focus-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.jg-focus-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--jg-text-muted);
+}
+
+.jg-focus-value {
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--jg-text);
+}
+
+.jg-focus-text {
+    font-size: 0.84rem;
+    color: var(--jg-text-muted);
+}
+
+.jg-focus-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.jg-form-surface {
+    border-radius: var(--jg-radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.035);
+    padding: 1rem;
+}
+
+.jg-task-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.jg-preview-panel {
+    padding: 1.1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.jg-preview-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.jg-preview-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.jg-preview-row:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.jg-preview-label {
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--jg-text-muted);
+}
+
+.jg-preview-note {
+    border-radius: 12px;
+    border: 1px solid rgba(34, 211, 238, 0.14);
+    background: rgba(34, 211, 238, 0.08);
+    color: #d6f8ff;
+    padding: 0.9rem 1rem;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.jg-insight-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.jg-insight-card {
+    padding: 1.1rem 1.2rem;
+}
+
+.jg-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.jg-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(34, 211, 238, 0.16);
+    color: var(--jg-text);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.jg-chip-muted {
+    border-color: rgba(148, 163, 184, 0.18);
+    color: var(--jg-text-muted);
+}
+
+.jg-table-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
 /* ── Data table ──────────────────────────────────────────────────────────── */
 .jg-table-wrap {
     overflow-x: auto;
@@ -609,6 +871,10 @@ select.jg-input optgroup {
 
 .jg-table tbody tr:hover {
     background: rgba(20, 184, 166, 0.05);
+}
+
+.jg-table tbody tr.is-selected {
+    background: rgba(20, 184, 166, 0.11);
 }
 
 /* ── Badges ──────────────────────────────────────────────────────────────── */
@@ -940,6 +1206,22 @@ select.jg-input optgroup {
         grid-template-columns: 1fr;
     }
 
+    .jg-process-strip,
+    .jg-focus-band,
+    .jg-insight-grid,
+    .jg-task-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .jg-focus-actions {
+        justify-content: stretch;
+    }
+
+    .jg-focus-actions .jg-section-anchor {
+        width: 100%;
+        justify-content: center;
+    }
+
     .jg-btn {
         min-height: 42px;
     }
@@ -996,6 +1278,11 @@ select.jg-input optgroup {
 
 @media (max-width: 1024px) {
     .jg-hero-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .jg-insight-grid,
+    .jg-task-grid {
         grid-template-columns: 1fr;
     }
 

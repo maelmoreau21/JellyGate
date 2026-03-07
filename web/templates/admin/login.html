@@ -5,7 +5,7 @@
 
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-sm">
+    <div class="w-full max-w-md">
 
         {{/* Logo */}}
         <div class="text-center mb-8">
@@ -25,7 +25,8 @@
 
         {{/* Erreurs */}}
         {{ if .Error }}
-        <div class="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+        <div class="mb-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-200 text-sm text-center shadow-[0_18px_40px_rgba(15,23,42,0.28)]">
+            {{ if eq .Error "required" }}{{ .T "login_error_required" }}{{ end }}
             {{ if eq .Error "invalid" }}{{ .T "login_error_invalid" }}{{ end }}
             {{ if eq .Error "forbidden" }}{{ .T "login_error_forbidden" }}{{ end }}
         </div>
@@ -33,17 +34,17 @@
 
         {{/* Carte de connexion */}}
         <div class="glass-card p-8 glow-accent">
-            <form method="POST" action="/admin/login" novalidate>
+            <form method="POST" action="/admin/login">
 
                 <div class="mb-5">
                     <label class="jg-label" for="username">{{ .T "field_username" }}</label>
                     <input type="text" id="username" name="username" class="jg-input"
-                        placeholder='{{ .T "field_username_placeholder" }}' required autocomplete="username" autofocus>
+                        value='{{ index .Data "SubmittedUsername" }}' placeholder='{{ .T "field_username_placeholder" }}' required autocomplete="username" autofocus>
                 </div>
 
                 <div class="mb-6">
                     <label class="jg-label" for="password">{{ .T "field_password" }}</label>
-                    <input type="password" id="password" name="password" class="jg-input" placeholder="••••••••"
+                    <input type="password" id="password" name="password" class="jg-input" placeholder='{{ .T "field_password_placeholder" }}'
                         required autocomplete="current-password">
                 </div>
 
