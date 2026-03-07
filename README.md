@@ -183,7 +183,8 @@ go run ./cmd/i18ncoverage
 ```
 
 Le workflow `.github/workflows/i18n-quality.yml` exécute `i18ncheck` et `i18ncoverage`.
-Le seuil de blocage est piloté par la variable de dépôt `I18N_MAX_SAME_AS_BASE` (mettre `0` quand les locales sont nettoyées).
+Le seuil de blocage est piloté par la variable de dépôt `I18N_MAX_SAME_AS_BASE`.
+Par défaut, le workflow utilise le plafond de non-régression actuel (`195`) et il faut le baisser progressivement jusqu'à `0` à mesure que les locales sont nettoyées.
 
 ## Licence
 
