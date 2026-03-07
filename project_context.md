@@ -21,13 +21,15 @@ Le projet remplace l'approche jfa-go par une intégration plus directe avec Jell
 |---|---|
 | Backend | Go 1.22+, net/http, Chi v5 |
 | Templates | `html/template` |
-| Frontend | HTML, Tailwind CDN, JS vanilla, CSS custom |
+| Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
 | Base | SQLite (`modernc.org/sqlite`) ou PostgreSQL |
 | LDAP | `go-ldap/ldap/v3` |
 | Jellyfin | API REST |
 | Email | `wneessen/go-mail` |
 | Notifications | Discord, Telegram, Matrix |
 | CI/CD | GitHub Actions, Docker Buildx, GHCR |
+
+Le CSS Tailwind est généré localement via `npm run build:css` et servi depuis `web/static/css/tailwind.generated.css`.
 
 ## 3. Arborescence logique
 
@@ -229,6 +231,7 @@ Le workflow exécute aussi le check i18n via `cmd/i18ncheck` pour empêcher l'in
 ## 10. Commandes de validation
 
 ```bash
+npm run build:css
 go build ./...
 go test ./...
 go run ./cmd/i18ncheck

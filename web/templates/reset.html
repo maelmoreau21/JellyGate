@@ -99,28 +99,11 @@
 {{ end }}
 
 {{ define "scripts" }}
-<script>
-    (function () {
-        const pw = document.getElementById('password');
-        const pwc = document.getElementById('password_confirm');
-        if (!pw || !pwc) return;
-        const msg = document.getElementById('password-match-msg');
-
-        function checkMatch() {
-            if (!pwc.value) { msg.classList.add('hidden'); return; }
-            msg.classList.remove('hidden');
-            if (pw.value === pwc.value) {
-                msg.textContent = '✓ {{ .T "password_match" }}';
-                msg.className = 'text-xs mt-1 text-emerald-400';
-                pwc.classList.remove('is-invalid'); pwc.classList.add('is-valid');
-            } else {
-                msg.textContent = '✗ {{ .T "password_mismatch" }}';
-                msg.className = 'text-xs mt-1 text-red-400';
-                pwc.classList.remove('is-valid'); pwc.classList.add('is-invalid');
-            }
-        }
-        pw.addEventListener('input', checkMatch);
-        pwc.addEventListener('input', checkMatch);
-    })();
+<script nonce="{{ .ScriptNonce }}">
+    window.JGPageReset = {
+        passwordMatch: '{{ .T "password_match" }}',
+        passwordMismatch: '{{ .T "password_mismatch" }}',
+    };
 </script>
+<script src="/static/js/pages/reset.js"></script>
 {{ end }}

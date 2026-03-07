@@ -31,11 +31,12 @@ type Translations map[string]string
 // Le champ T (translate) est une fonction qui retourne la traduction d'une clé
 // dans la langue courante, avec fallback sur le français.
 type TemplateData struct {
-	Lang    string
-	engine  *Engine
-	Data    map[string]interface{} // Données arbitraires
-	Error   string
-	Session interface{}
+	Lang        string
+	ScriptNonce string
+	engine      *Engine
+	Data        map[string]interface{} // Données arbitraires
+	Error       string
+	Session     interface{}
 
 	// Raccourcis pour les templates (évite .Data.XXX dans les templates)
 	Invitation          interface{}

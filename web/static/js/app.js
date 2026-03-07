@@ -222,6 +222,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect) {
+        langSelect.addEventListener('change', (event) => {
+            JG.setLang(event.target && event.target.value);
+        });
+    }
+
     // Auto-focus first input in forms
     const firstInput = document.querySelector('form .jg-input');
     if (firstInput && !firstInput.value) {

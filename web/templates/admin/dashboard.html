@@ -258,60 +258,16 @@
 {{ end }}
 
 {{ define "scripts" }}
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const i18n = {
+<script nonce="{{ .ScriptNonce }}">
+    window.JGPageDashboard = {
+        isAdmin: "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true",
+        i18n: {
             statusBanned: '{{ .T "status_banned" }}',
             statusActive: '{{ .T "status_active" }}',
             statusInactive: '{{ .T "status_inactive" }}',
             noUsers: '{{ .T "dashboard_no_users" }}',
-        };
-
-        // Sidebar toggle
-        const toggle = document.getElementById('sidebar-toggle');
-        if (toggle) {
-            toggle.addEventListener('click', () => {
-                document.getElementById('sidebar').classList.toggle('open');
-                document.getElementById('sidebar').classList.toggle('collapsed');
-                document.querySelector('.jg-main').classList.toggle('expanded');
-            });
-        }
-
-        // Load stats
-        // {{ if .IsAdmin }}
-        Promise.all([
-            JG.api('/admin/api/users'),
-            JG.api('/admin/api/invitations')
-        ]).then(([usersRes, invitationsRes]) => {
-            if (!usersRes.success) return;
-            const users = usersRes.data || [];
-            const invitations = invitationsRes && invitationsRes.success ? (invitationsRes.data || []) : [];
-            document.getElementById('stat-users').textContent = users.length;
-            document.getElementById('stat-active').textContent = users.filter(u => u.is_active && !u.is_banned).length;
-            document.getElementById('stat-banned').textContent = users.filter(u => u.is_banned).length;
-            document.getElementById('stat-invitations').textContent = invitations.length;
-
-            // Recent 5
-            const tbody = document.getElementById('recent-users-body');
-            tbody.innerHTML = '';
-            users.slice(0, 5).forEach(u => {
-                const status = u.is_banned
-                    ? `<span class="badge badge-danger">${JG.esc(i18n.statusBanned)}</span>`
-                    : u.is_active
-                        ? `<span class="badge badge-success">${JG.esc(i18n.statusActive)}</span>`
-                        : `<span class="badge badge-warning">${JG.esc(i18n.statusInactive)}</span>`;
-                tbody.innerHTML += `<tr>
-        <td class="font-medium">${JG.esc(u.username)}</td>
-        <td>${status}</td>
-        <td class="text-slate-400">${JG.esc(u.invited_by || '—')}</td>
-        <td class="text-slate-500 text-sm">${JG.esc(u.created_at || '—')}</td>
-      </tr>`;
-            });
-            if (users.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-slate-500 py-8">${JG.esc(i18n.noUsers)}</td></tr>`;
-            }
-        });
-        // {{ end }}
-    });
+        },
+    };
 </script>
+<script src="/static/js/pages/dashboard.js"></script>
 {{ end }}

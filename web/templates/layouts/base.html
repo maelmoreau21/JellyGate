@@ -1,5 +1,5 @@
 {{/* base.html — Layout principal JellyGate */}}
-{{/* Inclut le design system dark, Tailwind CDN, sidebar admin */}}
+{{/* Inclut le design system dark, Tailwind compile localement, sidebar admin */}}
 <!DOCTYPE html>
 <html lang="{{ .Lang }}" class="dark">
 
@@ -12,30 +12,8 @@
 
     <meta name="theme-color" content="#050816">
 
-    {{/* Tailwind CSS via CDN */}}
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Sora', 'system-ui', 'sans-serif'],
-                    },
-                    colors: {
-                        jg: {
-                            bg: '#050816',
-                            card: '#0c1324',
-                            accent: '#14b8a6',
-                            'accent-light': '#2dd4bf',
-                            gold: '#f59e0b',
-                            ink: '#e5eefb',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    {{/* Tailwind CSS compilé localement */}}
+    <link rel="stylesheet" href="/static/css/tailwind.generated.css">
 
     {{/* Google Fonts — Sora */}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -65,7 +43,7 @@
     {{/* Language selector — moved into admin sidebar footer by app.js when available */}}
     <div id="lang-switcher" class="jg-lang-switcher jg-lang-switcher-floating px-3 py-2">
         <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-300 block mb-1">{{ .T "base_language_label" }}</label>
-        <select id="lang-select" class="jg-input jg-lang-select" onchange="JG.setLang(this.value)">
+        <select id="lang-select" class="jg-input jg-lang-select">
             <option value="fr" {{ if eq .Lang "fr" }}selected{{ end }}>fr - Français</option>
             <option value="en" {{ if eq .Lang "en" }}selected{{ end }}>en - English</option>
             <option value="de" {{ if eq .Lang "de" }}selected{{ end }}>de - Deutsch</option>

@@ -327,12 +327,12 @@ func consumeEmailVerification(db *database.DB, code string) (*emailVerificationT
 	return updated, "success", nil
 }
 
-func renderEmailVerificationPage(w http.ResponseWriter, renderer *render.Engine, lang string, statusCode int, title, heading, message, loginLabel string, links config.PortalLinksConfig) {
+func renderEmailVerificationPage(r *http.Request, w http.ResponseWriter, renderer *render.Engine, lang string, statusCode int, title, heading, message, loginLabel string, links config.PortalLinksConfig) {
 	if renderer == nil {
 		http.Error(w, message, statusCode)
 		return
 	}
-	td := renderer.NewTemplateData(lang)
+	td := applyRequestTemplateData(r, renderer.NewTemplateData(lang))
 	td.SuccessMessage = message
 	td.Data["ResultTitle"] = title
 	td.Data["ResultHeading"] = heading
@@ -377,6 +377,7 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderEmailVerificationPage(
+		r,
 		w,
 		h.renderer,
 		jgmw.LangFromContext(r.Context()),

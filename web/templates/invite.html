@@ -138,9 +138,9 @@
 {{ end }}
 
 {{ define "scripts" }}
-<script>
-    (function () {
-        window.__t = {
+<script nonce="{{ .ScriptNonce }}">
+    window.JGPageInvite = {
+        i18n: {
             password_match: '{{ .T "password_match" }}',
             password_mismatch: '{{ .T "password_mismatch" }}',
             submitting: '{{ .T "submitting" }}',
@@ -152,152 +152,8 @@
             password_rule_lower: '{{ .T "password_rule_lower" }}',
             password_rule_digit: '{{ .T "password_rule_digit" }}',
             password_rule_special: '{{ .T "password_rule_special" }}',
-        };
-
-        const form = document.getElementById('invite-form');
-        if (!form) return;
-
-        const pw = document.getElementById('password');
-        const pwc = document.getElementById('password_confirm');
-        const msg = document.getElementById('password-match-msg');
-        const policyMsg = document.getElementById('password-policy-msg');
-        const inputs = form.querySelectorAll('.jg-input');
-        const policy = {
-            usernameMinLength: parseInt(form.dataset.usernameMinLength || '3', 10) || 3,
-            usernameMaxLength: parseInt(form.dataset.usernameMaxLength || '32', 10) || 32,
-            requireEmail: (form.dataset.requireEmail || '').toLowerCase() === 'true',
-            minLength: parseInt(form.dataset.passwordMinLength || '8', 10) || 8,
-            maxLength: parseInt(form.dataset.passwordMaxLength || '128', 10) || 128,
-            requireUpper: (form.dataset.passwordRequireUpper || '').toLowerCase() === 'true',
-            requireLower: (form.dataset.passwordRequireLower || '').toLowerCase() === 'true',
-            requireDigit: (form.dataset.passwordRequireDigit || '').toLowerCase() === 'true',
-            requireSpecial: (form.dataset.passwordRequireSpecial || '').toLowerCase() === 'true',
-        };
-
-        function withCount(template, n) {
-            return (template || '').replace('{n}', String(n));
-        }
-
-        function passwordPolicyErrors(value) {
-            const errors = [];
-            if (value.length < policy.minLength) {
-                errors.push(withCount(window.__t?.password_rule_at_least || 'at least {n} characters', policy.minLength));
-            }
-            if (value.length > policy.maxLength) {
-                errors.push(withCount(window.__t?.password_rule_at_most || 'at most {n} characters', policy.maxLength));
-            }
-            if (policy.requireUpper && !/[A-Z]/.test(value)) {
-                errors.push(window.__t?.password_rule_upper || 'one uppercase letter');
-            }
-            if (policy.requireLower && !/[a-z]/.test(value)) {
-                errors.push(window.__t?.password_rule_lower || 'one lowercase letter');
-            }
-            if (policy.requireDigit && !/[0-9]/.test(value)) {
-                errors.push(window.__t?.password_rule_digit || 'one digit');
-            }
-            if (policy.requireSpecial && !/[^A-Za-z0-9]/.test(value)) {
-                errors.push(window.__t?.password_rule_special || 'one special character');
-            }
-            return errors;
-        }
-
-        // Live validation
-        inputs.forEach(input => {
-            input.addEventListener('input', () => {
-                if (input.id === 'password') {
-                    const errors = passwordPolicyErrors(input.value || '');
-                    if (!input.value) {
-                        input.classList.remove('is-valid', 'is-invalid');
-                        if (policyMsg) {
-                            policyMsg.className = 'text-xs mt-1 text-slate-500';
-                        }
-                    } else if (errors.length === 0) {
-                        input.classList.remove('is-invalid');
-                        input.classList.add('is-valid');
-                        if (policyMsg) {
-                            policyMsg.textContent = `✓ ${window.__t?.password_policy_ok || 'Password rules satisfied'}`;
-                            policyMsg.className = 'text-xs mt-1 text-emerald-400';
-                        }
-                    } else {
-                        input.classList.remove('is-valid');
-                        input.classList.add('is-invalid');
-                        if (policyMsg) {
-                            policyMsg.textContent = `${window.__t?.password_policy_missing || 'Missing requirements'}: ` + errors.join(', ');
-                            policyMsg.className = 'text-xs mt-1 text-red-400';
-                        }
-                    }
-                    return;
-                }
-
-                if (input.id === 'username') {
-                    const val = (input.value || '').trim();
-                    if (!val) {
-                        input.classList.remove('is-valid', 'is-invalid');
-                    } else if (val.length < policy.usernameMinLength || val.length > policy.usernameMaxLength) {
-                        input.classList.remove('is-valid');
-                        input.classList.add('is-invalid');
-                    } else {
-                        input.classList.remove('is-invalid');
-                        input.classList.add('is-valid');
-                    }
-                    return;
-                }
-
-                if (input.validity.valid && input.value) {
-                    input.classList.remove('is-invalid');
-                    input.classList.add('is-valid');
-                } else if (input.value) {
-                    input.classList.remove('is-valid');
-                    input.classList.add('is-invalid');
-                } else {
-                    input.classList.remove('is-valid', 'is-invalid');
-                }
-            });
-        });
-
-        // Password match check
-        function checkMatch() {
-            if (!pwc.value) { msg.classList.add('hidden'); return; }
-            msg.classList.remove('hidden');
-            if (pw.value === pwc.value) {
-                msg.textContent = '✓ ' + (window.__t?.password_match || 'Les mots de passe correspondent');
-                msg.className = 'text-xs mt-1 text-emerald-400';
-                pwc.classList.remove('is-invalid');
-                pwc.classList.add('is-valid');
-            } else {
-                msg.textContent = '✗ ' + (window.__t?.password_mismatch || 'Les mots de passe ne correspondent pas');
-                msg.className = 'text-xs mt-1 text-red-400';
-                pwc.classList.remove('is-valid');
-                pwc.classList.add('is-invalid');
-            }
-        }
-        pw.addEventListener('input', checkMatch);
-        pwc.addEventListener('input', checkMatch);
-
-        // Submit button loading
-        form.addEventListener('submit', function (e) {
-            const emailEl = document.getElementById('email');
-            if (policy.requireEmail && emailEl && !emailEl.value.trim()) {
-                e.preventDefault();
-                emailEl.classList.remove('is-valid');
-                emailEl.classList.add('is-invalid');
-                emailEl.focus();
-                return;
-            }
-
-            const pwErrors = passwordPolicyErrors(pw.value || '');
-            if (pwErrors.length > 0 || pw.value !== pwc.value) {
-                e.preventDefault();
-                if (pwErrors.length > 0 && policyMsg) {
-                    policyMsg.textContent = `${window.__t?.password_policy_missing || 'Missing requirements'}: ` + pwErrors.join(', ');
-                    policyMsg.className = 'text-xs mt-1 text-red-400';
-                }
-                return;
-            }
-            const btn = document.getElementById('submit-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<span class="spinner"></span> ' + (window.__t?.submitting || '{{ .T "submitting" }}');
-        });
-    })();
+        },
+    };
 </script>
+<script src="/static/js/pages/invite.js"></script>
 {{ end }}

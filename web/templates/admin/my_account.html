@@ -104,8 +104,8 @@
                 <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_my_account" }}</h1>
                 <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "my_account_subheading" }}</p>
                 <div class="mt-5 flex flex-wrap gap-2">
-                    <button type="button" class="jg-btn jg-btn-ghost" onclick="document.getElementById('contact-card').scrollIntoView({ behavior: 'smooth', block: 'start' })">{{ .T "my_account_section_contact" }}</button>
-                    <button type="button" class="jg-btn jg-btn-ghost" onclick="document.getElementById('password-card').scrollIntoView({ behavior: 'smooth', block: 'start' })">{{ .T "my_account_section_password" }}</button>
+                    <button type="button" class="jg-btn jg-btn-ghost" data-scroll-target="contact-card">{{ .T "my_account_section_contact" }}</button>
+                    <button type="button" class="jg-btn jg-btn-ghost" data-scroll-target="password-card">{{ .T "my_account_section_password" }}</button>
                 </div>
             </div>
 
@@ -237,199 +237,46 @@
 {{ end }}
 
 {{ define "scripts" }}
-<script>
-    const uiLocale = '{{ .Lang }}' || undefined;
-    const languageLabels = {
-        '': '{{ .T "my_account_default_server_lang" }}',
-        'fr': 'Francais',
-        'en': 'English',
-        'de': 'Deutsch',
-        'es': 'Espanol',
-        'it': 'Italiano',
-        'nl': 'Nederlands',
-        'pl': 'Polski',
-        'pt-br': 'Portugues (Brasil)',
-        'ru': 'Russkii',
-        'zh': 'Zhongwen',
+<script nonce="{{ .ScriptNonce }}">
+    window.JGPageMyAccount = {
+        uiLocale: '{{ .Lang }}' || undefined,
+        languageLabels: {
+            '': '{{ .T "my_account_default_server_lang" }}',
+            'fr': 'Francais',
+            'en': 'English',
+            'de': 'Deutsch',
+            'es': 'Espanol',
+            'it': 'Italiano',
+            'nl': 'Nederlands',
+            'pl': 'Polski',
+            'pt-br': 'Portugues (Brasil)',
+            'ru': 'Russkii',
+            'zh': 'Zhongwen',
+        },
+        i18n: {
+            noExpiry: '{{ .T "my_account_no_expiry" }}',
+            loadError: '{{ .T "my_account_load_error" }}',
+            roleAdmin: '{{ .T "role_admin" }}',
+            roleUser: '{{ .T "role_user" }}',
+            saved: '{{ .T "my_account_saved" }}',
+            saveError: '{{ .T "my_account_save_error" }}',
+            passwordTooShort: '{{ .T "my_account_password_too_short" }}',
+            passwordMismatch: '{{ .T "my_account_password_mismatch" }}',
+            passwordUpdated: '{{ .T "my_account_password_updated" }}',
+            passwordUpdateError: '{{ .T "my_account_password_update_error" }}',
+            emailVerificationSent: '{{ .T "my_account_email_verification_sent" }}',
+            emailVerificationSendError: '{{ .T "my_account_email_verification_send_error" }}',
+            emailStatusMissing: '{{ .T "my_account_email_status_missing" }}',
+            emailVerificationMissing: '{{ .T "my_account_email_verification_missing" }}',
+            emailStatusPending: '{{ .T "my_account_email_status_pending" }}',
+            emailVerificationPending: '{{ .T "my_account_email_verification_pending" }}',
+            emailPendingLabel: '{{ .T "my_account_email_pending_label" }}',
+            emailStatusVerified: '{{ .T "my_account_email_status_verified" }}',
+            emailVerificationOk: '{{ .T "my_account_email_verification_ok" }}',
+            emailStatusUnverified: '{{ .T "my_account_email_status_unverified" }}',
+            emailVerificationHelp: '{{ .T "my_account_email_verification_help" }}',
+        },
     };
-
-    function updateEmailVerification(profile) {
-        const statusEl = document.getElementById('email-verification-status');
-        const helpEl = document.getElementById('email-verification-help');
-        const pendingEl = document.getElementById('email-pending-value');
-        const resendBtn = document.getElementById('email-verification-resend');
-
-        const email = String(profile.email || '').trim();
-        const pending = String(profile.pending_email || '').trim();
-        const verified = !!profile.email_verified && !pending;
-
-        if (!email && !pending) {
-            statusEl.textContent = '{{ .T "my_account_email_status_missing" }}';
-            helpEl.textContent = '{{ .T "my_account_email_verification_missing" }}';
-            pendingEl.classList.add('hidden');
-            pendingEl.textContent = '';
-            resendBtn.disabled = true;
-            resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            return;
-        }
-
-        resendBtn.disabled = verified;
-        resendBtn.classList.toggle('opacity-50', verified);
-        resendBtn.classList.toggle('cursor-not-allowed', verified);
-
-        if (pending) {
-            statusEl.textContent = '{{ .T "my_account_email_status_pending" }}';
-            helpEl.textContent = '{{ .T "my_account_email_verification_pending" }}';
-            pendingEl.textContent = '{{ .T "my_account_email_pending_label" }} ' + pending;
-            pendingEl.classList.remove('hidden');
-            return;
-        }
-
-        pendingEl.classList.add('hidden');
-        pendingEl.textContent = '';
-
-        if (verified) {
-            statusEl.textContent = '{{ .T "my_account_email_status_verified" }}';
-            helpEl.textContent = '{{ .T "my_account_email_verification_ok" }}';
-            return;
-        }
-
-        statusEl.textContent = '{{ .T "my_account_email_status_unverified" }}';
-        helpEl.textContent = '{{ .T "my_account_email_verification_help" }}';
-    }
-
-    function formatDateTime(value) {
-        if (!value) return '{{ .T "my_account_no_expiry" }}';
-        const date = new Date(value);
-        if (Number.isNaN(date.getTime())) return value;
-        return date.toLocaleString(uiLocale);
-    }
-
-    async function loadMyAccount() {
-        const res = await JG.api('/admin/api/users/me');
-        if (!res.success) {
-            JG.toast(res.message || '{{ .T "my_account_load_error" }}', 'error');
-            return;
-        }
-
-        const profile = res.data || {};
-        document.getElementById('account-username').textContent = profile.username || '-';
-        document.getElementById('account-role').textContent = profile.is_admin ? '{{ .T "role_admin" }}' : '{{ .T "role_user" }}';
-        document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at);
-        document.getElementById('account-email-summary').textContent = profile.email || '-';
-        document.getElementById('account-language').textContent = languageLabels[String(profile.preferred_lang || '').toLowerCase()] || languageLabels[''];
-
-        document.getElementById('my-email').value = profile.email || '';
-        document.getElementById('my-discord').value = profile.contact_discord || '';
-        document.getElementById('my-telegram').value = profile.contact_telegram || '';
-        document.getElementById('my-lang').value = profile.preferred_lang || '';
-        document.getElementById('my-notify-expiry').checked = profile.notify_expiry_reminder !== false;
-        document.getElementById('my-notify-events').checked = profile.notify_account_events !== false;
-        document.getElementById('my-opt-email').checked = profile.opt_in_email !== false;
-        document.getElementById('my-opt-discord').checked = !!profile.opt_in_discord;
-        document.getElementById('my-opt-telegram').checked = !!profile.opt_in_telegram;
-        updateEmailVerification(profile);
-    }
-
-    async function saveMyAccount(event) {
-        event.preventDefault();
-        const payload = {
-            email: document.getElementById('my-email').value.trim(),
-            contact_discord: document.getElementById('my-discord').value.trim(),
-            contact_telegram: document.getElementById('my-telegram').value.trim(),
-            preferred_lang: document.getElementById('my-lang').value,
-            notify_expiry_reminder: document.getElementById('my-notify-expiry').checked,
-            notify_account_events: document.getElementById('my-notify-events').checked,
-            opt_in_email: document.getElementById('my-opt-email').checked,
-            opt_in_discord: document.getElementById('my-opt-discord').checked,
-            opt_in_telegram: document.getElementById('my-opt-telegram').checked,
-        };
-
-        const res = await JG.api('/admin/api/users/me', {
-            method: 'PATCH',
-            body: JSON.stringify(payload),
-        });
-
-        if (res.success) {
-            JG.toast(res.message || '{{ .T "my_account_saved" }}', 'success');
-            const preferred = String(payload.preferred_lang || '').trim().toLowerCase();
-            if (preferred) {
-                document.cookie = `lang=${preferred};path=/;max-age=31536000;SameSite=Lax`;
-            } else {
-                document.cookie = 'lang=;path=/;max-age=0;SameSite=Lax';
-            }
-            window.location.reload();
-            return;
-        }
-        JG.toast(res.message || '{{ .T "my_account_save_error" }}', 'error');
-    }
-
-    async function updateMyPassword(event) {
-        event.preventDefault();
-
-        const p1 = document.getElementById('my-password').value;
-        const p2 = document.getElementById('my-password-confirm').value;
-        if (p1.length < 8) {
-            JG.toast('{{ .T "my_account_password_too_short" }}', 'error');
-            return;
-        }
-        if (p1 !== p2) {
-            JG.toast('{{ .T "my_account_password_mismatch" }}', 'error');
-            return;
-        }
-
-        const res = await JG.api('/admin/api/users/me/password', {
-            method: 'POST',
-            body: JSON.stringify({
-                current_password: 'not_needed_by_admin_token',
-                new_password: p1,
-            }),
-        });
-
-        if (res.success) {
-            JG.toast(res.message || '{{ .T "my_account_password_updated" }}', 'success');
-            document.getElementById('my-password-form').reset();
-            return;
-        }
-        JG.toast(res.message || '{{ .T "my_account_password_update_error" }}', 'error');
-    }
-
-    async function resendEmailVerification() {
-        const btn = document.getElementById('email-verification-resend');
-        if (btn.disabled) return;
-        btn.disabled = true;
-        let shouldRestoreButton = true;
-        try {
-            const res = await JG.api('/admin/api/users/me/email-verification/resend', {
-                method: 'POST',
-            });
-            if (res.success) {
-                JG.toast(res.message || '{{ .T "my_account_email_verification_sent" }}', 'success');
-                await loadMyAccount();
-                shouldRestoreButton = false;
-                return;
-            }
-            JG.toast(res.message || '{{ .T "my_account_email_verification_send_error" }}', 'error');
-        } finally {
-            if (shouldRestoreButton) {
-                btn.disabled = false;
-            }
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', async () => {
-        const toggle = document.getElementById('sidebar-toggle');
-        if (toggle) {
-            toggle.addEventListener('click', () => {
-                const sidebar = document.getElementById('sidebar');
-                if (sidebar) sidebar.classList.toggle('open');
-            });
-        }
-
-        document.getElementById('my-account-form').addEventListener('submit', saveMyAccount);
-        document.getElementById('my-password-form').addEventListener('submit', updateMyPassword);
-        document.getElementById('email-verification-resend').addEventListener('click', resendEmailVerification);
-        await loadMyAccount();
-    });
 </script>
+<script src="/static/js/pages/my-account.js"></script>
 {{ end }}

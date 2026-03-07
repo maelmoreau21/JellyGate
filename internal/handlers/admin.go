@@ -617,7 +617,7 @@ func (h *AdminHandler) runExpirationCheck() {
 // DashboardPage affiche la page principale du tableau de bord.
 func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
@@ -631,7 +631,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 // MyAccountPage affiche la page "Mon compte" pour l'utilisateur connecté.
 func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
@@ -1017,7 +1017,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 // UsersPage affiche la page de gestion des utilisateurs.
 func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
@@ -1030,7 +1030,7 @@ func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 // SettingsPage affiche la page de configuration globale.
 func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
@@ -1043,7 +1043,7 @@ func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 // InvitationsPage affiche la page de gestion des invitations.
 func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 
@@ -1092,7 +1092,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 // LogsPage affiche la page du journal d'audit.
 func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
@@ -1105,7 +1105,7 @@ func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 // I18nReportPage affiche la page du rapport de traduction.
 func (h *AdminHandler) I18nReportPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true

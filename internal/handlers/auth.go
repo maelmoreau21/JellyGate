@@ -58,7 +58,7 @@ func NewAuthHandler(cfg *config.Config, db *database.DB, renderer *render.Engine
 
 // LoginPage affiche la page de connexion admin (GET /admin/login).
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.Error = r.URL.Query().Get("error")
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL

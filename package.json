@@ -1,0 +1,10 @@
+{
+  "name": "jellygate",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i ./web/static/css/tailwind.input.css -c ./tailwind.config.js -o ./web/static/css/tailwind.generated.css --minify"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17"
+  }
+}

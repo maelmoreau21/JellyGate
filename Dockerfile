@@ -12,13 +12,19 @@ ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
 WORKDIR /build
+RUN apk add --no-cache nodejs npm
 
 # Copier les fichiers de dépendances en premier (cache Docker optimisé)
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
+# Dépendances frontend pour générer Tailwind localement
+COPY package.json package-lock.json tailwind.config.js ./
+RUN npm ci
+
 # Copier le reste du code source
 COPY . .
+RUN npm run build:css
 
 # Compiler le binaire statique (CGO désactivé — SQLite via modernc.org/sqlite)
 # TARGETOS et TARGETARCH sont fournis par Buildx lors du multi-arch build

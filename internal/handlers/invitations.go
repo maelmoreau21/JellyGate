@@ -133,7 +133,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.Invitation = inv
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -493,7 +493,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	)
 
 	// ── Réponse de succès ────────────────────────────────────────────────
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	if createJellyfinUser {
 		td.SuccessMessage = strings.ReplaceAll(
 			h.tr(r, "invite_success_hybrid", "Bienvenue {username} ! Votre compte a été créé avec succès dans Jellyfin et dans l'annuaire. Vérifiez maintenant votre email pour finaliser votre contact."),

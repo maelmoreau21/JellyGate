@@ -29,7 +29,7 @@ func NewAutomationHandler(db *database.DB, renderer *render.Engine, schedulerSvc
 
 func (h *AutomationHandler) AutomationPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	td := h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context()))
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true

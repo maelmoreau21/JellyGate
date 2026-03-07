@@ -30,6 +30,7 @@ JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-ho
 | Sécurité | CSRF sur routes admin mutables, rate limiting, headers HTTP centralisés, cookies signés |
 | Audit | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
 | i18n | `web/i18n/*.json`, fallback `lang demandée -> en -> fr`, check CI, rapport admin |
+| Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
 | Intégrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, Ombi, JellyTulli |
 | Base de données | SQLite par défaut, PostgreSQL supporté |
 
@@ -174,6 +175,7 @@ web/
 ## Vérifications utiles
 
 ```bash
+npm run build:css
 go build ./...
 go test ./...
 go run ./cmd/i18ncheck
