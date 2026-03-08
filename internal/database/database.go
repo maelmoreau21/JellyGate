@@ -446,6 +446,7 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_action TEXT NOT NULL DEFAULT 'disable'`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expired_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN used BOOLEAN NOT NULL DEFAULT 0`)
 	} else {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS can_invite BOOLEAN NOT NULL DEFAULT FALSE`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_lang TEXT NOT NULL DEFAULT ''`)
@@ -464,6 +465,7 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_action TEXT NOT NULL DEFAULT 'disable'`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ`)
+		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN IF NOT EXISTS used BOOLEAN NOT NULL DEFAULT FALSE`)
 	}
 
 	if err := db.backfillExistingEmailVerificationState(); err != nil {
@@ -577,6 +579,20 @@ func (db *DB) sqliteMigrations() []migration {
 			)`,
 		},
 		{
+			name: "create_pending_invite_signups",
+			sql: `CREATE TABLE IF NOT EXISTS pending_invite_signups (
+				id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+				code                TEXT    UNIQUE NOT NULL,
+				invitation_code     TEXT    NOT NULL,
+				username            TEXT    NOT NULL,
+				email               TEXT    NOT NULL,
+				password_ciphertext TEXT    NOT NULL,
+				expires_at          DATETIME NOT NULL,
+				used                BOOLEAN NOT NULL DEFAULT 0,
+				created_at          DATETIME NOT NULL DEFAULT (datetime('now'))
+			)`,
+		},
+		{
 			name: "create_settings",
 			sql: `CREATE TABLE IF NOT EXISTS settings (
 				key        TEXT PRIMARY KEY,
@@ -602,6 +618,14 @@ func (db *DB) sqliteMigrations() []migration {
 		{
 			name: "index_password_resets_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_password_resets_code ON password_resets(code)`,
+		},
+		{
+			name: "index_pending_invite_signups_code",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_code ON pending_invite_signups(code)`,
+		},
+		{
+			name: "index_pending_invite_signups_username",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_username ON pending_invite_signups(username)`,
 		},
 		{
 			name: "index_audit_log_action",
@@ -729,6 +753,20 @@ func (db *DB) postgresMigrations() []migration {
 			)`,
 		},
 		{
+			name: "create_pending_invite_signups",
+			sql: `CREATE TABLE IF NOT EXISTS pending_invite_signups (
+				id                  BIGSERIAL PRIMARY KEY,
+				code                TEXT UNIQUE NOT NULL,
+				invitation_code     TEXT NOT NULL,
+				username            TEXT NOT NULL,
+				email               TEXT NOT NULL,
+				password_ciphertext TEXT NOT NULL,
+				expires_at          TIMESTAMPTZ NOT NULL,
+				used                BOOLEAN NOT NULL DEFAULT FALSE,
+				created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+		},
+		{
 			name: "create_settings",
 			sql: `CREATE TABLE IF NOT EXISTS settings (
 				key        TEXT PRIMARY KEY,
@@ -754,6 +792,14 @@ func (db *DB) postgresMigrations() []migration {
 		{
 			name: "index_password_resets_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_password_resets_code ON password_resets(code)`,
+		},
+		{
+			name: "index_pending_invite_signups_code",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_code ON pending_invite_signups(code)`,
+		},
+		{
+			name: "index_pending_invite_signups_username",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_username ON pending_invite_signups(username)`,
 		},
 		{
 			name: "index_audit_log_action",

@@ -18,6 +18,7 @@
             </div>
             <h1 class="text-2xl font-bold mb-1">{{ .T "invite_heading" }}</h1>
             <p class="text-sm text-slate-400">{{ .T "invite_subheading" }}</p>
+            {{ if .Invitation }}
             {{ if .Invitation.Label }}
             <span
                 class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-400">
@@ -29,6 +30,7 @@
                 <span class="font-semibold text-slate-200">{{ .T "invitations_sponsor" }}</span>
                 <span>{{ .Invitation.CreatedBy }}</span>
             </div>
+            {{ end }}
             {{ end }}
         </div>
 
@@ -42,6 +44,7 @@
             </div>
             <h1 class="text-xl font-bold mb-3">{{ .T "success" }}</h1>
             <p class="text-slate-300">{{ .SuccessMessage }}</p>
+            {{ if .Data.AccountCreated }}
             <div class="mt-8 space-y-4">
                 <a href="{{ .Data.JellyfinURL }}" class="jg-btn jg-btn-primary w-full shadow-lg shadow-purple-500/20">
                     {{ .T "invite_login_jellyfin" }}
@@ -57,6 +60,7 @@
                 </a>
                 {{ end }}
             </div>
+            {{ end }}
         </div>
         {{ else }}
         {{/* Carte formulaire */}}

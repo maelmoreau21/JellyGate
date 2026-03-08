@@ -104,21 +104,22 @@ type LibrariesResponse []Library
 // InviteProfile contient les droits à appliquer lors d'une invitation.
 // Stocké en JSON dans la table invitations.jellyfin_profile.
 type InviteProfile struct {
-	EnableAllFolders   bool     `json:"enable_all_folders"`
-	EnabledFolderIDs   []string `json:"enabled_folder_ids"`
-	EnableDownload     bool     `json:"enable_download"`
-	RequireEmail       bool     `json:"require_email"`
-	EnableRemoteAccess bool     `json:"enable_remote_access"`
-	MaxSessions        int      `json:"max_sessions"`
-	BitrateLimit       int      `json:"bitrate_limit"`    // 0 = illimité
-	UserExpiryDays     int      `json:"user_expiry_days"` // 0 = illimité
-	UserExpiresAt      string   `json:"user_expires_at"`
-	DisableAfterDays   int      `json:"disable_after_days"`
-	ExpiryAction       string   `json:"expiry_action"` // disable|delete|disable_then_delete
-	DeleteAfterDays    int      `json:"delete_after_days"`
-	GroupName          string   `json:"group_name"`
-	UsernameMinLength  int      `json:"username_min_length"`
-	UsernameMaxLength  int      `json:"username_max_length"`
+	EnableAllFolders         bool     `json:"enable_all_folders"`
+	EnabledFolderIDs         []string `json:"enabled_folder_ids"`
+	EnableDownload           bool     `json:"enable_download"`
+	RequireEmail             bool     `json:"require_email"`
+	RequireEmailVerification bool     `json:"require_email_verification"`
+	EnableRemoteAccess       bool     `json:"enable_remote_access"`
+	MaxSessions              int      `json:"max_sessions"`
+	BitrateLimit             int      `json:"bitrate_limit"`    // 0 = illimité
+	UserExpiryDays           int      `json:"user_expiry_days"` // 0 = illimité
+	UserExpiresAt            string   `json:"user_expires_at"`
+	DisableAfterDays         int      `json:"disable_after_days"`
+	ExpiryAction             string   `json:"expiry_action"` // disable|delete|disable_then_delete
+	DeleteAfterDays          int      `json:"delete_after_days"`
+	GroupName                string   `json:"group_name"`
+	UsernameMinLength        int      `json:"username_min_length"`
+	UsernameMaxLength        int      `json:"username_max_length"`
 
 	PasswordMinLength      int  `json:"password_min_length"`
 	PasswordMaxLength      int  `json:"password_max_length"`

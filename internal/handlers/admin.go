@@ -3145,28 +3145,29 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 
 	// Construire profil Jellyfin depuis la configuration admin (paramètres globaux).
 	jfProfile := jellyfin.InviteProfile{
-		EnableAllFolders:       len(req.Libraries) == 0,
-		EnabledFolderIDs:       req.Libraries,
-		EnableDownload:         inviteCfg.EnableDownloads,
-		RequireEmail:           inviteCfg.RequireEmail,
-		EnableRemoteAccess:     true,
-		UserExpiryDays:         effectiveDisableAfterDays,
-		UserExpiresAt:          effectiveUserExpiresAtRaw,
-		DisableAfterDays:       effectiveDisableAfterDays,
-		GroupName:              strings.TrimSpace(req.GroupName),
-		ForcedUsername:         strings.TrimSpace(req.ForcedUsername),
-		CanInvite:              effectiveCanInvite,
-		TemplateUserID:         strings.TrimSpace(inviteCfg.TemplateUserID),
-		UsernameMinLength:      inviteCfg.UsernameMinLength,
-		UsernameMaxLength:      inviteCfg.UsernameMaxLength,
-		PasswordMinLength:      inviteCfg.PasswordMinLength,
-		PasswordMaxLength:      inviteCfg.PasswordMaxLength,
-		PasswordRequireUpper:   inviteCfg.PasswordRequireUpper,
-		PasswordRequireLower:   inviteCfg.PasswordRequireLower,
-		PasswordRequireDigit:   inviteCfg.PasswordRequireDigit,
-		PasswordRequireSpecial: inviteCfg.PasswordRequireSpecial,
-		ExpiryAction:           normalizeExpiryAction(inviteCfg.ExpiryAction),
-		DeleteAfterDays:        inviteCfg.DeleteAfterDays,
+		EnableAllFolders:         len(req.Libraries) == 0,
+		EnabledFolderIDs:         req.Libraries,
+		EnableDownload:           inviteCfg.EnableDownloads,
+		RequireEmail:             inviteCfg.RequireEmail,
+		RequireEmailVerification: inviteCfg.RequireEmailVerification,
+		EnableRemoteAccess:       true,
+		UserExpiryDays:           effectiveDisableAfterDays,
+		UserExpiresAt:            effectiveUserExpiresAtRaw,
+		DisableAfterDays:         effectiveDisableAfterDays,
+		GroupName:                strings.TrimSpace(req.GroupName),
+		ForcedUsername:           strings.TrimSpace(req.ForcedUsername),
+		CanInvite:                effectiveCanInvite,
+		TemplateUserID:           strings.TrimSpace(inviteCfg.TemplateUserID),
+		UsernameMinLength:        inviteCfg.UsernameMinLength,
+		UsernameMaxLength:        inviteCfg.UsernameMaxLength,
+		PasswordMinLength:        inviteCfg.PasswordMinLength,
+		PasswordMaxLength:        inviteCfg.PasswordMaxLength,
+		PasswordRequireUpper:     inviteCfg.PasswordRequireUpper,
+		PasswordRequireLower:     inviteCfg.PasswordRequireLower,
+		PasswordRequireDigit:     inviteCfg.PasswordRequireDigit,
+		PasswordRequireSpecial:   inviteCfg.PasswordRequireSpecial,
+		ExpiryAction:             normalizeExpiryAction(inviteCfg.ExpiryAction),
+		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
 	}
 
 	if strings.TrimSpace(inviteCfg.PolicyPresetID) != "" {
@@ -3199,6 +3200,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	// Les options exposees dans "Profil utilisateur" sont forcees par les paramètres admin.
 	jfProfile.EnableDownload = inviteCfg.EnableDownloads
 	jfProfile.RequireEmail = inviteCfg.RequireEmail
+	jfProfile.RequireEmailVerification = inviteCfg.RequireEmailVerification
 	if strings.TrimSpace(inviteCfg.TemplateUserID) != "" {
 		jfProfile.TemplateUserID = strings.TrimSpace(inviteCfg.TemplateUserID)
 	}

@@ -119,6 +119,53 @@ func canResendVerification(target *emailVerificationTarget) (bool, time.Duration
 	return false, remaining
 }
 
+func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *mail.Mailer, username, address, token string) error {
+	if mailer == nil {
+		return fmt.Errorf("SMTP non configuré")
+	}
+
+	links := resolvePortalLinks(cfg, db)
+	publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
+	if publicBaseURL == "" && cfg != nil {
+		publicBaseURL = strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	}
+	verificationURL := publicBaseURL + "/verify-email/" + token
+
+	emailData := map[string]string{
+		"Username":         username,
+		"DisplayName":      username,
+		"Email":            address,
+		"VerificationLink": verificationURL,
+		"VerificationURL":  verificationURL,
+		"VerificationCode": token,
+		"ExpiresIn":        "24 hours",
+		"HelpURL":          publicBaseURL,
+		"JellyGateURL":     publicBaseURL,
+		"JellyfinURL":      links.JellyfinURL,
+		"JellyseerrURL":    links.JellyseerrURL,
+		"JellyTulliURL":    links.JellyTulliURL,
+	}
+
+	templateBody := defaultEmailVerificationTemplate()
+	templateSubject := defaultEmailVerificationSubject()
+	emailCfg := config.DefaultEmailTemplates()
+	if savedEmailCfg, cfgErr := db.GetEmailTemplatesConfig(); cfgErr == nil {
+		emailCfg = savedEmailCfg
+		if strings.TrimSpace(emailCfg.EmailVerification) != "" {
+			templateBody = emailCfg.EmailVerification
+		}
+		if strings.TrimSpace(emailCfg.EmailVerificationSubject) != "" {
+			templateSubject = emailCfg.EmailVerificationSubject
+		}
+	}
+
+	if err := sendTemplateIfConfigured(mailer, address, templateSubject, "email_verification", templateBody, emailCfg, emailData); err != nil {
+		return fmt.Errorf("envoi email verification: %w", err)
+	}
+
+	return nil
+}
+
 func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mailer, userID int64, force bool) error {
 	if mailer == nil {
 		return fmt.Errorf("SMTP non configuré")
@@ -190,43 +237,8 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 		return fmt.Errorf("validation verification email: %w", err)
 	}
 
-	links := resolvePortalLinks(cfg, db)
-	publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
-	if publicBaseURL == "" && cfg != nil {
-		publicBaseURL = strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
-	}
-	verificationURL := publicBaseURL + "/verify-email/" + token
-
-	emailData := map[string]string{
-		"Username":         target.Username,
-		"DisplayName":      target.Username,
-		"Email":            address,
-		"VerificationLink": verificationURL,
-		"VerificationURL":  verificationURL,
-		"VerificationCode": token,
-		"ExpiresIn":        "24 hours",
-		"HelpURL":          publicBaseURL,
-		"JellyGateURL":     publicBaseURL,
-		"JellyfinURL":      links.JellyfinURL,
-		"JellyseerrURL":    links.JellyseerrURL,
-		"JellyTulliURL":    links.JellyTulliURL,
-	}
-
-	templateBody := defaultEmailVerificationTemplate()
-	templateSubject := defaultEmailVerificationSubject()
-	emailCfg := config.DefaultEmailTemplates()
-	if savedEmailCfg, cfgErr := db.GetEmailTemplatesConfig(); cfgErr == nil {
-		emailCfg = savedEmailCfg
-		if strings.TrimSpace(emailCfg.EmailVerification) != "" {
-			templateBody = emailCfg.EmailVerification
-		}
-		if strings.TrimSpace(emailCfg.EmailVerificationSubject) != "" {
-			templateSubject = emailCfg.EmailVerificationSubject
-		}
-	}
-
-	if err := sendTemplateIfConfigured(mailer, address, templateSubject, "email_verification", templateBody, emailCfg, emailData); err != nil {
-		return fmt.Errorf("envoi email verification: %w", err)
+	if err := sendVerificationEmailTemplate(cfg, db, mailer, target.Username, address, token); err != nil {
+		return err
 	}
 
 	_ = db.LogAction("user.email_verification.sent", target.Username, address, fmt.Sprintf("user_id=%d", userID))

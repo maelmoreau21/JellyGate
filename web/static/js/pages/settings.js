@@ -231,6 +231,7 @@
         document.getElementById('invite-profile-template-user').value = profile.template_user_id || '';
         document.getElementById('invite-profile-enable-downloads').checked = profile.enable_downloads !== false;
         document.getElementById('invite-profile-require-email').checked = profile.require_email !== false;
+        document.getElementById('invite-profile-require-email-verification').checked = profile.require_email_verification !== false;
         document.getElementById('invite-profile-auto-delete-closed-links').checked = !!profile.auto_delete_closed_links;
         document.getElementById('invite-profile-allow-inviter-grant').checked = !!profile.allow_inviter_grant_invite;
         document.getElementById('invite-profile-allow-inviter-user-expiry').checked = profile.allow_inviter_user_expiry !== false;
@@ -250,6 +251,18 @@
         document.getElementById('invite-profile-pw-lower').checked = !!profile.password_require_lower;
         document.getElementById('invite-profile-pw-digit').checked = !!profile.password_require_digit;
         document.getElementById('invite-profile-pw-special').checked = !!profile.password_require_special;
+        syncInviteEmailRequirementFromVerification();
+    }
+
+    function syncInviteEmailRequirementFromVerification() {
+        const requireEmail = document.getElementById('invite-profile-require-email');
+        const requireVerification = document.getElementById('invite-profile-require-email-verification');
+        if (!requireEmail || !requireVerification) {
+            return;
+        }
+        if (requireVerification.checked) {
+            requireEmail.checked = true;
+        }
     }
 
     function setBackupMode(databaseType) {
@@ -417,6 +430,7 @@
                 template_user_id: (document.getElementById('invite-profile-template-user').value || '').trim(),
                 enable_downloads: document.getElementById('invite-profile-enable-downloads').checked,
                 require_email: document.getElementById('invite-profile-require-email').checked,
+                require_email_verification: document.getElementById('invite-profile-require-email-verification').checked,
                 auto_delete_closed_links: document.getElementById('invite-profile-auto-delete-closed-links').checked,
                 allow_inviter_grant_invite: document.getElementById('invite-profile-allow-inviter-grant').checked,
                 allow_inviter_user_expiry: document.getElementById('invite-profile-allow-inviter-user-expiry').checked,
@@ -826,6 +840,7 @@
         });
 
         document.getElementById('ldap-enabled')?.addEventListener('change', toggleLDAPFields);
+        document.getElementById('invite-profile-require-email-verification')?.addEventListener('change', syncInviteEmailRequirementFromVerification);
 
         const toggle = document.getElementById('sidebar-toggle');
         if (toggle) {

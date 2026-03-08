@@ -204,7 +204,7 @@ func main() {
 	})
 
 	r.Route("/verify-email", func(r chi.Router) {
-		r.Get("/{code}", adminHandler.VerifyEmailPage)
+		r.Get("/{code}", inviteHandler.VerifyEmailPage)
 	})
 
 	// ── Routes admin (authentification requise) ─────────────────────────────

@@ -849,58 +849,60 @@ type JellyfinPolicyPreset struct {
 // InvitationProfileConfig contient la politique appliquee a chaque nouvelle invitation.
 // Les champs correspondent aux options de "Profil utilisateur" cote interface admin.
 type InvitationProfileConfig struct {
-	PolicyPresetID         string `json:"policy_preset_id"`
-	TemplateUserID         string `json:"template_user_id"`
-	EnableDownloads        bool   `json:"enable_downloads"`
-	RequireEmail           bool   `json:"require_email"`
-	AutoDeleteClosedLinks  bool   `json:"auto_delete_closed_links"`
-	DisableAfterDays       int    `json:"disable_after_days"`
-	DeleteAfterDays        int    `json:"delete_after_days"`
-	ExpiryAction           string `json:"expiry_action"`
-	AllowInviterGrant      bool   `json:"allow_inviter_grant_invite"`
-	AllowInviterUserExpiry bool   `json:"allow_inviter_user_expiry"`
-	InviterMaxUses         int    `json:"inviter_max_uses"`
-	InviterMaxLinkHours    int    `json:"inviter_max_link_hours"`
-	InviterQuotaDay        int    `json:"inviter_quota_day"`
-	InviterQuotaWeek       int    `json:"inviter_quota_week"`
-	InviterQuotaMonth      int    `json:"inviter_quota_month"`
-	UsernameMinLength      int    `json:"username_min_length"`
-	UsernameMaxLength      int    `json:"username_max_length"`
-	PasswordMinLength      int    `json:"password_min_length"`
-	PasswordMaxLength      int    `json:"password_max_length"`
-	PasswordRequireUpper   bool   `json:"password_require_upper"`
-	PasswordRequireLower   bool   `json:"password_require_lower"`
-	PasswordRequireDigit   bool   `json:"password_require_digit"`
-	PasswordRequireSpecial bool   `json:"password_require_special"`
+	PolicyPresetID           string `json:"policy_preset_id"`
+	TemplateUserID           string `json:"template_user_id"`
+	EnableDownloads          bool   `json:"enable_downloads"`
+	RequireEmail             bool   `json:"require_email"`
+	RequireEmailVerification bool   `json:"require_email_verification"`
+	AutoDeleteClosedLinks    bool   `json:"auto_delete_closed_links"`
+	DisableAfterDays         int    `json:"disable_after_days"`
+	DeleteAfterDays          int    `json:"delete_after_days"`
+	ExpiryAction             string `json:"expiry_action"`
+	AllowInviterGrant        bool   `json:"allow_inviter_grant_invite"`
+	AllowInviterUserExpiry   bool   `json:"allow_inviter_user_expiry"`
+	InviterMaxUses           int    `json:"inviter_max_uses"`
+	InviterMaxLinkHours      int    `json:"inviter_max_link_hours"`
+	InviterQuotaDay          int    `json:"inviter_quota_day"`
+	InviterQuotaWeek         int    `json:"inviter_quota_week"`
+	InviterQuotaMonth        int    `json:"inviter_quota_month"`
+	UsernameMinLength        int    `json:"username_min_length"`
+	UsernameMaxLength        int    `json:"username_max_length"`
+	PasswordMinLength        int    `json:"password_min_length"`
+	PasswordMaxLength        int    `json:"password_max_length"`
+	PasswordRequireUpper     bool   `json:"password_require_upper"`
+	PasswordRequireLower     bool   `json:"password_require_lower"`
+	PasswordRequireDigit     bool   `json:"password_require_digit"`
+	PasswordRequireSpecial   bool   `json:"password_require_special"`
 }
 
 // DefaultInvitationProfileConfig retourne la configuration par defaut appliquee
 // quand aucune politique d'invitation n'est encore enregistree.
 func DefaultInvitationProfileConfig() InvitationProfileConfig {
 	return InvitationProfileConfig{
-		PolicyPresetID:         "",
-		TemplateUserID:         "",
-		EnableDownloads:        true,
-		RequireEmail:           true,
-		AutoDeleteClosedLinks:  false,
-		DisableAfterDays:       0,
-		DeleteAfterDays:        0,
-		ExpiryAction:           "disable",
-		AllowInviterGrant:      false,
-		AllowInviterUserExpiry: true,
-		InviterMaxUses:         0,
-		InviterMaxLinkHours:    0,
-		InviterQuotaDay:        0,
-		InviterQuotaWeek:       0,
-		InviterQuotaMonth:      0,
-		UsernameMinLength:      3,
-		UsernameMaxLength:      32,
-		PasswordMinLength:      8,
-		PasswordMaxLength:      128,
-		PasswordRequireUpper:   false,
-		PasswordRequireLower:   false,
-		PasswordRequireDigit:   false,
-		PasswordRequireSpecial: false,
+		PolicyPresetID:           "",
+		TemplateUserID:           "",
+		EnableDownloads:          true,
+		RequireEmail:             true,
+		RequireEmailVerification: true,
+		AutoDeleteClosedLinks:    false,
+		DisableAfterDays:         0,
+		DeleteAfterDays:          0,
+		ExpiryAction:             "disable",
+		AllowInviterGrant:        false,
+		AllowInviterUserExpiry:   true,
+		InviterMaxUses:           0,
+		InviterMaxLinkHours:      0,
+		InviterQuotaDay:          0,
+		InviterQuotaWeek:         0,
+		InviterQuotaMonth:        0,
+		UsernameMinLength:        3,
+		UsernameMaxLength:        32,
+		PasswordMinLength:        8,
+		PasswordMaxLength:        128,
+		PasswordRequireUpper:     false,
+		PasswordRequireLower:     false,
+		PasswordRequireDigit:     false,
+		PasswordRequireSpecial:   false,
 	}
 }
 

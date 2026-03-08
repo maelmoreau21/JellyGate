@@ -506,6 +506,9 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 func normalizeInvitationProfile(cfg config.InvitationProfileConfig) config.InvitationProfileConfig {
 	cfg.PolicyPresetID = strings.TrimSpace(strings.ToLower(cfg.PolicyPresetID))
 	cfg.TemplateUserID = strings.TrimSpace(cfg.TemplateUserID)
+	if cfg.RequireEmailVerification {
+		cfg.RequireEmail = true
+	}
 
 	if cfg.DisableAfterDays < 0 {
 		cfg.DisableAfterDays = 0
