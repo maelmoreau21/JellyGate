@@ -247,7 +247,7 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Emby-Authorization", `MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="0.1.0"`)
+	req.Header.Set("X-Emby-Authorization", fmt.Sprintf(`MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="%s"`, config.AppVersion))
 
 	client := &http.Client{Timeout: 12 * time.Second}
 	resp, err := client.Do(req)

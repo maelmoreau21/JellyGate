@@ -1,11 +1,11 @@
+# JellyGate
+
 [![Docker Build](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml)
 [![GHCR Image](https://img.shields.io/badge/GHCR-ghcr.io%2Fmaelmoreau21%2Fjellygate-blue?logo=github)](https://ghcr.io/maelmoreau21/jellygate)
 
-<h1 align="center">JellyGate</h1>
+Portail d'invitations, de récupération de mot de passe et de gestion d'utilisateurs pour Jellyfin, avec LDAP/Active Directory natif.
 
-<p align="center">
-  <strong>Portail d'invitations, de récupération de mot de passe et de gestion d'utilisateurs pour Jellyfin, avec LDAP/Active Directory natif.</strong>
-</p>
+Version 1.1.0.
 
 ## Vue d'ensemble
 
@@ -13,26 +13,24 @@ JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-ho
 
 - invitations avec quotas, expiration, profils et automatisation
 - création de comptes en mode hybride LDAP + Jellyfin ou LDAP only
+- vérification d'e-mail configurable sur les invitations publiques, activée par défaut, avec création de compte après confirmation
 - récupération de mot de passe unifiée
 - administration web complète
+- modèles e-mail no-code avec variables de template et insertion directe depuis l'admin
 - notifications email et webhooks
 - audit logs exploitables et exportables
 - i18n pilotée par fichiers JSON avec vérification de cohérence en CI
 
 ## Fonctionnalités principales
 
-| Domaine | Détail |
-|---|---|
-| Invitations | Liens uniques, expiration, quotas, groupe cible, preset Jellyfin, provisioning tiers |
-| Comptes | Création atomique LDAP + Jellyfin + SQL, rollback en cas d'échec |
-| Utilisateurs | Listing, toggle, suppression, synchronisation Jellyfin, profil utilisateur |
-| Reset mot de passe | Demande publique, lien/token, mise à jour Jellyfin + LDAP |
-| Sécurité | CSRF sur routes admin mutables, rate limiting, headers HTTP centralisés, cookies signés |
-| Audit | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
-| i18n | `web/i18n/*.json`, fallback `lang demandée -> en -> fr`, check CI |
-| Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
-| Intégrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, Ombi, JellyTulli |
-| Base de données | SQLite par défaut, PostgreSQL supporté |
+- Invitations: liens uniques, expiration, quotas, groupe cible, preset Jellyfin et provisioning tiers.
+- Comptes: création atomique LDAP + Jellyfin + SQL, avec rollback si une étape échoue.
+- Vérification d'e-mail: flux public différé tant que l'adresse n'est pas confirmée.
+- Utilisateurs: listing, toggle, suppression, synchronisation Jellyfin et profil utilisateur.
+- E-mails: modèles no-code, variables comme `{{.Username}}`, aperçu et insertion directe dans `Paramètres > Modèles e-mail`.
+- Sécurité: CSRF, rate limiting, cookies signés et headers HTTP centralisés.
+- Audit: filtres avancés, export CSV/JSON et corrélation par `request_id`.
+- Base de données: SQLite par défaut, PostgreSQL pris en charge.
 
 ## Langues
 
@@ -44,7 +42,7 @@ Le changement de langue fonctionne selon cette priorité:
 
 Le sélecteur est disponible dans l'interface admin et reste visible sur les pages publiques. Le moteur de rendu applique ensuite les traductions côté serveur sur chaque requête.
 
-Note: plusieurs locales non `fr`/`en` existent déjà, mais certaines chaînes restent encore proches de l'anglais dans les fichiers JSON. Le mécanisme fonctionne, mais la qualité de traduction dépend du contenu de chaque locale.
+Note: plusieurs locales non `fr`/`en` existent déjà, mais leur qualité reste encore hétérogène selon les sections.
 
 ## Sécurité actuellement en place
 
@@ -72,8 +70,6 @@ Tags publiés:
 
 - `latest` sur la branche par défaut
 - `vX.Y.Z` sur les tags Git semver
-
-Il n'y a plus de tags `sha-*`, `vX.Y` ou `vX`.
 
 ## Démarrage rapide
 
@@ -121,7 +117,7 @@ docker compose -f docker-compose.postgres.yml up -d
 ## Variables d'environnement utiles
 
 | Variable | Requis | Défaut | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `JELLYGATE_SECRET_KEY` | Oui | - | Clé de signature de session |
 | `JELLYGATE_PORT` | Non | `8097` | Port HTTP |
 | `JELLYGATE_BASE_URL` | Non | `http://localhost:8097` | URL publique |
@@ -142,7 +138,7 @@ docker compose -f docker-compose.postgres.yml up -d
 | `OMBI_API_KEY` | Non | - | Clé API Ombi |
 | `JELLYTULLI_URL` | Non | - | URL JellyTulli |
 
-LDAP, SMTP, webhooks et templates email se configurent ensuite depuis l'admin et sont stockés en base.
+LDAP, SMTP, webhooks et modèles e-mail se configurent ensuite depuis l'admin et sont stockés en base SQL.
 
 ## Structure du projet
 
@@ -185,6 +181,13 @@ go run ./cmd/i18ncoverage
 Le workflow `.github/workflows/i18n-quality.yml` exécute `i18ncheck` et `i18ncoverage`.
 Le seuil de blocage est piloté par la variable de dépôt `I18N_MAX_SAME_AS_BASE`.
 Par défaut, le workflow utilise le plafond de non-régression actuel (`195`) et il faut le baisser progressivement jusqu'à `0` à mesure que les locales sont nettoyées.
+
+## État actuel
+
+- Version applicative: `1.1.0`
+- Déploiement recommandé: Docker avec volume persistant `/data`
+- Flux public sécurisé: création de compte après confirmation d'e-mail quand la politique l'exige
+- Modèles e-mail: édition no-code, variables et aperçu directement dans l'admin
 
 ## Licence
 

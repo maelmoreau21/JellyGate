@@ -2,9 +2,9 @@
   "name": "jellygate",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i ./web/static/css/tailwind.input.css -c ./tailwind.config.js -o ./web/static/css/tailwind.generated.css --minify"
+    "build:css": "node ./scripts/build-css.js"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.19"
   }
 }

@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/maelmoreau21/JellyGate/internal/config"
 )
 
 // ── Translations ────────────────────────────────────────────────────────────
@@ -32,6 +34,7 @@ type Translations map[string]string
 // dans la langue courante, avec fallback sur le français.
 type TemplateData struct {
 	Lang        string
+	AppVersion  string
 	ScriptNonce string
 	engine      *Engine
 	Data        map[string]interface{} // Données arbitraires
@@ -173,9 +176,10 @@ func (e *Engine) Translate(lang, key string) string {
 // avec fallback sur le français.
 func (e *Engine) NewTemplateData(lang string) *TemplateData {
 	return &TemplateData{
-		Lang:   lang,
-		engine: e,
-		Data:   make(map[string]interface{}),
+		Lang:       lang,
+		AppVersion: config.AppVersion,
+		engine:     e,
+		Data:       make(map[string]interface{}),
 	}
 }
 

@@ -15,6 +15,86 @@
         return String(id || '').replace(/^tpl-/, '').replace(/-+/g, '_');
     }
 
+    function getEmailVariableOptions() {
+        return [
+            { value: '{{.Username}}', label: t('settings_email_var_username', 'username') },
+            { value: '{{.Email}}', label: t('settings_email_var_email', 'email address') },
+            { value: '{{.InviteLink}}', label: t('settings_email_var_invite_link', 'invitation link') },
+            { value: '{{.InviteURL}}', label: t('settings_email_var_invite_link', 'invitation link') },
+            { value: '{{.InviteCode}}', label: t('settings_email_var_invite_code', 'invitation code') },
+            { value: '{{.HelpURL}}', label: t('settings_email_var_help_url', 'support / onboarding URL') },
+            { value: '{{.ResetLink}}', label: t('settings_email_var_reset_link', 'reset link') },
+            { value: '{{.ResetURL}}', label: t('settings_email_var_reset_link', 'reset link') },
+            { value: '{{.ResetCode}}', label: t('settings_email_var_reset_code', 'reset code') },
+            { value: '{{.VerificationLink}}', label: t('settings_email_var_verification_link', 'email verification link') },
+            { value: '{{.VerificationURL}}', label: t('settings_email_var_verification_link', 'email verification link') },
+            { value: '{{.VerificationCode}}', label: t('settings_email_var_verification_code', 'email verification code') },
+            { value: '{{.ExpiresIn}}', label: t('settings_email_var_expires_in', 'validity duration') },
+            { value: '{{.ExpiryDate}}', label: t('settings_email_var_expiry_date', 'expiry date') },
+            { value: '{{.JellyGateURL}}', label: t('settings_email_var_jellygate_url', 'public JellyGate URL') },
+            { value: '{{.JellyfinURL}}', label: t('settings_email_var_jellyfin_url', 'Jellyfin login URL') },
+            { value: '{{.JellyseerrURL}}', label: t('settings_email_var_jellyseerr_url', 'Jellyseerr URL') },
+            { value: '{{.JellyTulliURL}}', label: t('settings_email_var_jellytulli_url', 'JellyTulli URL') },
+            { value: '{{.Message}}', label: t('settings_email_var_message', 'custom message (admin invitation)') },
+        ];
+    }
+
+    function insertTextAtCursor(field, text) {
+        if (!field || !text) {
+            return;
+        }
+
+        const start = Number.isInteger(field.selectionStart) ? field.selectionStart : field.value.length;
+        const end = Number.isInteger(field.selectionEnd) ? field.selectionEnd : start;
+
+        field.focus();
+        if (typeof field.setRangeText === 'function') {
+            field.setRangeText(text, start, end, 'end');
+        } else {
+            const value = field.value || '';
+            field.value = `${value.slice(0, start)}${text}${value.slice(end)}`;
+            const nextPos = start + text.length;
+            field.setSelectionRange(nextPos, nextPos);
+        }
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function buildVariablePicker(area) {
+        const toolbar = document.createElement('div');
+        toolbar.className = 'jg-variable-picker mt-3 flex items-center gap-2 flex-wrap';
+
+        const select = document.createElement('select');
+        select.className = 'jg-input max-w-md text-sm';
+        select.setAttribute('aria-label', t('settings_email_variable_picker_label', 'Variable to insert'));
+
+        const empty = document.createElement('option');
+        empty.value = '';
+        empty.textContent = t('settings_email_variable_picker_placeholder', 'Choose a variable');
+        select.appendChild(empty);
+
+        getEmailVariableOptions().forEach((item) => {
+            const option = document.createElement('option');
+            option.value = item.value;
+            option.textContent = `${item.value} - ${item.label}`;
+            select.appendChild(option);
+        });
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'jg-btn jg-btn-sm jg-btn-ghost';
+        button.textContent = t('settings_email_variable_insert', 'Insert');
+        button.addEventListener('click', () => {
+            if (!select.value) {
+                return;
+            }
+            insertTextAtCursor(area, select.value);
+            select.value = '';
+        });
+
+        toolbar.append(select, button);
+        return toolbar;
+    }
+
     function getBaseTemplatePreviewPayload() {
         const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
         const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
@@ -638,6 +718,10 @@
             btn.textContent = t('preview_button', 'Preview');
             btn.addEventListener('click', () => previewEmailTemplate(area.id));
             label.insertAdjacentElement('afterend', btn);
+
+            if (!card.querySelector('.jg-variable-picker')) {
+                area.insertAdjacentElement('afterend', buildVariablePicker(area));
+            }
         });
 
         const closeBtn = document.getElementById('email-preview-close');

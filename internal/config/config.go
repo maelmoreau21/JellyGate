@@ -217,6 +217,7 @@ type EmailTemplatesConfig struct {
 
 var emailTagPattern = regexp.MustCompile(`(?is)<[^>]+>`)
 var emailAnchorPattern = regexp.MustCompile(`(?is)<a\b[^>]*href=(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>(.*?)</a>`)
+var plainEmailVariablePattern = regexp.MustCompile(`{{\s*\.[A-Za-z0-9_]+\s*}}`)
 
 const defaultEmailCardStyle = `
 <div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
@@ -261,12 +262,33 @@ func defaultEmailParagraphs(content string) string {
 		}
 		lines := strings.Split(trimmed, "\n")
 		for idx := range lines {
-			lines[idx] = strings.TrimSpace(lines[idx])
+			lines[idx] = escapePlainEmailLine(strings.TrimSpace(lines[idx]))
 		}
 		paragraphs = append(paragraphs, "<p>"+strings.Join(lines, "<br>")+"</p>")
 	}
 
 	return strings.Join(paragraphs, "\n")
+}
+
+func escapePlainEmailLine(line string) string {
+	if strings.TrimSpace(line) == "" {
+		return ""
+	}
+
+	placeholders := make([]string, 0, 4)
+	protected := plainEmailVariablePattern.ReplaceAllStringFunc(line, func(match string) string {
+		token := fmt.Sprintf("JELLYGATEVAR%03dTOKEN", len(placeholders))
+		placeholders = append(placeholders, strings.TrimSpace(match))
+		return token
+	})
+
+	escaped := html.EscapeString(protected)
+	for idx, original := range placeholders {
+		token := fmt.Sprintf("JELLYGATEVAR%03dTOKEN", idx)
+		escaped = strings.ReplaceAll(escaped, token, original)
+	}
+
+	return escaped
 }
 
 func looksLikeStandaloneEmailHTML(content string) bool {
@@ -380,31 +402,31 @@ func htmlToPlainEmailText(content string) string {
 func defaultNoCodeEmailBody(key string) string {
 	switch key {
 	case "confirmation":
-		return "Ton inscription est bien validee. Ton acces Jellyfin est actif.\n\nSi besoin, contacte l equipe si tu as besoin d aide."
+		return "Bonjour {{.Username}},\n\nTon inscription est bien validee et ton acces Jellyfin est maintenant actif.\n\nTu peux te connecter quand tu veux. Si tu as besoin d aide, tu peux aussi utiliser {{.HelpURL}}."
 	case "email_verification":
-		return "Confirme ton adresse e-mail pour finaliser la securisation de ton acces Jellyfin.\n\nLe bouton et le code de verification sont ajoutes automatiquement."
+		return "Bonjour {{.Username}},\n\nMerci de confirmer ton adresse e-mail pour finaliser la securisation de ton acces Jellyfin.\n\nLe bouton, le lien direct et le code de verification sont ajoutes automatiquement sous ce message."
 	case "expiry_reminder":
-		return "Ton acces Jellyfin expirera prochainement.\n\nLa date de fin apparait automatiquement dans l e-mail."
+		return "Bonjour {{.Username}},\n\nPetit rappel: ton acces Jellyfin arrive bientot a expiration.\n\nLa date exacte est ajoutee automatiquement dans l e-mail pour que tu puisses t organiser."
 	case "invitation":
-		return "Tu as recu une invitation pour rejoindre le serveur Jellyfin.\n\nLe bouton pour creer le compte et le lien direct sont ajoutes automatiquement."
+		return "Bonjour,\n\nTu as recu une invitation pour rejoindre le serveur Jellyfin.\n\nLe bouton pour creer ton compte et le lien direct sont ajoutes automatiquement sous ce message."
 	case "invite_expiry":
-		return "Ton lien d invitation expirera bientot.\n\nLa date limite est ajoutee automatiquement."
+		return "Bonjour,\n\nTon lien d invitation expirera bientot si tu ne l utilises pas.\n\nLa date limite est ajoutee automatiquement dans l e-mail."
 	case "password_reset":
-		return "Une demande de reinitialisation de mot de passe a ete recue.\n\nLe bouton de reinitialisation et le code sont ajoutes automatiquement."
+		return "Bonjour {{.Username}},\n\nNous avons recu une demande de reinitialisation de ton mot de passe Jellyfin.\n\nLe bouton de reinitialisation, le lien direct et le code sont ajoutes automatiquement sous ce message."
 	case "user_creation":
-		return "Ton compte Jellyfin a ete cree avec succes par un administrateur."
+		return "Bonjour {{.Username}},\n\nUn administrateur vient de creer ton compte Jellyfin.\n\nTu peux utiliser les informations communiquees pour te connecter des maintenant."
 	case "user_deletion":
-		return "Ton compte Jellyfin a ete supprime."
+		return "Bonjour {{.Username}},\n\nTon compte Jellyfin a ete supprime.\n\nSi cela te semble inattendu, contacte rapidement l equipe d administration."
 	case "user_disabled":
-		return "Ton compte Jellyfin a ete desactive."
+		return "Bonjour {{.Username}},\n\nTon acces Jellyfin a ete desactive temporairement.\n\nSi tu penses qu il s agit d une erreur, rapproche-toi de l equipe d administration."
 	case "user_enabled":
-		return "Ton compte Jellyfin a ete reactive."
+		return "Bonjour {{.Username}},\n\nBonne nouvelle: ton acces Jellyfin a ete reactive.\n\nTu peux te reconnecter des maintenant."
 	case "user_expired":
-		return "Ton acces Jellyfin a expire et ton compte a ete desactive."
+		return "Bonjour {{.Username}},\n\nTon acces Jellyfin a expire et ton compte a ete desactive automatiquement.\n\nSi tu souhaites retrouver l acces, contacte l equipe d administration."
 	case "expiry_adjusted":
-		return "La date d expiration de ton acces a ete mise a jour.\n\nLa nouvelle date apparait automatiquement dans l e-mail."
+		return "Bonjour {{.Username}},\n\nLa date d expiration de ton acces Jellyfin a ete mise a jour.\n\nLa nouvelle date apparait automatiquement dans l e-mail."
 	case "welcome":
-		return "Ton compte Jellyfin est pret.\n\nLe bouton d acces a Jellyfin est ajoute automatiquement."
+		return "Bonjour {{.Username}},\n\nTon compte Jellyfin est pret et tu peux commencer tout de suite.\n\nLe bouton d acces direct a Jellyfin est ajoute automatiquement sous ce message."
 	default:
 		return ""
 	}
