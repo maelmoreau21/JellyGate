@@ -629,7 +629,7 @@
         </div>
 
         <details class="settings-collapsible mb-6">
-          <summary>{{ .T "settings_email_variables_title" }}</summary>
+          <summary>{{ .T "settings_email_base_variables_title" }}</summary>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-300 mt-4">
             <div><span class="text-purple-200">{{ "{{" }}.Username{{ "}}" }}</span> : {{ .T "settings_email_var_username" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.Email{{ "}}" }}</span> : {{ .T "settings_email_var_email" }}</div>
@@ -649,6 +649,38 @@
             <div><span class="text-purple-200">{{ "{{" }}.Message{{ "}}" }}</span> : {{ .T "settings_email_var_message" }}</div>
           </div>
         </details>
+
+        <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
+          <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_base_title" }}</h3>
+          <p class="text-xs text-slate-400 mb-4">{{ .T "settings_email_base_desc" }}</p>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+              <label class="jg-label" for="tpl-base-header">{{ .T "settings_email_base_header" }}</label>
+              <textarea id="tpl-base-header" class="jg-input font-mono text-sm" rows="10"></textarea>
+            </div>
+            <div class="p-4 rounded-xl bg-white/5 border border-white/10">
+              <label class="jg-label" for="tpl-base-footer">{{ .T "settings_email_base_footer" }}</label>
+              <textarea id="tpl-base-footer" class="jg-input font-mono text-sm" rows="10"></textarea>
+            </div>
+          </div>
+          <div class="mt-4 flex items-center justify-between gap-3 flex-wrap">
+            <p class="text-xs text-slate-400">{{ .T "settings_email_base_preview_desc" }}</p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <button type="button" id="tpl-base-restore-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_restore" }}</button>
+              <button type="button" id="tpl-base-preview-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_preview" }}</button>
+            </div>
+          </div>
+          <div class="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
+            <h4 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_base_live_preview_title" }}</h4>
+            <p class="text-xs text-slate-400 mb-3">{{ .T "settings_email_base_live_preview_desc" }}</p>
+            <iframe id="tpl-base-live-preview-frame" class="w-full rounded-lg border border-white/10 bg-white" style="min-height:420px"></iframe>
+          </div>
+        </div>
+
+        <div class="rounded-xl bg-sky-500/10 border border-sky-500/20 p-4 mb-6">
+          <h3 class="text-sm font-semibold text-sky-100 mb-2">{{ .T "settings_email_body_mode_title" }}</h3>
+          <p class="text-xs text-sky-50/80">{{ .T "settings_email_body_mode_desc" }}</p>
+        </div>
 
         <div class="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
           <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_delivery_title" }}</h3>
@@ -680,7 +712,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-confirmation">{{ .T "settings_email_tpl_confirmation" }}</label>
-                  <textarea id="tpl-confirmation" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-confirmation" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -703,7 +735,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-expiry-reminder">{{ .T "settings_email_tpl_expiry_reminder" }}</label>
-                  <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-expiry-reminder" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -719,7 +751,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-invitation">{{ .T "settings_email_tpl_invitation" }}</label>
-                  <textarea id="tpl-invitation" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-invitation" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -735,7 +767,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-invite-expiry">{{ .T "settings_email_tpl_invite_expiry" }}</label>
-                  <textarea id="tpl-invite-expiry" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-invite-expiry" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -751,7 +783,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-password-reset">{{ .T "settings_email_tpl_password_reset" }}</label>
-                  <textarea id="tpl-password-reset" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-password-reset" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -767,7 +799,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-user-creation">{{ .T "settings_email_tpl_user_creation" }}</label>
-                  <textarea id="tpl-user-creation" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-user-creation" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -783,7 +815,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-user-deletion">{{ .T "settings_email_tpl_user_deletion" }}</label>
-                  <textarea id="tpl-user-deletion" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-user-deletion" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -799,7 +831,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-user-disabled">{{ .T "settings_email_tpl_user_disabled" }}</label>
-                  <textarea id="tpl-user-disabled" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-user-disabled" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -815,7 +847,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-user-enabled">{{ .T "settings_email_tpl_user_enabled" }}</label>
-                  <textarea id="tpl-user-enabled" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-user-enabled" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -831,7 +863,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-user-expired">{{ .T "settings_email_tpl_user_expired" }}</label>
-                  <textarea id="tpl-user-expired" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-user-expired" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -847,7 +879,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-expiry-adjusted">{{ .T "settings_email_tpl_expiry_adjusted" }}</label>
-                  <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-expiry-adjusted" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -863,7 +895,7 @@
                 </div>
                 <div class="p-4 rounded-xl bg-white/5 border border-white/10">
                   <label class="jg-label" for="tpl-welcome">{{ .T "settings_email_tpl_welcome" }}</label>
-                  <textarea id="tpl-welcome" class="jg-input font-mono text-sm" rows="7"></textarea>
+                  <textarea id="tpl-welcome" class="jg-input" rows="7"></textarea>
                 </div>
               </div>
             </details>
@@ -979,6 +1011,7 @@
       backup_pg_plan_unavailable: '{{ .T "settings_backup_pg_plan_unavailable" }}',
       settings_saved: '{{ .T "settings_saved" }}',
       settings_save_error: '{{ .T "settings_save_error" }}',
+      email_base_preview_demo: '{{ .T "settings_email_base_preview_demo" }}',
       template_empty: '{{ .T "settings_template_empty" }}',
       preview_loading: '{{ .T "settings_preview_loading" }}',
       preview_impossible: '{{ .T "settings_preview_impossible" }}',

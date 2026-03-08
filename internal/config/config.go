@@ -11,7 +11,9 @@ package config
 
 import (
 	"fmt"
+	"html"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -165,6 +167,8 @@ func DefaultBackupConfig() BackupConfig {
 
 // EmailTemplatesConfig contient les modèles de courriels personnalisés configurables (JFA-Go).
 type EmailTemplatesConfig struct {
+	BaseTemplateHeader          string `json:"base_template_header"`
+	BaseTemplateFooter          string `json:"base_template_footer"`
 	Confirmation                string `json:"confirmation"`
 	ConfirmationSubject         string `json:"confirmation_subject"`
 	DisableConfirmationEmail    bool   `json:"disable_confirmation_email"`
@@ -211,6 +215,9 @@ type EmailTemplatesConfig struct {
 	DisableWelcomeEmail         bool   `json:"disable_welcome_email"`
 }
 
+var emailTagPattern = regexp.MustCompile(`(?is)<[^>]+>`)
+var emailAnchorPattern = regexp.MustCompile(`(?is)<a\b[^>]*href=(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>(.*?)</a>`)
+
 const defaultEmailCardStyle = `
 <div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
 	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dde3ec;border-radius:12px;overflow:hidden;">
@@ -232,6 +239,14 @@ const defaultEmailCardEnd = `
 
 func defaultEmailBody(content string) string {
 	return defaultEmailCardStyle + content + defaultEmailCardEnd
+}
+
+func DefaultEmailBaseHeader() string {
+	return strings.TrimSpace(defaultEmailCardStyle)
+}
+
+func DefaultEmailBaseFooter() string {
+	return strings.TrimSpace(defaultEmailCardEnd)
 }
 
 func defaultEmailParagraphs(content string) string {
@@ -265,28 +280,267 @@ func looksLikeStandaloneEmailHTML(content string) bool {
 		strings.Contains(lower, "</td>")
 }
 
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func defaultBaseTemplateHeaderOrFallback(header string) string {
+	trimmed := strings.TrimSpace(header)
+	if trimmed == "" {
+		return DefaultEmailBaseHeader()
+	}
+	return trimmed
+}
+
+func defaultBaseTemplateFooterOrFallback(footer string) string {
+	trimmed := strings.TrimSpace(footer)
+	if trimmed == "" {
+		return DefaultEmailBaseFooter()
+	}
+	return trimmed
+}
+
+func wrapEmailBody(content, header, footer string) string {
+	return defaultBaseTemplateHeaderOrFallback(header) + content + defaultBaseTemplateFooterOrFallback(footer)
+}
+
+func normalizePlainTextEmailBody(content string) string {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	normalized = strings.ReplaceAll(normalized, "\r", "\n")
+	lines := strings.Split(normalized, "\n")
+	cleaned := make([]string, 0, len(lines))
+	blankCount := 0
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			blankCount++
+			if blankCount > 1 {
+				continue
+			}
+			cleaned = append(cleaned, "")
+			continue
+		}
+		blankCount = 0
+		cleaned = append(cleaned, trimmed)
+	}
+
+	return strings.TrimSpace(strings.Join(cleaned, "\n"))
+}
+
+func htmlToPlainEmailText(content string) string {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	replacedAnchors := emailAnchorPattern.ReplaceAllStringFunc(normalized, func(match string) string {
+		parts := emailAnchorPattern.FindStringSubmatch(match)
+		if len(parts) < 5 {
+			return match
+		}
+		href := strings.TrimSpace(firstNonEmpty(parts[1], parts[2], parts[3]))
+		label := strings.TrimSpace(htmlToPlainEmailText(parts[4]))
+		if href == "" {
+			return label
+		}
+		if label == "" || label == href {
+			return href
+		}
+		return label + "\n" + href
+	})
+
+	replacedAnchors = strings.NewReplacer(
+		"<br>", "\n",
+		"<br/>", "\n",
+		"<br />", "\n",
+		"</p>", "\n\n",
+		"</div>", "\n",
+		"</section>", "\n",
+		"</article>", "\n",
+		"</li>", "\n",
+		"</ul>", "\n",
+		"</ol>", "\n",
+		"</h1>", "\n\n",
+		"</h2>", "\n\n",
+		"</h3>", "\n\n",
+		"</h4>", "\n\n",
+		"</tr>", "\n",
+		"</table>", "\n",
+		"</td>", " ",
+	).Replace(replacedAnchors)
+
+	stripped := emailTagPattern.ReplaceAllString(replacedAnchors, "")
+	stripped = html.UnescapeString(stripped)
+	return normalizePlainTextEmailBody(stripped)
+}
+
+func defaultNoCodeEmailBody(key string) string {
+	switch key {
+	case "confirmation":
+		return "Ton inscription est bien validee. Ton acces Jellyfin est actif.\n\nSi besoin, contacte l equipe si tu as besoin d aide."
+	case "email_verification":
+		return "Confirme ton adresse e-mail pour finaliser la securisation de ton acces Jellyfin.\n\nLe bouton et le code de verification sont ajoutes automatiquement."
+	case "expiry_reminder":
+		return "Ton acces Jellyfin expirera prochainement.\n\nLa date de fin apparait automatiquement dans l e-mail."
+	case "invitation":
+		return "Tu as recu une invitation pour rejoindre le serveur Jellyfin.\n\nLe bouton pour creer le compte et le lien direct sont ajoutes automatiquement."
+	case "invite_expiry":
+		return "Ton lien d invitation expirera bientot.\n\nLa date limite est ajoutee automatiquement."
+	case "password_reset":
+		return "Une demande de reinitialisation de mot de passe a ete recue.\n\nLe bouton de reinitialisation et le code sont ajoutes automatiquement."
+	case "user_creation":
+		return "Ton compte Jellyfin a ete cree avec succes par un administrateur."
+	case "user_deletion":
+		return "Ton compte Jellyfin a ete supprime."
+	case "user_disabled":
+		return "Ton compte Jellyfin a ete desactive."
+	case "user_enabled":
+		return "Ton compte Jellyfin a ete reactive."
+	case "user_expired":
+		return "Ton acces Jellyfin a expire et ton compte a ete desactive."
+	case "expiry_adjusted":
+		return "La date d expiration de ton acces a ete mise a jour.\n\nLa nouvelle date apparait automatiquement dans l e-mail."
+	case "welcome":
+		return "Ton compte Jellyfin est pret.\n\nLe bouton d acces a Jellyfin est ajoute automatiquement."
+	default:
+		return ""
+	}
+}
+
+func emailTemplateValueByKey(cfg EmailTemplatesConfig, templateKey string) string {
+	switch templateKey {
+	case "confirmation":
+		return cfg.Confirmation
+	case "email_verification":
+		return cfg.EmailVerification
+	case "expiry_reminder":
+		return cfg.ExpiryReminder
+	case "invitation":
+		return cfg.Invitation
+	case "invite_expiry":
+		return cfg.InviteExpiry
+	case "password_reset":
+		return cfg.PasswordReset
+	case "user_creation":
+		return cfg.UserCreation
+	case "user_deletion":
+		return cfg.UserDeletion
+	case "user_disabled":
+		return cfg.UserDisabled
+	case "user_enabled":
+		return cfg.UserEnabled
+	case "user_expired":
+		return cfg.UserExpired
+	case "expiry_adjusted":
+		return cfg.ExpiryAdjusted
+	case "welcome":
+		return cfg.Welcome
+	default:
+		return ""
+	}
+}
+
+func isKnownDefaultEmailBody(templateKey, content string) bool {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return false
+	}
+	defaults := DefaultEmailTemplates()
+	legacy := legacyEmailTemplates()
+	return trimmed == strings.TrimSpace(emailTemplateValueByKey(defaults, templateKey)) || trimmed == strings.TrimSpace(emailTemplateValueByKey(legacy, templateKey))
+}
+
+func buildAutomaticEmailBlock(templateKey string) string {
+	switch templateKey {
+	case "email_verification":
+		return `
+<div style="margin:22px 0 0 0;">
+	<a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verifier mon e-mail</a>
+</div>
+<p style="font-size:13px;color:#475569;">Lien direct: {{.VerificationURL}}</p>
+<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expire dans {{.ExpiresIn}}</p>`
+	case "expiry_reminder", "invite_expiry", "expiry_adjusted":
+		return `
+<div style="margin:22px 0 0 0;padding:14px 16px;border:1px solid #dbe4f0;border-radius:10px;background:#f8fafc;color:#0f172a;">
+	<div style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Date</div>
+	<div style="font-size:16px;font-weight:700;">{{.ExpiryDate}}</div>
+</div>`
+	case "invitation":
+		return `
+<div style="margin:22px 0 0 0;">
+	<a href="{{.InviteLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Creer mon compte</a>
+</div>
+<p style="font-size:13px;color:#475569;">Lien direct: {{.InviteLink}}</p>`
+	case "password_reset":
+		return `
+<div style="margin:22px 0 0 0;">
+	<a href="{{.ResetLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Reinitialiser mon mot de passe</a>
+</div>
+<p style="font-size:13px;color:#475569;">Code: <strong>{{.ResetCode}}</strong> · Expire dans {{.ExpiresIn}}</p>`
+	case "welcome":
+		return `
+<div style="margin:22px 0 0 0;">
+	<a href="{{.JellyfinURL}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Ouvrir Jellyfin</a>
+</div>
+<p style="font-size:13px;color:#475569;">Acces direct: {{.JellyfinURL}}</p>`
+	default:
+		return ""
+	}
+}
+
 // EditableEmailTemplateBody retire l'habillage HTML standard pour presenter
 // uniquement le contenu utile dans l'interface d'administration.
 func EditableEmailTemplateBody(content string) string {
+	return EditableEmailTemplateBodyWithBase(content, "", "")
+}
+
+func EditableEmailTemplateBodyWithBase(content, baseHeader, baseFooter string) string {
 	trimmed := strings.TrimSpace(content)
 	if trimmed == "" {
 		return ""
 	}
 
-	prefix := strings.TrimSpace(defaultEmailCardStyle)
-	suffix := strings.TrimSpace(defaultEmailCardEnd)
+	prefix := defaultBaseTemplateHeaderOrFallback(baseHeader)
+	suffix := defaultBaseTemplateFooterOrFallback(baseFooter)
 	if strings.HasPrefix(trimmed, prefix) && strings.HasSuffix(trimmed, suffix) {
 		inner := strings.TrimPrefix(trimmed, prefix)
 		inner = strings.TrimSuffix(inner, suffix)
 		return strings.TrimSpace(inner)
 	}
 
+	legacyPrefix := DefaultEmailBaseHeader()
+	legacySuffix := DefaultEmailBaseFooter()
+	if strings.HasPrefix(trimmed, legacyPrefix) && strings.HasSuffix(trimmed, legacySuffix) {
+		inner := strings.TrimPrefix(trimmed, legacyPrefix)
+		inner = strings.TrimSuffix(inner, legacySuffix)
+		return strings.TrimSpace(inner)
+	}
+
 	return trimmed
+}
+
+func EditableNoCodeEmailTemplateBody(templateKey, content, baseHeader, baseFooter string) string {
+	if isKnownDefaultEmailBody(templateKey, content) {
+		return defaultNoCodeEmailBody(templateKey)
+	}
+
+	inner := EditableEmailTemplateBodyWithBase(content, baseHeader, baseFooter)
+	if !strings.Contains(inner, "<") || !strings.Contains(inner, ">") {
+		return normalizePlainTextEmailBody(inner)
+	}
+	return htmlToPlainEmailText(inner)
 }
 
 // PrepareEmailTemplateBody accepte soit un contenu simple, soit un HTML deja
 // complet. Le contenu simple est injecte dans la carte email standard.
 func PrepareEmailTemplateBody(content string) string {
+	return PrepareEmailTemplateBodyFor("", content, "", "")
+}
+
+func PrepareEmailTemplateBodyFor(templateKey, content, baseHeader, baseFooter string) string {
 	trimmed := strings.TrimSpace(content)
 	if trimmed == "" {
 		return ""
@@ -297,10 +551,12 @@ func PrepareEmailTemplateBody(content string) string {
 	}
 
 	if strings.Contains(trimmed, "<") && strings.Contains(trimmed, ">") {
-		return defaultEmailBody(trimmed)
+		return wrapEmailBody(trimmed+buildAutomaticEmailBlock(templateKey), baseHeader, baseFooter)
 	}
 
-	return defaultEmailBody(defaultEmailParagraphs(trimmed))
+	body := defaultEmailParagraphs(normalizePlainTextEmailBody(trimmed))
+	body += buildAutomaticEmailBlock(templateKey)
+	return wrapEmailBody(body, baseHeader, baseFooter)
 }
 
 func legacyEmailTemplates() EmailTemplatesConfig {
@@ -431,6 +687,8 @@ func UpgradeLegacyEmailTemplates(cfg *EmailTemplatesConfig) {
 // DefaultEmailTemplates retourne les traductions de base des modèles d'emails
 func DefaultEmailTemplates() EmailTemplatesConfig {
 	return EmailTemplatesConfig{
+		BaseTemplateHeader: DefaultEmailBaseHeader(),
+		BaseTemplateFooter: DefaultEmailBaseFooter(),
 		Confirmation: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Inscription confirmee</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>

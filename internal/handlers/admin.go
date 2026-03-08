@@ -180,7 +180,7 @@ func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 // SetMailer remplace le Mailer SMTP (rechargement à chaud).
 func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
-func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templateBody string, extra map[string]string) error {
+func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templateKey, templateBody string, emailCfg config.EmailTemplatesConfig, extra map[string]string) error {
 	if rec == nil {
 		return nil
 	}
@@ -213,7 +213,7 @@ func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templat
 		data[key] = value
 	}
 
-	return sendTemplateIfConfigured(h.mailer, rec.Email, subject, templateBody, data)
+	return sendTemplateIfConfigured(h.mailer, rec.Email, subject, templateKey, templateBody, emailCfg, data)
 }
 
 func (h *AdminHandler) canSendUserTemplate(userID int64, templateKey string) bool {
@@ -292,7 +292,7 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 		return nil
 	}
 
-	return h.sendUserEventEmail(rec, subject, body, extra)
+	return h.sendUserEventEmail(rec, subject, templateKey, body, emailCfg, extra)
 }
 
 func containsInt(values []int, target int) bool {
@@ -438,7 +438,7 @@ func (h *AdminHandler) runExpirationCheck() {
 			}
 			templateBody := chooseExpiryReminderTemplate(emailCfg, stageDays)
 			subject := firstNonEmpty(emailCfg.ExpiryReminderSubject, config.DefaultEmailTemplates().ExpiryReminderSubject)
-			if err := h.sendUserEventEmail(rec, subject, templateBody, map[string]string{
+			if err := h.sendUserEventEmail(rec, subject, "expiry_reminder", templateBody, emailCfg, map[string]string{
 				"ExpiryDate":    emailTime(expiryTime),
 				"ReminderStage": fmt.Sprintf("J-%d", stageDays),
 			}); err != nil {
@@ -1983,7 +1983,7 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	data["JellyseerrURL"] = links.JellyseerrURL
 	data["JellyTulliURL"] = links.JellyTulliURL
 
-	if err := sendTemplateIfConfigured(h.mailer, rec.Email, subject, tpl, data); err != nil {
+	if err := sendTemplateIfConfigured(h.mailer, rec.Email, subject, "password_reset", tpl, mailCfg, data); err != nil {
 		return fmt.Errorf("envoi de l'email: %w", err)
 	}
 
@@ -3311,7 +3311,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				}
 
 				subject := firstNonEmpty(emailCfg.InvitationSubject, emailCfg.InviteExpirySubject, config.DefaultEmailTemplates().InvitationSubject)
-				errMail := sendTemplateIfConfigured(h.mailer, recipient, subject, combinedTemplate, emailData)
+				errMail := sendTemplateIfConfigured(h.mailer, recipient, subject, "invitation", combinedTemplate, emailCfg, emailData)
 				if errMail != nil {
 					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", recipient, "error", errMail)
 					_ = h.db.LogAction("invite.email.failed", sess.Username, code, errMail.Error())

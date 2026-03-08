@@ -40,6 +40,20 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
+func normalizeEmailBaseTemplates(cfg *config.EmailTemplatesConfig) {
+	if cfg == nil {
+		return
+	}
+	cfg.BaseTemplateHeader = strings.TrimSpace(cfg.BaseTemplateHeader)
+	cfg.BaseTemplateFooter = strings.TrimSpace(cfg.BaseTemplateFooter)
+	if cfg.BaseTemplateHeader == "" {
+		cfg.BaseTemplateHeader = config.DefaultEmailBaseHeader()
+	}
+	if cfg.BaseTemplateFooter == "" {
+		cfg.BaseTemplateFooter = config.DefaultEmailBaseFooter()
+	}
+}
+
 func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
 	if strings.TrimSpace(tpl) == "" {
 		return "", nil
@@ -55,11 +69,12 @@ func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
 	return buf.String(), nil
 }
 
-func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, tpl string, data map[string]string) error {
+func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, templateKey, tpl string, emailCfg config.EmailTemplatesConfig, data map[string]string) error {
 	if mailer == nil {
 		return nil
 	}
-	preparedTemplate := config.PrepareEmailTemplateBody(tpl)
+	normalizeEmailBaseTemplates(&emailCfg)
+	preparedTemplate := config.PrepareEmailTemplateBodyFor(templateKey, tpl, emailCfg.BaseTemplateHeader, emailCfg.BaseTemplateFooter)
 	if strings.TrimSpace(to) == "" || strings.TrimSpace(preparedTemplate) == "" {
 		return nil
 	}

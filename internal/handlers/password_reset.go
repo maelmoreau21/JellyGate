@@ -216,7 +216,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	}
 	subject := firstNonEmpty(emailCfg.PasswordResetSubject, config.DefaultEmailTemplates().PasswordResetSubject)
 
-	if err := sendTemplateIfConfigured(h.mailer, user.Email, subject, tpl, emailData); err != nil {
+	if err := sendTemplateIfConfigured(h.mailer, user.Email, subject, "password_reset", tpl, emailCfg, emailData); err != nil {
 		slog.Error("Erreur d'envoi de l'email de reset",
 			"to", user.Email,
 			"error", err,

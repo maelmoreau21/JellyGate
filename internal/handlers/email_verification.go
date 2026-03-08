@@ -214,7 +214,9 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 
 	templateBody := defaultEmailVerificationTemplate()
 	templateSubject := defaultEmailVerificationSubject()
-	if emailCfg, cfgErr := db.GetEmailTemplatesConfig(); cfgErr == nil {
+	emailCfg := config.DefaultEmailTemplates()
+	if savedEmailCfg, cfgErr := db.GetEmailTemplatesConfig(); cfgErr == nil {
+		emailCfg = savedEmailCfg
 		if strings.TrimSpace(emailCfg.EmailVerification) != "" {
 			templateBody = emailCfg.EmailVerification
 		}
@@ -223,7 +225,7 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 		}
 	}
 
-	if err := sendTemplateIfConfigured(mailer, address, templateSubject, templateBody, emailData); err != nil {
+	if err := sendTemplateIfConfigured(mailer, address, templateSubject, "email_verification", templateBody, emailCfg, emailData); err != nil {
 		return fmt.Errorf("envoi email verification: %w", err)
 	}
 

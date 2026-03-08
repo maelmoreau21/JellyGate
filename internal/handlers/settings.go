@@ -292,16 +292,18 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
-	DefaultLang       string                         `json:"default_lang"`
-	DatabaseType      string                         `json:"database_type"`
-	BackupSQLiteOnly  bool                           `json:"backup_sqlite_only"`
-	PortalLinks       config.PortalLinksConfig       `json:"portal_links"`
-	InvitationProfile config.InvitationProfileConfig `json:"invitation_profile"`
-	LDAP              config.LDAPConfig              `json:"ldap"`
-	SMTP              config.SMTPConfig              `json:"smtp"`
-	Webhooks          config.WebhooksConfig          `json:"webhooks"`
-	Backup            config.BackupConfig            `json:"backup"`
-	EmailTemplates    config.EmailTemplatesConfig    `json:"email_templates"`
+	DefaultLang            string                         `json:"default_lang"`
+	DatabaseType           string                         `json:"database_type"`
+	BackupSQLiteOnly       bool                           `json:"backup_sqlite_only"`
+	DefaultEmailBaseHeader string                         `json:"default_email_base_header"`
+	DefaultEmailBaseFooter string                         `json:"default_email_base_footer"`
+	PortalLinks            config.PortalLinksConfig       `json:"portal_links"`
+	InvitationProfile      config.InvitationProfileConfig `json:"invitation_profile"`
+	LDAP                   config.LDAPConfig              `json:"ldap"`
+	SMTP                   config.SMTPConfig              `json:"smtp"`
+	Webhooks               config.WebhooksConfig          `json:"webhooks"`
+	Backup                 config.BackupConfig            `json:"backup"`
+	EmailTemplates         config.EmailTemplatesConfig    `json:"email_templates"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
@@ -314,24 +316,25 @@ type generalInput struct {
 }
 
 func normalizeEmailTemplateBodies(cfg *config.EmailTemplatesConfig) {
-	cfg.Confirmation = config.EditableEmailTemplateBody(cfg.Confirmation)
-	cfg.EmailVerification = config.EditableEmailTemplateBody(cfg.EmailVerification)
-	cfg.ExpiryReminder = config.EditableEmailTemplateBody(cfg.ExpiryReminder)
-	cfg.ExpiryReminder14 = config.EditableEmailTemplateBody(cfg.ExpiryReminder14)
-	cfg.ExpiryReminder7 = config.EditableEmailTemplateBody(cfg.ExpiryReminder7)
-	cfg.ExpiryReminder1 = config.EditableEmailTemplateBody(cfg.ExpiryReminder1)
-	cfg.Invitation = config.EditableEmailTemplateBody(cfg.Invitation)
-	cfg.InviteExpiry = config.EditableEmailTemplateBody(cfg.InviteExpiry)
-	cfg.PasswordReset = config.EditableEmailTemplateBody(cfg.PasswordReset)
-	cfg.PreSignupHelp = config.EditableEmailTemplateBody(cfg.PreSignupHelp)
-	cfg.PostSignupHelp = config.EditableEmailTemplateBody(cfg.PostSignupHelp)
-	cfg.UserCreation = config.EditableEmailTemplateBody(cfg.UserCreation)
-	cfg.UserDeletion = config.EditableEmailTemplateBody(cfg.UserDeletion)
-	cfg.UserDisabled = config.EditableEmailTemplateBody(cfg.UserDisabled)
-	cfg.UserEnabled = config.EditableEmailTemplateBody(cfg.UserEnabled)
-	cfg.UserExpired = config.EditableEmailTemplateBody(cfg.UserExpired)
-	cfg.ExpiryAdjusted = config.EditableEmailTemplateBody(cfg.ExpiryAdjusted)
-	cfg.Welcome = config.EditableEmailTemplateBody(cfg.Welcome)
+	normalizeEmailBaseTemplates(cfg)
+	cfg.Confirmation = config.EditableNoCodeEmailTemplateBody("confirmation", cfg.Confirmation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.EmailVerification = config.EditableNoCodeEmailTemplateBody("email_verification", cfg.EmailVerification, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder14 = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder14, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder7 = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder7, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder1 = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder1, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.Invitation = config.EditableNoCodeEmailTemplateBody("invitation", cfg.Invitation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.InviteExpiry = config.EditableNoCodeEmailTemplateBody("invite_expiry", cfg.InviteExpiry, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.PasswordReset = config.EditableNoCodeEmailTemplateBody("password_reset", cfg.PasswordReset, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.PreSignupHelp = config.EditableNoCodeEmailTemplateBody("", cfg.PreSignupHelp, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.PostSignupHelp = config.EditableNoCodeEmailTemplateBody("", cfg.PostSignupHelp, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserCreation = config.EditableNoCodeEmailTemplateBody("user_creation", cfg.UserCreation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserDeletion = config.EditableNoCodeEmailTemplateBody("user_deletion", cfg.UserDeletion, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserDisabled = config.EditableNoCodeEmailTemplateBody("user_disabled", cfg.UserDisabled, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserEnabled = config.EditableNoCodeEmailTemplateBody("user_enabled", cfg.UserEnabled, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserExpired = config.EditableNoCodeEmailTemplateBody("user_expired", cfg.UserExpired, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryAdjusted = config.EditableNoCodeEmailTemplateBody("expiry_adjusted", cfg.ExpiryAdjusted, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.Welcome = config.EditableNoCodeEmailTemplateBody("welcome", cfg.Welcome, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
 }
 
 func trimEmailTemplateSubjects(cfg *config.EmailTemplatesConfig) {
@@ -440,16 +443,18 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
-			DefaultLang:       defaultLang,
-			DatabaseType:      h.db.Driver(),
-			BackupSQLiteOnly:  h.db.IsSQLite(),
-			PortalLinks:       portalLinks,
-			InvitationProfile: inviteProfileCfg,
-			LDAP:              maskedLDAP,
-			SMTP:              maskedSMTP,
-			Webhooks:          webhooksCfg,
-			Backup:            backupCfg,
-			EmailTemplates:    emailTemplatesCfg,
+			DefaultLang:            defaultLang,
+			DatabaseType:           h.db.Driver(),
+			BackupSQLiteOnly:       h.db.IsSQLite(),
+			DefaultEmailBaseHeader: config.DefaultEmailBaseHeader(),
+			DefaultEmailBaseFooter: config.DefaultEmailBaseFooter(),
+			PortalLinks:            portalLinks,
+			InvitationProfile:      inviteProfileCfg,
+			LDAP:                   maskedLDAP,
+			SMTP:                   maskedSMTP,
+			Webhooks:               webhooksCfg,
+			Backup:                 backupCfg,
+			EmailTemplates:         emailTemplatesCfg,
 		},
 	})
 }
@@ -515,8 +520,11 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 }
 
 type emailTemplatePreviewInput struct {
-	Template string            `json:"template"`
-	Context  map[string]string `json:"context"`
+	Template           string            `json:"template"`
+	TemplateKey        string            `json:"template_key"`
+	BaseTemplateHeader string            `json:"base_template_header"`
+	BaseTemplateFooter string            `json:"base_template_footer"`
+	Context            map[string]string `json:"context"`
 }
 
 // PreviewEmailTemplate rend un modele d'email avec des donnees de demonstration.
@@ -536,6 +544,12 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Template vide"})
 		return
 	}
+
+	previewCfg := config.DefaultEmailTemplates()
+	previewCfg.BaseTemplateHeader = input.BaseTemplateHeader
+	previewCfg.BaseTemplateFooter = input.BaseTemplateFooter
+	normalizeEmailBaseTemplates(&previewCfg)
+	tplRaw = config.PrepareEmailTemplateBodyFor(strings.TrimSpace(input.TemplateKey), tplRaw, previewCfg.BaseTemplateHeader, previewCfg.BaseTemplateFooter)
 
 	links := resolvePortalLinks(nil, h.db)
 	if strings.TrimSpace(links.JellyGateURL) == "" {
@@ -869,6 +883,7 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 	if input.ExpiryReminderDays == 0 {
 		input.ExpiryReminderDays = 3
 	}
+	normalizeEmailBaseTemplates(&input)
 	normalizeEmailTemplateBodies(&input)
 	trimEmailTemplateSubjects(&input)
 	input.PreSignupHelp = ""

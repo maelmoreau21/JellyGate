@@ -3,9 +3,86 @@
     const i18n = config.i18n || {};
     let backupDatabaseType = 'sqlite';
     let loadedEmailTemplates = {};
+    let emailBaseDefaults = { header: '', footer: '' };
+    let basePreviewTimer = null;
+    let basePreviewRequestId = 0;
 
     function t(key, fallback) {
         return i18n[key] || fallback || key;
+    }
+
+    function emailTemplateKeyFromId(id) {
+        return String(id || '').replace(/^tpl-/, '').replace(/-+/g, '_');
+    }
+
+    function getBaseTemplatePreviewPayload() {
+        const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
+        const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
+        return {
+            template: t('email_base_preview_demo', 'You received an invitation to join the Jellyfin server.\n\nThe button and direct link appear automatically below this message.'),
+            template_key: 'invitation',
+            base_template_header: document.getElementById('tpl-base-header')?.value || '',
+            base_template_footer: document.getElementById('tpl-base-footer')?.value || '',
+            context: {
+                JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
+                JellyGateURL: jellygateURL || 'https://jellygate.example.com',
+                HelpURL: jellyfinURL || 'https://jellyfin.example.com',
+            },
+        };
+    }
+
+    async function requestBasePreview(frame, { showLoading = false } = {}) {
+        if (!frame) {
+            return;
+        }
+
+        const requestId = ++basePreviewRequestId;
+        if (showLoading) {
+            frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#0f172a;">${JG.esc(t('preview_loading', 'Loading preview...'))}</div>`;
+        }
+
+        const res = await JG.api('/admin/api/settings/email-templates/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(getBaseTemplatePreviewPayload()),
+        });
+
+        if (requestId !== basePreviewRequestId) {
+            return;
+        }
+
+        if (!res || !res.success || !res.data || typeof res.data.html !== 'string') {
+            frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#b91c1c;">${JG.esc((res && res.message) || t('preview_impossible', 'Preview failed'))}</div>`;
+            return;
+        }
+
+        frame.srcdoc = String(res.data.html || '');
+    }
+
+    function scheduleBaseLivePreview() {
+        const frame = document.getElementById('tpl-base-live-preview-frame');
+        if (!frame) {
+            return;
+        }
+        if (basePreviewTimer) {
+            clearTimeout(basePreviewTimer);
+        }
+        basePreviewTimer = setTimeout(() => {
+            basePreviewTimer = null;
+            requestBasePreview(frame);
+        }, 250);
+    }
+
+    function restoreDefaultBaseTemplate() {
+        const header = document.getElementById('tpl-base-header');
+        const footer = document.getElementById('tpl-base-footer');
+        if (!header || !footer) {
+            return;
+        }
+
+        header.value = emailBaseDefaults.header || '';
+        footer.value = emailBaseDefaults.footer || '';
+        scheduleBaseLivePreview();
     }
 
     function switchTab(name) {
@@ -266,8 +343,15 @@
         document.getElementById('backup-time').value = `${String(backupHour).padStart(2, '0')}:${String(backupMinute).padStart(2, '0')}`;
         document.getElementById('backup-retention').value = 7;
 
+        emailBaseDefaults = {
+            header: data.default_email_base_header || '',
+            footer: data.default_email_base_footer || '',
+        };
+
         if (data.email_templates) {
             loadedEmailTemplates = { ...data.email_templates };
+            document.getElementById('tpl-base-header').value = data.email_templates.base_template_header || '';
+            document.getElementById('tpl-base-footer').value = data.email_templates.base_template_footer || '';
             document.getElementById('tpl-confirmation').value = data.email_templates.confirmation || '';
             document.getElementById('tpl-confirmation-subject').value = data.email_templates.confirmation_subject || '';
             document.getElementById('tpl-enable-confirmation-email').checked = !data.email_templates.disable_confirmation_email;
@@ -304,6 +388,8 @@
             document.getElementById('tpl-welcome-subject').value = data.email_templates.welcome_subject || '';
             document.getElementById('tpl-enable-welcome-email').checked = !data.email_templates.disable_welcome_email;
         }
+
+        await requestBasePreview(document.getElementById('tpl-base-live-preview-frame'), { showLoading: true });
     }
 
     async function saveSettings(section, event) {
@@ -380,6 +466,8 @@
             const reminderDays = Number.isInteger(reminderDaysRaw) ? reminderDaysRaw : 3;
             const reminderTemplate = document.getElementById('tpl-expiry-reminder').value;
             body = {
+                base_template_header: document.getElementById('tpl-base-header').value,
+                base_template_footer: document.getElementById('tpl-base-footer').value,
                 confirmation: document.getElementById('tpl-confirmation').value,
                 confirmation_subject: document.getElementById('tpl-confirmation-subject').value.trim(),
                 disable_confirmation_email: !document.getElementById('tpl-enable-confirmation-email').checked,
@@ -476,12 +564,17 @@
 
         const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
         const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
+        const baseTemplateHeader = document.getElementById('tpl-base-header')?.value || '';
+        const baseTemplateFooter = document.getElementById('tpl-base-footer')?.value || '';
 
         const res = await JG.api('/admin/api/settings/email-templates/preview', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 template,
+                template_key: emailTemplateKeyFromId(templateId),
+                base_template_header: baseTemplateHeader,
+                base_template_footer: baseTemplateFooter,
                 context: {
                     JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
                     JellyGateURL: jellygateURL || 'https://jellygate.example.com',
@@ -496,6 +589,17 @@
         }
 
         frame.srcdoc = String(res.data.html || '');
+    }
+
+    async function previewBaseEmailTemplate() {
+        const modal = document.getElementById('email-preview-modal');
+        const frame = document.getElementById('email-preview-frame');
+        if (!modal || !frame) {
+            return;
+        }
+
+        modal.style.display = '';
+        await requestBasePreview(frame, { showLoading: true });
     }
 
     function closeEmailPreviewModal() {
@@ -527,6 +631,27 @@
             closeBtn.dataset.bound = '1';
             closeBtn.addEventListener('click', closeEmailPreviewModal);
         }
+
+        const basePreviewBtn = document.getElementById('tpl-base-preview-btn');
+        if (basePreviewBtn && !basePreviewBtn.dataset.bound) {
+            basePreviewBtn.dataset.bound = '1';
+            basePreviewBtn.addEventListener('click', previewBaseEmailTemplate);
+        }
+
+        const baseRestoreBtn = document.getElementById('tpl-base-restore-btn');
+        if (baseRestoreBtn && !baseRestoreBtn.dataset.bound) {
+            baseRestoreBtn.dataset.bound = '1';
+            baseRestoreBtn.addEventListener('click', restoreDefaultBaseTemplate);
+        }
+
+        const baseHeader = document.getElementById('tpl-base-header');
+        const baseFooter = document.getElementById('tpl-base-footer');
+        [baseHeader, baseFooter].forEach((field) => {
+            if (field && !field.dataset.livePreviewBound) {
+                field.dataset.livePreviewBound = '1';
+                field.addEventListener('input', scheduleBaseLivePreview);
+            }
+        });
 
         const modal = document.getElementById('email-preview-modal');
         if (modal && !modal.dataset.bound) {

@@ -287,8 +287,13 @@ select.jg-input optgroup {
 }
 
 .jg-login-lang-slot {
+    position: fixed;
+    left: 1rem;
+    bottom: 1rem;
+    z-index: 70;
     display: flex;
     justify-content: flex-start;
+    width: min(240px, calc(100vw - 2rem));
 }
 
 .jg-login-lang-slot .jg-lang-switcher-inline {
@@ -307,6 +312,19 @@ select.jg-input optgroup {
 .jg-login-lang-slot .jg-lang-select {
     border-color: rgba(148, 163, 184, 0.16);
     box-shadow: none;
+}
+
+@media (max-width: 640px) {
+    .jg-login-lang-slot {
+        left: 0.75rem;
+        right: 0.75rem;
+        bottom: 0.75rem;
+        width: auto;
+    }
+
+    .jg-login-lang-slot .jg-lang-switcher-inline {
+        width: 100%;
+    }
 }
 
 .jg-sidebar-footer .jg-lang-switcher {

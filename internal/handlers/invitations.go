@@ -461,7 +461,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			}
 
 			subject := firstNonEmpty(append(subjectCandidates, defaults.WelcomeSubject)...)
-			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, combinedTemplate, emailData); err != nil {
+			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, "welcome", combinedTemplate, emailCfg, emailData); err != nil {
 				slog.Error("Erreur envoi email post-inscription", "email", form.Email, "error", err)
 				h.logInviteAction(r, "invite.welcome_email.failed", form.Username, code, err.Error())
 			}
