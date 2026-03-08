@@ -248,6 +248,7 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 	if err != nil {
 		return err
 	}
+	defaults := config.DefaultEmailTemplates()
 
 	var subject, body string
 	switch templateKey {
@@ -255,37 +256,37 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 		if emailCfg.DisableUserEnabledEmail {
 			return nil
 		}
-		subject = "Compte réactivé — JellyGate"
+		subject = firstNonEmpty(emailCfg.UserEnabledSubject, defaults.UserEnabledSubject)
 		body = emailCfg.UserEnabled
 	case "user_disabled":
 		if emailCfg.DisableUserDisabledEmail {
 			return nil
 		}
-		subject = "Compte désactivé — JellyGate"
+		subject = firstNonEmpty(emailCfg.UserDisabledSubject, defaults.UserDisabledSubject)
 		body = emailCfg.UserDisabled
 	case "user_deleted":
 		if emailCfg.DisableUserDeletionEmail {
 			return nil
 		}
-		subject = "Compte supprimé — JellyGate"
+		subject = firstNonEmpty(emailCfg.UserDeletionSubject, defaults.UserDeletionSubject)
 		body = emailCfg.UserDeletion
 	case "user_expired":
 		if emailCfg.DisableUserExpiredEmail {
 			return nil
 		}
-		subject = "Compte expiré — JellyGate"
+		subject = firstNonEmpty(emailCfg.UserExpiredSubject, defaults.UserExpiredSubject)
 		body = emailCfg.UserExpired
 	case "expiry_adjusted":
 		if emailCfg.DisableExpiryAdjustedEmail {
 			return nil
 		}
-		subject = "Expiration ajustée — JellyGate"
+		subject = firstNonEmpty(emailCfg.ExpiryAdjustedSubject, defaults.ExpiryAdjustedSubject)
 		body = emailCfg.ExpiryAdjusted
 	case "expiry_reminder":
 		if emailCfg.DisableExpiryReminderEmails {
 			return nil
 		}
-		subject = "Rappel d'expiration — JellyGate"
+		subject = firstNonEmpty(emailCfg.ExpiryReminderSubject, defaults.ExpiryReminderSubject)
 		body = emailCfg.ExpiryReminder
 	default:
 		return nil
@@ -436,7 +437,7 @@ func (h *AdminHandler) runExpirationCheck() {
 				AccessExpiresAt: expiryRaw,
 			}
 			templateBody := chooseExpiryReminderTemplate(emailCfg, stageDays)
-			subject := fmt.Sprintf("Rappel d'expiration J-%d — JellyGate", stageDays)
+			subject := firstNonEmpty(emailCfg.ExpiryReminderSubject, config.DefaultEmailTemplates().ExpiryReminderSubject)
 			if err := h.sendUserEventEmail(rec, subject, templateBody, map[string]string{
 				"ExpiryDate":    emailTime(expiryTime),
 				"ReminderStage": fmt.Sprintf("J-%d", stageDays),
@@ -1968,6 +1969,7 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	if tpl == "" {
 		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}"
 	}
+	subject := firstNonEmpty(mailCfg.PasswordResetSubject, config.DefaultEmailTemplates().PasswordResetSubject)
 
 	data := map[string]string{
 		"Username":  rec.Username,
@@ -1981,7 +1983,7 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	data["JellyseerrURL"] = links.JellyseerrURL
 	data["JellyTulliURL"] = links.JellyTulliURL
 
-	if err := h.mailer.SendTemplateString(rec.Email, "Réinitialisation de votre mot de passe — JellyGate", tpl, data); err != nil {
+	if err := sendTemplateIfConfigured(h.mailer, rec.Email, subject, tpl, data); err != nil {
 		return fmt.Errorf("envoi de l'email: %w", err)
 	}
 
@@ -3308,7 +3310,8 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 					emailData["Message"] = customBody
 				}
 
-				errMail := sendTemplateIfConfigured(h.mailer, recipient, "Invitation à rejoindre JellyGate", combinedTemplate, emailData)
+				subject := firstNonEmpty(emailCfg.InvitationSubject, emailCfg.InviteExpirySubject, config.DefaultEmailTemplates().InvitationSubject)
+				errMail := sendTemplateIfConfigured(h.mailer, recipient, subject, combinedTemplate, emailData)
 				if errMail != nil {
 					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", recipient, "error", errMail)
 					_ = h.db.LogAction("invite.email.failed", sess.Username, code, errMail.Error())

@@ -16,7 +16,7 @@ func joinTemplateSections(sections ...string) string {
 	seen := make(map[string]struct{}, len(sections))
 
 	for _, section := range sections {
-		trimmed := strings.TrimSpace(section)
+		trimmed := strings.TrimSpace(config.EditableEmailTemplateBody(section))
 		if trimmed == "" {
 			continue
 		}
@@ -28,6 +28,16 @@ func joinTemplateSections(sections ...string) string {
 	}
 
 	return strings.Join(parts, "\n\n")
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
@@ -49,14 +59,15 @@ func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, tpl string, data
 	if mailer == nil {
 		return nil
 	}
-	if strings.TrimSpace(to) == "" || strings.TrimSpace(tpl) == "" {
+	preparedTemplate := config.PrepareEmailTemplateBody(tpl)
+	if strings.TrimSpace(to) == "" || strings.TrimSpace(preparedTemplate) == "" {
 		return nil
 	}
 	renderedSubject, err := renderInlineTemplate(subject, data)
 	if err != nil {
 		return err
 	}
-	return mailer.SendTemplateString(to, strings.TrimSpace(renderedSubject), tpl, data)
+	return mailer.SendTemplateString(to, strings.TrimSpace(renderedSubject), preparedTemplate, data)
 }
 
 func emailTime(t time.Time) string {

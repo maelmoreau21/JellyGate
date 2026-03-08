@@ -313,6 +313,43 @@ type generalInput struct {
 	JellyTulliURL string `json:"jellytulli_url"`
 }
 
+func normalizeEmailTemplateBodies(cfg *config.EmailTemplatesConfig) {
+	cfg.Confirmation = config.EditableEmailTemplateBody(cfg.Confirmation)
+	cfg.EmailVerification = config.EditableEmailTemplateBody(cfg.EmailVerification)
+	cfg.ExpiryReminder = config.EditableEmailTemplateBody(cfg.ExpiryReminder)
+	cfg.ExpiryReminder14 = config.EditableEmailTemplateBody(cfg.ExpiryReminder14)
+	cfg.ExpiryReminder7 = config.EditableEmailTemplateBody(cfg.ExpiryReminder7)
+	cfg.ExpiryReminder1 = config.EditableEmailTemplateBody(cfg.ExpiryReminder1)
+	cfg.Invitation = config.EditableEmailTemplateBody(cfg.Invitation)
+	cfg.InviteExpiry = config.EditableEmailTemplateBody(cfg.InviteExpiry)
+	cfg.PasswordReset = config.EditableEmailTemplateBody(cfg.PasswordReset)
+	cfg.PreSignupHelp = config.EditableEmailTemplateBody(cfg.PreSignupHelp)
+	cfg.PostSignupHelp = config.EditableEmailTemplateBody(cfg.PostSignupHelp)
+	cfg.UserCreation = config.EditableEmailTemplateBody(cfg.UserCreation)
+	cfg.UserDeletion = config.EditableEmailTemplateBody(cfg.UserDeletion)
+	cfg.UserDisabled = config.EditableEmailTemplateBody(cfg.UserDisabled)
+	cfg.UserEnabled = config.EditableEmailTemplateBody(cfg.UserEnabled)
+	cfg.UserExpired = config.EditableEmailTemplateBody(cfg.UserExpired)
+	cfg.ExpiryAdjusted = config.EditableEmailTemplateBody(cfg.ExpiryAdjusted)
+	cfg.Welcome = config.EditableEmailTemplateBody(cfg.Welcome)
+}
+
+func trimEmailTemplateSubjects(cfg *config.EmailTemplatesConfig) {
+	cfg.ConfirmationSubject = strings.TrimSpace(cfg.ConfirmationSubject)
+	cfg.EmailVerificationSubject = strings.TrimSpace(cfg.EmailVerificationSubject)
+	cfg.ExpiryReminderSubject = strings.TrimSpace(cfg.ExpiryReminderSubject)
+	cfg.InvitationSubject = strings.TrimSpace(cfg.InvitationSubject)
+	cfg.InviteExpirySubject = strings.TrimSpace(cfg.InviteExpirySubject)
+	cfg.PasswordResetSubject = strings.TrimSpace(cfg.PasswordResetSubject)
+	cfg.UserCreationSubject = strings.TrimSpace(cfg.UserCreationSubject)
+	cfg.UserDeletionSubject = strings.TrimSpace(cfg.UserDeletionSubject)
+	cfg.UserDisabledSubject = strings.TrimSpace(cfg.UserDisabledSubject)
+	cfg.UserEnabledSubject = strings.TrimSpace(cfg.UserEnabledSubject)
+	cfg.UserExpiredSubject = strings.TrimSpace(cfg.UserExpiredSubject)
+	cfg.ExpiryAdjustedSubject = strings.TrimSpace(cfg.ExpiryAdjustedSubject)
+	cfg.WelcomeSubject = strings.TrimSpace(cfg.WelcomeSubject)
+}
+
 // ── GET /admin/api/settings ─────────────────────────────────────────────────
 
 // GetAll retourne toute la configuration stockée en base.
@@ -397,6 +434,8 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("Erreur lecture config Email Templates", "error", err)
 	}
+	normalizeEmailTemplateBodies(&emailTemplatesCfg)
+	trimEmailTemplateSubjects(&emailTemplatesCfg)
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
@@ -830,6 +869,12 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 	if input.ExpiryReminderDays == 0 {
 		input.ExpiryReminderDays = 3
 	}
+	normalizeEmailTemplateBodies(&input)
+	trimEmailTemplateSubjects(&input)
+	input.PreSignupHelp = ""
+	input.DisablePreSignupHelpEmail = true
+	input.PostSignupHelp = ""
+	input.DisablePostSignupHelpEmail = true
 	if input.ExpiryReminderDays < 1 || input.ExpiryReminderDays > 365 {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,

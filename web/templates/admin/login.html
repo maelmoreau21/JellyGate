@@ -6,8 +6,6 @@
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-md jg-login-shell">
-        <div id="login-lang-slot" class="jg-login-lang-slot mb-4"></div>
-
         {{/* Logo */}}
         <div class="text-center mb-8">
             <div
@@ -77,6 +75,8 @@
             </div>
         </div>
         {{ end }}
+
+        <div id="login-lang-slot" class="jg-login-lang-slot mt-5"></div>
     </div>
 </div>
 {{ end }}

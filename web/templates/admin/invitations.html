@@ -104,6 +104,7 @@
                         <span class="jg-kicker">{{ .T "nav_invitations" }}</span>
                         <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_invitations" }}</h1>
                         <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "invitations_subheading" }}</p>
+                        <p class="text-xs text-slate-500 mt-3" id="invite-policy-summary">{{ .T "invitations_policy_loading" }}</p>
                         <div class="mt-5 flex flex-wrap gap-2">
                             <button id="btn-open-create-modal" class="jg-btn jg-btn-primary">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,18 +117,6 @@
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div class="glass-card p-5 jg-aside-card">
-                <h2 class="text-lg font-semibold text-white">{{ .T "invitations_last_link_label" }}</h2>
-                <p class="text-sm text-slate-400 mt-2" id="invite-policy-summary">{{ .T "invitations_policy_loading" }}</p>
-                <div class="mt-5 space-y-3">
-                    <div>
-                        <label class="jg-label" for="last-created-link">{{ .T "invitations_last_link_label" }}</label>
-                        <input type="text" id="last-created-link" class="jg-input" readonly placeholder='{{ .T "invitations_last_link_placeholder" }}'>
-                    </div>
-                    <button id="copy-last-created-link" type="button" class="jg-btn jg-btn-ghost w-full justify-center">{{ .T "invitations_copy" }}</button>
                 </div>
             </div>
         </div>
@@ -376,7 +365,6 @@
             userExpiryFuture: '{{ .T "invitations_user_expiry_future" }}',
             created: '{{ .T "invitations_created" }}',
             unknownError: '{{ .T "invitations_unknown_error" }}',
-            noLinkToCopy: '{{ .T "invitations_no_link_to_copy" }}',
         },
     };
 </script>

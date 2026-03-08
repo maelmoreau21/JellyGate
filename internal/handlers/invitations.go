@@ -421,23 +421,28 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
 		emailCfg, _ := h.db.GetEmailTemplatesConfig()
+		defaults := config.DefaultEmailTemplates()
 		links := resolvePortalLinks(h.cfg, h.db)
 		publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
 		if publicBaseURL == "" {
 			publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
 		}
 		sections := make([]string, 0, 4)
+		subjectCandidates := make([]string, 0, 3)
 		if !emailCfg.DisableWelcomeEmail {
 			sections = append(sections, emailCfg.Welcome)
+			subjectCandidates = append(subjectCandidates, emailCfg.WelcomeSubject)
 		}
 		if !emailCfg.DisableConfirmationEmail {
 			sections = append(sections, emailCfg.Confirmation)
+			subjectCandidates = append(subjectCandidates, emailCfg.ConfirmationSubject)
 		}
 		if !emailCfg.DisablePostSignupHelpEmail {
 			sections = append(sections, emailCfg.PostSignupHelp)
 		}
 		if !emailCfg.DisableUserCreationEmail {
 			sections = append(sections, emailCfg.UserCreation)
+			subjectCandidates = append(subjectCandidates, emailCfg.UserCreationSubject)
 		}
 		combinedTemplate := joinTemplateSections(sections...)
 
@@ -455,7 +460,8 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 				"JellyTulliURL": links.JellyTulliURL,
 			}
 
-			if err := sendTemplateIfConfigured(h.mailer, form.Email, "Bienvenue sur JellyGate", combinedTemplate, emailData); err != nil {
+			subject := firstNonEmpty(append(subjectCandidates, defaults.WelcomeSubject)...)
+			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, combinedTemplate, emailData); err != nil {
 				slog.Error("Erreur envoi email post-inscription", "email", form.Email, "error", err)
 				h.logInviteAction(r, "invite.welcome_email.failed", form.Username, code, err.Error())
 			}

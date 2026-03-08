@@ -166,36 +166,48 @@ func DefaultBackupConfig() BackupConfig {
 // EmailTemplatesConfig contient les modèles de courriels personnalisés configurables (JFA-Go).
 type EmailTemplatesConfig struct {
 	Confirmation                string `json:"confirmation"`
+	ConfirmationSubject         string `json:"confirmation_subject"`
 	DisableConfirmationEmail    bool   `json:"disable_confirmation_email"`
 	EmailVerificationSubject    string `json:"email_verification_subject"`
 	EmailVerification           string `json:"email_verification"`
 	ExpiryReminder              string `json:"expiry_reminder"`
+	ExpiryReminderSubject       string `json:"expiry_reminder_subject"`
 	DisableExpiryReminderEmails bool   `json:"disable_expiry_reminder_emails"`
 	ExpiryReminderDays          int    `json:"expiry_reminder_days"`
 	ExpiryReminder14            string `json:"expiry_reminder_14"`
 	ExpiryReminder7             string `json:"expiry_reminder_7"`
 	ExpiryReminder1             string `json:"expiry_reminder_1"`
 	Invitation                  string `json:"invitation"`
+	InvitationSubject           string `json:"invitation_subject"`
 	InviteExpiry                string `json:"invite_expiry"`
+	InviteExpirySubject         string `json:"invite_expiry_subject"`
 	DisableInviteExpiryEmail    bool   `json:"disable_invite_expiry_email"`
 	PasswordReset               string `json:"password_reset"`
+	PasswordResetSubject        string `json:"password_reset_subject"`
 	PreSignupHelp               string `json:"pre_signup_help"`
 	DisablePreSignupHelpEmail   bool   `json:"disable_pre_signup_help_email"`
 	PostSignupHelp              string `json:"post_signup_help"`
 	DisablePostSignupHelpEmail  bool   `json:"disable_post_signup_help_email"`
 	UserCreation                string `json:"user_creation"`
+	UserCreationSubject         string `json:"user_creation_subject"`
 	DisableUserCreationEmail    bool   `json:"disable_user_creation_email"`
 	UserDeletion                string `json:"user_deletion"`
+	UserDeletionSubject         string `json:"user_deletion_subject"`
 	DisableUserDeletionEmail    bool   `json:"disable_user_deletion_email"`
 	UserDisabled                string `json:"user_disabled"`
+	UserDisabledSubject         string `json:"user_disabled_subject"`
 	DisableUserDisabledEmail    bool   `json:"disable_user_disabled_email"`
 	UserEnabled                 string `json:"user_enabled"`
+	UserEnabledSubject          string `json:"user_enabled_subject"`
 	DisableUserEnabledEmail     bool   `json:"disable_user_enabled_email"`
 	UserExpired                 string `json:"user_expired"`
+	UserExpiredSubject          string `json:"user_expired_subject"`
 	DisableUserExpiredEmail     bool   `json:"disable_user_expired_email"`
 	ExpiryAdjusted              string `json:"expiry_adjusted"`
+	ExpiryAdjustedSubject       string `json:"expiry_adjusted_subject"`
 	DisableExpiryAdjustedEmail  bool   `json:"disable_expiry_adjusted_email"`
 	Welcome                     string `json:"welcome"`
+	WelcomeSubject              string `json:"welcome_subject"`
 	DisableWelcomeEmail         bool   `json:"disable_welcome_email"`
 }
 
@@ -222,8 +234,76 @@ func defaultEmailBody(content string) string {
 	return defaultEmailCardStyle + content + defaultEmailCardEnd
 }
 
-// DefaultEmailTemplates retourne les traductions de base des modèles d'emails
-func DefaultEmailTemplates() EmailTemplatesConfig {
+func defaultEmailParagraphs(content string) string {
+	normalized := strings.ReplaceAll(content, "\r\n", "\n")
+	chunks := strings.Split(normalized, "\n\n")
+	paragraphs := make([]string, 0, len(chunks))
+
+	for _, chunk := range chunks {
+		trimmed := strings.TrimSpace(chunk)
+		if trimmed == "" {
+			continue
+		}
+		lines := strings.Split(trimmed, "\n")
+		for idx := range lines {
+			lines[idx] = strings.TrimSpace(lines[idx])
+		}
+		paragraphs = append(paragraphs, "<p>"+strings.Join(lines, "<br>")+"</p>")
+	}
+
+	return strings.Join(paragraphs, "\n")
+}
+
+func looksLikeStandaloneEmailHTML(content string) bool {
+	lower := strings.ToLower(content)
+	return strings.Contains(lower, "<html") ||
+		strings.Contains(lower, "<body") ||
+		strings.Contains(lower, "<table") ||
+		strings.Contains(lower, "</table>") ||
+		strings.Contains(lower, "<tr") ||
+		strings.Contains(lower, "<td") ||
+		strings.Contains(lower, "</td>")
+}
+
+// EditableEmailTemplateBody retire l'habillage HTML standard pour presenter
+// uniquement le contenu utile dans l'interface d'administration.
+func EditableEmailTemplateBody(content string) string {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return ""
+	}
+
+	prefix := strings.TrimSpace(defaultEmailCardStyle)
+	suffix := strings.TrimSpace(defaultEmailCardEnd)
+	if strings.HasPrefix(trimmed, prefix) && strings.HasSuffix(trimmed, suffix) {
+		inner := strings.TrimPrefix(trimmed, prefix)
+		inner = strings.TrimSuffix(inner, suffix)
+		return strings.TrimSpace(inner)
+	}
+
+	return trimmed
+}
+
+// PrepareEmailTemplateBody accepte soit un contenu simple, soit un HTML deja
+// complet. Le contenu simple est injecte dans la carte email standard.
+func PrepareEmailTemplateBody(content string) string {
+	trimmed := strings.TrimSpace(content)
+	if trimmed == "" {
+		return ""
+	}
+
+	if looksLikeStandaloneEmailHTML(trimmed) {
+		return trimmed
+	}
+
+	if strings.Contains(trimmed, "<") && strings.Contains(trimmed, ">") {
+		return defaultEmailBody(trimmed)
+	}
+
+	return defaultEmailBody(defaultEmailParagraphs(trimmed))
+}
+
+func legacyEmailTemplates() EmailTemplatesConfig {
 	return EmailTemplatesConfig{
 		Confirmation: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Inscription confirmee</h2>
@@ -231,8 +311,7 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 <p>Ton inscription est bien validee. Ton acces JellyGate est actif.</p>
 <p style="margin:20px 0 0 0;">Si besoin, tu peux contacter l'equipe via <a href="{{.HelpURL}}" style="color:#0284c7;">ce lien d'aide</a>.</p>
 `),
-		DisableConfirmationEmail: false,
-		EmailVerificationSubject: `Verifie ton adresse e-mail - JellyGate`,
+		ConfirmationSubject: `Inscription confirmee - JellyGate`,
 		EmailVerification: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Verifie ton adresse e-mail</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
@@ -241,12 +320,141 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 <p style="font-size:13px;color:#475569;">Lien direct: {{.VerificationURL}}</p>
 <p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expire dans {{.ExpiresIn}}</p>
 `),
+		EmailVerificationSubject: `Verifie ton adresse e-mail - JellyGate`,
 		ExpiryReminder: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel d'expiration</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
 <p>Ton compte expirera prochainement.</p>
 <p>Date previsionnelle: <strong>{{.ExpiryDate}}</strong></p>
 `),
+		ExpiryReminderSubject: `Rappel d'expiration - JellyGate`,
+		Invitation: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Invitation JellyGate</h2>
+<p>Bonjour,</p>
+<p>Tu es invite a rejoindre le serveur. Clique sur le bouton ci-dessous pour creer ton compte.</p>
+<p style="margin:20px 0;"><a href="{{.InviteLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Creer mon compte</a></p>
+<p style="font-size:13px;color:#475569;">Lien direct: {{.InviteLink}}</p>
+`),
+		InvitationSubject:    `Invitation a rejoindre JellyGate`,
+		InviteExpirySubject:  `Expiration du lien d'invitation - JellyGate`,
+		PasswordResetSubject: `Reinitialisation de votre mot de passe - JellyGate`,
+		PostSignupHelp: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Premiere connexion</h2>
+<p>Ton compte est pret. Utilise maintenant l'identifiant et le mot de passe que tu viens de definir pour te connecter.</p>
+<p>Tu peux ensuite acceder directement a Jellyfin depuis l'interface principale.</p>
+`),
+		UserCreation: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte cree</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete cree avec succes par un administrateur.</p>
+`),
+		UserCreationSubject: `Compte cree - JellyGate`,
+		UserDeletion: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte supprime</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete supprime.</p>
+`),
+		UserDeletionSubject: `Compte supprime - JellyGate`,
+		UserDisabled: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte desactive</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete desactive.</p>
+`),
+		UserDisabledSubject: `Compte desactive - JellyGate`,
+		UserEnabled: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte reactive</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton compte a ete reactive.</p>
+`),
+		UserEnabledSubject: `Compte reactive - JellyGate`,
+		UserExpired: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Acces expire</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton acces a expire et ton compte a ete desactive.</p>
+`),
+		UserExpiredSubject: `Compte expire - JellyGate`,
+		ExpiryAdjusted: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Expiration mise a jour</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>La date d'expiration de ton acces a ete mise a jour.</p>
+<p>Nouvelle date: <strong>{{.ExpiryDate}}</strong></p>
+`),
+		ExpiryAdjustedSubject: `Expiration ajustee - JellyGate`,
+		Welcome: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Bienvenue {{.Username}}</h2>
+<p>Ton compte JellyGate est pret.</p>
+<p>Tu peux maintenant acceder a Jellyfin: <a href="{{.JellyfinURL}}" style="color:#0284c7;">{{.JellyfinURL}}</a></p>
+`),
+		WelcomeSubject: `Bienvenue sur JellyGate`,
+	}
+}
+
+func replaceLegacyEmailField(current *string, legacy, updated string) {
+	if strings.TrimSpace(*current) == strings.TrimSpace(legacy) {
+		*current = updated
+	}
+}
+
+// UpgradeLegacyEmailTemplates remplace uniquement les anciens textes par defaut
+// enregistres en base afin d'aligner le wording avec un compte/acces Jellyfin.
+func UpgradeLegacyEmailTemplates(cfg *EmailTemplatesConfig) {
+	legacy := legacyEmailTemplates()
+	updated := DefaultEmailTemplates()
+
+	replaceLegacyEmailField(&cfg.Confirmation, legacy.Confirmation, updated.Confirmation)
+	replaceLegacyEmailField(&cfg.ConfirmationSubject, legacy.ConfirmationSubject, updated.ConfirmationSubject)
+	replaceLegacyEmailField(&cfg.EmailVerification, legacy.EmailVerification, updated.EmailVerification)
+	replaceLegacyEmailField(&cfg.EmailVerificationSubject, legacy.EmailVerificationSubject, updated.EmailVerificationSubject)
+	replaceLegacyEmailField(&cfg.ExpiryReminder, legacy.ExpiryReminder, updated.ExpiryReminder)
+	replaceLegacyEmailField(&cfg.ExpiryReminderSubject, legacy.ExpiryReminderSubject, updated.ExpiryReminderSubject)
+	replaceLegacyEmailField(&cfg.Invitation, legacy.Invitation, updated.Invitation)
+	replaceLegacyEmailField(&cfg.InvitationSubject, legacy.InvitationSubject, updated.InvitationSubject)
+	replaceLegacyEmailField(&cfg.InviteExpirySubject, legacy.InviteExpirySubject, updated.InviteExpirySubject)
+	replaceLegacyEmailField(&cfg.PasswordResetSubject, legacy.PasswordResetSubject, updated.PasswordResetSubject)
+	replaceLegacyEmailField(&cfg.PostSignupHelp, legacy.PostSignupHelp, updated.PostSignupHelp)
+	replaceLegacyEmailField(&cfg.UserCreation, legacy.UserCreation, updated.UserCreation)
+	replaceLegacyEmailField(&cfg.UserCreationSubject, legacy.UserCreationSubject, updated.UserCreationSubject)
+	replaceLegacyEmailField(&cfg.UserDeletion, legacy.UserDeletion, updated.UserDeletion)
+	replaceLegacyEmailField(&cfg.UserDeletionSubject, legacy.UserDeletionSubject, updated.UserDeletionSubject)
+	replaceLegacyEmailField(&cfg.UserDisabled, legacy.UserDisabled, updated.UserDisabled)
+	replaceLegacyEmailField(&cfg.UserDisabledSubject, legacy.UserDisabledSubject, updated.UserDisabledSubject)
+	replaceLegacyEmailField(&cfg.UserEnabled, legacy.UserEnabled, updated.UserEnabled)
+	replaceLegacyEmailField(&cfg.UserEnabledSubject, legacy.UserEnabledSubject, updated.UserEnabledSubject)
+	replaceLegacyEmailField(&cfg.UserExpired, legacy.UserExpired, updated.UserExpired)
+	replaceLegacyEmailField(&cfg.UserExpiredSubject, legacy.UserExpiredSubject, updated.UserExpiredSubject)
+	replaceLegacyEmailField(&cfg.ExpiryAdjusted, legacy.ExpiryAdjusted, updated.ExpiryAdjusted)
+	replaceLegacyEmailField(&cfg.ExpiryAdjustedSubject, legacy.ExpiryAdjustedSubject, updated.ExpiryAdjustedSubject)
+	replaceLegacyEmailField(&cfg.Welcome, legacy.Welcome, updated.Welcome)
+	replaceLegacyEmailField(&cfg.WelcomeSubject, legacy.WelcomeSubject, updated.WelcomeSubject)
+}
+
+// DefaultEmailTemplates retourne les traductions de base des modèles d'emails
+func DefaultEmailTemplates() EmailTemplatesConfig {
+	return EmailTemplatesConfig{
+		Confirmation: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Inscription confirmee</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton inscription est bien validee. Ton acces Jellyfin est actif.</p>
+<p style="margin:20px 0 0 0;">Si besoin, tu peux contacter l'equipe via <a href="{{.HelpURL}}" style="color:#0284c7;">ce lien d'aide</a>.</p>
+`),
+		ConfirmationSubject:      `Acces Jellyfin active`,
+		DisableConfirmationEmail: false,
+		EmailVerificationSubject: `Verifie ton adresse e-mail pour Jellyfin`,
+		EmailVerification: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Verifie ton adresse e-mail</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Confirme ton adresse e-mail pour finaliser la securisation de ton acces Jellyfin.</p>
+<p style="margin:20px 0;"><a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verifier mon e-mail</a></p>
+<p style="font-size:13px;color:#475569;">Lien direct: {{.VerificationURL}}</p>
+<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expire dans {{.ExpiresIn}}</p>
+`),
+		ExpiryReminder: defaultEmailBody(`
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel d'expiration</h2>
+<p>Bonjour <strong>{{.Username}}</strong>,</p>
+<p>Ton acces Jellyfin expirera prochainement.</p>
+<p>Date previsionnelle: <strong>{{.ExpiryDate}}</strong></p>
+`),
+		ExpiryReminderSubject:       `Rappel d'expiration de l'acces Jellyfin`,
 		DisableExpiryReminderEmails: false,
 		ExpiryReminderDays:          3,
 		ExpiryReminder14: defaultEmailBody(`
@@ -268,17 +476,19 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 <p>Date d'expiration: <strong>{{.ExpiryDate}}</strong></p>
 `),
 		Invitation: defaultEmailBody(`
-<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Invitation JellyGate</h2>
+<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Invitation Jellyfin</h2>
 <p>Bonjour,</p>
-<p>Tu es invite a rejoindre le serveur. Clique sur le bouton ci-dessous pour creer ton compte.</p>
+<p>Tu es invite a rejoindre le serveur Jellyfin. Clique sur le bouton ci-dessous pour creer ton compte.</p>
 <p style="margin:20px 0;"><a href="{{.InviteLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Creer mon compte</a></p>
 <p style="font-size:13px;color:#475569;">Lien direct: {{.InviteLink}}</p>
 `),
+		InvitationSubject: `Invitation a rejoindre le serveur Jellyfin`,
 		InviteExpiry: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Expiration du lien d'invitation</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
 <p>Ton lien d'invitation expirera le <strong>{{.ExpiryDate}}</strong>.</p>
 `),
+		InviteExpirySubject:      `Expiration du lien d'invitation Jellyfin`,
 		DisableInviteExpiryEmail: false,
 		PasswordReset: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Reinitialisation mot de passe</h2>
@@ -287,6 +497,7 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 <p style="margin:20px 0;"><a href="{{.ResetLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Reinitialiser mon mot de passe</a></p>
 <p style="font-size:13px;color:#475569;">Code: <strong>{{.ResetCode}}</strong> · Expire dans {{.ExpiresIn}}</p>
 `),
+		PasswordResetSubject: `Reinitialisation de votre mot de passe Jellyfin`,
 		PreSignupHelp: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Avant de commencer</h2>
 <p>Tu peux finaliser la creation du compte directement depuis le lien d'invitation que tu as recu.</p>
@@ -295,52 +506,59 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 		DisablePreSignupHelpEmail: true,
 		PostSignupHelp: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Premiere connexion</h2>
-<p>Ton compte est pret. Utilise maintenant l'identifiant et le mot de passe que tu viens de definir pour te connecter.</p>
+<p>Ton compte Jellyfin est pret. Utilise maintenant l'identifiant et le mot de passe que tu viens de definir pour te connecter.</p>
 <p>Tu peux ensuite acceder directement a Jellyfin depuis l'interface principale.</p>
 `),
 		DisablePostSignupHelpEmail: false,
 		UserCreation: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte cree</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>Ton compte a ete cree avec succes par un administrateur.</p>
+<p>Ton compte Jellyfin a ete cree avec succes par un administrateur.</p>
 `),
+		UserCreationSubject:      `Compte Jellyfin cree`,
 		DisableUserCreationEmail: false,
 		UserDeletion: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte supprime</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>Ton compte a ete supprime.</p>
+<p>Ton compte Jellyfin a ete supprime.</p>
 `),
+		UserDeletionSubject:      `Compte Jellyfin supprime`,
 		DisableUserDeletionEmail: false,
 		UserDisabled: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte desactive</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>Ton compte a ete desactive.</p>
+<p>Ton acces Jellyfin a ete desactive.</p>
 `),
+		UserDisabledSubject:      `Acces Jellyfin desactive`,
 		DisableUserDisabledEmail: false,
 		UserEnabled: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte reactive</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>Ton compte a ete reactive.</p>
+<p>Ton acces Jellyfin a ete reactive.</p>
 `),
+		UserEnabledSubject:      `Acces Jellyfin reactive`,
 		DisableUserEnabledEmail: false,
 		UserExpired: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Acces expire</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>Ton acces a expire et ton compte a ete desactive.</p>
+<p>Ton acces Jellyfin a expire et ton compte a ete desactive.</p>
 `),
+		UserExpiredSubject:      `Acces Jellyfin expire`,
 		DisableUserExpiredEmail: false,
 		ExpiryAdjusted: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Expiration mise a jour</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>La date d'expiration de ton acces a ete mise a jour.</p>
+<p>La date d'expiration de ton acces Jellyfin a ete mise a jour.</p>
 <p>Nouvelle date: <strong>{{.ExpiryDate}}</strong></p>
 `),
+		ExpiryAdjustedSubject:      `Expiration de l'acces Jellyfin ajustee`,
 		DisableExpiryAdjustedEmail: false,
 		Welcome: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Bienvenue {{.Username}}</h2>
-<p>Ton compte JellyGate est pret.</p>
+<p>Ton compte Jellyfin est pret.</p>
 <p>Tu peux maintenant acceder a Jellyfin: <a href="{{.JellyfinURL}}" style="color:#0284c7;">{{.JellyfinURL}}</a></p>
 `),
+		WelcomeSubject:      `Bienvenue sur Jellyfin`,
 		DisableWelcomeEmail: false,
 	}
 }

@@ -341,6 +341,8 @@ func (db *DB) GetEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
 		return cfg, nil // Fallback silenceus sur defaults
 	}
 
+	config.UpgradeLegacyEmailTemplates(&cfg)
+
 	if cfg.ExpiryReminderDays < 1 || cfg.ExpiryReminderDays > 365 {
 		cfg.ExpiryReminderDays = 3
 	}

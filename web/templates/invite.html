@@ -24,6 +24,12 @@
                 {{ .Invitation.Label }}
             </span>
             {{ end }}
+            {{ if .Invitation.CreatedBy }}
+            <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
+                <span class="font-semibold text-slate-200">{{ .T "invitations_sponsor" }}</span>
+                <span>{{ .Invitation.CreatedBy }}</span>
+            </div>
+            {{ end }}
         </div>
 
         {{ if .SuccessMessage }}

@@ -269,31 +269,39 @@
         if (data.email_templates) {
             loadedEmailTemplates = { ...data.email_templates };
             document.getElementById('tpl-confirmation').value = data.email_templates.confirmation || '';
+            document.getElementById('tpl-confirmation-subject').value = data.email_templates.confirmation_subject || '';
             document.getElementById('tpl-enable-confirmation-email').checked = !data.email_templates.disable_confirmation_email;
             document.getElementById('tpl-expiry-reminder').value = data.email_templates.expiry_reminder || '';
+            document.getElementById('tpl-expiry-reminder-subject').value = data.email_templates.expiry_reminder_subject || '';
             document.getElementById('tpl-enable-expiry-reminder-email').checked = !data.email_templates.disable_expiry_reminder_emails;
             document.getElementById('tpl-expiry-reminder-days').value = data.email_templates.expiry_reminder_days || 3;
             document.getElementById('tpl-invitation').value = data.email_templates.invitation || '';
+            document.getElementById('tpl-invitation-subject').value = data.email_templates.invitation_subject || '';
             document.getElementById('tpl-invite-expiry').value = data.email_templates.invite_expiry || '';
+            document.getElementById('tpl-invite-expiry-subject').value = data.email_templates.invite_expiry_subject || '';
             document.getElementById('tpl-enable-invite-expiry-email').checked = !data.email_templates.disable_invite_expiry_email;
             document.getElementById('tpl-password-reset').value = data.email_templates.password_reset || '';
-            document.getElementById('tpl-pre-signup-help').value = data.email_templates.pre_signup_help || '';
-            document.getElementById('tpl-enable-pre-signup-help-email').checked = !data.email_templates.disable_pre_signup_help_email;
-            document.getElementById('tpl-post-signup-help').value = data.email_templates.post_signup_help || '';
-            document.getElementById('tpl-enable-post-signup-help-email').checked = !data.email_templates.disable_post_signup_help_email;
+            document.getElementById('tpl-password-reset-subject').value = data.email_templates.password_reset_subject || '';
             document.getElementById('tpl-user-creation').value = data.email_templates.user_creation || '';
+            document.getElementById('tpl-user-creation-subject').value = data.email_templates.user_creation_subject || '';
             document.getElementById('tpl-enable-user-creation-email').checked = !data.email_templates.disable_user_creation_email;
             document.getElementById('tpl-user-deletion').value = data.email_templates.user_deletion || '';
+            document.getElementById('tpl-user-deletion-subject').value = data.email_templates.user_deletion_subject || '';
             document.getElementById('tpl-enable-user-deletion-email').checked = !data.email_templates.disable_user_deletion_email;
             document.getElementById('tpl-user-disabled').value = data.email_templates.user_disabled || '';
+            document.getElementById('tpl-user-disabled-subject').value = data.email_templates.user_disabled_subject || '';
             document.getElementById('tpl-enable-user-disabled-email').checked = !data.email_templates.disable_user_disabled_email;
             document.getElementById('tpl-user-enabled').value = data.email_templates.user_enabled || '';
+            document.getElementById('tpl-user-enabled-subject').value = data.email_templates.user_enabled_subject || '';
             document.getElementById('tpl-enable-user-enabled-email').checked = !data.email_templates.disable_user_enabled_email;
             document.getElementById('tpl-user-expired').value = data.email_templates.user_expired || '';
+            document.getElementById('tpl-user-expired-subject').value = data.email_templates.user_expired_subject || '';
             document.getElementById('tpl-enable-user-expired-email').checked = !data.email_templates.disable_user_expired_email;
             document.getElementById('tpl-expiry-adjusted').value = data.email_templates.expiry_adjusted || '';
+            document.getElementById('tpl-expiry-adjusted-subject').value = data.email_templates.expiry_adjusted_subject || '';
             document.getElementById('tpl-enable-expiry-adjusted-email').checked = !data.email_templates.disable_expiry_adjusted_email;
             document.getElementById('tpl-welcome').value = data.email_templates.welcome || '';
+            document.getElementById('tpl-welcome-subject').value = data.email_templates.welcome_subject || '';
             document.getElementById('tpl-enable-welcome-email').checked = !data.email_templates.disable_welcome_email;
         }
     }
@@ -373,36 +381,48 @@
             const reminderTemplate = document.getElementById('tpl-expiry-reminder').value;
             body = {
                 confirmation: document.getElementById('tpl-confirmation').value,
+                confirmation_subject: document.getElementById('tpl-confirmation-subject').value.trim(),
                 disable_confirmation_email: !document.getElementById('tpl-enable-confirmation-email').checked,
                 email_verification_subject: loadedEmailTemplates.email_verification_subject || '',
                 email_verification: loadedEmailTemplates.email_verification || '',
                 expiry_reminder: reminderTemplate,
+                expiry_reminder_subject: document.getElementById('tpl-expiry-reminder-subject').value.trim(),
                 disable_expiry_reminder_emails: !document.getElementById('tpl-enable-expiry-reminder-email').checked,
                 expiry_reminder_days: Math.max(1, Math.min(365, reminderDays)),
                 expiry_reminder_14: reminderTemplate,
                 expiry_reminder_7: reminderTemplate,
                 expiry_reminder_1: reminderTemplate,
                 invitation: document.getElementById('tpl-invitation').value,
+                invitation_subject: document.getElementById('tpl-invitation-subject').value.trim(),
                 invite_expiry: document.getElementById('tpl-invite-expiry').value,
+                invite_expiry_subject: document.getElementById('tpl-invite-expiry-subject').value.trim(),
                 disable_invite_expiry_email: !document.getElementById('tpl-enable-invite-expiry-email').checked,
                 password_reset: document.getElementById('tpl-password-reset').value,
-                pre_signup_help: document.getElementById('tpl-pre-signup-help').value,
-                disable_pre_signup_help_email: !document.getElementById('tpl-enable-pre-signup-help-email').checked,
-                post_signup_help: document.getElementById('tpl-post-signup-help').value,
-                disable_post_signup_help_email: !document.getElementById('tpl-enable-post-signup-help-email').checked,
+                password_reset_subject: document.getElementById('tpl-password-reset-subject').value.trim(),
+                pre_signup_help: '',
+                disable_pre_signup_help_email: true,
+                post_signup_help: '',
+                disable_post_signup_help_email: true,
                 user_creation: document.getElementById('tpl-user-creation').value,
+                user_creation_subject: document.getElementById('tpl-user-creation-subject').value.trim(),
                 disable_user_creation_email: !document.getElementById('tpl-enable-user-creation-email').checked,
                 user_deletion: document.getElementById('tpl-user-deletion').value,
+                user_deletion_subject: document.getElementById('tpl-user-deletion-subject').value.trim(),
                 disable_user_deletion_email: !document.getElementById('tpl-enable-user-deletion-email').checked,
                 user_disabled: document.getElementById('tpl-user-disabled').value,
+                user_disabled_subject: document.getElementById('tpl-user-disabled-subject').value.trim(),
                 disable_user_disabled_email: !document.getElementById('tpl-enable-user-disabled-email').checked,
                 user_enabled: document.getElementById('tpl-user-enabled').value,
+                user_enabled_subject: document.getElementById('tpl-user-enabled-subject').value.trim(),
                 disable_user_enabled_email: !document.getElementById('tpl-enable-user-enabled-email').checked,
                 user_expired: document.getElementById('tpl-user-expired').value,
+                user_expired_subject: document.getElementById('tpl-user-expired-subject').value.trim(),
                 disable_user_expired_email: !document.getElementById('tpl-enable-user-expired-email').checked,
                 expiry_adjusted: document.getElementById('tpl-expiry-adjusted').value,
+                expiry_adjusted_subject: document.getElementById('tpl-expiry-adjusted-subject').value.trim(),
                 disable_expiry_adjusted_email: !document.getElementById('tpl-enable-expiry-adjusted-email').checked,
                 welcome: document.getElementById('tpl-welcome').value,
+                welcome_subject: document.getElementById('tpl-welcome-subject').value.trim(),
                 disable_welcome_email: !document.getElementById('tpl-enable-welcome-email').checked,
             };
         } else if (section === 'backup') {

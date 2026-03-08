@@ -310,7 +310,6 @@
             if (res.success) {
                 const createdLink = (res.data && res.data.url) ? res.data.url : '';
                 if (createdLink) {
-                    document.getElementById('last-created-link').value = createdLink;
                     await copyLinkToClipboard(createdLink);
                 }
                 JG.toast(i18n.created, 'success');
@@ -333,15 +332,6 @@
                 }
             });
         }
-
-        document.getElementById('copy-last-created-link')?.addEventListener('click', async () => {
-            const value = (document.getElementById('last-created-link').value || '').trim();
-            if (!value) {
-                JG.toast(i18n.noLinkToCopy, 'error');
-                return;
-            }
-            await copyLinkToClipboard(value);
-        });
 
         document.querySelectorAll('.modal-overlay').forEach((overlay) => {
             overlay.addEventListener('click', (event) => {

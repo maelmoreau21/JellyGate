@@ -221,7 +221,7 @@
     "settings_expiry_action_disable":  "Disable",
     "settings_expiry_action_disable_then_delete":  "Disable then delete",
     "settings_host_required":  "Host *",
-    "settings_invite_allow_inviter_grant":  "Allow inviters to grant invite permissions",
+    "settings_invite_allow_inviter_grant":  "Allow inviters to let the new account create invitations",
     "settings_invite_allow_inviter_user_expiry":  "Allow inviters to customize user expiry",
     "settings_invite_delete_after_days":  "Delete account after (days)",
     "settings_invite_disable_after_days":  "Disable account after (days)",

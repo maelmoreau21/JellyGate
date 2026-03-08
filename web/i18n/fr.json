@@ -221,7 +221,7 @@
     "settings_expiry_action_disable":  "Desactiver",
     "settings_expiry_action_disable_then_delete":  "Desactiver puis supprimer",
     "settings_host_required":  "Hote *",
-    "settings_invite_allow_inviter_grant":  "Autoriser les parrains a accorder des droits d invitation",
+    "settings_invite_allow_inviter_grant":  "Autoriser les parrains a donner au nouveau compte le droit de creer des invitations",
     "settings_invite_allow_inviter_user_expiry":  "Autoriser les parrains a personnaliser l expiration utilisateur",
     "settings_invite_delete_after_days":  "Supprimer le compte apres (jours)",
     "settings_invite_disable_after_days":  "Desactiver le compte apres (jours)",

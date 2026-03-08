@@ -57,14 +57,14 @@ func (h *AdminHandler) tr(r *http.Request, key, fallback string) string {
 func defaultEmailVerificationTemplate() string {
 	return `<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Verify your email address</h2>
 <p>Hello <strong>{{.Username}}</strong>,</p>
-<p>Please confirm your email address to finish securing your JellyGate account.</p>
+<p>Please confirm your email address to finish securing your Jellyfin access.</p>
 <p style="margin:20px 0;"><a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verify my email</a></p>
 <p style="font-size:13px;color:#475569;">Verification link: {{.VerificationURL}}</p>
 <p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expires in {{.ExpiresIn}}</p>`
 }
 
 func defaultEmailVerificationSubject() string {
-	return "Verify your email address - JellyGate"
+	return "Verify your email address for Jellyfin"
 }
 
 func loadEmailVerificationTarget(db *database.DB, userID int64) (*emailVerificationTarget, error) {
