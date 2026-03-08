@@ -76,6 +76,10 @@ func (s *Service) RunTaskNow(taskID int64) error {
 }
 
 func (s *Service) runDueTasks() {
+	if err := s.cleanupClosedInvitations(); err != nil {
+		slog.Warn("Scheduler: nettoyage des invitations fermees impossible", "error", err)
+	}
+
 	now := time.Now()
 	rows, err := s.db.Query(
 		`SELECT id, name, task_type, enabled, hour, minute, payload, last_run_at, created_by, created_at, updated_at
@@ -111,6 +115,25 @@ func (s *Service) runDueTasks() {
 	}
 }
 
+func (s *Service) cleanupClosedInvitations() error {
+	inviteCfg, err := s.db.GetInvitationProfileConfig()
+	if err != nil {
+		return err
+	}
+	if !inviteCfg.AutoDeleteClosedLinks {
+		return nil
+	}
+
+	deleted, err := s.db.DeleteClosedInvitations(time.Now())
+	if err != nil {
+		return err
+	}
+	if deleted > 0 {
+		_ = s.db.LogAction("invite.cleanup", "scheduler", "invitations", fmt.Sprintf("%d lien(s) fermes supprimes", deleted))
+	}
+	return nil
+}
+
 func (s *Service) executeTask(task TaskRecord) error {
 	now := time.Now().Format("2006-01-02 15:04:05")
 
@@ -144,9 +167,8 @@ func (s *Service) executeTask(task TaskRecord) error {
 		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, fmt.Sprintf("%d tokens nettoyes", n))
 
 	case "dispatch_campaigns":
-		if err := s.dispatchCampaignMessages(); err != nil {
-			return err
-		}
+		_, _ = s.db.Exec(`UPDATE scheduled_tasks SET enabled = FALSE, updated_at = datetime('now') WHERE id = ?`, task.ID)
+		_ = s.db.LogAction("task.dispatch_campaigns.disabled", "scheduler", task.Name, "Type de tache retire avec la suppression de la messagerie")
 
 	case "create_backup":
 		if s.backup == nil {

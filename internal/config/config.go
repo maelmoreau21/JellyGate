@@ -377,6 +377,7 @@ type InvitationProfileConfig struct {
 	TemplateUserID         string `json:"template_user_id"`
 	EnableDownloads        bool   `json:"enable_downloads"`
 	RequireEmail           bool   `json:"require_email"`
+	AutoDeleteClosedLinks  bool   `json:"auto_delete_closed_links"`
 	DisableAfterDays       int    `json:"disable_after_days"`
 	DeleteAfterDays        int    `json:"delete_after_days"`
 	ExpiryAction           string `json:"expiry_action"`
@@ -405,6 +406,7 @@ func DefaultInvitationProfileConfig() InvitationProfileConfig {
 		TemplateUserID:         "",
 		EnableDownloads:        true,
 		RequireEmail:           true,
+		AutoDeleteClosedLinks:  false,
 		DisableAfterDays:       0,
 		DeleteAfterDays:        0,
 		ExpiryAction:           "disable",

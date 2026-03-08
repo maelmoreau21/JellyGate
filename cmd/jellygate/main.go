@@ -312,15 +312,6 @@ func main() {
 				r.Delete("/{id}", adminHandler.DeleteInvitation)
 			})
 
-			r.Get("/messages", adminHandler.MessagesPage)
-			r.Route("/api/messages", func(r chi.Router) {
-				r.Use(jgmw.RequireCSRF())
-				r.Get("/", adminHandler.ListMessages)
-				r.Post("/", adminHandler.CreateMessage)
-				r.Delete("/{id}", adminHandler.DeleteMessage)
-				r.Post("/{id}/read", adminHandler.MarkMessageRead)
-			})
-
 			// ── Route de profil (Changement MDP, par tout le monde) ─────────
 			r.Route("/api/users/me", func(r chi.Router) {
 				r.Use(jgmw.RequireCSRF())

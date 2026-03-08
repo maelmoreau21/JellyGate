@@ -277,6 +277,34 @@ select.jg-input optgroup {
     margin-top: 0.75rem;
 }
 
+.jg-lang-switcher-inline {
+    position: static;
+    width: min(240px, 100%);
+    margin-left: auto;
+    border-color: rgba(148, 163, 184, 0.18);
+    background: rgba(8, 15, 27, 0.86);
+    box-shadow: 0 10px 28px rgba(2, 6, 23, 0.28);
+}
+
+.jg-login-lang-slot {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.jg-login-lang-slot .jg-lang-switcher {
+    padding: 0.75rem 0.9rem;
+}
+
+.jg-login-lang-slot .jg-lang-switcher label {
+    margin-bottom: 0.35rem;
+    color: rgba(194, 206, 226, 0.82);
+}
+
+.jg-login-lang-slot .jg-lang-select {
+    border-color: rgba(148, 163, 184, 0.16);
+    box-shadow: none;
+}
+
 .jg-sidebar-footer .jg-lang-switcher {
     padding: 0;
     border: 0;
@@ -294,6 +322,70 @@ select.jg-input optgroup {
 .jg-sidebar-footer .jg-lang-select {
     border-color: rgba(148, 163, 184, 0.22);
     box-shadow: none;
+}
+
+.email-template-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.email-template-item {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 1rem;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.84), rgba(15, 23, 42, 0.68));
+    overflow: hidden;
+}
+
+.email-template-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    cursor: pointer;
+    list-style: none;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.email-template-summary::-webkit-details-marker {
+    display: none;
+}
+
+.email-template-summary-title {
+    color: #f8fafc;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.email-template-summary::after {
+    content: "+";
+    color: #94a3b8;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.email-template-item[open] .email-template-summary::after {
+    content: "-";
+}
+
+.email-template-panel {
+    padding: 1rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.email-template-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.email-template-meta-note {
+    color: #94a3b8;
+    font-size: 0.78rem;
 }
 
 /* ── Labels ──────────────────────────────────────────────────────────────── */
@@ -1219,6 +1311,15 @@ select.jg-input optgroup {
         right: 0.85rem;
         left: 0.85rem;
         width: auto;
+    }
+
+    .jg-login-lang-slot {
+        justify-content: stretch;
+    }
+
+    .jg-lang-switcher-inline {
+        width: 100%;
+        margin-left: 0;
     }
 
     .stats-grid {

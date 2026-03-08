@@ -722,6 +722,8 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 		return nil, fmt.Errorf("code d'invitation vide")
 	}
 
+	cleanupClosedInvitationsIfEnabled(h.db)
+
 	row := h.db.QueryRow(
 		`SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_at
 		 FROM invitations WHERE code = ?`, code)

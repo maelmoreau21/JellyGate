@@ -587,6 +587,21 @@ func (db *DB) SaveInvitationProfileConfig(cfg config.InvitationProfileConfig) er
 	return db.SetSetting(SettingInviteProfile, string(data))
 }
 
+// DeleteClosedInvitations supprime les invitations expirées ou qui ont atteint leur quota.
+func (db *DB) DeleteClosedInvitations(now time.Time) (int64, error) {
+	res, err := db.Exec(
+		`DELETE FROM invitations
+		 WHERE (expires_at IS NOT NULL AND expires_at <= ?)
+		    OR (max_uses > 0 AND used_count >= max_uses)`,
+		now,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("DeleteClosedInvitations: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
 // ── Webhooks Config ─────────────────────────────────────────────────────────
 
 // GetWebhooksConfig récupère la configuration Webhooks depuis la base.

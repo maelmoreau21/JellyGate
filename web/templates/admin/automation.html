@@ -27,10 +27,6 @@
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
             <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
         </a>
-        <a href="/admin/messages" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h8m-8 4h5m-7 7l-4 3V5a2 2 0 012-2h16a2 2 0 012 2v14a2 2 0 01-2 2H8z" /></svg>
-            <span class="jg-nav-label">{{ .T "messages_title" }}</span>
-        </a>
         {{ if .IsAdmin }}
         <a href="/admin/users" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -187,7 +183,6 @@
                         <select id="task-type" class="jg-input">
                             <option value="sync_users">sync_users</option>
                             <option value="cleanup_resets">cleanup_resets</option>
-                            <option value="dispatch_campaigns">dispatch_campaigns</option>
                             <option value="create_backup">create_backup</option>
                         </select>
                     </div>
@@ -271,7 +266,6 @@
         taskTypeDescriptions: {
             sync_users: '{{ .T "automation_type_sync_users_desc" }}',
             cleanup_resets: '{{ .T "automation_type_cleanup_resets_desc" }}',
-            dispatch_campaigns: '{{ .T "automation_type_dispatch_campaigns_desc" }}',
             create_backup: '{{ .T "automation_type_create_backup_desc" }}',
         },
     };

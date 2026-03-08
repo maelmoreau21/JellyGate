@@ -2088,8 +2088,10 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	if oldExpiry != newExpiry {
 		rec.Email = email
 		rec.AccessExpiresAt = sql.NullString{String: newExpiry, Valid: newExpiry != ""}
-		if err := h.sendUserTemplateByKey(rec, "expiry_adjusted", map[string]string{"ExpiryDate": newExpiry}); err != nil {
-			slog.Error("Erreur envoi email expiry_adjusted", "user", rec.Username, "error", err)
+		if newExpiry != "" {
+			if err := h.sendUserTemplateByKey(rec, "expiry_adjusted", map[string]string{"ExpiryDate": newExpiry}); err != nil {
+				slog.Error("Erreur envoi email expiry_adjusted", "user", rec.Username, "error", err)
+			}
 		}
 	}
 
@@ -2266,7 +2268,6 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 		case "set_expiry":
 			var expiry interface{}
-			emailExpiryDate := "Aucune expiration"
 			if req.ClearExpiry {
 				expiry = nil
 			} else {
@@ -2282,7 +2283,6 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				expiry = exp
-				emailExpiryDate = emailTime(exp)
 			}
 
 			_, err := h.db.Exec(`UPDATE users SET access_expires_at = ?, updated_at = datetime('now') WHERE id = ?`, expiry, rec.ID)
@@ -2293,11 +2293,13 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			}
 
 			_ = h.db.LogAction("user.bulk.expiry", sess.Username, rec.Username, "")
-			if err := h.sendUserTemplateByKey(rec, "expiry_adjusted", map[string]string{"ExpiryDate": emailExpiryDate}); err != nil {
-				slog.Error("Erreur envoi email bulk expiry_adjusted", "user", rec.Username, "error", err)
-				entry["success"] = true
-				entry["message"] = "Expiration mise à jour (email non envoyé)"
-				break
+			if !req.ClearExpiry && req.AccessExpiresAt != nil && strings.TrimSpace(*req.AccessExpiresAt) != "" {
+				if err := h.sendUserTemplateByKey(rec, "expiry_adjusted", map[string]string{"ExpiryDate": strings.TrimSpace(*req.AccessExpiresAt)}); err != nil {
+					slog.Error("Erreur envoi email bulk expiry_adjusted", "user", rec.Username, "error", err)
+					entry["success"] = true
+					entry["message"] = "Expiration mise à jour (email non envoyé)"
+					break
+				}
 			}
 			entry["success"] = true
 			entry["message"] = "Expiration mise à jour"
@@ -2725,6 +2727,7 @@ func (h *AdminHandler) countInvitationsCreatedSince(creator string, since time.T
 func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	slog.Info("Liste des invitations demandée", "admin", sess.Username)
+	cleanupClosedInvitationsIfEnabled(h.db)
 
 	var query string
 	var args []interface{}
@@ -2796,6 +2799,7 @@ type InvitationSponsorStats struct {
 // InvitationStats retourne des statistiques de parrainage par createur d'invitations.
 func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	cleanupClosedInvitationsIfEnabled(h.db)
 
 	scope := "all"
 	filterByCreator := ""

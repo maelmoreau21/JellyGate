@@ -2,6 +2,7 @@
     const config = window.JGPageSettings || {};
     const i18n = config.i18n || {};
     let backupDatabaseType = 'sqlite';
+    let loadedEmailTemplates = {};
 
     function t(key, fallback) {
         return i18n[key] || fallback || key;
@@ -12,13 +13,6 @@
         document.querySelectorAll('.tab-btn').forEach((button) => button.classList.remove('active'));
         document.getElementById(`panel-${name}`)?.classList.remove('hidden');
         document.getElementById(`tab-${name}`)?.classList.add('active');
-    }
-
-    function switchEmailTemplateSection(name) {
-        document.querySelectorAll('.email-template-section').forEach((section) => section.classList.add('hidden'));
-        document.querySelectorAll('.email-submenu-btn').forEach((button) => button.classList.remove('active'));
-        document.getElementById(`email-section-${name}`)?.classList.remove('hidden');
-        document.querySelector(`.email-submenu-btn[data-email-section-target="${name}"]`)?.classList.add('active');
     }
 
     function toggleLDAPFields() {
@@ -160,6 +154,7 @@
         document.getElementById('invite-profile-template-user').value = profile.template_user_id || '';
         document.getElementById('invite-profile-enable-downloads').checked = profile.enable_downloads !== false;
         document.getElementById('invite-profile-require-email').checked = profile.require_email !== false;
+        document.getElementById('invite-profile-auto-delete-closed-links').checked = !!profile.auto_delete_closed_links;
         document.getElementById('invite-profile-allow-inviter-grant').checked = !!profile.allow_inviter_grant_invite;
         document.getElementById('invite-profile-allow-inviter-user-expiry').checked = profile.allow_inviter_user_expiry !== false;
         document.getElementById('invite-profile-disable-after').value = Number.isInteger(profile.disable_after_days) ? profile.disable_after_days : 0;
@@ -272,16 +267,12 @@
         document.getElementById('backup-retention').value = 7;
 
         if (data.email_templates) {
+            loadedEmailTemplates = { ...data.email_templates };
             document.getElementById('tpl-confirmation').value = data.email_templates.confirmation || '';
             document.getElementById('tpl-enable-confirmation-email').checked = !data.email_templates.disable_confirmation_email;
-            document.getElementById('tpl-email-verification-subject').value = data.email_templates.email_verification_subject || '';
-            document.getElementById('tpl-email-verification').value = data.email_templates.email_verification || '';
             document.getElementById('tpl-expiry-reminder').value = data.email_templates.expiry_reminder || '';
             document.getElementById('tpl-enable-expiry-reminder-email').checked = !data.email_templates.disable_expiry_reminder_emails;
             document.getElementById('tpl-expiry-reminder-days').value = data.email_templates.expiry_reminder_days || 3;
-            document.getElementById('tpl-expiry-reminder-14').value = data.email_templates.expiry_reminder_14 || '';
-            document.getElementById('tpl-expiry-reminder-7').value = data.email_templates.expiry_reminder_7 || '';
-            document.getElementById('tpl-expiry-reminder-1').value = data.email_templates.expiry_reminder_1 || '';
             document.getElementById('tpl-invitation').value = data.email_templates.invitation || '';
             document.getElementById('tpl-invite-expiry').value = data.email_templates.invite_expiry || '';
             document.getElementById('tpl-enable-invite-expiry-email').checked = !data.email_templates.disable_invite_expiry_email;
@@ -332,6 +323,7 @@
                 template_user_id: (document.getElementById('invite-profile-template-user').value || '').trim(),
                 enable_downloads: document.getElementById('invite-profile-enable-downloads').checked,
                 require_email: document.getElementById('invite-profile-require-email').checked,
+                auto_delete_closed_links: document.getElementById('invite-profile-auto-delete-closed-links').checked,
                 allow_inviter_grant_invite: document.getElementById('invite-profile-allow-inviter-grant').checked,
                 allow_inviter_user_expiry: document.getElementById('invite-profile-allow-inviter-user-expiry').checked,
                 disable_after_days: parseInt(document.getElementById('invite-profile-disable-after').value, 10) || 0,
@@ -378,17 +370,18 @@
         } else if (section === 'email-templates') {
             const reminderDaysRaw = parseInt(document.getElementById('tpl-expiry-reminder-days').value, 10);
             const reminderDays = Number.isInteger(reminderDaysRaw) ? reminderDaysRaw : 3;
+            const reminderTemplate = document.getElementById('tpl-expiry-reminder').value;
             body = {
                 confirmation: document.getElementById('tpl-confirmation').value,
                 disable_confirmation_email: !document.getElementById('tpl-enable-confirmation-email').checked,
-                email_verification_subject: document.getElementById('tpl-email-verification-subject').value,
-                email_verification: document.getElementById('tpl-email-verification').value,
-                expiry_reminder: document.getElementById('tpl-expiry-reminder').value,
+                email_verification_subject: loadedEmailTemplates.email_verification_subject || '',
+                email_verification: loadedEmailTemplates.email_verification || '',
+                expiry_reminder: reminderTemplate,
                 disable_expiry_reminder_emails: !document.getElementById('tpl-enable-expiry-reminder-email').checked,
                 expiry_reminder_days: Math.max(1, Math.min(365, reminderDays)),
-                expiry_reminder_14: document.getElementById('tpl-expiry-reminder-14').value,
-                expiry_reminder_7: document.getElementById('tpl-expiry-reminder-7').value,
-                expiry_reminder_1: document.getElementById('tpl-expiry-reminder-1').value,
+                expiry_reminder_14: reminderTemplate,
+                expiry_reminder_7: reminderTemplate,
+                expiry_reminder_1: reminderTemplate,
                 invitation: document.getElementById('tpl-invitation').value,
                 invite_expiry: document.getElementById('tpl-invite-expiry').value,
                 disable_invite_expiry_email: !document.getElementById('tpl-enable-invite-expiry-email').checked,
@@ -672,10 +665,6 @@
             btn.addEventListener('click', () => switchTab(btn.dataset.tabTarget || 'general'));
         });
 
-        document.querySelectorAll('[data-email-section-target]').forEach((btn) => {
-            btn.addEventListener('click', () => switchEmailTemplateSection(btn.dataset.emailSectionTarget || 'onboarding'));
-        });
-
         [
             ['form-general', 'general'],
             ['form-invitation-profile', 'invitation-profile'],
@@ -703,7 +692,6 @@
 
         await loadInvitationProfileLookups();
         await loadSettings();
-        switchEmailTemplateSection('onboarding');
         attachTemplatePreviewButtons();
         await loadBackups();
 

@@ -1,6 +1,6 @@
 # JellyGate — Project Context
 
-> Dernière mise à jour : 2026-03-07
+> Dernière mise à jour : 2026-03-08
 > Version : 0.1.0-alpha
 > Auteur : Mael Moreau
 
@@ -69,6 +69,7 @@ web/
 - corrélation audit par `request_id`
 - l'e-mail d'invitation n'ajoute plus de bloc d'expiration si aucun delai n'est defini
 - les blocs d'aide et d'expiration peuvent etre desactives depuis l'admin
+- un toggle permet de purger automatiquement les liens expirés ou épuisés
 - base technique prête pour un futur mode parrainage utilisateur depuis `Mon compte`
 
 ### 4.2 Utilisateurs
@@ -77,6 +78,8 @@ web/
 - synchronisation Jellyfin
 - suppression compte
 - toggle d'accès
+- communication ciblée et envois admin centralisés depuis la page `Utilisateurs`
+- aucune messagerie interne exposée aux utilisateurs: la communication produit se fait uniquement par e-mail
 - profil personnel avec langue préférée et préférences de notification
 - refonte admin en cours page par page pour homogénéiser toute l'interface
 
@@ -104,28 +107,24 @@ web/
 - tâches planifiées
 - provisioning Jellyseerr / Ombi optionnel
 
-### 4.6 Messages administrateur
+### 4.6 Modeles e-mail
 
-- page Messages recentrée sur l'envoi par les administrateurs
-- envoi email direct quand le message est immédiat
-- mode campagne conservé pour les diffusions planifiées
-- la boîte de réception n'est plus l'usage produit prioritaire côté admin
-
-### 4.7 Modeles e-mail
-
-- page `Parametres > Modeles e-mail` simplifiee avec sous-sections onboarding, securite et cycle de vie
-- panneau central d'activation pour couper proprement certains e-mails ou blocs automatiques
+- page `Parametres > Modeles e-mail` recentrée sur les seuls modèles utiles au produit
+- chaque modèle est édité via un bloc déroulant, ce qui évite les longues pages difficiles à relire
+- les rappels d'expiration utilisent un seul modèle cohérent, quel que soit le palier de rappel choisi
+- panneau d'activation conservé pour couper proprement certains e-mails automatiques
 - contenu d'aide avant/apres inscription simplifie pour eviter les messages type documentation interne
+- aucun e-mail d'ajustement d'expiration n'est envoyé quand une expiration utilisateur est retirée
 - le comportement produit privilegie l'envoi utile uniquement, sans fragments "Non definie"
 
-### 4.8 Audit et observabilite
+### 4.7 Audit et observabilite
 
 - `audit_log` SQL
 - filtres avancés sur l'API logs
 - export CSV / JSON
 - extraction et affichage `request_id`
 
-### 4.9 i18n
+### 4.8 i18n
 
 - locales JSON sous `web/i18n`
 - détection par cookie `lang`, puis `Accept-Language`, puis `default_lang`
@@ -133,7 +132,7 @@ web/
 - commande CI `go run ./cmd/i18ncheck`
 - labels de navigation et de `Modeles e-mail` homogenises sur les locales admin principales
 
-### 4.10 Roadmap produit validee
+### 4.9 Roadmap produit validee
 
 - parrainage utilisateur depuis `Mon compte` avec quotas, durée de vie et traçabilité sponsor -> invité
 - vérification d'e-mail obligatoire ou configurable selon la politique d'instance
@@ -167,7 +166,6 @@ web/
 | GET | `/admin/` | dashboard |
 | GET | `/admin/users` | utilisateurs |
 | GET | `/admin/invitations` | invitations |
-| GET | `/admin/messages` | messages |
 | GET | `/admin/settings` | paramètres |
 | GET | `/admin/logs` | journaux |
 | GET | `/admin/automation` | automatisation |
@@ -179,7 +177,6 @@ web/
 | --- | --- |
 | `/admin/api/users` | gestion utilisateurs |
 | `/admin/api/invitations` | CRUD invitations |
-| `/admin/api/messages` | centre de messages |
 | `/admin/api/settings` | paramètres applicatifs |
 | `/admin/api/backups` | sauvegardes |
 | `/admin/api/logs` | audit logs et exports |
@@ -224,8 +221,9 @@ L'interface suit actuellement ces principes:
 - pages publiques centrées et simples
 - sidebar admin fixe
 - actions fréquentes mises en avant
-- pages `Utilisateurs`, `Automatisation` et `Messages` simplifiées pour réduire la densité d'information au premier écran
-- selecteur de langue visible hors sidebar et integre proprement dans le footer de sidebar quand la sidebar existe
+- pages `Utilisateurs` et `Automatisation` simplifiées pour réduire la densité d'information au premier écran
+- la navigation admin ne propose plus de centre de messages, les communications partant uniquement par e-mail depuis `Utilisateurs`
+- sur l'écran de connexion, le selecteur de langue est intégré dans la carte au lieu de flotter dans un encart séparé
 
 Le design system partagé est porté par `web/static/css/custom.css` et `web/templates/layouts/base.html`.
 

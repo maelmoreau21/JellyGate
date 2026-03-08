@@ -1,4 +1,4 @@
-﻿# i18n Remaining Keys Batches
+# i18n Remaining Keys Batches
 
 ## de
 same_as_base=116
@@ -36,9 +36,6 @@ batch_1 (1-40):
 - invite_open_jellyseerr
 - logs_col_details
 - logs_system_actor
-- messages_channel_discord
-- messages_channel_telegram
-- messages_col_state
 - my_account_channel_discord
 - my_account_channel_telegram
 - my_account_password_min_hint
@@ -85,8 +82,6 @@ batch_1 (1-40):
 - logs_col_actor
 - logs_network_error
 - logs_total_label
-- messages_channel_discord
-- messages_channel_telegram
 
 ## fr
 same_as_base=61
@@ -110,12 +105,6 @@ batch_1 (1-40):
 - logs_col_details
 - logs_page_label
 - logs_total_label
-- messages_channel_discord
-- messages_channel_telegram
-- messages_col_target
-- messages_col_title
-- messages_heading
-- messages_title
 - my_account_channel_discord
 - my_account_channel_telegram
 - my_account_label_role
@@ -200,9 +189,6 @@ batch_1 (1-40):
 - login_forgot_password
 - login_title
 - logs_col_details
-- messages_channel_telegram
-- messages_col_state
-- messages_default_channel
 - my_account_channel_telegram
 - nav_dashboard
 - password_rule_at_least
@@ -236,7 +222,6 @@ batch_1 (1-40):
 - login_forgot_password
 - login_title
 - logs_system_actor
-- messages_channel_telegram
 - my_account_channel_telegram
 - password_rule_at_least
 - password_rule_at_most
@@ -278,7 +263,6 @@ batch_1 (1-40):
 - invite_success_ldap_only
 - login_forgot_password
 - logs_total_label
-- messages_col_state
 - password_rule_at_least
 - password_rule_at_most
 - settings_backup_desc
@@ -327,8 +311,6 @@ batch_1 (1-40):
 - i18n_report_intro
 - i18n_report_load_error
 - i18n_report_no_data
-- messages_channel_discord
-- messages_channel_telegram
 - my_account_channel_discord
 - my_account_channel_telegram
 - nav_automation
@@ -371,8 +353,6 @@ batch_1 (1-40):
 - i18n_report_intro
 - i18n_report_load_error
 - i18n_report_no_data
-- messages_channel_discord
-- messages_channel_telegram
 - my_account_channel_discord
 - my_account_channel_telegram
 - nav_automation

@@ -5,7 +5,8 @@
 
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
+    <div class="w-full max-w-md jg-login-shell">
+        <div id="login-lang-slot" class="jg-login-lang-slot mb-4"></div>
 
         {{/* Logo */}}
         <div class="text-center mb-8">
@@ -78,4 +79,20 @@
         {{ end }}
     </div>
 </div>
+{{ end }}
+
+{{ define "scripts" }}
+<script nonce="{{ .ScriptNonce }}">
+    document.addEventListener('DOMContentLoaded', () => {
+        const slot = document.getElementById('login-lang-slot');
+        const langSwitcher = document.getElementById('lang-switcher');
+        if (!slot || !langSwitcher) {
+            return;
+        }
+
+        langSwitcher.classList.remove('jg-lang-switcher-floating', 'jg-lang-switcher-sidebar');
+        langSwitcher.classList.add('jg-lang-switcher-inline');
+        slot.appendChild(langSwitcher);
+    });
+</script>
 {{ end }}
