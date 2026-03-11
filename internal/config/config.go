@@ -86,13 +86,10 @@ type JellyfinConfig struct {
 	APIKey string // Clé API d'administration
 }
 
-// ThirdPartyConfig contient les paramètres optionnels pour Jellyseerr/Ombi.
+// ThirdPartyConfig contient les paramètres optionnels pour Jellyseerr.
 type ThirdPartyConfig struct {
 	JellyseerrURL    string
 	JellyseerrAPIKey string
-	OmbiURL          string
-	OmbiAPIKey       string
-	JellyTulliURL    string
 }
 
 // DatabaseConfig contient la configuration de la base SQL principale.
@@ -654,10 +651,10 @@ func legacyEmailTemplates() EmailTemplatesConfig {
 		ExpiryAdjusted: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Expiration mise a jour</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>La date d'expiration de ton acces a ete mise a jour.</p>
+<p>La date d'expiration de ton acces Jellyfin a ete mise a jour.</p>
 <p>Nouvelle date: <strong>{{.ExpiryDate}}</strong></p>
 `),
-		ExpiryAdjustedSubject: `Expiration ajustee - JellyGate`,
+		ExpiryAdjustedSubject: `Expiration de l'acces Jellyfin ajustee`,
 		Welcome: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Bienvenue {{.Username}}</h2>
 <p>Ton compte JellyGate est pret.</p>
@@ -731,7 +728,7 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 		ExpiryReminder: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel d'expiration</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>Ton acces Jellyfin expirera prochainement.</p>
+<p>Ton compte expirera prochainement.</p>
 <p>Date previsionnelle: <strong>{{.ExpiryDate}}</strong></p>
 `),
 		ExpiryReminderSubject:       `Rappel d'expiration de l'acces Jellyfin`,
@@ -941,7 +938,6 @@ type PortalLinksConfig struct {
 	JellyGateURL  string `json:"jellygate_url"`
 	JellyfinURL   string `json:"jellyfin_url"`
 	JellyseerrURL string `json:"jellyseerr_url"`
-	JellyTulliURL string `json:"jellytulli_url"`
 }
 
 // DefaultPortalLinks retourne une configuration de liens vide.
@@ -1047,9 +1043,6 @@ func Load() (*Config, error) {
 		ThirdParty: ThirdPartyConfig{
 			JellyseerrURL:    strings.TrimSpace(getEnv("JELLYSEERR_URL", "")),
 			JellyseerrAPIKey: strings.TrimSpace(getEnv("JELLYSEERR_API_KEY", "")),
-			OmbiURL:          strings.TrimSpace(getEnv("OMBI_URL", "")),
-			OmbiAPIKey:       strings.TrimSpace(getEnv("OMBI_API_KEY", "")),
-			JellyTulliURL:    strings.TrimSpace(getEnv("JELLYTULLI_URL", "")),
 		},
 	}
 

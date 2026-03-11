@@ -106,7 +106,7 @@ web/
 - presets Jellyfin
 - mappings groupes LDAP / groupes fonctionnels
 - tâches planifiées
-- provisioning Jellyseerr / Ombi optionnel
+- provisioning Jellyseerr optionnel
 
 ### 4.6 Modeles e-mail
 

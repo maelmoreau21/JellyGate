@@ -122,7 +122,6 @@ func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
 	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
-	cfg.JellyTulliURL = strings.TrimSpace(cfg.JellyTulliURL)
 
 	return cfg, nil
 }
@@ -132,7 +131,6 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
 	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
-	cfg.JellyTulliURL = strings.TrimSpace(cfg.JellyTulliURL)
 
 	data, err := json.Marshal(cfg)
 	if err != nil {

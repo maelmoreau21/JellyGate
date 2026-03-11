@@ -234,7 +234,6 @@
     "settings_email_var_jellyfin_url":  "Jellyfin login URL",
     "settings_email_var_jellygate_url":  "public JellyGate URL",
     "settings_email_var_jellyseerr_url":  "Jellyseerr URL",
-    "settings_email_var_jellytulli_url":  "JellyTulli URL",
     "settings_email_var_message":  "custom message (admin invitation)",
     "settings_email_var_reset_code":  "reset code",
     "settings_email_var_reset_link":  "reset link",

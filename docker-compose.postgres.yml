@@ -32,9 +32,7 @@ services:
       # Integrations optionnelles
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
-      - OMBI_URL=${OMBI_URL:-}
-      - OMBI_API_KEY=${OMBI_API_KEY:-}
-      - JELLYTULLI_URL=${JELLYTULLI_URL:-}
+
     depends_on:
       postgres:
         condition: service_healthy

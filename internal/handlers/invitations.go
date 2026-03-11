@@ -1,15 +1,15 @@
-// Package handlers — invitations.go
+﻿// Package handlers â€” invitations.go
 //
-// Gère le système d'invitations de JellyGate.
-// La route POST /invite/{code} implémente un flux de création atomique :
+// GÃ¨re le systÃ¨me d'invitations de JellyGate.
+// La route POST /invite/{code} implÃ©mente un flux de crÃ©ation atomique :
 //
 //  1. Validation SQLite (code, expiration, quota)
-//  2. Création LDAP (Active Directory)
-//  3. Création Jellyfin + application du profil
-//     → Rollback LDAP si échec
-//  4. Enregistrement SQLite (user + incrément used_count)
-//     → Rollback Jellyfin + LDAP si échec
-//  5. Notifications (email + webhooks) — pas de rollback
+//  2. CrÃ©ation LDAP (Active Directory)
+//  3. CrÃ©ation Jellyfin + application du profil
+//     â†’ Rollback LDAP si Ã©chec
+//  4. Enregistrement SQLite (user + incrÃ©ment used_count)
+//     â†’ Rollback Jellyfin + LDAP si Ã©chec
+//  5. Notifications (email + webhooks) â€” pas de rollback
 package handlers
 
 import (
@@ -36,9 +36,9 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/render"
 )
 
-// ── Structures internes ─────────────────────────────────────────────────────
+// â”€â”€ Structures internes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// invitation représente une ligne de la table invitations.
+// invitation reprÃ©sente une ligne de la table invitations.
 type invitation struct {
 	ID              int64
 	Code            string
@@ -51,7 +51,7 @@ type invitation struct {
 	CreatedAt       time.Time
 }
 
-// inviteFormData contient les données soumises par le formulaire d'inscription.
+// inviteFormData contient les donnÃ©es soumises par le formulaire d'inscription.
 type inviteFormData struct {
 	Username string
 	Email    string
@@ -64,9 +64,9 @@ type inviteSignupResult struct {
 	LDAPOnlyMode bool
 }
 
-// ── Invitation Handler ──────────────────────────────────────────────────────
+// â”€â”€ Invitation Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// InvitationHandler gère les routes liées aux invitations.
+// InvitationHandler gÃ¨re les routes liÃ©es aux invitations.
 type InvitationHandler struct {
 	cfg         *config.Config
 	db          *database.DB
@@ -78,7 +78,7 @@ type InvitationHandler struct {
 	renderer    *render.Engine
 }
 
-// NewInvitationHandler crée un nouveau handler d'invitations.
+// NewInvitationHandler crÃ©e un nouveau handler d'invitations.
 func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, provisioner *integrations.Client, m *mail.Mailer, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
 	return &InvitationHandler{
 		cfg:         cfg,
@@ -92,13 +92,13 @@ func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Clie
 	}
 }
 
-// SetLDAPClient remplace le client LDAP (rechargement à chaud).
+// SetLDAPClient remplace le client LDAP (rechargement Ã  chaud).
 func (h *InvitationHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 
-// SetMailer remplace le mailer SMTP (rechargement à chaud).
+// SetMailer remplace le mailer SMTP (rechargement Ã  chaud).
 func (h *InvitationHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
-// SetNotifier remplace le notifier (rechargement à chaud).
+// SetNotifier remplace le notifier (rechargement Ã  chaud).
 func (h *InvitationHandler) SetNotifier(n *notify.Notifier) { h.notifier = n }
 
 func (h *InvitationHandler) tr(r *http.Request, key, fallback string) string {
@@ -125,17 +125,17 @@ func (h *InvitationHandler) logInviteAction(r *http.Request, action, actor, targ
 	_ = h.db.LogAction(action, actor, target, details)
 }
 
-// ── GET /invite/{code} ──────────────────────────────────────────────────────
+// â”€â”€ GET /invite/{code} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// InvitePage affiche le formulaire d'inscription pour un code d'invitation donné.
+// InvitePage affiche le formulaire d'inscription pour un code d'invitation donnÃ©.
 func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 
-	// Vérifier que l'invitation existe et est valide
+	// VÃ©rifier que l'invitation existe et est valide
 	inv, err := h.getValidInvitation(code)
 	if err != nil {
-		slog.Warn("Invitation invalide consultée", "code", code, "error", err)
-		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirée"), http.StatusNotFound)
+		slog.Warn("Invitation invalide consultÃ©e", "code", code, "error", err)
+		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirÃ©e"), http.StatusNotFound)
 		return
 	}
 
@@ -144,10 +144,9 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
-	td.Data["JellyTulliURL"] = links.JellyTulliURL
 	profile := jellyfin.InviteProfile{UsernameMinLength: 3, UsernameMaxLength: 32, PasswordMinLength: 8, PasswordMaxLength: 128, RequireEmail: true, RequireEmailVerification: true}
 
-	// Analyser le profil pour vérifier si un username est forcé (Flux B)
+	// Analyser le profil pour vÃ©rifier si un username est forcÃ© (Flux B)
 	if inv.JellyfinProfile != "" {
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &profile); err != nil {
 			slog.Warn("Profil Jellyfin invalide dans invitation page", "code", code, "error", err)
@@ -175,39 +174,39 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ── POST /invite/{code} — FLUX ATOMIQUE ─────────────────────────────────────
+// â”€â”€ POST /invite/{code} â€” FLUX ATOMIQUE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // InviteSubmit traite la soumission du formulaire d'inscription.
 //
 // Flux atomique avec rollback strict :
 //
-//	Étape 1 : Validation SQLite      → erreur = stop (rien à nettoyer)
-//	Étape 2 : Création LDAP          → erreur = stop (rien à nettoyer)
-//	Étape 3 : Création Jellyfin      → erreur = rollback LDAP
-//	Étape 4 : Enregistrement SQLite   → erreur = rollback Jellyfin + LDAP
-//	Étape 5 : Notifications           → erreur = log seulement (pas de rollback)
+//	Ã‰tape 1 : Validation SQLite      â†’ erreur = stop (rien Ã  nettoyer)
+//	Ã‰tape 2 : CrÃ©ation LDAP          â†’ erreur = stop (rien Ã  nettoyer)
+//	Ã‰tape 3 : CrÃ©ation Jellyfin      â†’ erreur = rollback LDAP
+//	Ã‰tape 4 : Enregistrement SQLite   â†’ erreur = rollback Jellyfin + LDAP
+//	Ã‰tape 5 : Notifications           â†’ erreur = log seulement (pas de rollback)
 func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 	remoteAddr := r.RemoteAddr
 
-	slog.Info("⚡ Début du flux d'inscription",
+	slog.Info("âš¡ DÃ©but du flux d'inscription",
 		"code", code,
 		"remote", remoteAddr,
 	)
 
-	// ── Parsing du formulaire ───────────────────────────────────────────
+	// â”€â”€ Parsing du formulaire â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	if err := r.ParseForm(); err != nil {
 		slog.Error("Erreur parsing formulaire inscription", "error", err)
-		http.Error(w, h.tr(r, "common_bad_request", "Requête invalide"), http.StatusBadRequest)
+		http.Error(w, h.tr(r, "common_bad_request", "RequÃªte invalide"), http.StatusBadRequest)
 		return
 	}
 
 	submittedUsername := strings.TrimSpace(r.FormValue("username"))
 
-	// ═══════════════════════════════════════════════════════════════════
-	// ÉTAPE 1 : Validation SQLite
-	// ═══════════════════════════════════════════════════════════════════
-	slog.Info("📋 Étape 1/5 : Validation de l'invitation", "code", code)
+	// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+	// Ã‰TAPE 1 : Validation SQLite
+	// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+	slog.Info("ðŸ“‹ Ã‰tape 1/5 : Validation de l'invitation", "code", code)
 
 	inv, err := h.getValidInvitation(code)
 	if err != nil {
@@ -217,11 +216,11 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			targetUsername = "unknown"
 		}
 		h.logInviteAction(r, "invite.validation.failed", targetUsername, code, err.Error())
-		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirée"), http.StatusForbidden)
+		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirÃ©e"), http.StatusForbidden)
 		return
 	}
 
-	// Décoder le profil Jellyfin de l'invitation (si défini)
+	// DÃ©coder le profil Jellyfin de l'invitation (si dÃ©fini)
 	profile := jellyfin.InviteProfile{RequireEmail: true, RequireEmailVerification: true}
 	if inv.JellyfinProfile != "" {
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &profile); err != nil {
@@ -230,7 +229,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	} else {
-		// Profil par défaut : accès à toutes les bibliothèques
+		// Profil par dÃ©faut : accÃ¨s Ã  toutes les bibliothÃ¨ques
 		profile = jellyfin.InviteProfile{
 			RequireEmail:             true,
 			RequireEmailVerification: true,
@@ -252,12 +251,12 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// ── JFA-Go Flux B (Forced Username) ─────────────────────────
+	// â”€â”€ JFA-Go Flux B (Forced Username) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 	if profile.ForcedUsername != "" {
-		slog.Debug("Flux JFA-Go (Forced Username) détecté", "forced", profile.ForcedUsername, "submitted", form.Username)
+		slog.Debug("Flux JFA-Go (Forced Username) dÃ©tectÃ©", "forced", profile.ForcedUsername, "submitted", form.Username)
 		form.Username = profile.ForcedUsername
 		if err := validateInviteUsername(form.Username, &profile); err != nil {
-			slog.Error("Nom d'utilisateur forcé invalide", "code", code, "forced_username", profile.ForcedUsername, "error", err)
+			slog.Error("Nom d'utilisateur forcÃ© invalide", "code", code, "forced_username", profile.ForcedUsername, "error", err)
 			http.Error(w, h.tr(r, "invite_error_config", "Erreur de configuration de l'invitation"), http.StatusInternalServerError)
 			return
 		}
@@ -270,18 +269,18 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	slog.Info("✅ Étape 1/5 terminée", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))
+	slog.Info("âœ… Ã‰tape 1/5 terminÃ©e", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))
 
 	if profile.RequireEmailVerification {
 		if err := h.createPendingInviteSignup(r, inv, form); err != nil {
-			slog.Error("Impossible de préparer la vérification email avant création", "username", form.Username, "email", form.Email, "error", err)
+			slog.Error("Impossible de prÃ©parer la vÃ©rification email avant crÃ©ation", "username", form.Username, "email", form.Email, "error", err)
 			h.logInviteAction(r, "invite.email_verification.failed", form.Username, code, err.Error())
 			statusCode := http.StatusInternalServerError
 			message := err.Error()
 			if strings.Contains(strings.ToLower(err.Error()), "smtp") {
 				statusCode = http.StatusServiceUnavailable
-				message = h.tr(r, "invite_error_email_verification_unavailable", "La vérification par email est activée, mais l'envoi d'emails n'est pas disponible actuellement.")
-			} else if strings.Contains(strings.ToLower(err.Error()), "déjà utilisé") {
+				message = h.tr(r, "invite_error_email_verification_unavailable", "La vÃ©rification par email est activÃ©e, mais l'envoi d'emails n'est pas disponible actuellement.")
+			} else if strings.Contains(strings.ToLower(err.Error()), "dÃ©jÃ  utilisÃ©") {
 				statusCode = http.StatusConflict
 			}
 			http.Error(w, message, statusCode)
@@ -293,7 +292,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			r,
 			inv,
 			strings.ReplaceAll(
-				h.tr(r, "invite_success_pending_verification", "Vérifiez maintenant votre email pour confirmer la création de votre compte {username}. Le compte sera créé uniquement après cette confirmation."),
+				h.tr(r, "invite_success_pending_verification", "VÃ©rifiez maintenant votre email pour confirmer la crÃ©ation de votre compte {username}. Le compte sera crÃ©Ã© uniquement aprÃ¨s cette confirmation."),
 				"{username}",
 				form.Username,
 			),
@@ -314,7 +313,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			r,
 			inv,
 			strings.ReplaceAll(
-				h.tr(r, "invite_success_ldap_only", "Bienvenue {username} ! Votre compte a été créé dans l'annuaire LDAP. L'accès Jellyfin utilisera votre integration LDAP."),
+				h.tr(r, "invite_success_ldap_only", "Bienvenue {username} ! Votre compte a Ã©tÃ© crÃ©Ã© dans l'annuaire LDAP. L'accÃ¨s Jellyfin utilisera votre integration LDAP."),
 				"{username}",
 				form.Username,
 			),
@@ -344,7 +343,6 @@ func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *ht
 	td.Data["AccountCreated"] = accountCreated
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
-	td.Data["JellyTulliURL"] = links.JellyTulliURL
 
 	if err := h.renderer.Render(w, "invite.html", td); err != nil {
 		slog.Error("Erreur rendu invite success page", "error", err)
@@ -352,9 +350,9 @@ func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *ht
 	}
 }
 
-// ── Méthodes internes ───────────────────────────────────────────────────────
+// â”€â”€ MÃ©thodes internes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// validateForm valide et extrait les données du formulaire d'inscription.
+// validateForm valide et extrait les donnÃ©es du formulaire d'inscription.
 func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.InviteProfile) (*inviteFormData, error) {
 	username := strings.TrimSpace(r.FormValue("username"))
 	email := strings.TrimSpace(r.FormValue("email"))
@@ -489,7 +487,7 @@ func validateInviteUsername(username string, profile *jellyfin.InviteProfile) er
 		return fmt.Errorf("le nom d'utilisateur est requis")
 	}
 	if len(username) < minLength || len(username) > maxLength {
-		return fmt.Errorf("le nom d'utilisateur doit faire entre %d et %d caractères", minLength, maxLength)
+		return fmt.Errorf("le nom d'utilisateur doit faire entre %d et %d caractÃ¨res", minLength, maxLength)
 	}
 
 	for _, c := range username {
@@ -508,10 +506,10 @@ func validateInvitePassword(password string, profile *jellyfin.InviteProfile) er
 	}
 
 	if len(password) < policy.MinLength {
-		return fmt.Errorf("le mot de passe doit faire au minimum %d caractères", policy.MinLength)
+		return fmt.Errorf("le mot de passe doit faire au minimum %d caractÃ¨res", policy.MinLength)
 	}
 	if len(password) > policy.MaxLength {
-		return fmt.Errorf("le mot de passe doit faire au maximum %d caractères", policy.MaxLength)
+		return fmt.Errorf("le mot de passe doit faire au maximum %d caractÃ¨res", policy.MaxLength)
 	}
 	if policy.RequireUpper && !strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
 		return fmt.Errorf("le mot de passe doit contenir au moins une lettre majuscule")
@@ -534,15 +532,15 @@ func validateInvitePassword(password string, profile *jellyfin.InviteProfile) er
 			}
 		}
 		if !hasSpecial {
-			return fmt.Errorf("le mot de passe doit contenir au moins un caractère spécial")
+			return fmt.Errorf("le mot de passe doit contenir au moins un caractÃ¨re spÃ©cial")
 		}
 	}
 
 	return nil
 }
 
-// getValidInvitation récupère et valide une invitation depuis SQLite.
-// Vérifie : existence, expiration, et quota d'utilisation.
+// getValidInvitation rÃ©cupÃ¨re et valide une invitation depuis SQLite.
+// VÃ©rifie : existence, expiration, et quota d'utilisation.
 func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error) {
 	if code == "" {
 		return nil, fmt.Errorf("code d'invitation vide")
@@ -575,12 +573,12 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 	inv.JellyfinProfile = jellyfinProfile.String
 	inv.CreatedBy = createdBy.String
 
-	// Vérifier l'expiration
+	// VÃ©rifier l'expiration
 	if inv.ExpiresAt.Valid && time.Now().After(inv.ExpiresAt.Time) {
-		return nil, fmt.Errorf("invitation %q expirée depuis %s", code, inv.ExpiresAt.Time.Format("02/01/2006 15:04"))
+		return nil, fmt.Errorf("invitation %q expirÃ©e depuis %s", code, inv.ExpiresAt.Time.Format("02/01/2006 15:04"))
 	}
 
-	// Vérifier le quota d'utilisation (0 = illimité)
+	// VÃ©rifier le quota d'utilisation (0 = illimitÃ©)
 	if inv.MaxUses > 0 && inv.UsedCount >= inv.MaxUses {
 		return nil, fmt.Errorf("invitation %q a atteint sa limite d'utilisation (%d/%d)", code, inv.UsedCount, inv.MaxUses)
 	}
@@ -596,10 +594,10 @@ func (h *InvitationHandler) ensureInviteUsernameAvailable(username string) error
 	var existingUserID int64
 	err := h.db.QueryRow(`SELECT id FROM users WHERE lower(username) = lower(?) LIMIT 1`, username).Scan(&existingUserID)
 	if err == nil {
-		return fmt.Errorf("ce nom d'utilisateur est déjà utilisé")
+		return fmt.Errorf("ce nom d'utilisateur est dÃ©jÃ  utilisÃ©")
 	}
 	if err != nil && err != sql.ErrNoRows {
-		return fmt.Errorf("impossible de vérifier la disponibilité du nom d'utilisateur: %w", err)
+		return fmt.Errorf("impossible de vÃ©rifier la disponibilitÃ© du nom d'utilisateur: %w", err)
 	}
 
 	return nil
@@ -622,40 +620,40 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 	var userDN string
 	if h.ldClient != nil {
-		slog.Info("🔐 Étape 2/5 : Création du compte LDAP", "username", form.Username)
+		slog.Info("ðŸ” Ã‰tape 2/5 : CrÃ©ation du compte LDAP", "username", form.Username)
 
 		createdDN, err := h.ldClient.CreateUser(form.Username, form.Username, form.Email, form.Password, ldapProvisionRole)
 		if err != nil {
-			slog.Error("❌ Étape 2/5 échouée : création LDAP", "username", form.Username, "error", err)
+			slog.Error("âŒ Ã‰tape 2/5 Ã©chouÃ©e : crÃ©ation LDAP", "username", form.Username, "error", err)
 			h.logInviteAction(r, "invite.ldap.failed", form.Username, inv.Code, err.Error())
-			return nil, fmt.Errorf("%s", h.tr(r, "invite_error_ldap_create", "Erreur lors de la création du compte (LDAP)"))
+			return nil, fmt.Errorf("%s", h.tr(r, "invite_error_ldap_create", "Erreur lors de la crÃ©ation du compte (LDAP)"))
 		}
 
 		userDN = createdDN
-		slog.Info("✅ Étape 2/5 terminée", "dn", userDN)
+		slog.Info("âœ… Ã‰tape 2/5 terminÃ©e", "dn", userDN)
 	} else {
-		slog.Info("⏭️ Étape 2/5 ignorée (LDAP désactivé)")
+		slog.Info("â­ï¸ Ã‰tape 2/5 ignorÃ©e (LDAP dÃ©sactivÃ©)")
 	}
 
 	var jellyfinID string
 	if createJellyfinUser {
-		slog.Info("🎬 Étape 3/5 : Création du compte Jellyfin", "username", form.Username)
+		slog.Info("ðŸŽ¬ Ã‰tape 3/5 : CrÃ©ation du compte Jellyfin", "username", form.Username)
 
 		jfUser, err := h.jfClient.CreateUser(form.Username, form.Password)
 		if err != nil {
-			slog.Error("❌ Étape 3/5 échouée : création Jellyfin", "username", form.Username, "error", err)
+			slog.Error("âŒ Ã‰tape 3/5 Ã©chouÃ©e : crÃ©ation Jellyfin", "username", form.Username, "error", err)
 			if h.ldClient != nil && userDN != "" {
-				slog.Warn("🔄 Rollback : suppression du compte LDAP", "dn", userDN)
+				slog.Warn("ðŸ”„ Rollback : suppression du compte LDAP", "dn", userDN)
 				if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-					slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise", "dn", userDN, "rollback_error", rbErr, "original_error", err)
+					slog.Error("âš ï¸ ROLLBACK LDAP Ã‰CHOUÃ‰ â€” intervention manuelle requise", "dn", userDN, "rollback_error", rbErr, "original_error", err)
 					h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
 				} else {
-					slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+					slog.Info("âœ… Rollback LDAP rÃ©ussi", "dn", userDN)
 				}
 			}
 
 			h.logInviteAction(r, "invite.jellyfin.failed", form.Username, inv.Code, err.Error())
-			return nil, fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_create", "Erreur lors de la création du compte (Jellyfin)"))
+			return nil, fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_create", "Erreur lors de la crÃ©ation du compte (Jellyfin)"))
 		}
 
 		jellyfinID = jfUser.ID
@@ -670,31 +668,31 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 			h.logInviteAction(r, "invite.group_mapping.failed", form.Username, jfUser.ID, err.Error())
 		}
 
-		slog.Info("✅ Étape 3/5 terminée", "jellyfin_id", jfUser.ID)
+		slog.Info("âœ… Ã‰tape 3/5 terminÃ©e", "jellyfin_id", jfUser.ID)
 	} else {
-		slog.Info("⏭️ Étape 3/5 ignorée (mode LDAP-only)", "username", form.Username)
+		slog.Info("â­ï¸ Ã‰tape 3/5 ignorÃ©e (mode LDAP-only)", "username", form.Username)
 	}
 
-	slog.Info("💾 Étape 4/5 : Enregistrement SQLite", "username", form.Username)
+	slog.Info("ðŸ’¾ Ã‰tape 4/5 : Enregistrement SQLite", "username", form.Username)
 	if err := h.registerUser(form, inv, jellyfinID, userDN, ldapProvisionRole, emailVerified); err != nil {
-		slog.Error("❌ Étape 4/5 échouée : enregistrement SQLite", "username", form.Username, "error", err)
-		slog.Warn("🔄 Rollback : suppression Jellyfin + LDAP")
+		slog.Error("âŒ Ã‰tape 4/5 Ã©chouÃ©e : enregistrement SQLite", "username", form.Username, "error", err)
+		slog.Warn("ðŸ”„ Rollback : suppression Jellyfin + LDAP")
 
 		if createJellyfinUser && strings.TrimSpace(jellyfinID) != "" {
 			if rbErr := h.jfClient.DeleteUser(jellyfinID); rbErr != nil {
-				slog.Error("⚠️ ROLLBACK JELLYFIN ÉCHOUÉ — intervention manuelle requise", "jellyfin_id", jellyfinID, "rollback_error", rbErr)
+				slog.Error("âš ï¸ ROLLBACK JELLYFIN Ã‰CHOUÃ‰ â€” intervention manuelle requise", "jellyfin_id", jellyfinID, "rollback_error", rbErr)
 				h.logInviteAction(r, "invite.rollback.jellyfin.failed", form.Username, jellyfinID, rbErr.Error())
 			} else {
-				slog.Info("✅ Rollback Jellyfin réussi", "id", jellyfinID)
+				slog.Info("âœ… Rollback Jellyfin rÃ©ussi", "id", jellyfinID)
 			}
 		}
 
 		if h.ldClient != nil && userDN != "" {
 			if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-				slog.Error("⚠️ ROLLBACK LDAP ÉCHOUÉ — intervention manuelle requise", "dn", userDN, "rollback_error", rbErr)
+				slog.Error("âš ï¸ ROLLBACK LDAP Ã‰CHOUÃ‰ â€” intervention manuelle requise", "dn", userDN, "rollback_error", rbErr)
 				h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
 			} else {
-				slog.Info("✅ Rollback LDAP réussi", "dn", userDN)
+				slog.Info("âœ… Rollback LDAP rÃ©ussi", "dn", userDN)
 			}
 		}
 
@@ -702,8 +700,8 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		return nil, fmt.Errorf("%s", h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte"))
 	}
 
-	slog.Info("✅ Étape 4/5 terminée", "username", form.Username)
-	slog.Info("📨 Étape 5/5 : Notifications", "username", form.Username)
+	slog.Info("âœ… Ã‰tape 4/5 terminÃ©e", "username", form.Username)
+	slog.Info("ðŸ“¨ Ã‰tape 5/5 : Notifications", "username", form.Username)
 
 	h.notifier.NotifyUserRegistered(notify.UserRegisteredEvent{
 		Username:    form.Username,
@@ -753,7 +751,6 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 				"JellyGateURL":  publicBaseURL,
 				"JellyfinURL":   links.JellyfinURL,
 				"JellyseerrURL": links.JellyseerrURL,
-				"JellyTulliURL": links.JellyTulliURL,
 			}
 
 			subject := firstNonEmpty(append(subjectCandidates, defaults.WelcomeSubject)...)
@@ -766,7 +763,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 	if h.provisioner != nil && h.provisioner.IsEnabled() {
 		if err := h.provisioner.ProvisionUser(form.Username, form.Password, form.Email); err != nil {
-			slog.Warn("Provisioning compte tiers échoué", "username", form.Username, "error", err)
+			slog.Warn("Provisioning compte tiers Ã©chouÃ©", "username", form.Username, "error", err)
 			h.logInviteAction(r, "invite.integration.failed", form.Username, inv.Code, err.Error())
 		} else {
 			h.logInviteAction(r, "invite.integration.provisioned", form.Username, inv.Code, "Jellyseerr/Ombi")
@@ -781,7 +778,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 			map[bool]string{true: "ldap_only", false: "hybrid"}[ldapOnlyMode],
 		))
 
-	slog.Info("🎉 Inscription terminée avec succès", "username", form.Username, "jellyfin_id", jellyfinID, "ldap_dn", userDN, "invitation", inv.Code)
+	slog.Info("ðŸŽ‰ Inscription terminÃ©e avec succÃ¨s", "username", form.Username, "jellyfin_id", jellyfinID, "ldap_dn", userDN, "invitation", inv.Code)
 
 	return &inviteSignupResult{
 		JellyfinID:   jellyfinID,
@@ -790,16 +787,16 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}, nil
 }
 
-// registerUser insère l'utilisateur dans SQLite et incrémente le compteur
-// d'utilisation de l'invitation. Les deux opérations sont dans une transaction.
+// registerUser insÃ¨re l'utilisateur dans SQLite et incrÃ©mente le compteur
+// d'utilisation de l'invitation. Les deux opÃ©rations sont dans une transaction.
 func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, jellyfinID, ldapDN, ldapRole string, emailVerified bool) error {
 	tx, err := h.db.Begin()
 	if err != nil {
-		return fmt.Errorf("impossible de démarrer la transaction: %w", err)
+		return fmt.Errorf("impossible de dÃ©marrer la transaction: %w", err)
 	}
-	defer tx.Rollback() // No-op si Commit() a été appelé
+	defer tx.Rollback() // No-op si Commit() a Ã©tÃ© appelÃ©
 
-	// Parsing du profil JSON pour récupérer les politiques d'expiration et groupe.
+	// Parsing du profil JSON pour rÃ©cupÃ©rer les politiques d'expiration et groupe.
 	var disableAfterDays int
 	var absoluteUserExpiryAt time.Time
 	expiryAction := "disable"
@@ -855,7 +852,7 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
 	)
 	if err != nil {
-		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)
+		return fmt.Errorf("impossible d'insÃ©rer l'utilisateur %q: %w", form.Username, err)
 	}
 
 	// INCREMENT du compteur d'utilisation
@@ -864,12 +861,12 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		inv.ID,
 	)
 	if err != nil {
-		return fmt.Errorf("impossible d'incrémenter le compteur de l'invitation %d: %w", inv.ID, err)
+		return fmt.Errorf("impossible d'incrÃ©menter le compteur de l'invitation %d: %w", inv.ID, err)
 	}
 
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("invitation %d non trouvée lors de l'incrémentation", inv.ID)
+		return fmt.Errorf("invitation %d non trouvÃ©e lors de l'incrÃ©mentation", inv.ID)
 	}
 
 	// Commit de la transaction
@@ -877,7 +874,7 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		return fmt.Errorf("impossible de valider la transaction: %w", err)
 	}
 
-	slog.Info("Utilisateur enregistré dans SQLite",
+	slog.Info("Utilisateur enregistrÃ© dans SQLite",
 		"username", form.Username,
 		"jellyfin_id", jellyfinID,
 		"ldap_dn", ldapDN,

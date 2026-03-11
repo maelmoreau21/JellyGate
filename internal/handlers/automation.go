@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"database/sql"
@@ -125,7 +125,7 @@ func (h *AutomationHandler) SaveGroupMappings(w http.ResponseWriter, r *http.Req
 			continue
 		}
 		if _, ok := presetIndex[mappings[i].PolicyPresetID]; !ok {
-			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Un mapping référence un preset introuvable"})
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Un mapping rÃ©fÃ©rence un preset introuvable"})
 			return
 		}
 	}

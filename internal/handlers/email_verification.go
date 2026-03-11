@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"database/sql"
@@ -60,7 +60,7 @@ func defaultEmailVerificationTemplate() string {
 <p>Please confirm your email address to finish securing your Jellyfin access.</p>
 <p style="margin:20px 0;"><a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verify my email</a></p>
 <p style="font-size:13px;color:#475569;">Verification link: {{.VerificationURL}}</p>
-<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expires in {{.ExpiresIn}}</p>`
+<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> Â· Expires in {{.ExpiresIn}}</p>`
 }
 
 func defaultEmailVerificationSubject() string {
@@ -121,7 +121,7 @@ func canResendVerification(target *emailVerificationTarget) (bool, time.Duration
 
 func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *mail.Mailer, username, address, token string) error {
 	if mailer == nil {
-		return fmt.Errorf("SMTP non configuré")
+		return fmt.Errorf("SMTP non configurÃ©")
 	}
 
 	links := resolvePortalLinks(cfg, db)
@@ -143,7 +143,6 @@ func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *
 		"JellyGateURL":     publicBaseURL,
 		"JellyfinURL":      links.JellyfinURL,
 		"JellyseerrURL":    links.JellyseerrURL,
-		"JellyTulliURL":    links.JellyTulliURL,
 	}
 
 	templateBody := defaultEmailVerificationTemplate()
@@ -168,7 +167,7 @@ func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *
 
 func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mailer, userID int64, force bool) error {
 	if mailer == nil {
-		return fmt.Errorf("SMTP non configuré")
+		return fmt.Errorf("SMTP non configurÃ©")
 	}
 
 	target, err := loadEmailVerificationTarget(db, userID)
@@ -178,10 +177,10 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 
 	address := effectiveVerificationEmail(target)
 	if address == "" {
-		return fmt.Errorf("aucune adresse email à vérifier")
+		return fmt.Errorf("aucune adresse email Ã  vÃ©rifier")
 	}
 	if !requiresEmailVerification(target) {
-		return fmt.Errorf("adresse email déjà vérifiée")
+		return fmt.Errorf("adresse email dÃ©jÃ  vÃ©rifiÃ©e")
 	}
 	if !force {
 		if ok, remaining := canResendVerification(target); !ok {
@@ -195,7 +194,7 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 
 	token, err := generateSecureToken(emailVerificationTokenLength)
 	if err != nil {
-		return fmt.Errorf("génération du token: %w", err)
+		return fmt.Errorf("gÃ©nÃ©ration du token: %w", err)
 	}
 
 	now := time.Now()
@@ -211,7 +210,7 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 		userID,
 		address,
 	); err != nil {
-		return fmt.Errorf("désactivation anciens tokens: %w", err)
+		return fmt.Errorf("dÃ©sactivation anciens tokens: %w", err)
 	}
 
 	if _, err := tx.Exec(
@@ -222,7 +221,7 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 		token,
 		expiresAt.Format("2006-01-02 15:04:05"),
 	); err != nil {
-		return fmt.Errorf("création token verification: %w", err)
+		return fmt.Errorf("crÃ©ation token verification: %w", err)
 	}
 
 	if _, err := tx.Exec(
@@ -230,7 +229,7 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 		now.Format("2006-01-02 15:04:05"),
 		userID,
 	); err != nil {
-		return fmt.Errorf("mise à jour envoi verification: %w", err)
+		return fmt.Errorf("mise Ã  jour envoi verification: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -278,10 +277,10 @@ func consumeEmailVerification(db *database.DB, code string) (*emailVerificationT
 		return nil, "invalid", fmt.Errorf("lecture token: %w", err)
 	}
 	if record.Used {
-		return nil, "used", fmt.Errorf("token déjà utilisé")
+		return nil, "used", fmt.Errorf("token dÃ©jÃ  utilisÃ©")
 	}
 	if time.Now().After(record.ExpiresAt) {
-		return nil, "expired", fmt.Errorf("token expiré")
+		return nil, "expired", fmt.Errorf("token expirÃ©")
 	}
 
 	target, err := loadEmailVerificationTarget(db, record.UserID)
@@ -292,7 +291,7 @@ func consumeEmailVerification(db *database.DB, code string) (*emailVerificationT
 	resolvedPending := strings.EqualFold(strings.TrimSpace(target.PendingEmail), strings.TrimSpace(record.Email))
 	resolvedCurrent := strings.EqualFold(strings.TrimSpace(target.Email), strings.TrimSpace(record.Email))
 	if !resolvedPending && !resolvedCurrent {
-		return nil, "obsolete", fmt.Errorf("token obsolète")
+		return nil, "obsolete", fmt.Errorf("token obsolÃ¨te")
 	}
 
 	tx, err := db.Begin()
@@ -353,7 +352,6 @@ func renderEmailVerificationPage(r *http.Request, w http.ResponseWriter, rendere
 	td.Data["LoginLabel"] = loginLabel
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
-	td.Data["JellyTulliURL"] = links.JellyTulliURL
 	w.WriteHeader(statusCode)
 	if err := renderer.Render(w, "verify_email.html", td); err != nil {
 		http.Error(w, message, statusCode)
@@ -369,7 +367,7 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 
 	_, status, err := consumeEmailVerification(h.db, code)
 	if err != nil {
-		slog.Warn("Verification email échouée", "code", code, "status", status, "error", err)
+		slog.Warn("Verification email Ã©chouÃ©e", "code", code, "status", status, "error", err)
 		switch status {
 		case "expired":
 			statusCode = http.StatusGone
@@ -407,7 +405,7 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ResendMyEmailVerification(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if err := h.ensureUserRowForSession(sess); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de préparer le profil utilisateur"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de prÃ©parer le profil utilisateur"})
 		return
 	}
 

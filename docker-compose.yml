@@ -34,9 +34,7 @@ services:
       # ── Intégrations portail optionnelles (liens/fallback) ──────────
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
-      - OMBI_URL=${OMBI_URL:-}
-      - OMBI_API_KEY=${OMBI_API_KEY:-}
-      - JELLYTULLI_URL=${JELLYTULLI_URL:-}
+
 
     depends_on:
       - postgres

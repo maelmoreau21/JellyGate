@@ -14,7 +14,7 @@ name: Docker Publish
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     tags: ['v*.*.*']
   # Permet de lancer manuellement
   workflow_dispatch:
@@ -61,6 +61,8 @@ jobs:
           tags: |
             # Push sur main → latest
             type=raw,value=latest,enable={{is_default_branch}}
+            # Push sur develop → unstable
+            type=raw,value=unstable,enable=${{ github.ref == 'refs/heads/develop' }}
             # Tag vX.Y.Z → vX.Y.Z
             type=semver,pattern={{version}}
 

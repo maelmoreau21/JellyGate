@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"errors"
@@ -42,7 +42,7 @@ func (h *BackupHandler) CreateBackup(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Échec de création de la sauvegarde"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Ã‰chec de crÃ©ation de la sauvegarde"})
 		return
 	}
 
@@ -51,7 +51,7 @@ func (h *BackupHandler) CreateBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.db.LogAction("backup.manual.created", sess.Username, info.Name, "")
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde créée", Data: info})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde crÃ©Ã©e", Data: info})
 }
 
 func (h *BackupHandler) DownloadBackup(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +111,7 @@ func (h *BackupHandler) ImportBackup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.db.LogAction("backup.imported", sess.Username, info.Name, "")
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde importée", Data: info})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde importÃ©e", Data: info})
 }
 
 func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
@@ -134,7 +134,7 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 	_ = h.db.LogAction("backup.restore.prepared", sess.Username, name, time.Now().Format(time.RFC3339))
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Restauration préparée. Redémarre JellyGate pour appliquer la sauvegarde.",
+		Message: "Restauration prÃ©parÃ©e. RedÃ©marre JellyGate pour appliquer la sauvegarde.",
 		Data: map[string]interface{}{
 			"restart_required": true,
 			"backup":           name,
@@ -150,5 +150,5 @@ func (h *BackupHandler) DeleteBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.db.LogAction("backup.deleted", sess.Username, name, "")
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde supprimée"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde supprimÃ©e"})
 }

@@ -34,11 +34,10 @@ func (c *Client) IsEnabled() bool {
 		return false
 	}
 	jellyseerr := strings.TrimSpace(c.cfg.JellyseerrURL) != "" && strings.TrimSpace(c.cfg.JellyseerrAPIKey) != ""
-	ombi := strings.TrimSpace(c.cfg.OmbiURL) != "" && strings.TrimSpace(c.cfg.OmbiAPIKey) != ""
-	return jellyseerr || ombi
+	return jellyseerr
 }
 
-// ProvisionUser crée un utilisateur dans Jellyseerr et/ou Ombi selon la configuration active.
+// ProvisionUser crée un utilisateur dans Jellyseerr selon la configuration active.
 func (c *Client) ProvisionUser(username, password, email string) error {
 	if c == nil || !c.IsEnabled() {
 		return nil
@@ -48,12 +47,6 @@ func (c *Client) ProvisionUser(username, password, email string) error {
 	if strings.TrimSpace(c.cfg.JellyseerrURL) != "" && strings.TrimSpace(c.cfg.JellyseerrAPIKey) != "" {
 		if err := c.createJellyseerrUser(username, password, email); err != nil {
 			errs = append(errs, "jellyseerr: "+err.Error())
-		}
-	}
-
-	if strings.TrimSpace(c.cfg.OmbiURL) != "" && strings.TrimSpace(c.cfg.OmbiAPIKey) != "" {
-		if err := c.createOmbiUser(username, password, email); err != nil {
-			errs = append(errs, "ombi: "+err.Error())
 		}
 	}
 
@@ -91,32 +84,7 @@ func (c *Client) createJellyseerrUser(username, password, email string) error {
 	)
 }
 
-func (c *Client) createOmbiUser(username, password, email string) error {
-	baseURL := strings.TrimRight(strings.TrimSpace(c.cfg.OmbiURL), "/")
-	if baseURL == "" {
-		return nil
-	}
 
-	mail := strings.TrimSpace(email)
-	if mail == "" {
-		mail = username + "@local.invalid"
-	}
-
-	payload := map[string]interface{}{
-		"userName":        username,
-		"password":        password,
-		"confirmPassword": password,
-		"emailAddress":    mail,
-	}
-
-	return c.doJSONRequest(
-		http.MethodPost,
-		baseURL+"/api/v1/Identity/LocalUser",
-		"ApiKey",
-		c.cfg.OmbiAPIKey,
-		payload,
-	)
-}
 
 func (c *Client) doJSONRequest(method, url, authHeader, authValue string, payload interface{}) error {
 	body, err := json.Marshal(payload)

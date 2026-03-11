@@ -1,16 +1,16 @@
-// Package handlers — settings.go
+﻿// Package handlers â€” settings.go
 //
-// API REST pour la gestion des paramètres stockés en base (table settings).
-// Permet de lire et sauvegarder la configuration générale, LDAP, SMTP et Webhooks
+// API REST pour la gestion des paramÃ¨tres stockÃ©s en base (table settings).
+// Permet de lire et sauvegarder la configuration gÃ©nÃ©rale, LDAP, SMTP et Webhooks
 // depuis l'interface d'administration.
 //
 // Routes :
-//   - GET  /admin/api/settings          → Récupérer toute la configuration
-//   - POST /admin/api/settings/general  → Sauvegarder les paramètres généraux (langue)
-//   - POST /admin/api/settings/ldap     → Sauvegarder la config LDAP
-//   - POST /admin/api/settings/smtp     → Sauvegarder la config SMTP
-//   - POST /admin/api/settings/webhooks → Sauvegarder la config Webhooks
-//   - POST /admin/api/settings/backup    → Sauvegarder la config de sauvegarde planifiée
+//   - GET  /admin/api/settings          â†’ RÃ©cupÃ©rer toute la configuration
+//   - POST /admin/api/settings/general  â†’ Sauvegarder les paramÃ¨tres gÃ©nÃ©raux (langue)
+//   - POST /admin/api/settings/ldap     â†’ Sauvegarder la config LDAP
+//   - POST /admin/api/settings/smtp     â†’ Sauvegarder la config SMTP
+//   - POST /admin/api/settings/webhooks â†’ Sauvegarder la config Webhooks
+//   - POST /admin/api/settings/backup    â†’ Sauvegarder la config de sauvegarde planifiÃ©e
 package handlers
 
 import (
@@ -30,21 +30,21 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
-// ── SettingsHandler ─────────────────────────────────────────────────────────
+// â”€â”€ SettingsHandler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// SettingsHandler gère les routes de configuration.
+// SettingsHandler gÃ¨re les routes de configuration.
 type SettingsHandler struct {
 	db          *database.DB
 	jellyfinURL string
 
-	// Callbacks de rechargement — appelés après sauvegarde pour
-	// réinitialiser les clients à chaud sans redémarrer le conteneur.
+	// Callbacks de rechargement â€” appelÃ©s aprÃ¨s sauvegarde pour
+	// rÃ©initialiser les clients Ã  chaud sans redÃ©marrer le conteneur.
 	OnLDAPReload     func(config.LDAPConfig)
 	OnSMTPReload     func(config.SMTPConfig)
 	OnWebhooksReload func(config.WebhooksConfig)
 }
 
-// NewSettingsHandler crée un nouveau handler de paramètres.
+// NewSettingsHandler crÃ©e un nouveau handler de paramÃ¨tres.
 func NewSettingsHandler(db *database.DB, jellyfinURL string) *SettingsHandler {
 	return &SettingsHandler{db: db, jellyfinURL: strings.TrimSpace(jellyfinURL)}
 }
@@ -69,7 +69,7 @@ type jellyfinLDAPAuthTestInput struct {
 }
 
 func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
-	if input.BindPassword == "••••••••" || input.BindPassword == "" {
+	if input.BindPassword == "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" || input.BindPassword == "" {
 		existing, _ := h.db.GetLDAPConfig()
 		input.BindPassword = existing.BindPassword
 	}
@@ -206,7 +206,7 @@ func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-// TestJellyfinLDAPAuth vérifie que l'authentification LDAP via le plugin Jellyfin fonctionne.
+// TestJellyfinLDAPAuth vÃ©rifie que l'authentification LDAP via le plugin Jellyfin fonctionne.
 func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
@@ -288,7 +288,7 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// ── Structures de réponse ───────────────────────────────────────────────────
+// â”€â”€ Structures de rÃ©ponse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
@@ -312,7 +312,6 @@ type generalInput struct {
 	DefaultLang   string `json:"default_lang"`
 	JellyfinURL   string `json:"jellyfin_url"`
 	JellyseerrURL string `json:"jellyseerr_url"`
-	JellyTulliURL string `json:"jellytulli_url"`
 }
 
 func normalizeEmailTemplateBodies(cfg *config.EmailTemplatesConfig) {
@@ -353,9 +352,9 @@ func trimEmailTemplateSubjects(cfg *config.EmailTemplatesConfig) {
 	cfg.WelcomeSubject = strings.TrimSpace(cfg.WelcomeSubject)
 }
 
-// ── GET /admin/api/settings ─────────────────────────────────────────────────
+// â”€â”€ GET /admin/api/settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// GetAll retourne toute la configuration stockée en base.
+// GetAll retourne toute la configuration stockÃ©e en base.
 func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
@@ -423,14 +422,14 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Masquer le mot de passe LDAP et SMTP dans la réponse
+	// Masquer le mot de passe LDAP et SMTP dans la rÃ©ponse
 	maskedLDAP := ldapCfg
 	if maskedLDAP.BindPassword != "" {
-		maskedLDAP.BindPassword = "••••••••"
+		maskedLDAP.BindPassword = "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
 	}
 	maskedSMTP := smtpCfg
 	if maskedSMTP.Password != "" {
-		maskedSMTP.Password = "••••••••"
+		maskedSMTP.Password = "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
 	}
 
 	emailTemplatesCfg, err := h.db.GetEmailTemplatesConfig()
@@ -459,9 +458,9 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ── POST /admin/api/settings/general ────────────────────────────────────────
+// â”€â”€ POST /admin/api/settings/general â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// SaveGeneral sauvegarde les paramètres généraux (langue par défaut).
+// SaveGeneral sauvegarde les paramÃ¨tres gÃ©nÃ©raux (langue par dÃ©faut).
 func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
@@ -500,7 +499,6 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		JellyGateURL:  input.JellyGateURL,
 		JellyfinURL:   input.JellyfinURL,
 		JellyseerrURL: input.JellyseerrURL,
-		JellyTulliURL: input.JellyTulliURL,
 	}); err != nil {
 		slog.Error("Erreur sauvegarde portal_links", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
@@ -510,12 +508,12 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Langue par défaut mise à jour", "lang", input.DefaultLang)
+	slog.Info("Langue par dÃ©faut mise Ã  jour", "lang", input.DefaultLang)
 	_ = h.db.LogAction("settings.general.saved", "", "", "default_lang="+input.DefaultLang)
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Paramètres généraux sauvegardés",
+		Message: "ParamÃ¨tres gÃ©nÃ©raux sauvegardÃ©s",
 	})
 }
 
@@ -561,9 +559,6 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 	if strings.TrimSpace(links.JellyseerrURL) == "" {
 		links.JellyseerrURL = "https://jellyseerr.example.com"
 	}
-	if strings.TrimSpace(links.JellyTulliURL) == "" {
-		links.JellyTulliURL = "https://jellytulli.example.com"
-	}
 	sample := map[string]string{
 		"Username":         "demo.user",
 		"DisplayName":      "demo.user",
@@ -583,7 +578,6 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		"JellyGateURL":     links.JellyGateURL,
 		"JellyfinURL":      links.JellyfinURL,
 		"JellyseerrURL":    links.JellyseerrURL,
-		"JellyTulliURL":    links.JellyTulliURL,
 		"Message":          "Ton acces Jellyfin est pret. Utilise les liens ci-dessous.",
 	}
 	for k, v := range input.Context {
@@ -621,7 +615,7 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// ── POST /admin/api/settings/ldap ───────────────────────────────────────────
+// â”€â”€ POST /admin/api/settings/ldap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // SaveLDAP sauvegarde la configuration LDAP.
 func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
@@ -638,13 +632,13 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Si le mot de passe est masqué (pas changé), conserver l'ancien
-	if input.BindPassword == "••••••••" || input.BindPassword == "" {
+	// Si le mot de passe est masquÃ© (pas changÃ©), conserver l'ancien
+	if input.BindPassword == "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" || input.BindPassword == "" {
 		existing, _ := h.db.GetLDAPConfig()
 		input.BindPassword = existing.BindPassword
 	}
 
-	// Valeurs par défaut
+	// Valeurs par dÃ©faut
 	if input.Port == 0 {
 		input.Port = 636
 	}
@@ -701,13 +695,13 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Configuration LDAP sauvegardée",
+	slog.Info("Configuration LDAP sauvegardÃ©e",
 		"enabled", input.Enabled,
 		"host", input.Host,
 		"provision_mode", input.ProvisionMode,
 	)
 
-	// Rechargement à chaud
+	// Rechargement Ã  chaud
 	if h.OnLDAPReload != nil {
 		h.OnLDAPReload(input)
 	}
@@ -716,11 +710,11 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Configuration LDAP sauvegardée",
+		Message: "Configuration LDAP sauvegardÃ©e",
 	})
 }
 
-// ── POST /admin/api/settings/smtp ───────────────────────────────────────────
+// â”€â”€ POST /admin/api/settings/smtp â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // SaveSMTP sauvegarde la configuration SMTP.
 func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
@@ -737,13 +731,13 @@ func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Si le mot de passe est masqué, conserver l'ancien
-	if input.Password == "••••••••" || input.Password == "" {
+	// Si le mot de passe est masquÃ©, conserver l'ancien
+	if input.Password == "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" || input.Password == "" {
 		existing, _ := h.db.GetSMTPConfig()
 		input.Password = existing.Password
 	}
 
-	// Valeurs par défaut
+	// Valeurs par dÃ©faut
 	if input.Port == 0 {
 		input.Port = 587
 	}
@@ -757,9 +751,9 @@ func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Configuration SMTP sauvegardée", "host", input.Host)
+	slog.Info("Configuration SMTP sauvegardÃ©e", "host", input.Host)
 
-	// Rechargement à chaud
+	// Rechargement Ã  chaud
 	if h.OnSMTPReload != nil {
 		h.OnSMTPReload(input)
 	}
@@ -768,11 +762,11 @@ func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Configuration SMTP sauvegardée",
+		Message: "Configuration SMTP sauvegardÃ©e",
 	})
 }
 
-// ── POST /admin/api/settings/webhooks ───────────────────────────────────────
+// â”€â”€ POST /admin/api/settings/webhooks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // SaveWebhooks sauvegarde la configuration Webhooks.
 func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
@@ -798,9 +792,9 @@ func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Configuration Webhooks sauvegardée")
+	slog.Info("Configuration Webhooks sauvegardÃ©e")
 
-	// Rechargement à chaud
+	// Rechargement Ã  chaud
 	if h.OnWebhooksReload != nil {
 		h.OnWebhooksReload(input)
 	}
@@ -809,13 +803,13 @@ func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Configuration Webhooks sauvegardée",
+		Message: "Configuration Webhooks sauvegardÃ©e",
 	})
 }
 
-// ── POST /admin/api/settings/backup ────────────────────────────────────────
+// â”€â”€ POST /admin/api/settings/backup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// SaveBackup sauvegarde la configuration des sauvegardes planifiées.
+// SaveBackup sauvegarde la configuration des sauvegardes planifiÃ©es.
 func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
@@ -847,7 +841,7 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Politique produit: toujours conserver les 7 dernières sauvegardes.
+	// Politique produit: toujours conserver les 7 derniÃ¨res sauvegardes.
 	input.RetentionCount = 7
 
 	if err := h.db.SaveBackupConfig(input); err != nil {
@@ -860,12 +854,12 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.db.LogAction("settings.backup.saved", "", "", "")
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Configuration de sauvegarde sauvegardée"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Configuration de sauvegarde sauvegardÃ©e"})
 }
 
-// ── POST /admin/api/settings/email-templates ────────────────────────────────
+// â”€â”€ POST /admin/api/settings/email-templates â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// SaveEmailTemplates sauvegarde les modèles de courriels personnalisés.
+// SaveEmailTemplates sauvegarde les modÃ¨les de courriels personnalisÃ©s.
 func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
@@ -902,17 +896,17 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		slog.Error("Erreur sauvegarde config Email Templates", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur de sauvegarde des modèles",
+			Message: "Erreur de sauvegarde des modÃ¨les",
 		})
 		return
 	}
 
-	slog.Info("Configuration Email Templates sauvegardée")
+	slog.Info("Configuration Email Templates sauvegardÃ©e")
 	_ = h.db.LogAction("settings.email_templates.saved", "", "", "")
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Modèles d'emails sauvegardés avec succès",
+		Message: "ModÃ¨les d'emails sauvegardÃ©s avec succÃ¨s",
 	})
 }
 
@@ -943,6 +937,6 @@ func (h *SettingsHandler) SaveInvitationProfile(w http.ResponseWriter, r *http.R
 	_ = h.db.LogAction("settings.invitation_profile.saved", "", "", "")
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Profil d'invitation sauvegardé",
+		Message: "Profil d'invitation sauvegardÃ©",
 	})
 }
