@@ -78,6 +78,13 @@
     </nav>
 
     <div class="jg-sidebar-footer">
+        <button id="theme-toggle-btn" type="button" class="jg-nav-item w-full text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 mb-1" title="Theme">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <span class="jg-nav-label">{{ .T "nav_theme" }}</span>
+        </button>
+
         <form method="POST" action="/admin/logout">
             <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
