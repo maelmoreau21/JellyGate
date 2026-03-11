@@ -1,7 +1,7 @@
-�{{/* invite.html � Formulaire d'inscription via invitation */}}
+{{/* invite.html — Formulaire d'inscription via invitation */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "invite_title" }} � JellyGate{{ end }}
+{{ define "title" }}{{ .T "invite_title" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
@@ -56,7 +56,7 @@
                 {{ end }}
                 {{ if .Data.JellyTrackURL }}
                 <a href="{{ .Data.JellyTrackURL }}" class="jg-btn jg-btn-ghost w-full">
-                    {{ .T "invite_open_JellyTrack" }}
+                    {{ .T "invite_open_jellytrack" }}
                 </a>
                 {{ end }}
             </div>

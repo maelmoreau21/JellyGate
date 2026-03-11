@@ -1,4 +1,4 @@
-{{/* base.html � Layout principal JellyGate */}}
+{{/* base.html — Layout principal JellyGate */}}
 {{/* Inclut le design system dark, Tailwind compile localement, sidebar admin */}}
 <!DOCTYPE html>
 <html lang="{{ .Lang }}" class="dark">
@@ -15,7 +15,7 @@
     {{/* Tailwind CSS compilé localement */}}
     <link rel="stylesheet" href="/static/css/tailwind.generated.css">
 
-    {{/* Google Fonts � Sora */}}
+    {{/* Google Fonts — Sora */}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -45,7 +45,7 @@
 
     {{ block "body" . }}{{ end }}
 
-    {{/* Language selector � moved into admin sidebar footer by app.js when available */}}
+    {{/* Language selector — moved into admin sidebar footer by app.js when available */}}
     <div id="lang-switcher" class="jg-lang-switcher jg-lang-switcher-floating px-3 py-2">
         <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-600 dark:text-slate-300 block mb-1">{{ .T "base_language_label" }}</label>
         <select id="lang-select" class="jg-input jg-lang-select">
@@ -57,8 +57,8 @@
             <option value="nl" {{ if eq .Lang "nl" }}selected{{ end }}>nl - Nederlands</option>
             <option value="pl" {{ if eq .Lang "pl" }}selected{{ end }}>pl - Polski</option>
             <option value="pt-br" {{ if eq .Lang "pt-br" }}selected{{ end }}>pt-BR - Português (Brasil)</option>
-            <option value="ru" {{ if eq .Lang "ru" }}selected{{ end }}>ru - Рђсский</option>
-            <option value="zh" {{ if eq .Lang "zh" }}selected{{ end }}>zh - 中�!</option>
+            <option value="ru" {{ if eq .Lang "ru" }}selected{{ end }}>ru - Русский</option>
+            <option value="zh" {{ if eq .Lang "zh" }}selected{{ end }}>zh - 中文</option>
         </select>
         <p class="mt-2 text-[11px] text-slate-500">JellyGate v{{ .AppVersion }}</p>
     </div>

@@ -1,7 +1,7 @@
-�{{/* reset.html � Réinitialisation de mot de passe */}}
+{{/* reset.html — Réinitialisation de mot de passe */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "reset_title" }} � JellyGate{{ end }}
+{{ define "title" }}{{ .T "reset_title" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
@@ -19,7 +19,7 @@
         </div>
 
         {{ if .ShowNewPasswordForm }}
-        {{/* ���� Formulaire nouveau mot de passe ������������������������������������������������������������ */}}
+        {{/* ── Formulaire nouveau mot de passe ──────────────────────────── */}}
         <div class="glass-card p-8">
             <h1 class="text-xl font-bold text-center mb-2">{{ .T "reset_new_heading" }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">{{ .T "reset_new_subheading" }}</p>
@@ -45,7 +45,7 @@
         </div>
 
         {{ else }}
-        {{/* ���� Formulaire de demande �������������������������������������������������������������������������������� */}}
+        {{/* ── Formulaire de demande ───────────────────────────────────── */}}
         <div class="glass-card p-8">
             <h1 class="text-xl font-bold text-center mb-2">{{ .T "reset_request_heading" }}</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">{{ .T "reset_request_subheading" }}</p>
@@ -71,7 +71,7 @@
 
             <div class="text-center mt-4">
                 <a href="/admin/login" class="text-sm text-slate-500 dark:text-slate-400 hover:text-purple-400 transition-colors">
-                    � � {{ .T "back_to_login" }}
+                    ← {{ .T "back_to_login" }}
                 </a>
             </div>
         </div>
