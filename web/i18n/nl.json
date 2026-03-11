@@ -1,4 +1,4 @@
-{
+﻿{
     "app_description":  "Uitnodigings- en gebruikersbeheer voor Jellyfin",
     "invite_title":  "Registratie",
     "invite_heading":  "Maak je account aan",
@@ -7,7 +7,7 @@
     "invite_footer":  "Aangedreven door JellyGate",
     "invite_login_jellyfin":  "Aanmelden bij Jellyfin",
     "invite_open_jellyseerr":  "Jellyseerr openen",
-    "invite_open_jellytulli":  "JellyTulli openen",
+    "invite_open_jellytrack":  "jellytrack openen",
     "invite_quick_links":  "Snelle links",
     "invite_error_invalid_or_expired":  "Ongeldige of verlopen uitnodiging",
     "invite_error_config":  "Fout in de configuratie van de uitnodiging",
@@ -234,7 +234,7 @@
     "settings_email_var_jellyfin_url":  "Email Var Jellyfin Url",
     "settings_email_var_jellygate_url":  "Email Var Jellygate Url",
     "settings_email_var_jellyseerr_url":  "Email Var Jellyseerr Url",
-    "settings_email_var_jellytulli_url":  "Email Var Jellytulli Url",
+    "settings_email_var_jellytrack_url":  "Email Var jellytrack Url",
     "settings_email_var_message":  "Email Var Message",
     "settings_email_var_reset_code":  "Email Var Reset Code",
     "settings_email_var_reset_link":  "Email Var Reset Link",
@@ -312,7 +312,7 @@
     "settings_open_jellyfin":  "Jellyfin openen",
     "settings_open_jellygate_public":  "Publieke JellyGate openen",
     "settings_open_jellyseerr":  "Jellyseerr openen",
-    "settings_open_jellytulli":  "JellyTulli openen",
+    "settings_open_jellytrack":  "jellytrack openen",
     "settings_password_digit_required":  "Password Digit Required",
     "settings_password_lower_required":  "Password Lower Required",
     "settings_password_special_required":  "Password Special Required",
@@ -328,8 +328,8 @@
     "settings_public_jellygate_url":  "Publieke JellyGate-URL",
     "settings_public_jellyseerr_help":  "Public Jellyseerr Help",
     "settings_public_jellyseerr_url":  "Publieke Jellyseerr-URL",
-    "settings_public_jellytulli_help":  "Public Jellytulli Help",
-    "settings_public_jellytulli_url":  "Publieke JellyTulli-URL",
+    "settings_public_jellytrack_help":  "Public jellytrack Help",
+    "settings_public_jellytrack_url":  "Publieke jellytrack-URL",
     "settings_quick_links":  "Snelle links",
     "settings_overview_title":  "Servicecentrum",
     "settings_overview_desc":  "Schakel snel tussen standaardtaal, identiteit, verzendkanalen, sjablonen en herstel.",
@@ -446,7 +446,7 @@
     "common_previous":  "Vorige",
     "dashboard_kicker":  "Admin-overzicht",
     "dashboard_intro_title":  "Beheer JellyGate met vertrouwen",
-    "dashboard_intro_desc":  "Volg accounts, uitnodigingsactiviteit en serviceconfiguratie vanuit één plek.",
+    "dashboard_intro_desc":  "Volg accounts, uitnodigingsactiviteit en serviceconfiguratie vanuit Ã©Ã©n plek.",
     "dashboard_my_account_desc":  "Open je account om je e-mail, meldingsvoorkeuren en wachtwoord bij te werken.",
     "dashboard_my_account_title":  "Mijn account",
     "dashboard_no_users":  "Nog geen gebruikers",
@@ -707,7 +707,7 @@
     "users_reset_error":  "Reset error",
     "users_reset_sent":  "Link voor wachtwoordreset verzonden naar {username}",
     "users_select_filtered":  "Gefilterde selecteren",
-    "users_subheading_extended":  "Beheer lokale accounts, Jellyfin-synchronisatiestatus, uitnodigingsrechten en vervalregels vanuit één controlekamer.",
+    "users_subheading_extended":  "Beheer lokale accounts, Jellyfin-synchronisatiestatus, uitnodigingsrechten en vervalregels vanuit Ã©Ã©n controlekamer.",
     "users_sync_confirm":  "Sync confirm",
     "users_sync_done":  "Sync done",
     "users_sync_error":  "Sync error",
@@ -750,5 +750,5 @@
     "users_bulk_title":  "Bulkassistent",
     "users_bulk_desc":  "Selecteer gebruikers, kies een actie en valideer de verplichte parameters voor uitvoering.",
     "users_table_title":  "Accountlijst",
-    "users_table_desc":  "Controleer elk lokaal account en bewerk, reset, volg, activeer of verwijder het met één klik."
+    "users_table_desc":  "Controleer elk lokaal account en bewerk, reset, volg, activeer of verwijder het met Ã©Ã©n klik."
 }

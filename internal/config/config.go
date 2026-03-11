@@ -69,6 +69,8 @@ type Config struct {
 	BaseURL   string // URL de base publique
 	DataDir   string // Répertoire des données (SQLite, etc.)
 	SecretKey string // Clé secrète pour sessions/tokens (min 32 chars)
+	TLSCert   string // Chemin vers le certificat TLS
+	TLSKey    string // Chemin vers la clé privée TLS
 
 	// Base de donnees (sqlite ou postgres)
 	Database DatabaseConfig
@@ -86,10 +88,12 @@ type JellyfinConfig struct {
 	APIKey string // Clé API d'administration
 }
 
-// ThirdPartyConfig contient les paramètres optionnels pour Jellyseerr.
+// ThirdPartyConfig contient les paramètres optionnels pour Jellyseerr et JellyTrack.
 type ThirdPartyConfig struct {
 	JellyseerrURL    string
 	JellyseerrAPIKey string
+	JellyTrackURL    string
+	JellyTrackAPIKey string
 }
 
 // DatabaseConfig contient la configuration de la base SQL principale.
@@ -938,6 +942,7 @@ type PortalLinksConfig struct {
 	JellyGateURL  string `json:"jellygate_url"`
 	JellyfinURL   string `json:"jellyfin_url"`
 	JellyseerrURL string `json:"jellyseerr_url"`
+	JellyTrackURL string `json:"jellytrack_url"`
 }
 
 // DefaultPortalLinks retourne une configuration de liens vide.
@@ -1024,6 +1029,8 @@ func Load() (*Config, error) {
 		BaseURL:   getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
 		DataDir:   getEnv("JELLYGATE_DATA_DIR", "/data"),
 		SecretKey: getEnv("JELLYGATE_SECRET_KEY", ""),
+		TLSCert:   getEnv("JELLYGATE_TLS_CERT", ""),
+		TLSKey:    getEnv("JELLYGATE_TLS_KEY", ""),
 
 		Database: DatabaseConfig{
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", "sqlite"))),
@@ -1043,6 +1050,8 @@ func Load() (*Config, error) {
 		ThirdParty: ThirdPartyConfig{
 			JellyseerrURL:    strings.TrimSpace(getEnv("JELLYSEERR_URL", "")),
 			JellyseerrAPIKey: strings.TrimSpace(getEnv("JELLYSEERR_API_KEY", "")),
+			JellyTrackURL:    strings.TrimSpace(getEnv("JELLYTRACK_URL", "")),
+			JellyTrackAPIKey: strings.TrimSpace(getEnv("JELLYTRACK_API_KEY", "")),
 		},
 	}
 

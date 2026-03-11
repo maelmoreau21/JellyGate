@@ -343,10 +343,18 @@ func main() {
 
 	// Démarrage non-bloquant dans une goroutine
 	go func() {
-		slog.Info("Serveur HTTP démarré", "addr", addr, "url", cfg.BaseURL)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			slog.Error("Erreur du serveur HTTP", "error", err)
-			os.Exit(1)
+		if cfg.TLSCert != "" && cfg.TLSKey != "" {
+			slog.Info("Serveur HTTPS démarré", "addr", addr, "url", cfg.BaseURL)
+			if err := srv.ListenAndServeTLS(cfg.TLSCert, cfg.TLSKey); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("Erreur du serveur HTTPS", "error", err)
+				os.Exit(1)
+			}
+		} else {
+			slog.Info("Serveur HTTP démarré", "addr", addr, "url", cfg.BaseURL)
+			if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				slog.Error("Erreur du serveur HTTP", "error", err)
+				os.Exit(1)
+			}
 		}
 	}()
 

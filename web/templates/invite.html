@@ -1,7 +1,7 @@
-{{/* invite.html — Formulaire d'inscription via invitation */}}
+﻿{{/* invite.html â€” Formulaire d'inscription via invitation */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "invite_title" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "invite_title" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
@@ -17,7 +17,7 @@
                 </svg>
             </div>
             <h1 class="text-2xl font-bold mb-1">{{ .T "invite_heading" }}</h1>
-            <p class="text-sm text-slate-400">{{ .T "invite_subheading" }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ .T "invite_subheading" }}</p>
             {{ if .Invitation }}
             {{ if .Invitation.Label }}
             <span
@@ -26,7 +26,7 @@
             </span>
             {{ end }}
             {{ if .Invitation.CreatedBy }}
-            <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-300">
+            <div class="mt-3 inline-flex items-center gap-2 rounded-full border border-black/5 dark:border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-600 dark:text-slate-300">
                 <span class="font-semibold text-slate-200">{{ .T "invitations_sponsor" }}</span>
                 <span>{{ .Invitation.CreatedBy }}</span>
             </div>
@@ -35,7 +35,7 @@
         </div>
 
         {{ if .SuccessMessage }}
-        {{/* Vue Succès */}}
+        {{/* Vue SuccÃ¨s */}}
         <div class="glass-card p-8 text-center glow-accent">
             <div class="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                 <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -43,7 +43,7 @@
                 </svg>
             </div>
             <h1 class="text-xl font-bold mb-3">{{ .T "success" }}</h1>
-            <p class="text-slate-300">{{ .SuccessMessage }}</p>
+            <p class="text-slate-600 dark:text-slate-300">{{ .SuccessMessage }}</p>
             {{ if .Data.AccountCreated }}
             <div class="mt-8 space-y-4">
                 <a href="{{ .Data.JellyfinURL }}" class="jg-btn jg-btn-primary w-full shadow-lg shadow-purple-500/20">
@@ -54,9 +54,9 @@
                     {{ .T "invite_open_jellyseerr" }}
                 </a>
                 {{ end }}
-                {{ if .Data.JellyTulliURL }}
-                <a href="{{ .Data.JellyTulliURL }}" class="jg-btn jg-btn-ghost w-full">
-                    {{ .T "invite_open_jellytulli" }}
+                {{ if .Data.JellyTrackURL }}
+                <a href="{{ .Data.JellyTrackURL }}" class="jg-btn jg-btn-ghost w-full">
+                    {{ .T "invite_open_JellyTrack" }}
                 </a>
                 {{ end }}
             </div>
@@ -122,7 +122,7 @@
         </div>
 
         {{/* Footer */}}
-        {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTulliURL }}
+        {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}
         <div class="jg-public-links mt-5">
             <p class="jg-public-links-title">{{ .T "invite_quick_links" }}</p>
             <div class="jg-public-links-grid">
@@ -132,8 +132,8 @@
                 {{ if .Data.JellyseerrURL }}
                 <a href="{{ .Data.JellyseerrURL }}" class="jg-public-link-chip">Jellyseerr</a>
                 {{ end }}
-                {{ if .Data.JellyTulliURL }}
-                <a href="{{ .Data.JellyTulliURL }}" class="jg-public-link-chip">JellyTulli</a>
+                {{ if .Data.JellyTrackURL }}
+                <a href="{{ .Data.JellyTrackURL }}" class="jg-public-link-chip">JellyTrack</a>
                 {{ end }}
             </div>
         </div>

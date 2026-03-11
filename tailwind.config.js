@@ -1,4 +1,4 @@
-module.exports = {
+﻿module.exports = {
   darkMode: 'class',
   content: [
     './web/templates/**/*.html',
@@ -11,8 +11,8 @@ module.exports = {
       },
       colors: {
         jg: {
-          bg: '#050816',
-          card: '#0c1324',
+          bg: 'var(--jg-bg-primary)',
+          card: 'var(--jg-bg-card)',
           accent: '#14b8a6',
           'accent-light': '#2dd4bf',
           gold: '#f59e0b',

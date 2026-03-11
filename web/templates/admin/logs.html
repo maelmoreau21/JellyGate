@@ -1,7 +1,7 @@
-{{/* logs.html — Journal d'audit */}}
+﻿{{/* logs.html â€” Journal d'audit */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "nav_logs" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_logs" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
 {{/* Sidebar */}}
@@ -104,15 +104,15 @@
                 <div class="mt-5 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] gap-3 items-center">
                     <div class="relative w-full">
                         <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}'
-                            class="w-full pl-10 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all">
-                        <svg class="w-4 h-4 text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor"
+                            class="w-full pl-10 pr-4 py-3 bg-white/5 border border-black/5 dark:border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all">
+                        <svg class="w-4 h-4 text-slate-500 dark:text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor"
                             viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </div>
                     <select id="limit-select"
-                        class="w-full xl:w-auto px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white appearance-none focus:outline-none focus:border-purple-500/50">
+                        class="w-full xl:w-auto px-4 py-3 bg-white/5 border border-black/5 dark:border-white/10 rounded-xl text-sm text-white appearance-none focus:outline-none focus:border-purple-500/50">
                         <option value="50" class="bg-gray-800 text-white">50 {{ .T "logs_per_page_suffix" }}</option>
                         <option value="100" class="bg-gray-800 text-white">100 {{ .T "logs_per_page_suffix" }}</option>
                     </select>
@@ -121,7 +121,7 @@
 
             <div class="glass-card p-5 jg-aside-card">
                 <h2 class="text-lg font-semibold text-white">{{ .T "logs_total_label" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">request_id, {{ .T "logs_col_action" }}, {{ .T "logs_col_actor" }}, {{ .T "logs_col_target" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">request_id, {{ .T "logs_col_action" }}, {{ .T "logs_col_actor" }}, {{ .T "logs_col_target" }}</p>
                 <div class="mt-5 flex flex-wrap gap-2">
                     <button id="export-json" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} JSON</button>
                     <button id="export-csv" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} CSV</button>
@@ -148,62 +148,62 @@
         </div>
 
         <div class="glass-card p-0 overflow-hidden flex flex-col h-[calc(100vh-190px)]">
-            <div class="px-5 py-5 border-b border-white/10">
+            <div class="px-5 py-5 border-b border-black/5 dark:border-white/10">
                 <h2 class="text-lg font-semibold text-white">{{ .T "nav_logs" }}</h2>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "logs_loading" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "logs_loading" }}</p>
             </div>
             <div class="jg-table-wrap flex-1 overflow-auto">
                 <table class="jg-table w-full text-left border-collapse">
-                <thead class="sticky top-0 bg-[#1e1e2e] z-10 border-b border-white/10">
+                <thead class="sticky top-0 bg-[#1e1e2e] z-10 border-b border-black/5 dark:border-white/10">
                     <tr>
-                        <th class="w-48 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
+                        <th class="w-48 px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             data-sort-col="created_at">
                             <div class="flex items-center gap-1">
-                                {{ .T "col_created_at" }} <span class="sort-icon text-xs opacity-50" data-col="created_at">▼</span>
+                                {{ .T "col_created_at" }} <span class="sort-icon text-xs opacity-50" data-col="created_at">â–¼</span>
                             </div>
                         </th>
-                        <th class="w-40 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
+                        <th class="w-40 px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             data-sort-col="action">
                             <div class="flex items-center gap-1">
-                                {{ .T "logs_col_action" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="action">▼</span>
+                                {{ .T "logs_col_action" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="action">â–¼</span>
                             </div>
                         </th>
-                        <th class="w-40 px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
+                        <th class="w-40 px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             data-sort-col="actor">
                             <div class="flex items-center gap-1">
-                                {{ .T "logs_col_actor" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="actor">▼</span>
+                                {{ .T "logs_col_actor" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="actor">â–¼</span>
                             </div>
                         </th>
-                        <th class="px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
+                        <th class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors"
                             data-sort-col="target">
                             <div class="flex items-center gap-1">
-                                {{ .T "logs_col_target" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="target">▼</span>
+                                {{ .T "logs_col_target" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="target">â–¼</span>
                             </div>
                         </th>
-                        <th class="px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                        <th class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5">
                             request_id
                         </th>
-                        <th class="px-4 py-3 text-sm font-medium text-slate-400 capitalize bg-white/5">
+                        <th class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5">
                             {{ .T "logs_col_details" }}
                         </th>
                     </tr>
                 </thead>
                 <tbody id="logs-tbody" class="divide-y divide-white/5">
                     <tr>
-                        <td colspan="6" class="text-center py-8 text-slate-400">{{ .T "logs_loading" }}</td>
+                        <td colspan="6" class="text-center py-8 text-slate-500 dark:text-slate-400">{{ .T "logs_loading" }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-            <div class="border-t border-white/10 bg-black/20 p-4 flex items-center justify-between mt-auto">
-            <span class="text-sm text-slate-400" id="pagination-info">{{ .T "logs_pagination_loading" }}</span>
+            <div class="border-t border-black/5 dark:border-white/10 bg-black/20 p-4 flex items-center justify-between mt-auto">
+            <span class="text-sm text-slate-500 dark:text-slate-400" id="pagination-info">{{ .T "logs_pagination_loading" }}</span>
             <div class="flex gap-2">
                 <button id="btn-prev" data-page-delta="-1"
-                    class="px-3 py-1.5 text-sm font-medium text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    class="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/5 hover:bg-white/10 border border-black/5 dark:border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     {{ .T "common_previous" }}
                 </button>
                 <button id="btn-next" data-page-delta="1"
-                    class="px-3 py-1.5 text-sm font-medium text-slate-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    class="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/5 hover:bg-white/10 border border-black/5 dark:border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     {{ .T "common_next" }}
                 </button>
             </div>

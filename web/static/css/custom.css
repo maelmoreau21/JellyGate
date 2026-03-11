@@ -29,7 +29,34 @@
     --jg-sidebar-collapsed: 72px;
     --jg-radius: 22px;
     --jg-radius-sm: 14px;
-    --jg-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --jg-focus-ring: rgba(45, 212, 191, 0.38);
+}
+
+/* ── Light Mode Base Variables ───────────────────────────────────────────── */
+html:not(.dark) body {
+    /* Lighter, softer backgrounds matching JellyGate aesthetic but bright */
+    --jg-bg-primary: #f8fafc;
+    --jg-bg-secondary: #f1f5f9;
+    --jg-bg-card: #ffffff;
+    --jg-bg-glass: rgba(255, 255, 255, 0.85);
+
+    /* Borders */
+    --jg-border: rgba(15, 23, 42, 0.1);
+    --jg-border-strong: rgba(15, 23, 42, 0.15);
+    
+    /* Text */
+    --jg-text: #0f172a;
+    --jg-text-muted: #475569;
+    
+    /* Accents (slightly refined for better contrast on light) */
+    --jg-accent: #0f766e;
+    --jg-accent-hover: #115e59;
+    --jg-accent-cyan: #0891b2;
+    --jg-accent-sky: #0284c7;
+    --jg-accent-emerald: #059669;
+    --jg-accent-amber: #d97706;
+    --jg-accent-rose: #e11d48;
+    --jg-accent-glow: rgba(15, 118, 110, 0.15);
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
@@ -42,6 +69,15 @@ body {
     color: var(--jg-text);
     font-family: 'Sora', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+html:not(.dark) body {
+    background:
+        radial-gradient(circle at 12% 0%, rgba(8, 145, 178, 0.08), transparent 30%),
+        radial-gradient(circle at 88% 8%, rgba(217, 119, 6, 0.08), transparent 28%),
+        radial-gradient(circle at 50% 100%, rgba(15, 118, 110, 0.08), transparent 34%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
 body::before {
@@ -192,7 +228,7 @@ body::before {
 
 /* ── Form inputs ─────────────────────────────────────────────────────────── */
 .jg-input {
-    background: linear-gradient(135deg, rgba(13, 21, 38, 0.98), rgba(24, 34, 54, 0.95));
+    background: var(--jg-bg-card);
     border: 1px solid var(--jg-border-strong);
     border-radius: var(--jg-radius-sm);
     color: var(--jg-text);
@@ -203,9 +239,17 @@ body::before {
     outline: none;
 }
 
+html.dark .jg-input {
+    background: linear-gradient(135deg, rgba(13, 21, 38, 0.98), rgba(24, 34, 54, 0.95));
+}
+
 .jg-input:focus {
     border-color: var(--jg-accent-hover);
     box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+    background: var(--jg-bg-primary);
+}
+
+html.dark .jg-input:focus {
     background: linear-gradient(135deg, rgba(10, 17, 31, 0.98), rgba(15, 118, 110, 0.08));
 }
 

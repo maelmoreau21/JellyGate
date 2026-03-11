@@ -1,10 +1,10 @@
-{{/* dashboard.html — Tableau de bord administrateur */}}
+﻿{{/* dashboard.html â€” Tableau de bord administrateur */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "dashboard_title" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "dashboard_title" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
-{{/* ── Sidebar ─────────────────────────────────────────────────────────── */}}
+{{/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
 <aside id="sidebar" class="jg-sidebar">
     <div class="jg-sidebar-logo">
         <svg viewBox="0 0 32 32" fill="none">
@@ -91,7 +91,7 @@
     </div>
 </aside>
 
-{{/* ── Main content ────────────────────────────────────────────────────── */}}
+{{/* â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
 <main class="jg-main">
     <section class="jg-page-stack">
         <div class="jg-hero-grid mb-8">
@@ -105,8 +105,8 @@
                         </button>
                         <span class="jg-kicker">{{ .T "dashboard_kicker" }}</span>
                         <h1 class="text-3xl font-bold mt-3">{{ .T "dashboard_intro_title" }}</h1>
-                        <p class="text-sm text-slate-300 mt-3 max-w-2xl">{{ .T "dashboard_intro_desc" }}</p>
-                        <p class="text-sm text-slate-400 mt-4">{{ .T "dashboard_welcome" }}, <span class="text-cyan-300 font-semibold">{{ .AdminUsername }}</span></p>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 mt-3 max-w-2xl">{{ .T "dashboard_intro_desc" }}</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-4">{{ .T "dashboard_welcome" }}, <span class="text-cyan-300 font-semibold">{{ .AdminUsername }}</span></p>
                     </div>
                     <div class="hidden lg:flex flex-col gap-2 min-w-[220px]">
                         <a href="/admin/my-account" class="jg-btn jg-btn-primary w-full">{{ .T "dashboard_open_my_account" }}</a>
@@ -119,7 +119,7 @@
 
             <div class="glass-card p-5 jg-aside-card">
                 <h2 class="text-lg font-semibold text-white">{{ .T "dashboard_my_account_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_my_account_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_my_account_desc" }}</p>
                 <div class="mt-5 flex flex-wrap gap-2">
                     <a href="/admin/my-account" class="jg-btn jg-btn-sm">{{ .T "dashboard_open_my_account" }}</a>
                     {{ if .IsAdmin }}
@@ -139,7 +139,7 @@
                     </svg>
                 </div>
                 <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_users_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_panel_users_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_panel_users_desc" }}</p>
             </a>
             <a href="/admin/invitations" class="glass-card jg-feature-card p-5">
                 <div class="jg-feature-icon bg-amber-500/15 text-amber-300">
@@ -149,7 +149,7 @@
                     </svg>
                 </div>
                 <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_invites_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_panel_invites_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_panel_invites_desc" }}</p>
             </a>
             <a href="/admin/settings" class="glass-card jg-feature-card p-5">
                 <div class="jg-feature-icon bg-emerald-500/15 text-emerald-300">
@@ -160,14 +160,14 @@
                     </svg>
                 </div>
                 <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_settings_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "dashboard_panel_settings_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_panel_settings_desc" }}</p>
             </a>
         </div>
 
         <div class="flex items-end justify-between gap-4 mb-4">
             <div>
                 <h2 class="text-xl font-semibold">{{ .T "dashboard_stats_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "dashboard_stats_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "dashboard_stats_desc" }}</p>
             </div>
         </div>
 
@@ -181,7 +181,7 @@
                 </svg>
             </div>
             <div>
-                <div class="stat-value" id="stat-users">—</div>
+                <div class="stat-value" id="stat-users">â€”</div>
                 <div class="stat-label">{{ .T "stat_total_users" }}</div>
             </div>
         </div>
@@ -193,7 +193,7 @@
                 </svg>
             </div>
             <div>
-                <div class="stat-value" id="stat-active">—</div>
+                <div class="stat-value" id="stat-active">â€”</div>
                 <div class="stat-label">{{ .T "stat_active_users" }}</div>
             </div>
         </div>
@@ -205,7 +205,7 @@
                 </svg>
             </div>
             <div>
-                <div class="stat-value" id="stat-invitations">—</div>
+                <div class="stat-value" id="stat-invitations">â€”</div>
                 <div class="stat-label">{{ .T "stat_invitations" }}</div>
             </div>
         </div>
@@ -217,7 +217,7 @@
                 </svg>
             </div>
             <div>
-                <div class="stat-value" id="stat-banned">—</div>
+                <div class="stat-value" id="stat-banned">â€”</div>
                 <div class="stat-label">{{ .T "stat_banned_users" }}</div>
             </div>
         </div>
@@ -231,7 +231,7 @@
                 <p class="text-xs text-slate-500 mt-1">{{ .T "dashboard_recent_users_desc" }}</p>
             </div>
             <a href="/admin/users" class="jg-btn jg-btn-ghost jg-btn-sm">
-                {{ .T "view_all" }} →
+                {{ .T "view_all" }} â†’
             </a>
         </div>
         <div class="jg-table-wrap">

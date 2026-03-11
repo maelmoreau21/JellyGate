@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 function Update-LocaleKeys {
     param(
@@ -21,7 +21,7 @@ function Update-LocaleKeys {
         $v = $v -replace '\s*\(DE\)', ''
         $v = $v -replace '\s*\(ES\)', ''
         $v = $v -replace '\s*\(RU\)', ''
-        $v = $v -replace '（ZH）', ''
+        $v = $v -replace 'ï¼ˆZHï¼‰', ''
         $v = $v -replace '\s{2,}', ' '
         $p.Value = $v.Trim()
     }
@@ -158,7 +158,7 @@ $ruMap = @{
     settings_open_jellyfin = 'Otkryt Jellyfin'
     settings_open_jellygate_public = 'Otkryt publichnyi JellyGate'
     settings_open_jellyseerr = 'Otkryt Jellyseerr'
-    settings_open_jellytulli = 'Otkryt JellyTulli'
+    settings_open_jellytrack = 'Otkryt jellytrack'
     settings_port = 'Port'
     settings_preset_fallback = 'Preset'
     settings_preview_button = 'Predprosmotr'
@@ -266,7 +266,7 @@ $zhMap = @{
     settings_open_jellyfin = 'dakai Jellyfin'
     settings_open_jellygate_public = 'dakai gonggong JellyGate'
     settings_open_jellyseerr = 'dakai Jellyseerr'
-    settings_open_jellytulli = 'dakai JellyTulli'
+    settings_open_jellytrack = 'dakai jellytrack'
     settings_port = 'duankou'
     settings_preset_fallback = 'yushe'
     settings_preview_button = 'yulan'

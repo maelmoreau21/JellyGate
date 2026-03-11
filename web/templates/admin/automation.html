@@ -1,7 +1,7 @@
-{{/* automation.html — Presets & scheduler */}}
+﻿{{/* automation.html â€” Presets & scheduler */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "nav_automation" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_automation" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
@@ -73,7 +73,7 @@
                 </button>
                 <span class="jg-kicker">{{ .T "automation_kicker" }}</span>
                 <h1 class="text-3xl font-bold mt-3">{{ .T "nav_automation" }}</h1>
-                <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "automation_guidance_desc" }}</p>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mt-3 max-w-3xl">{{ .T "automation_guidance_desc" }}</p>
                 <div class="flex flex-wrap gap-2 mt-5">
                     <a href="#automation-presets" class="jg-btn jg-btn-ghost">{{ .T "automation_presets_title" }}</a>
                     <a href="#automation-mappings" class="jg-btn jg-btn-ghost">{{ .T "automation_group_mappings_title" }}</a>
@@ -107,7 +107,7 @@
             <div class="flex items-center justify-between mb-3">
                 <div>
                     <h2 class="text-lg font-semibold">{{ .T "automation_presets_title" }}</h2>
-                    <p class="text-sm text-slate-400 mt-1">{{ .T "automation_presets_desc" }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "automation_presets_desc" }}</p>
                 </div>
                 <div class="flex gap-2">
                     <button id="btn-preset-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
@@ -144,7 +144,7 @@
                     <button id="btn-group-map-save" class="jg-btn jg-btn-sm">{{ .T "automation_save" }}</button>
                 </div>
             </div>
-            <p class="text-xs text-slate-400 mb-3">{{ .T "automation_group_mappings_desc" }}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ .T "automation_group_mappings_desc" }}</p>
             <div class="jg-table-wrap">
                 <table class="jg-table">
                     <thead>
@@ -166,12 +166,12 @@
         <section id="automation-tasks" class="glass-card p-4 jg-section-card">
             <div class="mb-3">
                 <h2 class="text-lg font-semibold">{{ .T "automation_tasks_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "automation_tasks_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "automation_tasks_desc" }}</p>
             </div>
             <div class="jg-form-surface mb-4">
                 <div class="mb-4">
-                    <h3 class="text-base font-semibold text-slate-100">{{ .T "automation_task_builder_title" }}</h3>
-                    <p class="text-sm text-slate-400 mt-1">{{ .T "automation_task_builder_desc" }}</p>
+                    <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">{{ .T "automation_task_builder_title" }}</h3>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "automation_task_builder_desc" }}</p>
                 </div>
                 <form id="task-create-form" class="grid grid-cols-1 md:grid-cols-6 gap-3">
                     <div class="md:col-span-2">
@@ -201,7 +201,7 @@
                         <label class="jg-label" for="task-payload">{{ .T "automation_col_payload" }}</label>
                         <input id="task-payload" class="jg-input" placeholder='{{ .T "automation_task_payload_placeholder" }}'>
                     </div>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-300 md:col-span-6">
+                    <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-6">
                         <input id="task-enabled" type="checkbox" class="form-checkbox" checked>
                         {{ .T "automation_task_enabled" }}
                     </label>

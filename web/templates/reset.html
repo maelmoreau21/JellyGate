@@ -1,7 +1,7 @@
-{{/* reset.html — Réinitialisation de mot de passe */}}
+﻿{{/* reset.html â€” RÃ©initialisation de mot de passe */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "reset_title" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "reset_title" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
@@ -19,22 +19,22 @@
         </div>
 
         {{ if .ShowNewPasswordForm }}
-        {{/* ── Formulaire nouveau mot de passe ────────────────────────────── */}}
+        {{/* â”€â”€ Formulaire nouveau mot de passe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
         <div class="glass-card p-8">
             <h1 class="text-xl font-bold text-center mb-2">{{ .T "reset_new_heading" }}</h1>
-            <p class="text-sm text-slate-400 text-center mb-6">{{ .T "reset_new_subheading" }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">{{ .T "reset_new_subheading" }}</p>
 
             <form id="reset-form" method="POST" action="/reset/{{ .ResetCode }}" novalidate>
                 <div class="mb-5">
                     <label class="jg-label" for="password">{{ .T "field_new_password" }}</label>
-                    <input type="password" id="password" name="password" class="jg-input" placeholder="••••••••"
+                    <input type="password" id="password" name="password" class="jg-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                         required minlength="8" autocomplete="new-password">
                 </div>
 
                 <div class="mb-6">
                     <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
                     <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
-                        placeholder="••••••••" required minlength="8" autocomplete="new-password">
+                        placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" required minlength="8" autocomplete="new-password">
                     <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
                 </div>
 
@@ -45,10 +45,10 @@
         </div>
 
         {{ else }}
-        {{/* ── Formulaire de demande ──────────────────────────────────────── */}}
+        {{/* â”€â”€ Formulaire de demande â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
         <div class="glass-card p-8">
             <h1 class="text-xl font-bold text-center mb-2">{{ .T "reset_request_heading" }}</h1>
-            <p class="text-sm text-slate-400 text-center mb-6">{{ .T "reset_request_subheading" }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400 text-center mb-6">{{ .T "reset_request_subheading" }}</p>
 
             {{ if .SuccessMessage }}
             <div
@@ -70,14 +70,14 @@
             </form>
 
             <div class="text-center mt-4">
-                <a href="/admin/login" class="text-sm text-slate-400 hover:text-purple-400 transition-colors">
-                    ← {{ .T "back_to_login" }}
+                <a href="/admin/login" class="text-sm text-slate-500 dark:text-slate-400 hover:text-purple-400 transition-colors">
+                    â† {{ .T "back_to_login" }}
                 </a>
             </div>
         </div>
         {{ end }}
 
-        {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTulliURL }}
+        {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}
         <div class="jg-public-links mt-5">
             <p class="jg-public-links-title">{{ .T "invite_quick_links" }}</p>
             <div class="jg-public-links-grid">
@@ -87,8 +87,8 @@
                 {{ if .Data.JellyseerrURL }}
                 <a href="{{ .Data.JellyseerrURL }}" class="jg-public-link-chip">Jellyseerr</a>
                 {{ end }}
-                {{ if .Data.JellyTulliURL }}
-                <a href="{{ .Data.JellyTulliURL }}" class="jg-public-link-chip">JellyTulli</a>
+                {{ if .Data.JellyTrackURL }}
+                <a href="{{ .Data.JellyTrackURL }}" class="jg-public-link-chip">JellyTrack</a>
                 {{ end }}
             </div>
         </div>

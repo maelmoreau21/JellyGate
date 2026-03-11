@@ -1,7 +1,7 @@
-{{/* users.html — Gestion des utilisateurs */}}
+﻿{{/* users.html â€” Gestion des utilisateurs */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "users_title" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "users_title" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
@@ -100,7 +100,7 @@
                 </button>
                 <span class="jg-kicker">{{ .T "users_toolbar_title" }}</span>
                 <h1 class="text-3xl font-bold mt-3">{{ .T "users_heading" }}</h1>
-                <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "users_toolbar_desc" }}</p>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mt-3 max-w-3xl">{{ .T "users_toolbar_desc" }}</p>
                 <div class="flex flex-wrap gap-2 mt-5">
                     <button id="btn-open-bulk-email" class="jg-btn" title='{{ .T "users_bulk_email_open" }}'>{{ .T "users_bulk_email" }}</button>
                     <button id="btn-sync-users" class="jg-btn jg-btn-ghost" title='{{ .T "users_sync_jellyfin_title" }}'>
@@ -147,7 +147,7 @@
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                         <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "users_live_filters_title" }}</div>
-                        <div class="text-sm text-slate-300 mt-2"><span id="users-focus-filtered">0</span> {{ .T "users_displayed_count" }}</div>
+                        <div class="text-sm text-slate-600 dark:text-slate-300 mt-2"><span id="users-focus-filtered">0</span> {{ .T "users_displayed_count" }}</div>
                     </div>
                     <button id="btn-clear-filters" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "users_filters_clear" }}</button>
                 </div>
@@ -159,7 +159,7 @@
                 <div class="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                         <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "users_selection_title" }}</div>
-                        <div class="text-sm text-slate-300 mt-2"><span id="users-focus-selected">0</span> {{ .T "users_bulk_selected_suffix" }}</div>
+                        <div class="text-sm text-slate-600 dark:text-slate-300 mt-2"><span id="users-focus-selected">0</span> {{ .T "users_bulk_selected_suffix" }}</div>
                     </div>
                     <button id="btn-clear-selection" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "users_selection_clear" }}</button>
                 </div>
@@ -172,7 +172,7 @@
         <div id="users-filters" class="glass-card p-4 jg-section-card">
             <div class="mb-4">
                 <h2 class="text-lg font-semibold">{{ .T "users_filters_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "users_filters_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "users_filters_desc" }}</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
                 <input type="text" id="search-users" class="jg-input xl:col-span-2" placeholder='{{ .T "users_search_placeholder" }}'>
@@ -207,7 +207,7 @@
         <div class="glass-card p-4 jg-section-card" id="bulk-card">
             <div class="mb-4">
                 <h2 class="text-lg font-semibold">{{ .T "users_bulk_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "users_bulk_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "users_bulk_desc" }}</p>
             </div>
             <div class="flex flex-col gap-4">
                 <div class="bulk-steps-grid">
@@ -226,13 +226,13 @@
                 </div>
 
                 <div class="flex items-center justify-between flex-wrap gap-3">
-                    <div class="text-sm text-slate-300">
+                    <div class="text-sm text-slate-600 dark:text-slate-300">
                         {{ .T "users_bulk_assistant_desc" }}
                     </div>
                     <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">{{ .T "users_select_filtered" }}</button>
                 </div>
 
-                <div class="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300">
+                <div class="rounded-lg border border-black/5 dark:border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
                     {{ .T "users_bulk_instructions" }}
                 </div>
 
@@ -266,7 +266,7 @@
             <div class="px-6 py-4 border-b border-white/5 flex items-start justify-between gap-4 flex-wrap">
                 <div>
                     <h2 class="text-lg font-semibold">{{ .T "users_table_title" }}</h2>
-                    <p class="text-sm text-slate-400 mt-1">{{ .T "users_table_desc" }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "users_table_desc" }}</p>
                 </div>
                 <div class="jg-table-toolbar">
                     <a href="#bulk-card" class="jg-section-anchor">{{ .T "users_bulk_title" }}</a>
@@ -322,11 +322,11 @@
                 <label class="jg-label">{{ .T "users_col_expiry" }}</label>
                 <input type="datetime-local" id="edit-expiry" class="jg-input">
             </div>
-            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input type="checkbox" id="edit-clear-expiry" class="form-checkbox">
                 {{ .T "users_clear_expiry" }}
             </label>
-            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input type="checkbox" id="edit-can-invite" class="form-checkbox">
                 {{ .T "users_allow_invite" }}
             </label>
@@ -345,7 +345,7 @@
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
         <h3 class="text-lg font-bold mb-2">{{ .T "users_delete_title" }}</h3>
-        <p class="text-sm text-slate-400 mb-6" id="delete-modal-text"></p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6" id="delete-modal-text"></p>
         <div class="flex justify-center gap-3">
             <button class="jg-btn jg-btn-ghost" id="delete-cancel-btn">{{ .T "cancel" }}</button>
             <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">{{ .T "users_action_delete" }}</button>
@@ -358,7 +358,7 @@
         <div class="flex items-start justify-between gap-3 mb-4">
             <div>
                 <h3 class="text-lg font-bold">{{ .T "users_timeline_title" }}</h3>
-                <p class="text-sm text-slate-400" id="timeline-subtitle"></p>
+                <p class="text-sm text-slate-500 dark:text-slate-400" id="timeline-subtitle"></p>
             </div>
             <button class="jg-btn jg-btn-ghost jg-btn-sm" id="timeline-close-btn">{{ .T "users_close" }}</button>
         </div>

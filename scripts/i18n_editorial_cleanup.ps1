@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 function Set-LocaleMap {
     param([string]$Locale,[hashtable]$Map)
@@ -118,7 +118,7 @@ $nl=@{
 'settings_ldap_username_attr_upn'='userPrincipalName (UPN)';
 'settings_ldap_user_object_class_help'='Gebruik auto-detectie of forceer user/person/inetOrgPerson/posixAccount.';
 'settings_open_jellyseerr'='Open Jellyseerr';
-'settings_open_jellytulli'='Open JellyTulli';
+'settings_open_jellytrack'='Open jellytrack';
 'settings_smtp_from'='Afzenderadres *';
 'settings_smtp_password'='Wachtwoord *';
 'settings_smtp_starttls'='STARTTLS / TLS';

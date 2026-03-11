@@ -31,7 +31,7 @@ JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-ho
 | Audit | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
 | i18n | `web/i18n/*.json`, fallback `lang demandée -> en -> fr`, check CI |
 | Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
-| Intégrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, JellyTulli |
+| Intégrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, JellyTrack |
 | Base de données | SQLite par défaut, PostgreSQL supporté |
 
 ## Langues
@@ -127,18 +127,15 @@ docker compose -f docker-compose.postgres.yml up -d
 | `JELLYGATE_BASE_URL` | Non | `http://localhost:8097` | URL publique |
 | `JELLYGATE_DATA_DIR` | Non | `/data` | Répertoire de persistance |
 | `JELLYGATE_DEFAULT_LANG` | Non | `fr` | Langue par défaut |
-| `JELLYFIN_URL` | Oui | - | URL Jellyfin |
-| `JELLYFIN_API_KEY` | Oui | - | Clé API Jellyfin |
+| `JELLYGATE_TLS_CERT`     | Non | -    | Chemin vers le certificat TLS |
+| `JELLYGATE_TLS_KEY`      | Non | -    | Chemin vers la clé privée TLS |
+| `JELLYFIN_URL`           | Oui | -    | URL de Jellyfin |
+| `JELLYFIN_API_KEY`       | Oui | -    | Clé API Jellyfin |
+| `JELLYSEERR_URL`         | Non | -    | URL de Jellyseerr |
+| `JELLYSEERR_API_KEY`     | Non | -    | Clé API Jellyseerr |
+| `JELLYTRACK_URL`         | Non | -    | URL de JellyTrack |
+| `JELLYTRACK_API_KEY`     | Non | -    | Clé API JellyTrack |
 | `DB_TYPE` | Non | `sqlite` | `sqlite` ou `postgres` |
-| `DB_HOST` | Non | `postgres` | Hôte PostgreSQL |
-| `DB_PORT` | Non | `5432` | Port PostgreSQL |
-| `DB_USER` | Non | `jellygate` | Utilisateur PostgreSQL |
-| `DB_PASSWORD` | Non | - | Mot de passe PostgreSQL |
-| `DB_NAME` | Non | `jellygate` | Base PostgreSQL |
-| `DB_SSLMODE` | Non | `disable` | Mode SSL PostgreSQL |
-| `JELLYSEERR_URL` | Non | - | URL Jellyseerr |
-| `JELLYSEERR_API_KEY` | Non | - | Clé API Jellyseerr |
-| `JELLYTULLI_URL` | Non | - | URL JellyTulli |
 
 LDAP, SMTP, webhooks et templates email se configurent ensuite depuis l'admin et sont stockés en base.
 

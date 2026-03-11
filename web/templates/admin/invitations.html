@@ -1,7 +1,7 @@
-{{/* invitations.html — Gestion des invitations */}}
+﻿{{/* invitations.html â€” Gestion des invitations */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "nav_invitations" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_invitations" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
 {{/* Sidebar */}}
@@ -103,7 +103,7 @@
                         </button>
                         <span class="jg-kicker">{{ .T "nav_invitations" }}</span>
                         <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_invitations" }}</h1>
-                        <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "invitations_subheading" }}</p>
+                        <p class="text-sm text-slate-600 dark:text-slate-300 mt-3 max-w-3xl">{{ .T "invitations_subheading" }}</p>
                         <p class="text-xs text-slate-500 mt-3" id="invite-policy-summary">{{ .T "invitations_policy_loading" }}</p>
                         <div class="mt-5 flex flex-wrap gap-2">
                             <button id="btn-open-create-modal" class="jg-btn jg-btn-primary">
@@ -155,12 +155,12 @@
         </div>
 
         <div class="glass-card p-0 overflow-hidden mb-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-5 py-5 border-b border-white/10">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-5 py-5 border-b border-black/5 dark:border-white/10">
                 <div>
                     <h2 class="text-lg font-semibold text-white">{{ .T "invitations_sponsor_dashboard" }}</h2>
-                    <p class="text-sm text-slate-400 mt-1">{{ .T "invitations_stats_loading" }}</p>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "invitations_stats_loading" }}</p>
                 </div>
-                <span class="text-xs text-slate-400" id="sponsor-stats-generated-at">--</span>
+                <span class="text-xs text-slate-500 dark:text-slate-400" id="sponsor-stats-generated-at">--</span>
             </div>
             <div class="jg-table-wrap">
                 <table class="jg-table">
@@ -185,9 +185,9 @@
         </div>
 
         <div class="glass-card p-0 overflow-hidden">
-            <div class="px-5 py-5 border-b border-white/10">
+            <div class="px-5 py-5 border-b border-black/5 dark:border-white/10">
                 <h2 class="text-lg font-semibold text-white">{{ .T "invitations_create_title" }}</h2>
-                <p class="text-sm text-slate-400 mt-1">{{ .T "invitations_create_desc" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "invitations_create_desc" }}</p>
             </div>
             <div class="jg-table-wrap">
                 <table class="jg-table">
@@ -212,21 +212,21 @@
     </section>
 </main>
 
-{{/* Modale de création */}}
+{{/* Modale de crÃ©ation */}}
 <div id="create-modal" class="modal-overlay modal-scroll" style="display:none">
     <div class="glass-card modal-content modal-content-lg relative">
-        <button id="btn-close-create-modal-top" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <button id="btn-close-create-modal-top" class="absolute top-4 right-4 text-slate-500 dark:text-slate-400 hover:text-white">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
         </button>
         <h2 class="text-2xl font-bold mb-2 text-white">{{ .T "invitations_create_title" }}</h2>
-        <p class="text-sm text-slate-400 mb-6">{{ .T "invitations_create_desc" }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">{{ .T "invitations_create_desc" }}</p>
 
         <form id="create-form">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                    <h3 class="text-lg font-semibold text-purple-300 border-b border-white/10 pb-2">{{ .T "invitations_section_link_settings" }}</h3>
+                <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
+                    <h3 class="text-lg font-semibold text-purple-300 border-b border-black/5 dark:border-white/10 pb-2">{{ .T "invitations_section_link_settings" }}</h3>
                     <div>
                         <label class="jg-label">{{ .T "invitations_max_uses_label" }}</label>
                         <input type="number" id="inv-uses" class="jg-input" min="0" value="1">
@@ -239,15 +239,15 @@
                     </div>
                 </div>
 
-                <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-white/10">
-                    <h3 class="text-lg font-semibold text-emerald-300 border-b border-white/10 pb-2">{{ .T "invitations_section_user_profile" }}</h3>
+                <div class="space-y-4 p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
+                    <h3 class="text-lg font-semibold text-emerald-300 border-b border-black/5 dark:border-white/10 pb-2">{{ .T "invitations_section_user_profile" }}</h3>
                     <div>
                         <label class="jg-label">{{ .T "invitations_forced_username" }}</label>
                         <input type="text" id="inv-forced-user" class="jg-input" placeholder='{{ .T "invitations_forced_username_placeholder" }}'>
                         <p class="text-xs text-slate-500 mt-1">{{ .T "invitations_forced_username_help" }}</p>
                     </div>
                     <div>
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <input type="checkbox" id="inv-user-expiry-enabled" class="form-checkbox">
                             {{ .T "invitations_user_expiry_enable" }}
                         </label>
@@ -258,7 +258,7 @@
                         <p class="text-xs text-slate-500 mt-1">{{ .T "invitations_user_expiry_absolute_help" }}</p>
                     </div>
                     <div>
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300" id="inv-can-invite-wrap">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300" id="inv-can-invite-wrap">
                             <input type="checkbox" id="inv-new-user-can-invite" class="form-checkbox">
                             {{ .T "invitations_new_user_can_invite" }}
                         </label>
@@ -267,8 +267,8 @@
                 </div>
             </div>
 
-            <div class="space-y-4 mb-8 p-4 rounded-xl bg-white/5 border border-white/10">
-                <h3 class="text-lg font-semibold text-amber-300 border-b border-white/10 pb-2">{{ .T "invitations_section_smtp_notification" }}</h3>
+            <div class="space-y-4 mb-8 p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
+                <h3 class="text-lg font-semibold text-amber-300 border-b border-black/5 dark:border-white/10 pb-2">{{ .T "invitations_section_smtp_notification" }}</h3>
                 <div>
                     <label class="jg-label">{{ .T "invitations_send_to_email_label" }}</label>
                     <input type="email" id="inv-email" class="jg-input" placeholder="exemple@gmail.com">
@@ -276,7 +276,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end gap-3 pt-6 border-t border-white/10">
+            <div class="flex justify-end gap-3 pt-6 border-t border-black/5 dark:border-white/10">
                 <button type="button" class="jg-btn jg-btn-ghost" id="btn-close-create-modal-bottom">{{ .T "cancel" }}</button>
                 <button type="submit" class="jg-btn jg-btn-primary" id="create-btn">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -297,7 +297,7 @@
                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
         </svg>
         <h3 class="text-lg font-bold mb-2">{{ .T "invitations_delete_title" }}</h3>
-        <p class="text-sm text-slate-400 mb-6" id="delete-modal-text">{{ .T "invitations_delete_desc" }}</p>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6" id="delete-modal-text">{{ .T "invitations_delete_desc" }}</p>
         <div class="flex justify-center gap-3">
             <button class="jg-btn jg-btn-ghost" id="btn-close-delete-modal">{{ .T "cancel" }}</button>
             <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">{{ .T "invitations_delete" }}</button>

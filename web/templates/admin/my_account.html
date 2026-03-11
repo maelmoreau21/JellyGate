@@ -1,7 +1,7 @@
-{{/* my_account.html — Gestion du profil utilisateur */}}
+﻿{{/* my_account.html â€” Gestion du profil utilisateur */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "nav_my_account" }} — JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_my_account" }} â€” JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
@@ -102,7 +102,7 @@
                 </button>
                 <span class="jg-kicker">{{ .T "nav_my_account" }}</span>
                 <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_my_account" }}</h1>
-                <p class="text-sm text-slate-300 mt-3 max-w-3xl">{{ .T "my_account_subheading" }}</p>
+                <p class="text-sm text-slate-600 dark:text-slate-300 mt-3 max-w-3xl">{{ .T "my_account_subheading" }}</p>
                 <div class="mt-5 flex flex-wrap gap-2">
                     <button type="button" class="jg-btn jg-btn-ghost" data-scroll-target="contact-card">{{ .T "my_account_section_contact" }}</button>
                     <button type="button" class="jg-btn jg-btn-ghost" data-scroll-target="password-card">{{ .T "my_account_section_password" }}</button>
@@ -111,25 +111,25 @@
 
             <div class="glass-card p-5 jg-aside-card">
                 <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_profile" }}</h2>
-                <p class="text-sm text-slate-400 mt-2" id="account-email-summary">-</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2" id="account-email-summary">-</p>
                 <div class="mt-5 space-y-3 text-sm">
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
                         <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_user" }}</div>
                         <div class="font-semibold text-white mt-2" id="account-username">-</div>
                     </div>
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
                             <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_role" }}</div>
-                            <div class="font-semibold text-slate-100 mt-2" id="account-role">-</div>
+                            <div class="font-semibold text-slate-800 dark:text-slate-100 mt-2" id="account-role">-</div>
                         </div>
-                        <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
                             <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_preferred_lang" }}</div>
-                            <div class="font-semibold text-slate-100 mt-2" id="account-language">-</div>
+                            <div class="font-semibold text-slate-800 dark:text-slate-100 mt-2" id="account-language">-</div>
                         </div>
                     </div>
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
                         <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_access_expiry" }}</div>
-                        <div class="font-semibold text-slate-100 mt-2" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
+                        <div class="font-semibold text-slate-800 dark:text-slate-100 mt-2" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
                     </div>
                 </div>
             </div>
@@ -138,17 +138,17 @@
         <div class="jg-feature-grid">
             <section id="contact-card" class="glass-card jg-feature-card p-6 md:col-span-2">
                 <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_contact" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "my_account_subheading" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "my_account_subheading" }}</p>
                 <form id="my-account-form" class="space-y-4 mt-5">
                     <div>
                         <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
                         <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
-                        <div class="mt-3 rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div class="mt-3 rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
                             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                 <div>
                                     <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_email_verification_label" }}</div>
                                     <div class="mt-2 text-sm font-semibold text-white" id="email-verification-status">{{ .T "my_account_email_status_unverified" }}</div>
-                                    <p class="mt-2 text-sm text-slate-400" id="email-verification-help">{{ .T "my_account_email_verification_help" }}</p>
+                                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400" id="email-verification-help">{{ .T "my_account_email_verification_help" }}</p>
                                     <p class="mt-2 text-sm text-amber-300 hidden" id="email-pending-value"></p>
                                 </div>
                                 <button type="button" id="email-verification-resend" class="jg-btn jg-btn-ghost">{{ .T "my_account_email_verification_resend" }}</button>
@@ -182,27 +182,27 @@
                         </select>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
                             {{ .T "my_account_notify_expiry" }}
                         </label>
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                        <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <input type="checkbox" id="my-notify-events" class="form-checkbox">
                             {{ .T "my_account_notify_events" }}
                         </label>
                     </div>
-                    <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+                    <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
                         <div class="text-xs uppercase tracking-[0.24em] text-slate-500 mb-3">{{ .T "my_account_channel_optin" }}</div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                 <input type="checkbox" id="my-opt-email" class="form-checkbox">
                                 {{ .T "my_account_channel_email" }}
                             </label>
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                 <input type="checkbox" id="my-opt-discord" class="form-checkbox">
                                 {{ .T "my_account_channel_discord" }}
                             </label>
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-300">
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                                 <input type="checkbox" id="my-opt-telegram" class="form-checkbox">
                                 {{ .T "my_account_channel_telegram" }}
                             </label>
@@ -216,7 +216,7 @@
 
             <section id="password-card" class="glass-card jg-feature-card p-6">
                 <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_password" }}</h2>
-                <p class="text-sm text-slate-400 mt-2">{{ .T "my_account_password_min_hint" }}</p>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "my_account_password_min_hint" }}</p>
                 <form id="my-password-form" class="space-y-4 mt-5">
                     <div>
                         <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>

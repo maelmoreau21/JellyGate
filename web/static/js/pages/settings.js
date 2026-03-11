@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
     const config = window.JGPageSettings || {};
     const i18n = config.i18n || {};
     let backupDatabaseType = 'sqlite';
@@ -34,7 +34,7 @@
             { value: '{{.JellyGateURL}}', label: t('settings_email_var_jellygate_url', 'public JellyGate URL') },
             { value: '{{.JellyfinURL}}', label: t('settings_email_var_jellyfin_url', 'Jellyfin login URL') },
             { value: '{{.JellyseerrURL}}', label: t('settings_email_var_jellyseerr_url', 'Jellyseerr URL') },
-            { value: '{{.JellyTulliURL}}', label: t('settings_email_var_jellytulli_url', 'JellyTulli URL') },
+            { value: '{{.JellyTrackURL}}', label: t('settings_email_var_jellytrack_url', 'JellyTrack URL') },
             { value: '{{.Message}}', label: t('settings_email_var_message', 'custom message (admin invitation)') },
         ];
     }
@@ -247,7 +247,7 @@
             { id: 'shortcut-jellygate', url: links.jellygate_url || '' },
             { id: 'shortcut-jellyfin', url: links.jellyfin_url || '' },
             { id: 'shortcut-jellyseerr', url: links.jellyseerr_url || '' },
-            { id: 'shortcut-jellytulli', url: links.jellytulli_url || '' },
+            { id: 'shortcut-jellytrack', url: links.jellytrack_url || '' },
         ];
 
         mapping.forEach((item) => {
@@ -391,7 +391,7 @@
         document.getElementById('general-jellygate-url').value = links.jellygate_url || '';
         document.getElementById('general-jellyfin-url').value = links.jellyfin_url || '';
         document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
-        document.getElementById('general-jellytulli-url').value = links.jellytulli_url || '';
+        document.getElementById('general-jellytrack-url').value = links.jellytrack_url || '';
         refreshPortalShortcuts(links);
 
         applyInvitationProfileConfig(data.invitation_profile || {});
@@ -502,7 +502,7 @@
                 jellygate_url: document.getElementById('general-jellygate-url').value.trim(),
                 jellyfin_url: document.getElementById('general-jellyfin-url').value.trim(),
                 jellyseerr_url: document.getElementById('general-jellyseerr-url').value.trim(),
-                jellytulli_url: document.getElementById('general-jellytulli-url').value.trim(),
+                jellytrack_url: document.getElementById('general-jellytrack-url').value.trim(),
             };
         } else if (section === 'invitation-profile') {
             body = {
@@ -779,7 +779,7 @@
     function fmtDateTime(value) {
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) {
-            return value || '—';
+            return value || 'â€”';
         }
         return date.toLocaleString();
     }

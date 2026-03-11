@@ -260,7 +260,6 @@ docker build -t jellygate:local .
 ## 11. Points d'attention pour les prochaines évolutions
 
 - améliorer la qualité réelle des traductions non `fr`/`en`
-- finir le durcissement proxy HTTPS / cookies sécurisés
 - chiffrer les secrets stockés en base
 - ajouter des tests de handlers et de flux invitation/reset
 - étendre la vérification d'e-mail vers une politique d'instance configurable plus fine
@@ -280,3 +279,5 @@ docker build -t jellygate:local .
 - Support PostgreSQL actif côté déploiement et configuration.
 - Vérification d'e-mail avant création de compte sur les invitations publiques, avec option admin activée par défaut.
 - Les messages e-mail no-code acceptent les variables de template et proposent maintenant une insertion directe depuis l'interface d'administration.
+- Page de login repensée avec une section "Liens publics" pour un accès rapide aux autres services (Jellyfin, Jellyseerr, JellyTrack).
+- Support HTTPS natif intégré via `JELLYGATE_TLS_CERT` et `JELLYGATE_TLS_KEY`.

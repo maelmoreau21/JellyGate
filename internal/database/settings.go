@@ -102,7 +102,7 @@ func (db *DB) GetAllSettings() (map[string]string, error) {
 	return result, rows.Err()
 }
 
-// GetPortalLinksConfig récupère les URL publiques (Jellyfin/Jellyseerr/JellyTulli).
+// GetPortalLinksConfig récupère les URL publiques (Jellyfin/Jellyseerr/JellyTrack).
 func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
 	cfg := config.DefaultPortalLinks()
 
@@ -122,6 +122,7 @@ func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
 	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
+	cfg.JellyTrackURL = strings.TrimSpace(cfg.JellyTrackURL)
 
 	return cfg, nil
 }
@@ -131,6 +132,7 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
 	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
+	cfg.JellyTrackURL = strings.TrimSpace(cfg.JellyTrackURL)
 
 	data, err := json.Marshal(cfg)
 	if err != nil {

@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 
 function Set-Keys {
     param([string]$Locale, [hashtable]$Map)
@@ -51,7 +51,7 @@ $de = @{
     settings_backup_save_schedule='Backup-Zeitplan speichern'
     settings_email_var_jellyfin_url='Jellyfin-Anmelde-URL'
     settings_email_var_jellyseerr_url='Jellyseerr-URL'
-    settings_email_var_jellytulli_url='JellyTulli-URL'
+    settings_email_var_jellytrack_url='jellytrack-URL'
     settings_expiry_action_delete='Bei Ablauf loeschen'
     settings_expiry_action_disable='Bei Ablauf deaktivieren'
     settings_expiry_action_disable_then_delete='Bei Ablauf deaktivieren und spaeter loeschen'
@@ -74,7 +74,7 @@ $de = @{
     settings_public_jellyfin_help='Wird in Buttons und E-Mail-Variablen verwendet.'
     settings_public_jellygate_help='Wird fuer Einladung-Links und Vorlagen verwendet.'
     settings_public_jellyseerr_help='In E-Mail-Vorlagen als Variable verfuegbar.'
-    settings_public_jellytulli_help='In E-Mail-Vorlagen als Variable verfuegbar.'
+    settings_public_jellytrack_help='In E-Mail-Vorlagen als Variable verfuegbar.'
     settings_save_smtp='SMTP speichern'
     settings_smtp_starttls='STARTTLS / TLS'
     settings_smtp_title='SMTP-Server'
@@ -141,7 +141,7 @@ $es = @{
     settings_public_jellyfin_help='Se usa en botones y plantillas de correo.'
     settings_public_jellygate_help='Se usa para enlaces de invitacion y plantillas.'
     settings_public_jellyseerr_help='Disponible como variable en plantillas.'
-    settings_public_jellytulli_help='Disponible como variable en plantillas.'
+    settings_public_jellytrack_help='Disponible como variable en plantillas.'
     settings_smtp_starttls='STARTTLS / TLS'
     settings_tab_ldap='LDAP'
     settings_tab_smtp='SMTP'
