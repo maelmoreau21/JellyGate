@@ -1,11 +1,11 @@
-﻿{{/* settings.html â€” Page de configuration admin JellyGate */}}
-{{/* 4 onglets : GÃ©nÃ©ral, LDAP, SMTP, Webhooks â€” Dark Theme + Glassmorphism */}}
+�{{/* settings.html � Page de configuration admin JellyGate */}}
+{{/* 4 onglets : Général, LDAP, SMTP, Webhooks � Dark Theme + Glassmorphism */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "nav_settings" }} â€” JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_settings" }} � JellyGate{{ end }}
 
 {{ define "body" }}
-{{/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
+{{/* ���� Sidebar ���������������������������������������������������������������������������������������������������������������������� */}}
 <aside id="sidebar" class="jg-sidebar">
   <div class="jg-sidebar-logo">
     <svg viewBox="0 0 32 32" fill="none">
@@ -90,7 +90,7 @@
   </div>
 </aside>
 
-{{/* â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
+{{/* ���� Main content ������������������������������������������������������������������������������������������������������������ */}}
 <main class="jg-main jg-settings-main">
   <div class="w-full">
     <div class="glass-card p-5 md:p-6 mb-6">
@@ -103,37 +103,37 @@
       <h1 class="text-2xl md:text-3xl font-bold text-white inline-block align-middle">{{ .T "nav_settings" }}</h1>
     </div>
 
-    {{/* â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
+    {{/* ���� Tabs ������������������������������������������������������������������������������������������������������������������ */}}
     <div class="flex gap-2 mb-6 border-b border-black/5 dark:border-white/10 pb-2 overflow-x-auto">
       <button data-tab-target="general" id="tab-general"
         class="tab-btn active px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        ðŸŒ {{ .T "settings_tab_general" }}
+        �xR� {{ .T "settings_tab_general" }}
       </button>
       <button data-tab-target="ldap" id="tab-ldap"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        ðŸ” {{ .T "settings_tab_ldap" }}
+        �x� {{ .T "settings_tab_ldap" }}
       </button>
       <button data-tab-target="smtp" id="tab-smtp"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        ðŸ“§ {{ .T "settings_tab_smtp" }}
+        �x� {{ .T "settings_tab_smtp" }}
       </button>
       <button data-tab-target="webhooks" id="tab-webhooks"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        ðŸ”” {{ .T "settings_tab_webhooks" }}
+        �x {{ .T "settings_tab_webhooks" }}
       </button>
       <button data-tab-target="email-templates" id="tab-email-templates"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        ðŸ“ {{ .T "settings_tab_email_templates" }}
+        �x� {{ .T "settings_tab_email_templates" }}
       </button>
       <button data-tab-target="backup" id="tab-backup"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        ðŸ’¾ {{ .T "settings_tab_backup" }}
+        �x� {{ .T "settings_tab_backup" }}
       </button>
     </div>
 
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
-    {{/* TAB: GÃ©nÃ©ral */}}
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
+    {{/* TAB: Général */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     <div id="panel-general" class="tab-panel settings-panel settings-panel-general">
       <div class="glass-card p-6 md:p-8">
 
@@ -147,16 +147,16 @@
             <div class="max-w-xs">
               <label class="jg-label" for="default-lang">{{ .T "settings_default_lang" }}</label>
               <select id="default-lang" class="jg-input">
-                <option value="fr">ðŸ‡«ðŸ‡· FranÃ§ais</option>
-                <option value="en">ðŸ‡¬ðŸ‡§ English</option>
-                <option value="de">ðŸ‡©ðŸ‡ª Deutsch</option>
-                <option value="es">ðŸ‡ªðŸ‡¸ EspaÃ±ol</option>
-                <option value="it">ðŸ‡®ðŸ‡¹ Italiano</option>
-                <option value="nl">ðŸ‡³ðŸ‡± Nederlands</option>
-                <option value="pl">ðŸ‡µðŸ‡± Polski</option>
-                <option value="pt-br">ðŸ‡§ðŸ‡· PortuguÃªs (Brasil)</option>
-                <option value="ru">ðŸ‡·ðŸ‡º Ð ÑƒÑÑÐºÐ¸Ð¹</option>
-                <option value="zh">ðŸ‡¨ðŸ‡³ ä¸­æ–‡</option>
+                <option value="fr">�x!��x!� Français</option>
+                <option value="en">�x!��x!� English</option>
+                <option value="de">�x!��x!� Deutsch</option>
+                <option value="es">�x!��x!� Español</option>
+                <option value="it">�x!��x!� Italiano</option>
+                <option value="nl">�x!��x!� Nederlands</option>
+                <option value="pl">�x!��x!� Polski</option>
+                <option value="pt-br">�x!��x!� Português (Brasil)</option>
+                <option value="ru">�x!��x!� Рђсский</option>
+                <option value="zh">�x!��x!� 中�!</option>
               </select>
               <p class="text-xs text-slate-500 mt-1">{{ .T "settings_default_lang_help" }}</p>
             </div>
@@ -198,7 +198,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">ðŸ’¾ {{ .T "btn_save" }}</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">�x� {{ .T "btn_save" }}</button>
           </div>
         </form>
 
@@ -235,8 +235,8 @@
             <label class="mt-4 inline-flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
               <input type="checkbox" id="invite-profile-auto-delete-closed-links" class="form-checkbox mt-1">
               <span>
-                <span class="block text-slate-800 dark:text-slate-100">Supprimer automatiquement les liens d'invitation fermÃ©s</span>
-                <span class="mt-1 block text-xs text-slate-500">Les liens expirÃ©s ou qui ont atteint leur quota sont purgÃ©s automatiquement pour ne pas laisser de faux liens encore visibles.</span>
+                <span class="block text-slate-800 dark:text-slate-100">Supprimer automatiquement les liens d'invitation fermés</span>
+                <span class="mt-1 block text-xs text-slate-500">Les liens expirés ou qui ont atteint leur quota sont purgés automatiquement pour ne pas laisser de faux liens encore visibles.</span>
               </span>
             </label>
 
@@ -335,7 +335,7 @@
             </details>
 
             <div class="mt-6 flex justify-end">
-              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">ðŸ’¾ {{ .T "settings_save_invite_profile" }}</button>
+              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">�x� {{ .T "settings_save_invite_profile" }}</button>
             </div>
           </form>
         </div>
@@ -343,9 +343,9 @@
       </div>
     </div>
 
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     {{/* TAB: LDAP */}}
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     <div id="panel-ldap" class="tab-panel settings-panel settings-panel-ldap hidden">
       <div class="glass-card p-6 md:p-8">
 
@@ -393,7 +393,7 @@
             </div>
             <div>
               <label class="jg-label" for="ldap-bind-password">{{ .T "settings_ldap_bind_password" }}</label>
-              <input type="password" id="ldap-bind-password" class="jg-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+              <input type="password" id="ldap-bind-password" class="jg-input" placeholder="⬢⬢⬢⬢⬢⬢⬢⬢">
             </div>
             <div>
               <label class="jg-label" for="ldap-base-dn">{{ .T "settings_ldap_base_dn" }}</label>
@@ -473,7 +473,7 @@
                     </div>
                     <div>
                       <label class="jg-label" for="ldap-test-password">{{ .T "settings_ldap_test_password" }}</label>
-                      <input type="password" id="ldap-test-password" class="jg-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                      <input type="password" id="ldap-test-password" class="jg-input" placeholder="⬢⬢⬢⬢⬢⬢⬢⬢">
                     </div>
                   </div>
 
@@ -492,16 +492,16 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">ðŸ’¾ {{ .T "settings_save_ldap" }}</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">�x� {{ .T "settings_save_ldap" }}</button>
           </div>
         </form>
 
       </div>
     </div>
 
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     {{/* TAB: SMTP */}}
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     <div id="panel-smtp" class="tab-panel settings-panel settings-panel-smtp hidden">
       <div class="glass-card p-6 md:p-8">
 
@@ -530,7 +530,7 @@
               </div>
               <div>
                 <label class="jg-label" for="smtp-password">{{ .T "settings_smtp_password" }}</label>
-                <input type="password" id="smtp-password" class="jg-input" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢">
+                <input type="password" id="smtp-password" class="jg-input" placeholder="⬢⬢⬢⬢⬢⬢⬢⬢">
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -546,16 +546,16 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">ðŸ’¾ {{ .T "settings_save_smtp" }}</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">�x� {{ .T "settings_save_smtp" }}</button>
           </div>
         </form>
 
       </div>
     </div>
 
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     {{/* TAB: Webhooks */}}
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     <div id="panel-webhooks" class="tab-panel settings-panel settings-panel-webhooks hidden">
       <div class="glass-card p-6 md:p-8">
 
@@ -615,16 +615,16 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">ðŸ’¾ {{ .T "settings_save_webhooks" }}</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">�x� {{ .T "settings_save_webhooks" }}</button>
           </div>
         </form>
 
       </div>
     </div>
 
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
-    {{/* TAB: ModÃ¨les Email */}}
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
+    {{/* TAB: Modèles Email */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     <div id="panel-email-templates" class="tab-panel settings-panel settings-panel-email hidden">
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-black/5 dark:border-white/10">
@@ -906,7 +906,7 @@
           </div>
 
           <div class="mt-6 flex justify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">ðŸ’¾ {{ .T "settings_save_templates" }}</button>
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">�x� {{ .T "settings_save_templates" }}</button>
           </div>
         </form>
 
@@ -925,9 +925,9 @@
       </div>
     </div>
 
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     {{/* TAB: Sauvegardes */}}
-    {{/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}}
+    {{/* �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"� */}}
     <div id="panel-backup" class="tab-panel settings-panel settings-panel-backup hidden">
       <div class="glass-card p-6 md:p-8">
         <div class="mb-6 pb-4 border-b border-black/5 dark:border-white/10">
@@ -953,7 +953,7 @@
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">{{ .T "settings_backup_retention_help" }}</p>
             </div>
             <div class="flex items-end">
-              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">ðŸ’¾ {{ .T "settings_backup_save_schedule" }}</button>
+              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">�x� {{ .T "settings_backup_save_schedule" }}</button>
             </div>
           </div>
         </form>

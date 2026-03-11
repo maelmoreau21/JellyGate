@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+�<!DOCTYPE html>
 <html lang="fr">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vous Ãªtes invitÃ© !</title>
+    <title>Vous êtes invité !</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -83,25 +83,25 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>ðŸŽ‰ Invitation</h1>
+            <h1>�x}0 Invitation</h1>
         </div>
         <div class="body">
-            <h2>Vous Ãªtes invitÃ© !</h2>
-            <p>{{.InviterName}} vous invite Ã  rejoindre sa bibliothÃ¨que de mÃ©dias Jellyfin.</p>
+            <h2>Vous êtes invité !</h2>
+            <p>{{.InviterName}} vous invite à rejoindre sa bibliothèque de médias Jellyfin.</p>
             {{if .Label}}
             <div class="info-box">
                 <strong>{{.Label}}</strong>
             </div>
             {{end}}
-            <p>Cliquez sur le bouton ci-dessous pour crÃ©er votre compte :</p>
-            <p><a href="{{.InviteURL}}" class="btn">CrÃ©er mon compte</a></p>
+            <p>Cliquez sur le bouton ci-dessous pour créer votre compte :</p>
+            <p><a href="{{.InviteURL}}" class="btn">Créer mon compte</a></p>
             <p><small>Ou copiez ce lien : {{.InviteURL}}</small></p>
             {{if .ExpiresAt}}
-            <p class="warning">â± Cette invitation expire le {{.ExpiresAt}}.</p>
+            <p class="warning">⏱ Cette invitation expire le {{.ExpiresAt}}.</p>
             {{end}}
         </div>
         <div class="footer">
-            <p>Cet email a Ã©tÃ© envoyÃ© automatiquement par JellyGate.</p>
+            <p>Cet email a été envoyé automatiquement par JellyGate.</p>
         </div>
     </div>
 </body>

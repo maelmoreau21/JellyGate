@@ -1,17 +1,17 @@
-{{/* login.html â€” Connexion administrateur */}}
+{{/* login.html � Connexion administrateur */}}
 {{ template "layouts/base.html" . }}
 
-{{ define "title" }}{{ .T "login_title" }} â€” JellyGate{{ end }}
+{{ define "title" }}{{ .T "login_title" }} � JellyGate{{ end }}
 
 {{ define "body" }}
 <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-5xl flex flex-col md:flex-row items-center gap-10">
+    <div class="w-full max-w-5xl flex flex-col md:flex-row items-center justify-center gap-10">
         
         {{/* Section de gauche : Login */}}
         <div class="w-full max-w-md jg-login-shell">
             {{/* Logo */}}
             <div class="text-center mb-8 relative">
-                <button id="theme-toggle-btn" type="button" class="absolute top-0 right-0 p-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 transition-colors cursor-pointer" title="Basculer le thÃ¨me">
+                <button id="theme-toggle-btn" type="button" class="absolute top-0 right-0 p-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 transition-colors cursor-pointer" title="Basculer le thème">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                     </svg>
@@ -78,7 +78,7 @@
                         </svg>
                     </div>
                     <span class="text-lg font-bold text-slate-200">Jellyfin</span>
-                    <span class="text-xs text-slate-500 dark:text-slate-400 mt-2">Lecteur MultimÃ©dia</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400 mt-2">Lecteur Multimédia</span>
                 </a>
                 {{ end }}
 
@@ -90,7 +90,7 @@
                         </svg>
                     </div>
                     <span class="text-lg font-bold text-slate-200">Jellyseerr</span>
-                    <span class="text-xs text-slate-500 dark:text-slate-400 mt-2">Demandes MultimÃ©dias</span>
+                    <span class="text-xs text-slate-500 dark:text-slate-400 mt-2">Demandes Multimédias</span>
                 </a>
                 {{ end }}
 
