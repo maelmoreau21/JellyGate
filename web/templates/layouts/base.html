@@ -10,15 +10,14 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <meta name="description" content='{{ block "meta_description" . }}{{ .T "app_description" }}{{ end }}'>
 
-    <meta name="theme-color" content="#050816">
+    <meta name="theme-color" content="#09090b">
 
     {{/* Tailwind CSS compilé localement */}}
     <link rel="stylesheet" href="/static/css/tailwind.generated.css">
 
-    {{/* Google Fonts — Sora */}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
 
     {{/* Custom CSS */}}
     <link rel="stylesheet" href="/static/css/custom.css">
@@ -49,18 +48,18 @@
     <div id="lang-switcher" class="jg-lang-switcher jg-lang-switcher-floating px-3 py-2">
         <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-600 dark:text-slate-300 block mb-1">{{ .T "base_language_label" }}</label>
         <select id="lang-select" class="jg-input jg-lang-select">
-            <option value="fr" {{ if eq .Lang "fr" }}selected{{ end }}>fr - Français</option>
-            <option value="en" {{ if eq .Lang "en" }}selected{{ end }}>en - English</option>
-            <option value="de" {{ if eq .Lang "de" }}selected{{ end }}>de - Deutsch</option>
-            <option value="es" {{ if eq .Lang "es" }}selected{{ end }}>es - Español</option>
-            <option value="it" {{ if eq .Lang "it" }}selected{{ end }}>it - Italiano</option>
-            <option value="nl" {{ if eq .Lang "nl" }}selected{{ end }}>nl - Nederlands</option>
-            <option value="pl" {{ if eq .Lang "pl" }}selected{{ end }}>pl - Polski</option>
-            <option value="pt-br" {{ if eq .Lang "pt-br" }}selected{{ end }}>pt-BR - Português (Brasil)</option>
-            <option value="ru" {{ if eq .Lang "ru" }}selected{{ end }}>ru - Русский</option>
-            <option value="zh" {{ if eq .Lang "zh" }}selected{{ end }}>zh - 中文</option>
+            <option value="fr" {{ if eq .Lang "fr" }}selected{{ end }}>🇫🇷 fr - Français</option>
+            <option value="en" {{ if eq .Lang "en" }}selected{{ end }}>🇬🇧 en - English</option>
+            <option value="de" {{ if eq .Lang "de" }}selected{{ end }}>🇩🇪 de - Deutsch</option>
+            <option value="es" {{ if eq .Lang "es" }}selected{{ end }}>🇪🇸 es - Español</option>
+            <option value="it" {{ if eq .Lang "it" }}selected{{ end }}>🇮🇹 it - Italiano</option>
+            <option value="nl" {{ if eq .Lang "nl" }}selected{{ end }}>🇳🇱 nl - Nederlands</option>
+            <option value="pl" {{ if eq .Lang "pl" }}selected{{ end }}>🇵🇱 pl - Polski</option>
+            <option value="pt-br" {{ if eq .Lang "pt-br" }}selected{{ end }}>🇧🇷 pt-BR - Português (Brasil)</option>
+            <option value="ru" {{ if eq .Lang "ru" }}selected{{ end }}>🇷🇺 ru - Русский</option>
+            <option value="zh" {{ if eq .Lang "zh" }}selected{{ end }}>🇨🇳 zh - 中文</option>
         </select>
-        <p class="mt-2 text-[11px] text-slate-500">JellyGate v{{ .AppVersion }}</p>
+        <p class="jg-version-text">JellyGate v{{ .AppVersion }}</p>
     </div>
 
     {{/* App JS */}}

@@ -1,4 +1,4 @@
-﻿{{/* dashboard.html â€” Tableau de bord administrateur */}}
+{{/* dashboard.html â€” Tableau de bord administrateur */}}
 {{ template "layouts/base.html" . }}
 
 {{ define "title" }}{{ .T "dashboard_title" }} â€” JellyGate{{ end }}
@@ -11,8 +11,8 @@
             <circle cx="16" cy="16" r="14" fill="url(#grd)" />
             <defs>
                 <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
-                    <stop stop-color="#8b5cf6" />
-                    <stop offset="1" stop-color="#6366f1" />
+                    <stop stop-color="#94a3b8" />
+                    <stop offset="1" stop-color="#475569" />
                 </linearGradient>
             </defs>
             <path d="M10 22V10l12 6-12 6z" fill="#fff" />
@@ -79,10 +79,12 @@
     </nav>
 
     <div class="jg-sidebar-footer">
-        <button id="theme-toggle-btn" type="button" class="jg-nav-item w-full text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 mb-1" title="Theme">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
+        <button id="theme-toggle-btn" type="button" class="jg-theme-btn" title="Thème">
+            <span id="theme-toggle-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </span>
             <span class="jg-nav-label">{{ .T "nav_theme" }}</span>
         </button>
 
@@ -101,8 +103,7 @@
 {{/* â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
 <main class="jg-main">
     <section class="jg-page-stack">
-        <div class="jg-hero-grid mb-8">
-            <div class="glass-card jg-hero-panel p-6 md:p-8">
+        <div class="mb-6"><div class="glass-card jg-hero-panel p-4 md:p-5">
                 <div class="flex items-start justify-between gap-4">
                     <div>
                         <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden">
@@ -110,10 +111,9 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                             </svg>
                         </button>
-                        <span class="jg-kicker">{{ .T "dashboard_kicker" }}</span>
-                        <h1 class="text-3xl font-bold mt-3">{{ .T "dashboard_intro_title" }}</h1>
-                        <p class="text-sm text-slate-600 dark:text-slate-300 mt-3 max-w-2xl">{{ .T "dashboard_intro_desc" }}</p>
-                        <p class="text-sm text-slate-500 dark:text-slate-400 mt-4">{{ .T "dashboard_welcome" }}, <span class="text-cyan-300 font-semibold">{{ .AdminUsername }}</span></p>
+
+                        <h1 class="text-2xl font-bold mt-1">{{ .T "dashboard_intro_title" }}</h1>
+
                     </div>
                     <div class="hidden lg:flex flex-col gap-2 min-w-[220px]">
                         <a href="/admin/my-account" class="jg-btn jg-btn-primary w-full">{{ .T "dashboard_open_my_account" }}</a>
@@ -124,41 +124,32 @@
                 </div>
             </div>
 
-            <div class="glass-card p-5 jg-aside-card">
-                <h2 class="text-lg font-semibold text-white">{{ .T "dashboard_my_account_title" }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_my_account_desc" }}</p>
-                <div class="mt-5 flex flex-wrap gap-2">
-                    <a href="/admin/my-account" class="jg-btn jg-btn-sm">{{ .T "dashboard_open_my_account" }}</a>
-                    {{ if .IsAdmin }}
-                    <a href="/admin/automation" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "nav_automation" }}</a>
-                    {{ end }}
-                </div>
             </div>
         </div>
 
         {{ if .IsAdmin }}
         <div class="jg-feature-grid mb-8">
-            <a href="/admin/users" class="glass-card jg-feature-card p-5">
+            <a href="/admin/users" class="glass-card jg-feature-card">
                 <div class="jg-feature-icon bg-cyan-500/15 text-cyan-300">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                 </div>
-                <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_users_title" }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_panel_users_desc" }}</p>
+                <h2 class="text-lg font-semibold">{{ .T "dashboard_panel_users_title" }}</h2>
+                
             </a>
-            <a href="/admin/invitations" class="glass-card jg-feature-card p-5">
+            <a href="/admin/invitations" class="glass-card jg-feature-card">
                 <div class="jg-feature-icon bg-amber-500/15 text-amber-300">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                     </svg>
                 </div>
-                <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_invites_title" }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_panel_invites_desc" }}</p>
+                <h2 class="text-lg font-semibold">{{ .T "dashboard_panel_invites_title" }}</h2>
+                
             </a>
-            <a href="/admin/settings" class="glass-card jg-feature-card p-5">
+            <a href="/admin/settings" class="glass-card jg-feature-card">
                 <div class="jg-feature-icon bg-emerald-500/15 text-emerald-300">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -166,63 +157,43 @@
                         <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
                     </svg>
                 </div>
-                <h2 class="text-lg font-semibold mt-4">{{ .T "dashboard_panel_settings_title" }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">{{ .T "dashboard_panel_settings_desc" }}</p>
+                <h2 class="text-lg font-semibold">{{ .T "dashboard_panel_settings_title" }}</h2>
+                
             </a>
         </div>
 
         <div class="flex items-end justify-between gap-4 mb-4">
             <div>
                 <h2 class="text-xl font-semibold">{{ .T "dashboard_stats_title" }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "dashboard_stats_desc" }}</p>
+                
             </div>
         </div>
 
     {{/* Stats cards */}}
     <div class="stats-grid mb-8" id="stats-grid">
         <div class="glass-card-sm stat-card">
-            <div class="stat-icon bg-purple-500/15">
-                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-            </div>
+            
             <div>
                 <div class="stat-value" id="stat-users">â€”</div>
                 <div class="stat-label">{{ .T "stat_total_users" }}</div>
             </div>
         </div>
         <div class="glass-card-sm stat-card">
-            <div class="stat-icon bg-emerald-500/15">
-                <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-            </div>
+            
             <div>
                 <div class="stat-value" id="stat-active">â€”</div>
                 <div class="stat-label">{{ .T "stat_active_users" }}</div>
             </div>
         </div>
         <div class="glass-card-sm stat-card">
-            <div class="stat-icon bg-amber-500/15">
-                <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-            </div>
+            
             <div>
                 <div class="stat-value" id="stat-invitations">â€”</div>
                 <div class="stat-label">{{ .T "stat_invitations" }}</div>
             </div>
         </div>
         <div class="glass-card-sm stat-card">
-            <div class="stat-icon bg-red-500/15">
-                <svg class="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-            </div>
+            
             <div>
                 <div class="stat-value" id="stat-banned">â€”</div>
                 <div class="stat-label">{{ .T "stat_banned_users" }}</div>
@@ -235,7 +206,7 @@
         <div class="px-6 py-4 border-b border-white/5 flex items-center justify-between gap-4">
             <div>
                 <h2 class="font-semibold">{{ .T "dashboard_recent_users" }}</h2>
-                <p class="text-xs text-slate-500 mt-1">{{ .T "dashboard_recent_users_desc" }}</p>
+                
             </div>
             <a href="/admin/users" class="jg-btn jg-btn-ghost jg-btn-sm">
                 {{ .T "view_all" }} â†’

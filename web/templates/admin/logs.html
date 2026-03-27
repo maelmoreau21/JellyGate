@@ -1,4 +1,4 @@
-﻿{{/* logs.html â€” Journal d'audit */}}
+{{/* logs.html â€” Journal d'audit */}}
 {{ template "layouts/base.html" . }}
 
 {{ define "title" }}{{ .T "nav_logs" }} â€” JellyGate{{ end }}
@@ -11,8 +11,8 @@
             <circle cx="16" cy="16" r="14" fill="url(#grd)" />
             <defs>
                 <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
-                    <stop stop-color="#8b5cf6" />
-                    <stop offset="1" stop-color="#6366f1" />
+                    <stop stop-color="#94a3b8" />
+                    <stop offset="1" stop-color="#475569" />
                 </linearGradient>
             </defs>
             <path d="M10 22V10l12 6-12 6z" fill="#fff" />
@@ -77,10 +77,12 @@
         {{ end }}
     </nav>
     <div class="jg-sidebar-footer">
-        <button id="theme-toggle-btn" type="button" class="jg-nav-item w-full text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 mb-1" title="Theme">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-            </svg>
+        <button id="theme-toggle-btn" type="button" class="jg-theme-btn" title="Thème">
+            <span id="theme-toggle-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </span>
             <span class="jg-nav-label">{{ .T "nav_theme" }}</span>
         </button>
 
@@ -99,14 +101,14 @@
 <main class="jg-main">
     <section class="jg-page-stack">
         <div class="jg-hero-grid mb-6">
-            <div class="glass-card jg-hero-panel p-6 md:p-8">
+            <div class="glass-card jg-hero-panel p-4 md:p-5">
                 <button id="sidebar-toggle"
                     class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-                <span class="jg-kicker">{{ .T "nav_logs" }}</span>
+                
                 <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_logs" }}</h1>
                 <div class="mt-5 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto] gap-3 items-center">
                     <div class="relative w-full">
@@ -128,7 +130,7 @@
 
             <div class="glass-card p-5 jg-aside-card">
                 <h2 class="text-lg font-semibold text-white">{{ .T "logs_total_label" }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">request_id, {{ .T "logs_col_action" }}, {{ .T "logs_col_actor" }}, {{ .T "logs_col_target" }}</p>
+                
                 <div class="mt-5 flex flex-wrap gap-2">
                     <button id="export-json" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} JSON</button>
                     <button id="export-csv" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} CSV</button>
@@ -157,7 +159,7 @@
         <div class="glass-card p-0 overflow-hidden flex flex-col h-[calc(100vh-190px)]">
             <div class="px-5 py-5 border-b border-black/5 dark:border-white/10">
                 <h2 class="text-lg font-semibold text-white">{{ .T "nav_logs" }}</h2>
-                <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ .T "logs_loading" }}</p>
+                
             </div>
             <div class="jg-table-wrap flex-1 overflow-auto">
                 <table class="jg-table w-full text-left border-collapse">

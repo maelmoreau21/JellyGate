@@ -228,7 +228,7 @@ L'interface suit actuellement ces principes:
 - actions fréquentes mises en avant
 - pages `Utilisateurs` et `Automatisation` simplifiées pour réduire la densité d'information au premier écran
 - la navigation admin ne propose plus de centre de messages, les communications partant uniquement par e-mail depuis `Utilisateurs`
-- sur l'écran de connexion, le selecteur de langue est intégré dans la carte au lieu de flotter dans un encart séparé
+- sur l'écran de connexion, le selecteur de langue et le bouton de thème sont regroupés sous la carte de connexion pour un aspect épuré.
 
 Le design system partagé est porté par `web/static/css/custom.css` et `web/templates/layouts/base.html`.
 
@@ -279,5 +279,7 @@ docker build -t jellygate:local .
 - Support PostgreSQL actif côté déploiement et configuration.
 - Vérification d'e-mail avant création de compte sur les invitations publiques, avec option admin activée par défaut.
 - Les messages e-mail no-code acceptent les variables de template et proposent maintenant une insertion directe depuis l'interface d'administration.
-- Page de login repensée avec une section "Liens publics" pour un accès rapide aux autres services (Jellyfin, Jellyseerr, JellyTrack).
-- Support HTTPS natif intégré via `JELLYGATE_TLS_CERT` et `JELLYGATE_TLS_KEY`.
+- Redesign COMPLET des utilitaires de la sidebar admin : le sélecteur de langue et le bouton de thème sont désormais centrés et plus élégants. Les drapeaux (emojis) ont été ajoutés pour une visibilité parfaite sur PC et Mobile.
+- Refonte Esthétique "SaaS Professionnel" : Passage à une palette Gris Carbone (`#09090b`), typographie `Inter`, et retrait des effets "IA" (glows, dégradés radiaux, flous excessifs) pour un aspect haute performance et utilitaire.
+- Simplification "Minimale" appliquée à l'ensemble de l'interface d'administration : suppression des textes d'aide redondants, des bannières "Kicker", et des descriptions de sections pour un outil ultra-rapide et facile à prendre en main.
+- Support HTTPS natif intégré via `JELLYGATE_TLS_CERT` tel que `JELLYGATE_TLS_KEY`.
