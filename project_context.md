@@ -1,7 +1,7 @@
 # JellyGate — Project Context
 
-> Dernière mise à jour : 2026-03-08
-> Version : 1.1.0
+> Dernière mise à jour : 2026-03-27
+> Version : 1.1.1
 > Auteur : Mael Moreau
 
 ## 1. Vision
@@ -222,13 +222,13 @@ Le projet supporte SQLite et PostgreSQL. SQLite reste la cible de déploiement l
 
 L'interface suit actuellement ces principes:
 
-- fond noir conservé
+- fond noir conservé avec des touches de modernité (dégradés Cyan/Émeraude)
 - pages publiques centrées et simples
-- sidebar admin fixe
-- actions fréquentes mises en avant
+- sidebar admin fixe avec accents colorés
+- actions fréquentes mises en avant via des boutons en dégradé
 - pages `Utilisateurs` et `Automatisation` simplifiées pour réduire la densité d'information au premier écran
 - la navigation admin ne propose plus de centre de messages, les communications partant uniquement par e-mail depuis `Utilisateurs`
-- sur l'écran de connexion, le selecteur de langue et le bouton de thème sont regroupés sous la carte de connexion pour un aspect épuré.
+- sur l'écran de connexion, le selecteur de langue et le bouton de thème sont regroupés sous la carte de connexion pour un aspect épuré et moderne.
 
 Le design system partagé est porté par `web/static/css/custom.css` et `web/templates/layouts/base.html`.
 
@@ -283,3 +283,4 @@ docker build -t jellygate:local .
 - Refonte Esthétique "SaaS Professionnel" : Passage à une palette Gris Carbone (`#09090b`), typographie `Inter`, et retrait des effets "IA" (glows, dégradés radiaux, flous excessifs) pour un aspect haute performance et utilitaire.
 - Simplification "Minimale" appliquée à l'ensemble de l'interface d'administration : suppression des textes d'aide redondants, des bannières "Kicker", et des descriptions de sections pour un outil ultra-rapide et facile à prendre en main.
 - Support HTTPS natif intégré via `JELLYGATE_TLS_CERT` tel que `JELLYGATE_TLS_KEY`.
+- **Version 1.1.1** : Introduction de l'esthétique "Option A" - Dégradé Cyan/Émeraude (`#22d3ee` vers `#10b981`). Redesign des boutons principaux, des états de focus et de la page de connexion pour un aspect plus moderne et dynamique. Correction du bug de duplication d'étiquettes sur le bouton de thème.

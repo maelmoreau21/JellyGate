@@ -67,6 +67,7 @@
     "login_title": "Login",
     "login_subheading": "Administration",
     "login_submit": "Sign in",
+    "login_shortcuts": "Shortcuts",
     "login_forgot_password": "Forgot password?",
     "login_jellyfin_desc": "Media library access",
     "login_jellyseerr_desc": "Browse and request content",

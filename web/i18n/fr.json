@@ -67,6 +67,7 @@
     "login_title": "Connexion",
     "login_subheading": "Administration",
     "login_submit": "Se connecter",
+    "login_shortcuts": "Raccourcis",
     "login_forgot_password": "Mot de passe oublie ?",
     "login_jellyfin_desc": "Accès à la bibliothèque",
     "login_jellyseerr_desc": "Demander du contenu",

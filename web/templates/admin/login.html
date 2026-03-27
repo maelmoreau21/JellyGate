@@ -7,10 +7,11 @@
 <div class="jg-portal-wrapper">
     <div class="jg-portal-container">
         
-        {{/* Section centrale : Connexion */}}
+        {{/* Column 1: Spacer (balances the grid so Column 2 stays anchored) */}}
+        <div class="hidden 1440:block"></div>
+
+        {{/* Column 2: Main Login */}}
         <div class="jg-login-main-section">
-            
-            {{/* Carte de connexion */}}
             <div class="glass-card jg-login-card glow-accent">
                 <div class="jg-login-header">
                     <div class="jg-login-logo">
@@ -42,7 +43,7 @@
                     </div>
 
                     <div class="text-right mb-6">
-                        <a href="/reset" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+                        <a href="/reset" class="jg-forgot-link">
                             {{ .T "login_forgot_password" }}
                         </a>
                     </div>
@@ -53,9 +54,29 @@
                 </form>
             </div>
 
-            {{/* Utilitaires : Langue et Thème */}}
+            {{/* Utilitaires : Custom Lang Switcher & Thème */}}
             <div class="jg-login-footer-row">
-                <div id="login-lang-slot"></div>
+                <div class="jg-custom-lang-switcher" id="custom-lang-switcher">
+                    <button type="button" class="jg-lang-btn" id="lang-menu-btn">
+                        <span id="current-lang-flag" data-locale="{{ .Lang }}"></span>
+                        <span id="current-lang-label">
+                            {{ if eq .Lang "fr" }}Français{{ else if eq .Lang "en" }}English{{ else if eq .Lang "de" }}Deutsch{{ else if eq .Lang "es" }}Español{{ else if eq .Lang "it" }}Italiano{{ else if eq .Lang "nl" }}Nederlands{{ else if eq .Lang "pl" }}Polski{{ else if eq .Lang "pt-br" }}Português{{ else if eq .Lang "ru" }}Русский{{ else if eq .Lang "zh" }}中文{{ else }}{{ .Lang }}{{ end }}
+                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    <div class="jg-lang-menu" id="lang-menu">
+                        <div class="jg-lang-option {{ if eq .Lang "fr" }}active{{ end }}" data-locale="fr" onclick="JG.setLang('fr')"><span class="lang-flag" data-iso="fr">🇫🇷</span> <span class="lang-label">Français</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "en" }}active{{ end }}" data-locale="en" onclick="JG.setLang('en')"><span class="lang-flag" data-iso="gb">🇬🇧</span> <span class="lang-label">English</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "de" }}active{{ end }}" data-locale="de" onclick="JG.setLang('de')"><span class="lang-flag" data-iso="de">🇩🇪</span> <span class="lang-label">Deutsch</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "es" }}active{{ end }}" data-locale="es" onclick="JG.setLang('es')"><span class="lang-flag" data-iso="es">🇪🇸</span> <span class="lang-label">Español</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "it" }}active{{ end }}" data-locale="it" onclick="JG.setLang('it')"><span class="lang-flag" data-iso="it">🇮🇹</span> <span class="lang-label">Italiano</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "nl" }}active{{ end }}" data-locale="nl" onclick="JG.setLang('nl')"><span class="lang-flag" data-iso="nl">🇳🇱</span> <span class="lang-label">Nederlands</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "pl" }}active{{ end }}" data-locale="pl" onclick="JG.setLang('pl')"><span class="lang-flag" data-iso="pl">🇵🇱</span> <span class="lang-label">Polski</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "pt-br" }}active{{ end }}" data-locale="pt-br" onclick="JG.setLang('pt-br')"><span class="lang-flag" data-iso="br">🇧🇷</span> <span class="lang-label">Português</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "ru" }}active{{ end }}" data-locale="ru" onclick="JG.setLang('ru')"><span class="lang-flag" data-iso="ru">🇷🇺</span> <span class="lang-label">Русский</span></div>
+                        <div class="jg-lang-option {{ if eq .Lang "zh" }}active{{ end }}" data-locale="zh" onclick="JG.setLang('zh')"><span class="lang-flag" data-iso="cn">🇨🇳</span> <span class="lang-label">中文</span></div>
+                    </div>
+                </div>
                 
                 <button id="theme-toggle-btn" type="button" class="jg-login-util-btn" title="Changer le thème">
                     <span id="theme-icon-slot">
@@ -66,16 +87,18 @@
                     <span>{{ .T "nav_theme" }}</span>
                 </button>
             </div>
+            
+            <p class="jg-version-text text-center mt-6">JellyGate v{{ .AppVersion }}</p>
         </div>
 
-        {{/* Section de droite : Raccourcis */}}
+        {{/* Column 3: Raccourcis shortcuts */}}
         {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}
         <div class="jg-login-side-section">
             <h2 class="jg-side-title">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
-                {{ .T "invite_quick_links" }}
+                {{ .T "login_shortcuts" }}
             </h2>
             
             <div class="flex flex-col gap-4">
@@ -132,16 +155,59 @@
 {{ define "scripts" }}
 <script nonce="{{ .ScriptNonce }}">
     document.addEventListener('DOMContentLoaded', () => {
-        const slot = document.getElementById('login-lang-slot');
-        const langSwitcher = document.getElementById('lang-switcher');
-        if (!slot || !langSwitcher) {
-            return;
+        const langBtn = document.getElementById('lang-menu-btn');
+        const langMenu = document.getElementById('lang-menu');
+        
+        if (langBtn && langMenu) {
+            langBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                langMenu.classList.toggle('show');
+            });
+            
+            document.addEventListener('click', () => {
+                langMenu.classList.remove('show');
+            });
         }
 
-        langSwitcher.classList.remove('jg-lang-switcher-floating', 'jg-lang-switcher-sidebar', 'px-3', 'py-2');
-        langSwitcher.classList.add('jg-login-lang-compact');
-        slot.appendChild(langSwitcher);
+        /* FlagCDN rendering: convert .lang-flag spans (data-iso) into <img> with fallback emoji */
+        const isoFallback = {
+            'fr':'fr','gb':'gb','de':'de','es':'es','it':'it','nl':'nl','pl':'pl','br':'br','ru':'ru','cn':'cn'
+        };
+
+        function renderFlagSpan(span) {
+            const iso = (span.getAttribute('data-iso') || '').toLowerCase();
+            const label = span.nextElementSibling && span.nextElementSibling.textContent ? span.nextElementSibling.textContent.trim() : '';
+            const code = isoFallback[iso] ? iso : iso;
+            const img = document.createElement('img');
+            img.src = 'https://flagcdn.com/w20/' + code + '.png';
+            img.alt = label || iso;
+            img.width = 20; img.height = 14;
+            img.style.verticalAlign = 'middle';
+            img.onerror = function() { /* fallback to emoji already present in span */ this.replaceWith(span); };
+            span.parentNode.replaceChild(img, span);
+        }
+
+        // render current-lang-flag if present
+        const current = document.getElementById('current-lang-flag');
+        if (current) {
+            const locale = (current.getAttribute('data-locale') || '').toLowerCase();
+            const map = {'fr':'fr','en':'gb','de':'de','es':'es','it':'it','nl':'nl','pl':'pl','pt-br':'br','ru':'ru','zh':'cn'};
+            const iso = map[locale] || locale;
+            const img = document.createElement('img');
+            img.src = 'https://flagcdn.com/w20/' + iso + '.png';
+            img.alt = locale;
+            img.width = 20; img.height = 14; img.style.verticalAlign = 'middle';
+            img.onerror = function() { this.replaceWith(document.createTextNode('🌐')); };
+            current.appendChild(img);
+        }
+
+        // render all menu flags
+        document.querySelectorAll('.lang-flag').forEach(span => {
+            renderFlagSpan(span);
+        });
+
     });
 </script>
 {{ end }}
+
 

@@ -6,11 +6,11 @@
 /* ── Variables ───────────────────────────────────────────────────────────── */
 :root {
     --jg-bg-primary: #09090b;
-    --jg-bg-secondary: #121214;
-    --jg-bg-card: #121214;
+    --jg-bg-secondary: #0e0e11;
+    --jg-bg-card: #18181b;
     --jg-bg-glass: rgba(24, 24, 27, 0.85);
-    --jg-border: rgba(39, 39, 42, 0.8);
-    --jg-border-strong: rgba(63, 63, 70, 0.9);
+    --jg-border: #27272a;
+    --jg-border-strong: #3f3f46;
     --jg-border-focus: rgba(34, 211, 238, 0.4);
     --jg-accent: #22d3ee;
     --jg-accent-cyan: #22d3ee;
@@ -19,17 +19,19 @@
     --jg-accent-amber: #f59e0b;
     --jg-accent-rose: #fb7185;
     --jg-accent-hover: #67e8f9;
-    --jg-accent-glow: rgba(34, 211, 238, 0.1);
+    --jg-gradient-accent: linear-gradient(135deg, #22d3ee, #10b981);
+    --jg-accent-glow: rgba(34, 211, 238, 0.15);
     --jg-success: #10b981;
     --jg-danger: #ef4444;
     --jg-warning: #f59e0b;
     --jg-text: #fafafa;
-    --jg-text-muted: #a1a1aa;
+    --jg-text-muted: #71717a;
     --jg-sidebar-width: 260px;
     --jg-sidebar-collapsed: 72px;
     --jg-radius: 12px;
     --jg-radius-sm: 8px;
     --jg-focus-ring: rgba(34, 211, 238, 0.2);
+    --jg-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Light Mode Base Variables ───────────────────────────────────────────── */
@@ -41,10 +43,10 @@ html:not(.dark) body {
     --jg-border: #e4e4e7;
     --jg-border-strong: #d4d4d8;
     --jg-text: #09090b;
-    --jg-text-muted: #71717a;
+    --jg-text-muted: #3f3f46; /* Darkened further from #52525b for better visibility */
     --jg-accent: #0891b2;
     --jg-accent-hover: #0e7490;
-    --jg-accent-glow: rgba(8, 145, 178, 0.05);
+    --jg-accent-glow: rgba(8, 145, 178, 0.08);
 }
 
 /* ── Base ────────────────────────────────────────────────────────────────── */
@@ -55,21 +57,23 @@ body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow-x: hidden;
     transition: background-color 0.2s, color 0.2s;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
 }
 
-html:not(.dark) body {
-    background-color: var(--jg-bg-primary);
-    background-image: none;
-}
+body::before { display: none; }
 
-body::before {
-    display: none;
+/* ── Typography & Headings ───────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--jg-text);
+    font-weight: 700;
+    letter-spacing: -0.025em;
 }
 
 /* ── Scrollbars ─────────────────────────────────────────────────────────── */
 * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+    scrollbar-color: var(--jg-border-strong) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -79,36 +83,15 @@ body::before {
 
 *::-webkit-scrollbar-track { background: transparent; }
 
-*::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; border: 3px solid var(--jg-bg-primary); }
+*::-webkit-scrollbar-thumb {
+    background: var(--jg-border-strong);
+    border-radius: 10px;
+    border: 3px solid var(--jg-bg-primary);
+}
 
 *::-webkit-scrollbar-thumb:hover { background: #52525b; }
 
-/* ── Glassmorphism card ──────────────────────────────────────────────────── */
-.glass-card {
-    background: #18181b;
-    border: 1px solid #27272a;
-    border-radius: var(--jg-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.glass-card-sm {
-    background: #121214;
-    border: 1px solid #27272a;
-    border-radius: var(--jg-radius-sm);
-    box-shadow: none;
-    position: relative;
-    transition: all 0.2s ease;
-}
-
-.glass-card-sm {
-    background: #18181b;
-    border: 1px solid #27272a;
-    border-radius: var(--jg-radius-sm);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
+/* ── Layout & Containers ───────────────────────────────────────────────── */
 .jg-page-stack {
     display: flex;
     flex-direction: column;
@@ -120,30 +103,23 @@ body::before {
     gap: 1.25rem;
 }
 
-.jg-hero-panel {
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.glass-card {
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border);
+    border-radius: var(--jg-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     position: relative;
-    overflow: hidden;
+    transition: var(--jg-transition);
 }
 
-/* Removed AI-style glow */
-
-.jg-aside-card {
-    align-self: stretch;
-}
-
-.jg-kicker {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid rgba(34, 211, 238, 0.22);
-    background: rgba(15, 118, 110, 0.1);
-    color: #9ae6ff;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+.glass-card-sm {
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border);
+    border-radius: var(--jg-radius-sm);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    position: relative;
+    transition: var(--jg-transition);
 }
 
 .jg-feature-grid {
@@ -157,14 +133,14 @@ body::before {
     align-items: center;
     gap: 1rem;
     padding: 1.25rem !important;
-    background: #18181b;
-    border: 1px solid #27272a;
-    transition: all 0.2s ease;
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border);
+    transition: var(--jg-transition);
 }
 
 .jg-feature-card:hover {
-    background: #27272a;
-    border-color: #3f3f46;
+    background: var(--jg-border);
+    border-color: var(--jg-border-strong);
     transform: translateY(-1px);
 }
 
@@ -265,7 +241,11 @@ html.dark .jg-input:focus {
 
 .jg-input::placeholder {
     color: var(--jg-text-muted);
-    opacity: 0.8;
+    opacity: 1; /* Less transparent in light mode for visibility */
+}
+
+html.dark .jg-input::placeholder {
+    opacity: 0.65;
 }
 
 select.jg-input {
@@ -276,6 +256,7 @@ select.jg-input {
     background-repeat: no-repeat;
     background-position: right 0.75rem center;
     padding-right: 2.2rem;
+    font-family: 'Inter', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
 }
 
 select.jg-input option {
@@ -361,6 +342,32 @@ html.dark .jg-lang-switcher {
     min-width: 160px;
     text-align: center;
     cursor: pointer;
+}
+
+/* Force emoji-capable fonts for language flags so they render on Windows/PC */
+.jg-lang-btn #current-lang-flag,
+.jg-lang-option span,
+.jg-lang-select,
+.jg-login-util-btn span {
+    font-family: 'Segoe UI Emoji', 'Noto Color Emoji', 'Apple Color Emoji', 'Twemoji Mozilla', 'Inter', system-ui, sans-serif;
+    font-variant-ligatures: none;
+}
+
+/* Slightly larger flags for visibility on desktop */
+.jg-lang-btn #current-lang-flag,
+.jg-lang-option span { font-size: 1.05em; line-height: 1; }
+
+/* Desktop: show flag then language name (flag first, then label) */
+@media (min-width: 1024px) {
+    .jg-lang-btn {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .jg-lang-btn #current-lang-flag { font-size: 1.2em; display: inline-block; }
+    .jg-lang-btn #current-lang-label { display: inline-block !important; font-weight: 600; }
 }
 
 .jg-sidebar-footer {
@@ -596,14 +603,16 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 }
 
 .jg-btn-primary {
-    background: linear-gradient(135deg, #0f766e, var(--jg-accent), #22d3ee);
-    color: #fff;
-    box-shadow: 0 4px 15px var(--jg-accent-glow);
+    background: var(--jg-gradient-accent);
+    color: #000;
+    font-weight: 700;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
 }
 
 .jg-btn-primary:hover {
     transform: translateY(-1px);
-    box-shadow: 0 10px 26px var(--jg-accent-glow);
+    box-shadow: 0 10px 26px rgba(16, 185, 129, 0.3);
+    filter: brightness(1.05);
 }
 
 .jg-btn-primary:active {
@@ -645,16 +654,13 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     top: 0;
     bottom: 0;
     width: var(--jg-sidebar-width);
-    background:
-        linear-gradient(180deg, rgba(5, 10, 22, 0.98), rgba(7, 12, 24, 0.95)),
-        radial-gradient(circle at top, rgba(20, 184, 166, 0.06), transparent 45%);
+    background: var(--jg-bg-secondary);
     border-right: 1px solid var(--jg-border);
     display: flex;
     flex-direction: column;
     transition: var(--jg-transition);
     z-index: 50;
     overflow: hidden;
-    box-shadow: 28px 0 48px rgba(2, 6, 23, 0.34);
 }
 
 .jg-sidebar.collapsed {
@@ -680,10 +686,7 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     font-size: 1.15rem;
     font-weight: 700;
     letter-spacing: 0.02em;
-    background: linear-gradient(135deg, #dff7ff, #7dd3fc 45%, #5eead4);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #fff;
     white-space: nowrap;
 }
 
@@ -755,9 +758,8 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 }
 
 .jg-nav-item:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(20, 184, 166, 0.14));
+    background: rgba(255, 255, 255, 0.04);
     color: var(--jg-text);
-    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.35);
 }
 
 .jg-nav-item:hover::before {
@@ -765,11 +767,9 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 }
 
 .jg-nav-item.active {
-    background: linear-gradient(135deg, rgba(17, 28, 48, 0.95), rgba(15, 118, 110, 0.2));
-    color: #f8fafc;
-    box-shadow:
-        inset 0 0 0 1px rgba(255, 255, 255, 0.16),
-        0 12px 24px rgba(2, 6, 23, 0.42);
+    background: rgba(255, 255, 255, 0.06);
+    color: #fff;
+    font-weight: 600;
 }
 
 .jg-nav-item.active::before {
@@ -790,7 +790,7 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     padding: 1rem;
     border-top: 1px solid var(--jg-border);
     flex-shrink: 0;
-    background: linear-gradient(180deg, rgba(4, 8, 18, 0), rgba(4, 8, 18, 0.85));
+    background: var(--jg-bg-secondary);
 }
 
 /* ── Main content ────────────────────────────────────────────────────────── */
@@ -817,16 +817,16 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    background: #18181b;
-    border: 1px solid #27272a;
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border);
     border-radius: 8px;
     box-shadow: none;
-    transition: all 0.2s ease;
+    transition: var(--jg-transition);
 }
 
 .stat-card:hover {
-    background: #27272a;
-    border-color: #3f3f46;
+    background: var(--jg-bg-secondary);
+    border-color: var(--jg-border-strong);
 }
 
 .stat-icon {
@@ -935,11 +935,16 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 1rem 1.1rem;
+    padding: 1rem 1.15rem;
     border-radius: var(--jg-radius-sm);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(145deg, rgba(15, 23, 42, 0.88), rgba(7, 12, 24, 0.82));
-    box-shadow: 0 18px 34px rgba(2, 6, 23, 0.24);
+    border: 1px solid var(--jg-border);
+    background: var(--jg-bg-secondary);
+    transition: var(--jg-transition);
+}
+
+.jg-process-step:hover {
+    border-color: var(--jg-border-strong);
+    background: var(--jg-bg-card);
 }
 
 .jg-process-step:nth-child(1) {
@@ -955,17 +960,17 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 }
 
 .jg-process-count {
-    width: 2.9rem;
-    height: 2.9rem;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    background: linear-gradient(135deg, rgba(20, 184, 166, 0.28), rgba(34, 211, 238, 0.18));
-    border: 1px solid rgba(34, 211, 238, 0.2);
-    color: var(--jg-text);
-    font-size: 1.1rem;
+    background: var(--jg-bg-primary);
+    border: 1px solid var(--jg-border);
+    color: var(--jg-accent);
+    font-size: 1rem;
     font-weight: 700;
 }
 
@@ -1099,11 +1104,11 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 .jg-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.45rem 0.8rem;
+    gap: 0.35rem;
+    padding: 0.4rem 0.8rem;
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.72);
-    border: 1px solid rgba(34, 211, 238, 0.16);
+    background: var(--jg-bg-secondary);
+    border: 1px solid var(--jg-border);
     color: var(--jg-text);
     font-size: 0.82rem;
     font-weight: 600;
@@ -1597,15 +1602,15 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     justify-content: center;
     gap: 0.5rem;
     border-radius: var(--jg-radius-sm);
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.925rem;
     cursor: pointer;
     text-decoration: none;
     line-height: 1;
     border: 1px solid transparent;
-    color: #fff;
-    background: linear-gradient(135deg, #0f766e, var(--jg-accent), #22d3ee);
-    box-shadow: 0 4px 15px var(--jg-accent-glow);
+    color: #000;
+    background: var(--jg-gradient-accent);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.2);
     transition: var(--jg-transition);
 }
 
@@ -1654,9 +1659,9 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 }
 
 .form-checkbox:checked {
-    border-color: rgba(45, 212, 191, 0.85);
-    background: linear-gradient(135deg, #0f766e, #14b8a6);
-    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+    border-color: #10b981;
+    background: var(--jg-gradient-accent);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 }
 
 .form-checkbox:checked::before {
@@ -1689,20 +1694,59 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     z-index: 10;
 }
 
-@media (min-width: 1024px) {
+/* ── Login Portal Redesign ───────────────────────────────────────────────── */
+.jg-portal-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    position: relative;
+    background-color: var(--jg-bg-primary);
+    overflow: hidden;
+}
+
+.jg-portal-container {
+    width: 100%;
+    max-width: 1400px; /* Allow wider container for 3 cols */
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    align-items: center;
+    justify-items: center;
+    z-index: 10;
+}
+
+@media (min-width: 1440px) {
     .jg-portal-container {
-        grid-template-columns: 1fr 420px 320px;
-        /* Column 1: Spacer/Balance, Column 2: Login, Column 3: Shortcuts */
+        /* Center the login column while keeping symmetric gutters; right-side shortcuts will use justify-self to stay right-aligned */
+        grid-template-columns: 1fr 480px 1fr;
+        justify-items: center;
     }
-    
+}
+
+@media (min-width: 1440px) {
     .jg-login-main-section {
         grid-column: 2;
+        width: 480px;
     }
     
     .jg-login-side-section {
         grid-column: 3;
         align-self: center;
+        width: auto;
+        max-width: 340px;
+        padding-left: 1rem;
+        justify-self: end;
     }
+}
+
+/* Responsive: masquer la colonne de raccourcis sous 1440px pour garder la carte centrale parfaitement centrée */
+@media (max-width: 1439px) {
+    .jg-login-side-section { display: none; }
+    .jg-portal-container { grid-template-columns: 1fr; justify-items: center; }
+    .jg-login-main-section { width: 100%; max-width: 640px; }
 }
 
 .jg-login-main-section {
@@ -1714,8 +1758,10 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 
 .jg-login-card {
     position: relative;
-    padding: 2.5rem;
+    padding: 2.25rem;
     overflow: hidden;
+    border: 1px solid rgba(16, 185, 129, 0.15) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(16, 185, 129, 0.05) !important;
 }
 
 .jg-login-card::before {
@@ -1725,41 +1771,55 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     left: 0;
     width: 100%;
     height: 4px;
-    background: linear-gradient(90deg, #71717a, #a855f7, #ec4899);
+    background: var(--jg-gradient-accent);
 }
 
 .jg-login-header {
     text-align: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.75rem;
 }
 
 .jg-login-logo {
-    width: 72px;
-    height: 72px;
-    margin: 0 auto 1.25rem;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 20px;
-    background: linear-gradient(135deg, #4f46e5, #9333ea);
-    box-shadow: 0 10px 25px rgba(124, 58, 237, 0.4);
-    color: white;
+    border-radius: 16px;
+    background: rgba(16, 185, 129, 0.05);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    color: #10b981;
 }
 
 .jg-login-title {
-    font-size: 2.25rem;
+    font-size: 1.85rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
-    background: linear-gradient(to right, #818cf8, #c084fc);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 0.5rem;
+    letter-spacing: -0.03em;
+    color: var(--jg-text);
+    margin-bottom: 0.25rem;
 }
 
 .jg-login-subtitle {
     color: var(--jg-text-muted);
     font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.jg-forgot-link {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--jg-text-muted);
+    transition: var(--jg-transition);
+    text-decoration: none;
+}
+
+.jg-forgot-link:hover {
+    color: var(--jg-accent);
+}
+
+html.dark .jg-forgot-link:hover {
+    color: #fff;
 }
 
 .jg-login-footer-row {
@@ -1775,21 +1835,23 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1.25rem;
     border-radius: 999px;
-    background: rgba(148, 163, 184, 0.08);
-    border: 1px solid rgba(148, 163, 184, 0.15);
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid rgba(16, 185, 129, 0.12);
     color: var(--jg-text-muted);
     font-size: 0.85rem;
     font-weight: 600;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     cursor: pointer;
 }
 
 .jg-login-util-btn:hover {
-    background: rgba(148, 163, 184, 0.15);
-    color: var(--jg-text);
-    border-color: rgba(148, 163, 184, 0.3);
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border-color: rgba(16, 185, 129, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
 }
 
 /* ── Shortcuts Sidebar ──────────────────────────────────────────────────── */
@@ -1814,22 +1876,21 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 }
 
 .jg-shortcut-card {
-    padding: 1.25rem;
+    padding: 1rem;
     display: flex;
     align-items: center;
-    gap: 1.1rem;
+    gap: 1rem;
     text-decoration: none;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 18px;
+    transition: var(--jg-transition);
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border);
+    border-radius: 12px;
 }
 
 .jg-shortcut-card:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: rgba(139, 92, 246, 0.4);
-    transform: translateX(6px);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    background: var(--jg-border);
+    border-color: var(--jg-border-strong);
+    transform: translateX(4px);
 }
 
 .jg-shortcut-icon {
@@ -1855,8 +1916,12 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 
 .jg-shortcut-name {
     font-weight: 700;
-    color: #fff;
+    color: var(--jg-text);
     font-size: 1rem;
+}
+
+html.dark .jg-shortcut-name {
+    color: #fff;
 }
 
 .jg-shortcut-desc {
@@ -1869,32 +1934,95 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 .shortcut-jellyseerr .jg-shortcut-icon { background: rgba(79, 70, 229, 0.15); color: #818cf8; border: 1px solid rgba(79, 70, 229, 0.25); }
 .shortcut-jellytrack .jg-shortcut-icon { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.25); }
 
-/* Custom Lang Switcher for Login */
-.jg-login-lang-compact {
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    backdrop-filter: none !important;
-    padding: 0 !important;
-    width: auto !important;
-    display: inline-block !important;
+/* Custom Lang Switcher (Non-Native) */
+.jg-custom-lang-switcher {
+    position: relative;
+    user-select: none;
 }
 
-.jg-login-lang-compact label {
-    display: none;
-}
-
-.jg-login-lang-compact .jg-lang-select {
-    background-color: transparent;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    padding: 0.45rem 2rem 0.45rem 0.75rem;
-    font-size: 0.8rem;
+.jg-lang-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border-strong);
     border-radius: 999px;
-    height: auto;
-    width: auto;
-    min-width: 140px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--jg-text);
+    cursor: pointer;
+    transition: var(--jg-transition);
 }
 
-.jg-login-lang-compact .jg-lang-select:hover {
-    border-color: rgba(148, 163, 184, 0.4);
+.jg-lang-btn:hover {
+    border-color: var(--jg-accent);
+    background: var(--jg-accent-glow);
+}
+
+.jg-lang-menu {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 0;
+    width: 240px;
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border-strong);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    padding: 0.5rem;
+    display: none;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+}
+
+.jg-lang-menu.show {
+    display: block;
+    animation: slideUp 0.15s ease-out;
+}
+
+.jg-lang-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--jg-text-muted);
+    transition: var(--jg-transition);
+}
+
+.jg-lang-option:hover {
+    background: var(--jg-accent-glow);
+    color: var(--jg-text);
+}
+
+.jg-lang-option.active {
+    background: var(--jg-accent);
+    color: #fff;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.jg-version-text {
+    margin-top: 1.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--jg-text); /* Higher contrast */
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.9;
+}
+
+.jg-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 800; /* Bolder for visibility */
+    color: var(--jg-text); /* Always high contrast */
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }

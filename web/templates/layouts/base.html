@@ -45,22 +45,7 @@
     {{ block "body" . }}{{ end }}
 
     {{/* Language selector — moved into admin sidebar footer by app.js when available */}}
-    <div id="lang-switcher" class="jg-lang-switcher jg-lang-switcher-floating px-3 py-2">
-        <label for="lang-select" class="text-[11px] uppercase tracking-wide text-slate-600 dark:text-slate-300 block mb-1">{{ .T "base_language_label" }}</label>
-        <select id="lang-select" class="jg-input jg-lang-select">
-            <option value="fr" {{ if eq .Lang "fr" }}selected{{ end }}>🇫🇷 fr - Français</option>
-            <option value="en" {{ if eq .Lang "en" }}selected{{ end }}>🇬🇧 en - English</option>
-            <option value="de" {{ if eq .Lang "de" }}selected{{ end }}>🇩🇪 de - Deutsch</option>
-            <option value="es" {{ if eq .Lang "es" }}selected{{ end }}>🇪🇸 es - Español</option>
-            <option value="it" {{ if eq .Lang "it" }}selected{{ end }}>🇮🇹 it - Italiano</option>
-            <option value="nl" {{ if eq .Lang "nl" }}selected{{ end }}>🇳🇱 nl - Nederlands</option>
-            <option value="pl" {{ if eq .Lang "pl" }}selected{{ end }}>🇵🇱 pl - Polski</option>
-            <option value="pt-br" {{ if eq .Lang "pt-br" }}selected{{ end }}>🇧🇷 pt-BR - Português (Brasil)</option>
-            <option value="ru" {{ if eq .Lang "ru" }}selected{{ end }}>🇷🇺 ru - Русский</option>
-            <option value="zh" {{ if eq .Lang "zh" }}selected{{ end }}>🇨🇳 zh - 中文</option>
-        </select>
-        <p class="jg-version-text">JellyGate v{{ .AppVersion }}</p>
-    </div>
+    {{/* Floating language selector removed to avoid duplicate UI — language switcher is available in the login footer where needed. */}}
 
     {{/* App JS */}}
     <script src="/static/js/app.js"></script>
