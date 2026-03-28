@@ -1,156 +1,67 @@
-{{/* users.html — Gestion des utilisateurs */}}
-{{ template "base.html" . }}
+{{ template "admin_shell.html" . }}
 
 {{ define "title" }}{{ .T "users_title" }} — JellyGate{{ end }}
 
-{{ define "body" }}
-<aside id="sidebar" class="jg-sidebar">
-    {{ template "logo" . }}
-    <nav class="jg-nav">
-        <a href="/admin/" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
-        </a>
-        <a href="/admin/my-account" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
-        </a>
-        {{ if .IsAdmin }}
-        <a href="/admin/users" class="jg-nav-item active">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_users" }}</span>
-        </a>
-        <a href="/admin/automation" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
-        </a>
-        {{ end }}
-        {{ if .CanInvite }}
-        <a href="/admin/invitations" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
-        </a>
-        {{ end }}
-        {{ if .IsAdmin }}
-        <a href="/admin/settings" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
-        </a>
-        <a href="/admin/logs" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
-        </a>
-        {{ end }}
-    </nav>
-    <div class="jg-sidebar-footer">
-        <button id="theme-toggle-btn" type="button" class="jg-theme-btn" title="Thème">
-            <span id="theme-toggle-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-            </span>
-            <span class="jg-nav-label">{{ .T "nav_theme" }}</span>
-        </button>
-
-        <form method="POST" action="/admin/logout">
-            <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
-            </button>
-        </form>
-        <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
+{{ define "admin_content" }}
+<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "users_heading" }}</h1>
+        <p class="text-jg-text-muted mt-2">Gérez vos utilisateurs Jellyfin et LDAP de manière centralisée.</p>
     </div>
-</aside>
+    <div class="flex items-center gap-3">
+        <button id="btn-sync-users" class="jg-btn jg-btn-ghost">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            {{ .T "users_sync_jellyfin" }}
+        </button>
+        <button id="btn-open-bulk-email" class="jg-btn jg-btn-primary">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            {{ .T "users_bulk_email" }}
+        </button>
+    </div>
+</div>
 
-<main class="jg-main">
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <!-- Left column: header, stats, filters and bulk actions -->
-        <div class="xl:col-span-3 flex flex-col gap-4">
-            <section class="glass-card jg-hero-panel p-4 md:p-5">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    {{/* ── Left Side: Filters & Stats ─────────────────────────────────── */}}
+    <div class="lg:col-span-3 space-y-6">
+        <div class="jg-card jg-glass">
+            <h2 class="text-sm font-bold uppercase tracking-widest text-jg-text-muted mb-6">{{ .T "users_filters_title" }}</h2>
+            <div class="space-y-4">
+                <div class="relative">
+                    <input type="text" id="search-users" class="jg-input pl-10" placeholder='{{ .T "users_search_placeholder" }}'>
+                    <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-jg-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                </div>
+                
                 <div>
-                    <button id="sidebar-toggle"
-                        class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
-                    </button>
-
-                    <h1 class="text-2xl font-bold mt-1">{{ .T "users_heading" }}</h1>
-
-                    <div class="mt-4">
-                        <a href="#users-filters" class="jg-btn jg-btn-ghost">{{ .T "users_filters_title" }}</a>
-                    </div>
-                </div>
-            </section>
-
-            <div class="glass-card-sm p-4">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <div class="stat-value" id="users-stat-total">0</div>
-                        <div class="stat-label">{{ .T "users_overview_total" }}</div>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="users-stat-filtered">0</div>
-                        <div class="stat-label">{{ .T "users_overview_filtered" }}</div>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="users-stat-inviters">0</div>
-                        <div class="stat-label">{{ .T "users_overview_inviters" }}</div>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="users-stat-expiring">0</div>
-                        <div class="stat-label">{{ .T "users_overview_expiring" }}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div id="users-filters" class="glass-card p-4 jg-section-card">
-                <div class="mb-4">
-                    <h2 class="text-lg font-semibold">{{ .T "users_filters_title" }}</h2>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
-                    <input type="text" id="search-users" class="jg-input xl:col-span-2" placeholder='{{ .T "users_search_placeholder" }}'>
+                    <label class="jg-label">{{ .T "col_status" }}</label>
                     <select id="filter-status" class="jg-input">
                         <option value="all">{{ .T "users_filter_status_all" }}</option>
                         <option value="active">{{ .T "status_active" }}</option>
                         <option value="inactive">{{ .T "status_inactive" }}</option>
                         <option value="banned">{{ .T "status_banned" }}</option>
                     </select>
+                </div>
+
+                <div>
+                    <label class="jg-label">Jellyfin</label>
                     <select id="filter-jellyfin" class="jg-input">
                         <option value="all">{{ .T "users_filter_jellyfin_all" }}</option>
                         <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
                         <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
                         <option value="missing">{{ .T "users_filter_jellyfin_missing" }}</option>
                     </select>
+                </div>
+
+                <div>
+                    <label class="jg-label">{{ .T "users_col_invite" }}</label>
                     <select id="filter-invite" class="jg-input">
                         <option value="all">{{ .T "users_filter_invite_all" }}</option>
                         <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
                         <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
                     </select>
+                </div>
+
+                <div>
+                    <label class="jg-label">Plus de filtres</label>
                     <select id="filter-extra" class="jg-input">
                         <option value="all">{{ .T "users_filter_extra_all" }}</option>
                         <option value="with-email">{{ .T "users_filter_with_email" }}</option>
@@ -160,205 +71,195 @@
                         <option value="expiry-none">{{ .T "users_filter_expiry_none" }}</option>
                     </select>
                 </div>
-            </div>
 
-            <div class="glass-card p-4 jg-section-card" id="bulk-card">
-                <div class="mb-4">
-                        <h2 class="text-lg font-semibold">{{ .T "users_bulk_title" }}</h2>
-                    </div>
-                    <div class="text-sm text-slate-500 mt-1"><span id="bulk-selected-count">0</span> {{ .T "users_bulk_selected_suffix" }}</div>
-                <div class="flex flex-col gap-4">
-                    <div class="bulk-steps-grid">
-                        <div id="bulk-step-select" class="bulk-step-card active">
-                            <div class="bulk-step-title">{{ .T "users_bulk_step_select" }}</div>
-                        </div>
-                        <div id="bulk-step-action" class="bulk-step-card">
-                            <div class="bulk-step-title">{{ .T "users_bulk_step_action" }}</div>
-                            <div class="bulk-step-text" id="bulk-action-label">{{ .T "users_bulk_choose_action" }}</div>
-                        </div>
-                        <div id="bulk-step-config" class="bulk-step-card">
-                            <div class="bulk-step-title">{{ .T "users_bulk_step_verify" }}</div>
-                            <div class="bulk-step-text" id="bulk-validation-text">{{ .T "users_bulk_complete_required" }}</div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between flex-wrap gap-3">
-                        <div class="text-sm text-slate-600 dark:text-slate-300">
-                            {{ .T "users_bulk_assistant_desc" }}
-                        </div>
-                        <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">{{ .T "users_select_filtered" }}</button>
-                    </div>
-
-                    <div class="rounded-lg border border-black/5 dark:border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-600 dark:text-slate-300">
-                        {{ .T "users_bulk_instructions" }}
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <select id="bulk-action" class="jg-input md:col-span-2 appearance-none bg-right bg-no-repeat" title='{{ .T "users_bulk_choose_action" }}'>
-                            <option value="">{{ .T "users_bulk_action_placeholder" }}</option>
-                            <option value="send_email">{{ .T "users_action_send_email" }}</option>
-                            <option value="send_password_reset">{{ .T "users_action_send_password_reset" }}</option>
-                            <option value="set_expiry">{{ .T "users_action_set_expiry" }}</option>
-                            <option value="set_parrainage">{{ .T "users_action_set_invite" }}</option>
-                            <option value="jellyfin_policy">{{ .T "users_action_jellyfin_policy" }}</option>
-                            <option value="apply_preset">{{ .T "users_action_apply_preset" }}</option>
-                            <option value="activate">{{ .T "users_action_activate" }}</option>
-                            <option value="deactivate">{{ .T "users_action_deactivate" }}</option>
-                            <option value="delete">{{ .T "users_action_delete" }}</option>
-                        </select>
-                        <button id="bulk-apply" class="jg-btn opacity-60 cursor-not-allowed" disabled>{{ .T "users_apply" }}</button>
-                    </div>
-
-                    <div id="bulk-help" class="hidden rounded-lg border border-blue-400/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-100"></div>
-
-                    <div id="bulk-fields" class="hidden"></div>
-
-                    <div id="bulk-summary" class="rounded-lg border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-                        {{ .T "users_bulk_summary_placeholder" }}
-                    </div>
-                </div>
+                <button id="btn-clear-filters" class="w-full jg-btn jg-btn-ghost jg-btn-sm text-xs mt-2">{{ .T "users_filters_clear" }}</button>
             </div>
         </div>
 
-        <!-- Center column: table -->
-        <div class="xl:col-span-6">
-            <div class="glass-card p-0 overflow-hidden jg-section-card" id="users-table-card">
-                <div class="px-6 py-4 border-b border-white/5 flex items-start justify-between gap-4 flex-wrap">
-                    <div>
-                        <h2 class="text-lg font-semibold">{{ .T "users_table_title" }}</h2>
-                    </div>
-                    <div class="jg-table-toolbar">
-                        <a href="#bulk-card" class="jg-section-anchor">{{ .T "users_bulk_title" }}</a>
-                        <a href="#users-filters" class="jg-section-anchor">{{ .T "users_filters_title" }}</a>
-                    </div>
+        <div class="jg-card border-none bg-gradient-to-br from-jg-bg-card to-jg-bg-secondary p-5">
+            <div class="jg-stat-grid grid-cols-2 gap-4">
+                <div class="p-4 bg-white/5 rounded-2xl">
+                    <div class="text-xl font-bold" id="users-stat-total">0</div>
+                    <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider">{{ .T "users_overview_total" }}</div>
                 </div>
-                <div class="jg-table-wrap overflow-x-auto">
-                    <table class="jg-table min-w-full">
-                        <thead>
-                            <tr>
-                                <th><input type="checkbox" id="check-all" class="form-checkbox"></th>
-                                <th>{{ .T "col_username" }}</th>
-                                <th>{{ .T "col_email" }}</th>
-                                <th>{{ .T "col_status" }}</th>
-                                <th>{{ .T "col_jellyfin" }}</th>
-                                <th>{{ .T "col_invited_by" }}</th>
-                                <th>{{ .T "users_col_group" }}</th>
-                                <th>{{ .T "users_col_invite" }}</th>
-                                <th>{{ .T "users_col_expiry" }}</th>
-                                <th>{{ .T "col_created_at" }}</th>
-                                <th class="text-right">{{ .T "col_actions" }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-tbody">
-                            <tr>
-                                <td colspan="11" class="text-center text-slate-500 py-12"><span class="spinner"></span></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="p-4 bg-white/5 rounded-2xl">
+                    <div class="text-xl font-bold jg-accent" id="users-stat-filtered">0</div>
+                    <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider">{{ .T "users_overview_filtered" }}</div>
                 </div>
-            </div>
-
-            <div class="text-sm text-slate-500 mt-4">
-                <span id="user-count"></span>
+                <div class="p-4 bg-white/5 rounded-2xl">
+                    <div class="text-xl font-bold text-amber-400" id="users-stat-inviters">0</div>
+                    <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider">{{ .T "users_overview_inviters" }}</div>
+                </div>
+                <div class="p-4 bg-white/5 rounded-2xl">
+                    <div class="text-xl font-bold text-rose-400" id="users-stat-expiring">0</div>
+                    <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider">{{ .T "users_overview_expiring" }}</div>
+                </div>
             </div>
         </div>
+    </div>
 
-        <!-- Right column: active filters, selection preview and quick actions -->
-        <aside class="xl:col-span-3 flex flex-col gap-4">
-            <div class="glass-card-sm p-4">
-                <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "users_live_filters_title" }}</div>
-                <div class="text-sm text-slate-600 dark:text-slate-300 mt-2"><span id="users-focus-filtered">0</span> {{ .T "users_displayed_count" }}</div>
-                <div class="jg-chip-list mt-4" id="users-active-filters">
-                    <span class="jg-chip jg-chip-muted">{{ .T "users_filters_none" }}</span>
+    {{/* ── Middle: Main Table ─────────────────────────────────────────── */}}
+    <div class="lg:col-span-9 space-y-6">
+        <div class="jg-card p-0 overflow-hidden shadow-2xl">
+            <div class="px-6 py-5 border-b border-jg-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
+                <div class="flex items-center gap-3">
+                    <h2 class="font-bold text-lg text-jg-text">{{ .T "users_table_title" }}</h2>
+                    <span id="user-count" class="px-2 py-0.5 rounded-full bg-jg-accent/10 text-jg-accent text-xs font-bold"></span>
                 </div>
-            </div>
-
-            <div class="glass-card-sm p-4">
-                <div class="flex items-start justify-between gap-3 flex-wrap">
-                    <div>
-                        <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "users_selection_title" }}</div>
-                        <div class="text-sm text-slate-600 dark:text-slate-300 mt-2"><span id="users-focus-selected">0</span> {{ .T "users_bulk_selected_suffix" }}</div>
-                    </div>
+                <div class="flex items-center gap-2">
+                    <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">{{ .T "users_select_filtered" }}</button>
                     <button id="btn-clear-selection" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "users_selection_clear" }}</button>
                 </div>
-                <div class="jg-chip-list mt-4" id="users-selected-preview">
-                    <span class="jg-chip jg-chip-muted">{{ .T "users_selection_empty" }}</span>
-                </div>
+            </div>
+            
+            <div class="jg-table-wrap overflow-x-auto">
+                <table class="jg-table w-full text-sm text-left">
+                    <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest">
+                        <tr>
+                            <th class="px-6 py-4 w-10"><input type="checkbox" id="check-all" class="form-checkbox bg-transparent border-jg-border rounded w-4 h-4 accent-jg-accent"></th>
+                            <th class="px-6 py-4">{{ .T "col_username" }}</th>
+                            <th class="px-6 py-4">{{ .T "col_email" }}</th>
+                            <th class="px-6 py-4">{{ .T "col_status" }}</th>
+                            <th class="px-6 py-4">{{ .T "col_jellyfin" }}</th>
+                            <th class="px-6 py-4">{{ .T "users_col_expiry" }}</th>
+                            <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-tbody" class="divide-y divide-jg-border">
+                        <tr>
+                            <td colspan="7" class="text-center py-20">
+                                <div class="flex flex-col items-center gap-3">
+                                    <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
+                                    <span class="text-jg-text-muted animate-pulse">{{ .T "loading" }}...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-                <div class="mt-4 grid grid-cols-1 gap-2">
-                    <button id="btn-open-bulk-email" class="jg-btn">{{ .T "users_bulk_email" }}</button>
-                    <button id="btn-sync-users" class="jg-btn jg-btn-ghost">{{ .T "users_sync_jellyfin" }}</button>
-                    <button id="btn-clear-filters" class="jg-btn jg-btn-ghost">{{ .T "users_filters_clear" }}</button>
+        {{/* ── Bulk Actions ──────────────────────────────────────────────── */}}
+        <div id="bulk-card" class="jg-card shadow-lg border-jg-accent/20">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-2xl bg-jg-accent/10 text-jg-accent flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold">{{ .T "users_bulk_title" }}</h2>
+                    <p class="text-xs text-jg-text-muted uppercase tracking-widest font-bold mt-1">
+                        <span id="bulk-selected-count">0</span> {{ .T "users_bulk_selected_suffix" }}
+                    </p>
                 </div>
             </div>
 
-            <div class="glass-card-sm p-4">
-                <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "users_quick_actions" }}</div>
-                <div class="text-sm text-slate-600 dark:text-slate-300 mt-2">{{ .T "users_bulk_instructions" }}</div>
-                <div class="mt-3"><button class="jg-btn jg-btn-ghost" id="btn-select-filtered">{{ .T "users_select_filtered" }}</button></div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+                <div class="md:col-span-4 space-y-4">
+                    <label class="jg-label">{{ .T "users_bulk_step_action" }}</label>
+                    <select id="bulk-action" class="jg-input h-14">
+                        <option value="">{{ .T "users_bulk_action_placeholder" }}</option>
+                        <option value="send_email">{{ .T "users_action_send_email" }}</option>
+                        <option value="send_password_reset">{{ .T "users_action_send_password_reset" }}</option>
+                        <option value="set_expiry">{{ .T "users_action_set_expiry" }}</option>
+                        <option value="set_parrainage">{{ .T "users_action_set_invite" }}</option>
+                        <option value="jellyfin_policy">{{ .T "users_action_jellyfin_policy" }}</option>
+                        <option value="apply_preset">{{ .T "users_action_apply_preset" }}</option>
+                        <option value="activate">{{ .T "users_action_activate" }}</option>
+                        <option value="deactivate">{{ .T "users_action_deactivate" }}</option>
+                        <option value="delete">{{ .T "users_action_delete" }}</option>
+                    </select>
+
+                    <div id="bulk-help" class="text-xs text-jg-text-muted leading-relaxed bg-white/5 p-4 rounded-xl border border-jg-border hidden"></div>
+                </div>
+
+                <div class="md:col-span-5 space-y-4">
+                    <label class="jg-label">{{ .T "users_bulk_step_verify" }}</label>
+                    <div id="bulk-fields" class="space-y-4">
+                        <div class="text-center py-10 text-jg-text-muted/50 border-2 border-dashed border-jg-border rounded-2xl">
+                            {{ .T "users_bulk_action_placeholder" }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-3 space-y-4">
+                    <label class="jg-label">Validation</label>
+                    <div id="bulk-summary" class="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed">
+                        {{ .T "users_bulk_summary_placeholder" }}
+                    </div>
+                    <button id="bulk-apply" class="w-full jg-btn jg-btn-primary h-14 opacity-60 cursor-not-allowed uppercase tracking-widest font-bold" disabled>
+                        {{ .T "users_apply" }}
+                    </button>
+                </div>
             </div>
-        </aside>
+        </div>
     </div>
-</main>
+</div>
 
-<div id="edit-modal" class="modal-overlay" style="display:none">
-    <div class="glass-card modal-content" style="max-width:560px">
-        <h3 class="text-lg font-bold mb-4">{{ .T "users_edit_title" }}</h3>
+{{/* ── Modals ──────────────────────────────────────────────────────────── */}}
+<div id="edit-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm"></div>
+    <div class="jg-card jg-glass w-full max-w-xl relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200">
+        <h3 class="text-2xl font-bold mb-6 text-jg-text">{{ .T "users_edit_title" }}</h3>
         <input type="hidden" id="edit-user-id">
-        <div class="space-y-4">
+        <div class="space-y-5">
             <div>
                 <label class="jg-label">{{ .T "field_email" }}</label>
-                <input type="email" id="edit-email" class="jg-input" placeholder="nom@domaine.tld">
+                <input type="email" id="edit-email" class="jg-input h-12" placeholder="nom@domaine.tld">
             </div>
             <div>
                 <label class="jg-label">{{ .T "users_col_group" }}</label>
-                <input type="text" id="edit-group-name" class="jg-input" placeholder="Ex: Enfants">
+                <input type="text" id="edit-group-name" class="jg-input h-12" placeholder="Ex: Enfants">
             </div>
             <div>
                 <label class="jg-label">{{ .T "users_col_expiry" }}</label>
-                <input type="datetime-local" id="edit-expiry" class="jg-input">
+                <input type="datetime-local" id="edit-expiry" class="jg-input h-12">
             </div>
-            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                <input type="checkbox" id="edit-clear-expiry" class="form-checkbox">
-                {{ .T "users_clear_expiry" }}
-            </label>
-            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                <input type="checkbox" id="edit-can-invite" class="form-checkbox">
-                {{ .T "users_allow_invite" }}
-            </label>
+            <div class="flex flex-col gap-3 pt-2">
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="edit-clear-expiry" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent">
+                    <span class="text-sm text-jg-text-muted group-hover:text-jg-text transition-colors">{{ .T "users_clear_expiry" }}</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="edit-can-invite" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent">
+                    <span class="text-sm text-jg-text-muted group-hover:text-jg-text transition-colors">{{ .T "users_allow_invite" }}</span>
+                </label>
+            </div>
         </div>
-        <div class="mt-6 flex justify-end gap-3">
-            <button class="jg-btn jg-btn-ghost" id="edit-cancel-btn">{{ .T "cancel" }}</button>
-            <button class="jg-btn" id="edit-save-btn">{{ .T "btn_save" }}</button>
-        </div>
-    </div>
-</div>
-
-<div id="delete-modal" class="modal-overlay" style="display:none">
-    <div class="glass-card modal-content text-center">
-        <svg class="w-12 h-12 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-        </svg>
-        <h3 class="text-lg font-bold mb-2">{{ .T "users_delete_title" }}</h3>
-        <p id="delete-modal-text" class="text-sm text-slate-400 mb-4"></p>
-        <div class="flex justify-center gap-3">
-            <button class="jg-btn jg-btn-ghost" id="delete-cancel-btn">{{ .T "cancel" }}</button>
-            <button class="jg-btn jg-btn-danger" id="delete-confirm-btn">{{ .T "users_action_delete" }}</button>
+        <div class="mt-10 flex flex-col md:flex-row justify-end gap-3">
+            <button class="jg-btn jg-btn-ghost h-12 px-8" id="edit-cancel-btn">{{ .T "cancel" }}</button>
+            <button class="jg-btn jg-btn-primary h-12 px-8" id="edit-save-btn">{{ .T "btn_save" }}</button>
         </div>
     </div>
 </div>
 
-<div id="timeline-modal" class="modal-overlay" style="display:none">
-    <div class="glass-card modal-content" style="max-width:760px; max-height:80vh; overflow:auto">
-                <div class="flex items-start justify-between gap-3 mb-4">
+<div id="delete-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm"></div>
+    <div class="jg-card jg-glass w-full max-w-md relative z-10 text-center animate-in fade-in zoom-in duration-200">
+        <div class="w-20 h-20 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-6">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+        </div>
+        <h3 class="text-2xl font-bold mb-3">{{ .T "users_delete_title" }}</h3>
+        <p id="delete-modal-text" class="text-jg-text-muted mb-8 leading-relaxed"></p>
+        <div class="flex flex-col gap-3">
+            <button class="jg-btn jg-btn-danger h-12 font-bold uppercase tracking-widest" id="delete-confirm-btn">{{ .T "users_action_delete" }}</button>
+            <button class="jg-btn jg-btn-ghost h-12" id="delete-cancel-btn">{{ .T "cancel" }}</button>
+        </div>
+    </div>
+</div>
+
+<div id="timeline-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm"></div>
+    <div class="jg-card jg-glass w-full max-w-3xl relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200">
+        <div class="flex items-start justify-between gap-6 mb-8">
             <div>
-                <h3 class="text-lg font-bold">{{ .T "users_timeline_title" }}</h3>
-                <div id="timeline-subtitle" class="text-sm text-slate-400 mt-1"></div>
+                <h3 class="text-2xl font-bold text-jg-text">{{ .T "users_timeline_title" }}</h3>
+                <div id="timeline-subtitle" class="text-sm text-jg-accent font-semibold mt-1 uppercase tracking-wider"></div>
             </div>
             <button class="jg-btn jg-btn-ghost jg-btn-sm" id="timeline-close-btn">{{ .T "users_close" }}</button>
         </div>
-        <div id="timeline-list" class="space-y-2 text-sm"></div>
+        <div id="timeline-list" class="flex-1 overflow-y-auto pr-4 space-y-4">
+            <div class="text-center py-20 text-jg-text-muted animate-pulse">Chargement de la timeline...</div>
+        </div>
     </div>
 </div>
 {{ end }}

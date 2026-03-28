@@ -174,11 +174,37 @@ JG.copyText = async function (text) {
 // ── Modal helpers ───────────────────────────────────────────────────────────
 
 /**
- * Close the currently open modal.
+ * Close a specific modal or the one currently open.
+ * @param {string} id - optional ID of the modal to close
  */
-JG.closeModal = function () {
-    const modal = document.getElementById('delete-modal');
-    if (modal) modal.style.display = 'none';
+JG.closeModal = function (id) {
+    if (id) {
+        const modal = document.getElementById(id);
+        if (modal) {
+            modal.classList.remove('open', 'show');
+            modal.style.display = 'none';
+        }
+    } else {
+        // Fallback for legacy calls or any open modal
+        document.querySelectorAll('.modal-overlay').forEach(m => {
+            m.classList.remove('open', 'show');
+            m.style.display = 'none';
+        });
+    }
+};
+
+/**
+ * Open a specific modal.
+ * @param {string} id - ID of the modal to open
+ */
+JG.openModal = function (id) {
+    const modal = document.getElementById(id);
+    if (modal) {
+        // Important: Remove Tailwinds 'hidden' if present, then add 'open'
+        modal.classList.remove('hidden');
+        modal.classList.add('open', 'show');
+        modal.style.display = 'flex';
+    }
 };
 
 // ── Language switcher ───────────────────────────────────────────────────────
@@ -207,25 +233,38 @@ document.addEventListener('keydown', (e) => {
 
 // ── Auto-hide flash messages & UI Setup ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Language switcher placement (Dashboard sidebar)
+    // 1. Sidebar Toggle (Modern)
+    const mobileMenuBtn = document.getElementById('mobile-menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    if (mobileMenuBtn && sidebar && backdrop) {
+        const toggleSidebar = () => {
+            sidebar.classList.toggle('open');
+            backdrop.classList.toggle('hidden');
+            document.body.classList.toggle('overflow-hidden');
+        };
+
+        mobileMenuBtn.addEventListener('click', toggleSidebar);
+        backdrop.addEventListener('click', toggleSidebar);
+
+        // Close on navigation (if same page anchor)
+        sidebar.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 1024) toggleSidebar();
+            });
+        });
+    }
+
+    // 2. Language switcher placement
     const langSwitcher = document.getElementById('lang-switcher');
+    const langTarget = document.getElementById('sidebar-lang-target');
+    
     if (langSwitcher) {
-        const sidebar = document.querySelector('.jg-sidebar');
-        const sidebarFooter = document.querySelector('.jg-sidebar .jg-sidebar-footer');
-        if (sidebar) {
-            document.body.classList.add('jg-has-sidebar');
-        }
-        if (sidebarFooter && !document.body.classList.contains('login-page')) {
+        if (langTarget && !document.body.classList.contains('login-page')) {
             langSwitcher.classList.add('jg-lang-switcher-sidebar');
             langSwitcher.classList.remove('jg-lang-switcher-floating');
-            // Insert the language switcher before the logout form if present,
-            // so the order becomes: theme toggle -> language -> logout -> version
-            const logoutForm = sidebarFooter.querySelector('form[action="/admin/logout"]') || sidebarFooter.querySelector('form');
-            if (logoutForm) {
-                sidebarFooter.insertBefore(langSwitcher, logoutForm);
-            } else {
-                sidebarFooter.appendChild(langSwitcher);
-            }
+            langTarget.appendChild(langSwitcher);
         }
     }
 
@@ -284,13 +323,53 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.jg-select-options.show').forEach(el => el.classList.remove('show'));
     });
 
-    // 3. Auto-focus first input
-    const firstInput = document.querySelector('form .jg-input');
-    if (firstInput && !firstInput.value) {
-        firstInput.focus();
-    }
+    // 4. Sidebar Collapse (Desktop)
+    const collapseBtn = document.getElementById('sidebar-collapse-toggle');
+    const adminLayout = document.querySelector('.jg-admin-layout');
     
-    // 4. Theme setup
+    if (collapseBtn && adminLayout) {
+        const toggleCollapse = (force) => {
+            const isCollapsed = (force !== undefined) ? force : !adminLayout.classList.contains('is-sidebar-collapsed');
+            adminLayout.classList.toggle('is-sidebar-collapsed', isCollapsed);
+            localStorage.setItem('jg-sidebar-collapsed', isCollapsed ? 'true' : 'false');
+            
+            // Rotate icon
+            const icon = collapseBtn.querySelector('.collapse-icon');
+            if (icon) {
+                icon.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+            }
+        };
+
+        // Load initial state
+        const saved = localStorage.getItem('jg-sidebar-collapsed');
+        if (saved === 'true') {
+            toggleCollapse(true);
+        }
+
+        collapseBtn.addEventListener('click', () => toggleCollapse());
+    }
+
+    // 5. Tab System Logic
+    document.addEventListener('click', (e) => {
+        const tabBtn = e.target.closest('.jg-tab-btn');
+        if (!tabBtn) return;
+
+        const targetId = tabBtn.getAttribute('data-tab');
+        if (!targetId) return;
+
+        const container = tabBtn.closest('.jg-tabs-container') || document;
+        
+        // Deactivate siblings
+        tabBtn.parentElement.querySelectorAll('.jg-tab-btn').forEach(b => b.classList.remove('active'));
+        tabBtn.classList.add('active');
+
+        // Show target pane
+        container.querySelectorAll('.jg-tab-pane').forEach(p => {
+            p.classList.toggle('active', p.id === targetId);
+        });
+    });
+
+    // 6. Theme setup
     JG.setupThemeToggle();
 });
 

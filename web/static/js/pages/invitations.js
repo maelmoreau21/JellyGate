@@ -228,21 +228,21 @@
 
         function confirmDelete(id) {
             pendingDeleteInvitationID = id;
-            document.getElementById('delete-modal').style.display = '';
+            JG.openModal('delete-modal');
         }
 
         function closeDeleteModal() {
             pendingDeleteInvitationID = 0;
-            document.getElementById('delete-modal').style.display = 'none';
+            JG.closeModal('delete-modal');
         }
 
         function openCreateModal() {
-            document.getElementById('create-modal').style.display = '';
+            JG.openModal('create-modal');
             applyInvitationPolicyUI();
         }
 
         function closeCreateModal() {
-            document.getElementById('create-modal').style.display = 'none';
+            JG.closeModal('create-modal');
             document.getElementById('create-form').reset();
             applyInvitationPolicyUI();
         }

@@ -1,204 +1,138 @@
-{{/* logs.html — Journal d'audit */}}
-{{ template "base.html" . }}
+{{ template "admin_shell.html" . }}
 
 {{ define "title" }}{{ .T "nav_logs" }} — JellyGate{{ end }}
 
-{{ define "body" }}
-{{/* Sidebar */}}
-<aside id="sidebar" class="jg-sidebar">
-    {{ template "logo" . }}
-    <nav class="jg-nav">
-        <a href="/admin/" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
-        </a>
-        <a href="/admin/my-account" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
-        </a>
-        {{ if .IsAdmin }}
-        <a href="/admin/users" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_users" }}</span>
-        </a>
-        <a href="/admin/automation" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
-        </a>
-        {{ end }}
-        {{ if .CanInvite }}
-        <a href="/admin/invitations" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
-        </a>
-        {{ end }}
-        {{ if .IsAdmin }}
-        <a href="/admin/settings" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
-        </a>
-        <a href="/admin/logs" class="jg-nav-item active">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
-        </a>
-        {{ end }}
-    </nav>
-    <div class="jg-sidebar-footer">
-        <button id="theme-toggle-btn" type="button" class="jg-theme-btn" title="Thème">
-            <span id="theme-toggle-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-            </span>
-            <span class="jg-nav-label">{{ .T "nav_theme" }}</span>
-        </button>
-
-        <form method="POST" action="/admin/logout">
-            <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
-            </button>
-        </form>
-        <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
+{{ define "admin_content" }}
+<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_logs" }}</h1>
+        <p class="text-jg-text-muted mt-2">Consultez l'historique détaillé des actions administratives et des événements système.</p>
     </div>
-</aside>
-
-<main class="jg-main">
-    <section class="jg-page-stack">
-        <div class="jg-hero-grid mb-6">
-            <div class="glass-card jg-hero-panel p-4 md:p-5">
-                <div class="flex items-start md:items-center justify-between gap-4">
-                    <div class="flex items-center gap-3">
-                        <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        <div>
-                            <h1 class="text-3xl font-bold text-white mt-1">{{ .T "nav_logs" }}</h1>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-3 w-full md:w-auto">
-                        <div class="relative w-full md:w-64">
-                            <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}' class="w-full pl-10 pr-4 py-3 bg-white/5 border border-black/5 dark:border-white/10 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all">
-                            <svg class="w-4 h-4 text-slate-500 dark:text-slate-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-
-                        <select id="limit-select" class="px-4 py-3 bg-white/5 border border-black/5 dark:border-white/10 rounded-xl text-sm text-white appearance-none focus:outline-none focus:border-purple-500/50">
-                            <option value="50" class="bg-gray-800 text-white">50 {{ .T "logs_per_page_suffix" }}</option>
-                            <option value="100" class="bg-gray-800 text-white">100 {{ .T "logs_per_page_suffix" }}</option>
-                        </select>
-
-                        <div class="hidden md:flex gap-2">
-                            <button id="export-json" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} JSON</button>
-                            <button id="export-csv" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} CSV</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="glass-card p-5 jg-aside-card hidden md:flex items-center justify-center">
-                <div>
-                    <h2 class="text-lg font-semibold text-white">{{ .T "logs_total_label" }}</h2>
-                </div>
-            </div>
+    <div class="flex items-center gap-3">
+        <div class="hidden md:flex gap-2">
+            <button id="export-json" class="jg-btn jg-btn-ghost text-xs font-bold">{{ .T "settings_backup_action_export" }} JSON</button>
+            <button id="export-csv" class="jg-btn jg-btn-ghost text-xs font-bold">{{ .T "settings_backup_action_export" }} CSV</button>
         </div>
+    </div>
+</div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-4">
-            <aside class="glass-card p-4 sticky top-6 self-start">
-                <h3 class="text-sm font-semibold text-white mb-3">{{ .T "logs_filters_title" }}</h3>
-                <div class="space-y-3">
-                    <input id="filter-action" type="text" placeholder='{{ .T "logs_col_action" }}' class="jg-input" />
-                    <input id="filter-actor" type="text" placeholder='{{ .T "logs_col_actor" }}' class="jg-input" />
-                    <input id="filter-target" type="text" placeholder='{{ .T "logs_col_target" }}' class="jg-input" />
-                    <input id="filter-request-id" type="text" placeholder="request_id" class="jg-input" />
-                    <select id="filter-result" class="jg-input">
-                        <option value="">{{ .T "view_all" }}</option>
-                        <option value="success">{{ .T "success" }}</option>
-                        <option value="failure">{{ .T "failure" }}</option>
-                    </select>
-                    <div class="flex gap-2">
-                        <input id="filter-from" type="date" class="jg-input" />
-                        <input id="filter-to" type="date" class="jg-input" />
-                    </div>
+<div class="space-y-6">
+    {{/* ── Horizontal Filter Bar ───────────────────────────────────── */}}
+    <section class="jg-card shadow-lg p-4 bg-white/[0.02]">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+            <div class="lg:col-span-1">
+                <label class="jg-label text-[10px] mb-1.5">{{ .T "logs_search_placeholder" }}</label>
+                <div class="relative">
+                    <input type="text" id="search-input" placeholder="..." class="jg-input h-10 pl-9 text-sm">
+                    <svg class="w-3.5 h-3.5 text-jg-text-muted absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
-            </aside>
+            </div>
 
-            <div class="glass-card p-0 overflow-hidden flex flex-col h-[calc(100vh-220px)]">
-                <div class="px-5 py-5 border-b border-black/5 dark:border-white/10 flex items-center justify-between">
-                    <h2 class="text-lg font-semibold text-white">{{ .T "nav_logs" }}</h2>
-                    <div class="md:hidden flex gap-2">
-                        <button id="export-json-mobile" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} JSON</button>
-                        <button id="export-csv-mobile" class="jg-btn jg-btn-ghost text-sm">{{ .T "settings_backup_action_export" }} CSV</button>
-                    </div>
+            <div>
+                <label class="jg-label text-[10px] mb-1.5">{{ .T "logs_col_action" }}</label>
+                <input id="filter-action" type="text" placeholder="ex: login" class="jg-input h-10 text-sm" />
+            </div>
+
+            <div>
+                <label class="jg-label text-[10px] mb-1.5">{{ .T "logs_col_actor" }}</label>
+                <input id="filter-actor" type="text" placeholder="Utilisateur" class="jg-input h-10 text-sm" />
+            </div>
+
+            <div>
+                <label class="jg-label text-[10px] mb-1.5">Résultat</label>
+                <select id="filter-result" class="jg-input h-10 text-sm">
+                    <option value="">{{ .T "view_all" }}</option>
+                    <option value="success">{{ .T "success" }}</option>
+                    <option value="failure">{{ .T "failure" }}</option>
+                </select>
+            </div>
+
+            <div class="lg:col-span-1">
+                <label class="jg-label text-[10px] mb-1.5">Période</label>
+                <div class="flex gap-2">
+                    <input id="filter-from" type="date" class="jg-input h-10 text-[10px] px-2" />
+                    <input id="filter-to" type="date" class="jg-input h-10 text-[10px] px-2" />
                 </div>
+            </div>
 
-                <div class="jg-table-wrap flex-1 overflow-auto">
-                    <table class="jg-table w-full text-left border-collapse">
-                        <thead class="sticky top-0 bg-[#09090b] dark:bg-[#09090b] z-10 border-b border-black/5 dark:border-white/10">
-                            <tr>
-                                <th class="w-48 px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors" data-sort-col="created_at">
-                                    <div class="flex items-center gap-1">{{ .T "col_created_at" }} <span class="sort-icon text-xs opacity-50" data-col="created_at">▼</span></div>
-                                </th>
-                                <th class="w-40 px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors" data-sort-col="action">
-                                    <div class="flex items-center gap-1">{{ .T "logs_col_action" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="action">▼</span></div>
-                                </th>
-                                <th class="w-40 px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors" data-sort-col="actor">
-                                    <div class="flex items-center gap-1">{{ .T "logs_col_actor" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="actor">▼</span></div>
-                                </th>
-                                <th class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5 cursor-pointer hover:text-white transition-colors" data-sort-col="target">
-                                    <div class="flex items-center gap-1">{{ .T "logs_col_target" }} <span class="sort-icon text-xs opacity-50 hidden" data-col="target">▼</span></div>
-                                </th>
-                                <th class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5">request_id</th>
-                                <th class="px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 capitalize bg-white/5">{{ .T "logs_col_details" }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="logs-tbody" class="divide-y divide-white/5">
-                            <tr>
-                                <td colspan="6" class="text-center py-8 text-slate-500 dark:text-slate-400">{{ .T "logs_loading" }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div class="border-t border-black/5 dark:border-white/10 bg-black/20 p-4 flex items-center justify-between mt-auto">
-                    <span class="text-sm text-slate-500 dark:text-slate-400" id="pagination-info">{{ .T "logs_pagination_loading" }}</span>
-                    <div class="flex gap-2">
-                        <button id="btn-prev" data-page-delta="-1" class="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/5 hover:bg-white/10 border border-black/5 dark:border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{{ .T "common_previous" }}</button>
-                        <button id="btn-next" data-page-delta="1" class="px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-300 bg-white/5 hover:bg-white/10 border border-black/5 dark:border-white/10 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors">{{ .T "common_next" }}</button>
-                    </div>
+            <div class="flex gap-2">
+                <select id="limit-select" class="jg-input h-10 text-sm flex-1">
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+                <div class="hidden md:flex gap-1">
+                    <button id="export-csv" class="jg-btn jg-btn-ghost jg-btn-sm h-10" title="CSV">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    </button>
                 </div>
             </div>
         </div>
     </section>
-</main>
+
+    {{/* ── Logs Table ────────────────────────────────────────────── */}}
+    <div class="jg-card p-0 overflow-hidden shadow-2xl flex flex-col h-[calc(100vh-280px)] min-h-[500px]">
+        <div class="px-6 py-4 border-b border-jg-border flex items-center justify-between bg-white/[0.01]">
+            <div class="flex items-center gap-3">
+                <h2 class="font-bold text-lg text-jg-text">{{ .T "nav_logs" }}</h2>
+                <span id="pagination-info" class="text-[10px] uppercase tracking-widest text-jg-text-muted font-bold opacity-50"></span>
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-prev" data-page-delta="-1" class="p-2 rounded-lg hover:bg-white/5 border border-jg-border text-jg-text-muted disabled:opacity-20 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                </button>
+                <button id="btn-next" data-page-delta="1" class="p-2 rounded-lg hover:bg-white/5 border border-jg-border text-jg-text-muted disabled:opacity-20 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="jg-table-wrap flex-1 overflow-auto">
+            <table class="jg-table w-full text-sm text-left">
+                <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest sticky top-0 z-20 shadow-sm">
+                    <tr>
+                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="created_at">
+                            <div class="flex items-center gap-2">
+                                {{ .T "col_created_at" }}
+                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="created_at">▼</span>
+                            </div>
+                        </th>
+                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="action">
+                            <div class="flex items-center gap-2">
+                                {{ .T "logs_col_action" }}
+                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="action">▼</span>
+                            </div>
+                        </th>
+                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="actor">
+                            <div class="flex items-center gap-2">
+                                {{ .T "logs_col_actor" }}
+                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="actor">▼</span>
+                            </div>
+                        </th>
+                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="target">
+                            <div class="flex items-center gap-2">
+                                Cible
+                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="target">▼</span>
+                            </div>
+                        </th>
+                        <th class="px-6 py-4">{{ .T "logs_col_details" }}</th>
+                    </tr>
+                </thead>
+                <tbody id="logs-tbody" class="divide-y divide-jg-border">
+                    <tr>
+                        <td colspan="5" class="py-20 text-center">
+                            <div class="flex flex-col items-center gap-3">
+                                <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
+                                <span class="text-jg-text-muted animate-pulse">{{ .T "logs_loading" }}...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 {{ end }}
 
 {{ define "scripts" }}

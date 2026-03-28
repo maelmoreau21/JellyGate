@@ -1,133 +1,52 @@
-{{/* settings.html — Page de configuration admin JellyGate */}}
-{{/* 4 onglets : Général, LDAP, SMTP, Webhooks — Dark Theme + Glassmorphism */}}
-{{ template "base.html" . }}
+{{ template "admin_shell.html" . }}
 
 {{ define "title" }}{{ .T "nav_settings" }} — JellyGate{{ end }}
 
-{{ define "body" }}
-{{/* —— Sidebar ——————————————————————————————————————————————————————————— */}}
-<aside id="sidebar" class="jg-sidebar">
-    {{ template "logo" . }}
-  <nav class="jg-nav">
-    <a href="/admin/" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
-    </a>
-    <a href="/admin/my-account" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
-    </a>
-    {{ if .IsAdmin }}
-    <a href="/admin/users" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "nav_users" }}</span>
-    </a>
-    <a href="/admin/automation" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
-    </a>
-    {{ end }}
-    {{ if .CanInvite }}
-    <a href="/admin/invitations" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
-    </a>
-    {{ end }}
-    {{ if .IsAdmin }}
-    <a href="/admin/settings" class="jg-nav-item active">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-        <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
-    </a>
-    <a href="/admin/logs" class="jg-nav-item">
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-      <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
-    </a>
-    {{ end }}
-  </nav>
-  <div class="jg-sidebar-footer">
-        <button id="theme-toggle-btn" type="button" class="jg-theme-btn" title="Thème">
-            <span id="theme-toggle-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-            </span>
-            <span class="jg-nav-label">{{ .T "nav_theme" }}</span>
-        </button>
+{{ define "admin_content" }}
+<div class="jg-page-header">
+    <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_settings" }}</h1>
+    <p class="text-jg-text-muted mt-2">Configurez les paramètres globaux de votre instance JellyGate, les connexions LDAP, SMTP et les webhooks.</p>
+</div>
 
-    <form method="POST" action="/admin/logout">
-      <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
-        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-        </svg>
-        <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
-      </button>
-    </form>
-    <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
-  </div>
-</aside>
-
-{{/* —— Main content —————————————————————————————————————————————————————— */}}
-<main class="jg-main jg-settings-main">
-  <div class="w-full">
-    <div class="glass-card p-4 md:p-5 mb-6">
-      <button id="sidebar-toggle"
-        class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-      <h1 class="text-2xl md:text-3xl font-bold text-white inline-block align-middle">{{ .T "nav_settings" }}</h1>
-    </div>
-
-    {{/* —— Tabs ————————————————————————————————————————————————————————— */}}
-    <div class="flex gap-2 mb-6 border-b border-black/5 dark:border-white/10 pb-2 overflow-x-auto">
-      <button data-tab-target="general" id="tab-general"
-        class="tab-btn active px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        {{ .T "settings_tab_general" }}
-      </button>
-      <button data-tab-target="ldap" id="tab-ldap"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        {{ .T "settings_tab_ldap" }}
-      </button>
-      <button data-tab-target="smtp" id="tab-smtp"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        {{ .T "settings_tab_smtp" }}
-      </button>
-      <button data-tab-target="webhooks" id="tab-webhooks"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        {{ .T "settings_tab_webhooks" }}
-      </button>
-      <button data-tab-target="email-templates" id="tab-email-templates"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        {{ .T "settings_tab_email_templates" }}
-      </button>
-      <button data-tab-target="backup" id="tab-backup"
-        class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        {{ .T "settings_tab_backup" }}
-      </button>
-    </div>
+{{/* ── Tabbed Navigation ────────────────────────────────────── */}}
+<div class="flex flex-wrap gap-2 mb-8 border-b border-jg-border pb-1 overflow-x-auto no-scrollbar jg-glass-tabs">
+    <button data-tab-target="general" id="tab-general" class="tab-btn active px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+            {{ .T "settings_tab_general" }}
+        </div>
+    </button>
+    <button data-tab-target="ldap" id="tab-ldap" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-4.04-3.654A9.959 9.959 0 0111 9H4m0 0v-4m0 4h7m5 4v5m1-1h2m-2 1v2m-2-2h.01M19 11c0 3.517-1.009 6.799-2.753 9.571" /></svg>
+            {{ .T "settings_tab_ldap" }}
+        </div>
+    </button>
+    <button data-tab-target="smtp" id="tab-smtp" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            {{ .T "settings_tab_smtp" }}
+        </div>
+    </button>
+    <button data-tab-target="webhooks" id="tab-webhooks" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.826a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+            {{ .T "settings_tab_webhooks" }}
+        </div>
+    </button>
+    <button data-tab-target="email-templates" id="tab-email-templates" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 19v-8.93a2 2 0 01.89-1.664l7-4.666a2 2 0 012.22 0l7 4.666A2 2 0 0121 10.07V19M3 19a2 2 0 002 2h14a2 2 0 002-2M3 19l6.75-4.5M21 19l-6.75-4.5M3 10l6.75 4.5M21 10l-6.75 4.5m0 0l-1.14.76a2 2 0 01-2.22 0l-1.14-.76" /></svg>
+            {{ .T "settings_tab_email_templates" }}
+        </div>
+    </button>
+    <button data-tab-target="backup" id="tab-backup" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
+        <div class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+            {{ .T "settings_tab_backup" }}
+        </div>
+    </button>
+</div>
 
     {{/* """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" */}}
     {{/* TAB: Général */}}
@@ -178,9 +97,8 @@
                 
               </div>
               <div>
-                <label class="jg-label" for="general-JellyTrack-url">{{ .T "settings_public_JellyTrack_url" }}</label>
-                <input type="url" id="general-JellyTrack-url" class="jg-input" placeholder="https://JellyTrack.example.com">
-                
+                <label class="jg-label" for="general-jellytrack-url">{{ .T "settings_public_jellytrack_url" }}</label>
+                <input type="url" id="general-jellytrack-url" class="jg-input" placeholder="https://jellytrack.example.com">
               </div>
             </div>
 
@@ -190,7 +108,7 @@
                 <a id="shortcut-jellygate" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellygate_public" }}</a>
                 <a id="shortcut-jellyfin" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellyfin" }}</a>
                 <a id="shortcut-jellyseerr" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellyseerr" }}</a>
-                <a id="shortcut-JellyTrack" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_JellyTrack" }}</a>
+                <a id="shortcut-jellytrack" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellytrack" }}</a>
               </div>
             </div>
           </div>
@@ -399,7 +317,7 @@
             </div>
 
             <details class="settings-collapsible">
-              <summary>Options LDAP avancees</summary>
+              <summary>{{ .T "settings_ldap_advanced" }}</summary>
               <div class="mt-4 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -647,7 +565,7 @@
             <div><span class="text-purple-200">{{ "{{" }}.JellyGateURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellygate_url" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.JellyfinURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellyfin_url" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.JellyseerrURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellyseerr_url" }}</div>
-            <div><span class="text-purple-200">{{ "{{" }}.JellyTrackURL{{ "}}" }}</span> : {{ .T "settings_email_var_JellyTrack_url" }}</div>
+            <div><span class="text-purple-200">{{ "{{" }}.JellyTrackURL{{ "}}" }}</span> : {{ .T "settings_email_var_jellytrack_url" }}</div>
             <div><span class="text-purple-200">{{ "{{" }}.Message{{ "}}" }}</span> : {{ .T "settings_email_var_message" }}</div>
           </div>
         </details>
@@ -994,8 +912,8 @@
       </div>
     </div>
 
-  </div>
-</main>
+    </div>
+</div>
 {{ end }}
 
 {{ define "scripts" }}
@@ -1043,144 +961,4 @@
   };
 </script>
 <script src="/static/js/pages/settings.js" nonce="{{ .ScriptNonce }}"></script>
-{{ end }}
-
-{{ define "head" }}
-<style>
-  .tab-btn {
-    color: rgb(203 213 225);
-    background: rgba(2, 6, 23, 0.55);
-    border: 1psolid rgba(148, 163, 184, 0.24);
-    border-bottom: 2psolid transparent;
-  }
-
-  .tab-btn:hover {
-    color: rgb(241 245 249);
-    background: rgba(15, 23, 42, 0.86);
-    border-color: rgba(148, 163, 184, 0.4);
-  }
-
-  .tab-btn.active {
-    color: rgb(248 250 252);
-    background: rgba(15, 23, 42, 0.96);
-    border-color: rgba(148, 163, 184, 0.48);
-  }
-
-  #tab-general.active { border-bottom-color: var(--jg-accent-cyan); box-shadow: inset 0 -1px rgba(34, 211, 238, 0.12); }
-  #tab-ldap.active { border-bottom-color: #a78bfa; box-shadow: inset 0 -1px rgba(167, 139, 250, 0.12); }
-  #tab-smtp.active { border-bottom-color: var(--jg-accent-sky); box-shadow: inset 0 -1px rgba(56, 189, 248, 0.12); }
-  #tab-webhooks.active { border-bottom-color: var(--jg-accent-emerald); box-shadow: inset 0 -1px rgba(52, 211, 153, 0.12); }
-  #tab-email-templates.active { border-bottom-color: var(--jg-accent-amber); box-shadow: inset 0 -1px rgba(245, 158, 11, 0.12); }
-  #tab-backup.active { border-bottom-color: var(--jg-accent-rose); box-shadow: inset 0 -1px rgba(251, 113, 133, 0.12); }
-
-  .settings-panel .glass-card {
-    border-top: 3px solid transparent;
-    background: linear-gradient(180deg, rgba(16, 20, 24, 0.95), rgba(12, 14, 18, 0.97));
-  }
-
-  .jg-settings-main .text-slate-500,
-  .jg-settings-main .dark .text-slate-500 {
-    color: var(--jg-text-muted);
-  }
-
-  .settings-collapsible {
-    border: 1px solid rgba(148, 163, 184, 0.12);
-    border-radius: 12px;
-    background: rgba(15, 23, 42, 0.5);
-    padding: 0.9rem 1rem;
-  }
-
-  .settings-collapsible > summary {
-    cursor: pointer;
-    font-size: 0.88rem;
-    font-weight: 700;
-    color: var(--jg-text);
-    list-style: none;
-  }
-
-  .settings-collapsible > summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .settings-collapsible > summary::after {
-    content: "+";
-    float: right;
-    color: var(--jg-text-muted);
-  }
-
-  .settings-collapsible[open] > summary::after {
-    content: "-";
-  }
-
-  .settings-panel-general .glass-card { border-top-color: rgba(34, 211, 238, 0.7); }
-  .settings-panel-ldap .glass-card { border-top-color: rgba(167, 139, 250, 0.7); }
-  .settings-panel-smtp .glass-card { border-top-color: rgba(56, 189, 248, 0.7); }
-  .settings-panel-webhooks .glass-card { border-top-color: rgba(52, 211, 153, 0.7); }
-  .settings-panel-email .glass-card { border-top-color: rgba(245, 158, 11, 0.7); }
-  .settings-panel-backup .glass-card { border-top-color: rgba(251, 113, 133, 0.7); }
-
-  .form-label {
-    display: block;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: var(--jg-text-muted);
-    margin-bottom: 0.35rem;
-  }
-
-  .email-templates-layout {
-    display: grid;
-    grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
-    gap: 1rem;
-  }
-
-  .email-templates-nav {
-    position: sticky;
-    top: 1rem;
-    align-self: start;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    background: rgba(15, 23, 42, 0.45);
-    border: 1px solid rgba(148, 163, 184, 0.08);
-    border-radius: 14px;
-    padding: 0.65rem;
-  }
-
-  .email-submenu-btn {
-    border: 1psolid transparent;
-    border-radius: 10px;
-    padding: 0.62rem 0.75rem;
-    color: rgb(148 163 184);
-    text-align: left;
-    font-size: 0.84rem;
-    font-weight: 600;
-    background: transparent;
-    transition: 0.2s ease;
-  }
-
-  .email-submenu-btn:hover {
-    color: rgb(226 232 240);
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(148, 163, 184, 0.2);
-  }
-
-  .email-submenu-btn.active {
-    color: rgb(226 232 240);
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.35);
-  }
-
-  @media (max-width: 960px) {
-    .email-templates-layout {
-      grid-template-columns: 1fr;
-    }
-
-    .email-templates-nav {
-      position: static;
-      flex-direction: row;
-      flex-wrap: wrap;
-    }
-  }
-
-</style>
 {{ end }}

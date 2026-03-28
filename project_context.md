@@ -223,10 +223,10 @@ Le projet supporte SQLite et PostgreSQL. SQLite reste la cible de déploiement l
 L'interface suit actuellement ces principes:
 
 - fond noir conservé avec des touches de modernité (dégradés Cyan/Émeraude)
-- pages publiques centrées et simples
-- sidebar admin fixe avec accents colorés
-- actions fréquentes mises en avant via des boutons en dégradé
-- pages `Utilisateurs` et `Automatisation` simplifiées pour réduire la densité d'information au premier écran
+- pages- **Modales Fantômes** : Résolu (CSS `display: none` par défaut + JS helpers).
+- **Navigation Encombrée** : Résolu (Sidebar rétractable + Tab system).
+- **Audit Log** : Refonte de la page `logs.html` avec filtres horizontaux.
+ pour réduire la densité d'information au premier écran
 - la navigation admin ne propose plus de centre de messages, les communications partant uniquement par e-mail depuis `Utilisateurs`
 - sur l'écran de connexion, le selecteur de langue et le bouton de thème sont regroupés sous la carte de connexion pour un aspect épuré et moderne.
 
@@ -302,12 +302,30 @@ Remarques:
 
 - **Version 1.1.10** : Refonte de la page `Invitations` (2026-03-28) — tables rendues responsive et `min-w-full` appliqué, ajout d'un résumé de politique d'invitation et de messages d'aide (`invite-policy-summary`, `inv-uses-help`, `inv-link-expiry-help`, `inv-can-invite-help`), correction des boutons rapides pour éviter les `id` dupliqués (ajout de classes utilitaires pour attacher les listeners), et ajout d'un emplacement pour le texte de confirmation de suppression (`delete-modal-text`). Compatibilité fonctionnelle avec `web/static/js/pages/invitations.js` préservée — lancer une QA visuelle après redémarrage.
 
+### 4.6 Internationalisation (i18n)
+
+- Support de 10 langues : Français, Anglais, Allemand, Espagnol, Italien, Néerlandais, Polonais, Portugais (Brésil), Russe, Chinois (Simplifié).
+- Couverture à 100% : Toutes les clés sont synchronisées entre toutes les langues.
+- Fallback intelligent : En cas de clé manquante, le moteur tente `lang` -> `en` -> `fr` -> `key`.
+- Audit automatisé via `cmd/i18ncheck` pour garantir 0 oubli dans les templates.
+- Normalisation des clés en snake_case et suppression des chaînes codées en dur dans les templates.
+
+## 5. État d'avancement (Crystal Clear v2)
+
+### 5.1 Fait (Mars 2026)
+- **Refonte UI Shell** : Sidebar rétractable, mode mobile optimisé, glassmorphism.
+- **Gestion des Modaux** : Centralisation via `JG.openModal` / `JG.closeModal`.
+- **Pages Admin** : Refonte "Automation" (onglets) et "Logs" (filtres horizontaux).
+- **i18n Audit** : Synchronisation complète des 10 langues.
+- **Correction ZH** : Réparation de l'encodage et traduction complète du chinois.
 
 - Version produit portée en `1.1.0`.
 - Support PostgreSQL actif côté déploiement et configuration.
 - Vérification d'e-mail avant création de compte sur les invitations publiques, avec option admin activée par défaut.
-- Les messages e-mail no-code acceptent les variables de template et proposent maintenant une insertion directe depuis l'interface d'administration.
-- Redesign COMPLET des utilitaires de la sidebar admin : le sélecteur de langue et le bouton de thème sont désormais centrés et plus élégants. Les drapeaux (emojis) ont été ajoutés pour une visibilité parfaite sur PC et Mobile.
+- Les messages e-mail no-code acceptent les variables- Refonte UI/UX "Crystal Clear v2" : Sidebar rétractable, système d'onglets pour l'Automatisation, filtres horizontaux pour les Journaux.
+- Correction du bug des modales (Timeline, Invitations) restées visibles par défaut.
+- Optimisation de la réactivité mobile et de l'espace sur desktop.
+itaires de la sidebar admin : le sélecteur de langue et le bouton de thème sont désormais centrés et plus élégants. Les drapeaux (emojis) ont été ajoutés pour une visibilité parfaite sur PC et Mobile.
 - Refonte Esthétique "SaaS Professionnel" : Passage à une palette Gris Carbone (`#09090b`), typographie `Inter`, et retrait des effets "IA" (glows, dégradés radiaux, flous excessifs) pour un aspect haute performance et utilitaire.
 - Simplification "Minimale" appliquée à l'ensemble de l'interface d'administration : suppression des textes d'aide redondants, des bannières "Kicker", et des descriptions de sections pour un outil ultra-rapide et facile à prendre en main.
 - Support HTTPS natif intégré via `JELLYGATE_TLS_CERT` tel que `JELLYGATE_TLS_KEY`.
@@ -321,7 +339,7 @@ Remarques:
 
 - **Version 1.1.7** : Refonte complète de la page `Journaux` — nouveau layout responsive avec panneau de filtres latéral sticky, meilleure hiérarchie visuelle, conservation de tous les `id` utilisés par `web/static/js/pages/logs.js` pour compatibilité, et recommandation de relancer l'audit i18n après déploiement.
 
-- **Version 1.1.5** : Refonte complète de la page `Utilisateurs` — nouveau layout responsive, panneau d'aperçu, conservation des `id` utilisés par `web/static/js/pages/users.js` pour compatibilité, et relance de l'audit i18n pour vérifier la parité.
+- **Version 1.2.0** : Lancement d'une refonte complète de l'UI/UX (Crystal Clear) — abandon des Sidebars dupliquées au profit d'une structure centralisée, amélioration de la densité d'information (désencombrement), et optimisation mobile-first avec une navigation adaptative. Harmonisation visuelle basée sur le glassmorphism tout en conservant l'âme sombre et les dégradés signature. (En cours)
 
 ## i18n — vérification et réparation
 

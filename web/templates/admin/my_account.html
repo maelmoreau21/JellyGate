@@ -1,246 +1,204 @@
-{{/* my_account.html — Gestion du profil utilisateur */}}
-{{ template "base.html" . }}
+{{ template "admin_shell.html" . }}
 
 {{ define "title" }}{{ .T "nav_my_account" }} — JellyGate{{ end }}
 
-{{ define "body" }}
-<aside id="sidebar" class="jg-sidebar">
-    {{ template "logo" . }}
+{{ define "admin_content" }}
+<div class="jg-page-header">
+    <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_my_account" }}</h1>
+    <p class="text-jg-text-muted mt-2">{{ .T "my_account_subtitle" }}</p>
+</div>
 
-    <nav class="jg-nav">
-        <a href="/admin/" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
-        </a>
-        <a href="/admin/my-account" class="jg-nav-item active">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
-        </a>
-        {{ if .IsAdmin }}
-        <a href="/admin/users" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_users" }}</span>
-        </a>
-        <a href="/admin/automation" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
-        </a>
-        {{ end }}
-        {{ if .CanInvite }}
-        <a href="/admin/invitations" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
-        </a>
-        {{ end }}
-        {{ if .IsAdmin }}
-        <a href="/admin/settings" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
-        </a>
-        <a href="/admin/logs" class="jg-nav-item">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
-        </a>
-        {{ end }}
-    </nav>
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    {{/* ── Profile Summary ────────────────────────────────────────── */}}
+    <aside class="lg:col-span-4 space-y-6">
+        <div class="jg-card shadow-xl p-8 text-center relative overflow-hidden group">
+            <div class="absolute inset-0 bg-jg-gradient-accent opacity-5 group-hover:opacity-10 transition-opacity"></div>
+            
+            <div class="relative z-10">
+                <div class="w-24 h-24 rounded-full mx-auto mb-6 flex items-center justify-center text-white font-extrabold text-3xl shadow-2xl relative" style="background: var(--jg-gradient-accent)">
+                    <span id="account-initial">JG</span>
+                    <div class="absolute -bottom-1 -right-1 w-8 h-8 bg-jg-bg border-4 border-jg-bg rounded-full flex items-center justify-center text-jg-accent shadow-lg">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    </div>
+                </div>
 
-    <div class="jg-sidebar-footer">
-        <button id="theme-toggle-btn" type="button" class="jg-theme-btn" title="Thème">
-            <span id="theme-toggle-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-            </span>
-            <span class="jg-nav-label">{{ .T "nav_theme" }}</span>
-        </button>
-
-        <form method="POST" action="/admin/logout">
-            <button type="submit" class="jg-nav-item w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                </svg>
-                <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
-            </button>
-        </form>
-        <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
-    </div>
-</aside>
-
-<main class="jg-main">
-    <section class="container mx-auto p-6">
-        <div class="flex items-center justify-between mb-6">
-            <div>
-                <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                </button>
-                <h1 class="text-2xl md:text-3xl font-bold inline-block">{{ .T "nav_my_account" }}</h1>
-                <p class="text-sm text-slate-500 mt-1">{{ .T "my_account_subtitle" }}</p>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Profile summary (left column) -->
-            <aside class="lg:col-span-1">
-                <div class="glass-card p-6">
+                <h2 id="account-username" class="text-2xl font-bold text-jg-text">-</h2>
+                <p id="account-role" class="text-jg-accent text-xs font-black uppercase tracking-[0.2em] mt-2 opacity-80">-</p>
+                
+                <div class="mt-8 space-y-4 text-left border-t border-jg-border pt-8">
                     <div class="flex items-center gap-4">
-                        <div class="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style="background: var(--jg-gradient-accent)"> 
-                            <span id="account-initial">JG</span>
+                        <div class="w-10 h-10 rounded-xl bg-jg-bg-secondary flex items-center justify-center text-jg-text-muted">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                         </div>
                         <div>
-                            <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_user" }}</div>
-                            <div class="text-lg font-semibold mt-1" id="account-username">-</div>
-                            <div class="text-sm text-slate-400 mt-1" id="account-role">-</div>
+                            <p class="text-[10px] font-bold text-jg-text-muted uppercase tracking-widest">{{ .T "my_account_label_email" }}</p>
+                            <p id="account-email-summary" class="text-sm font-medium text-jg-text">-</p>
                         </div>
                     </div>
 
-                    <div class="mt-6 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_email" }}</div>
-                                <div class="font-medium mt-1" id="account-email-summary">-</div>
-                            </div>
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-jg-bg-secondary flex items-center justify-center text-jg-text-muted">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
                         </div>
-
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_preferred_lang" }}</div>
-                                <div class="font-medium mt-1" id="account-language">-</div>
-                            </div>
-                        </div>
-
                         <div>
-                            <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_access_expiry" }}</div>
-                            <div class="font-medium mt-1" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
+                            <p class="text-[10px] font-bold text-jg-text-muted uppercase tracking-widest">{{ .T "my_account_label_preferred_lang" }}</p>
+                            <p id="account-language" class="text-sm font-medium text-jg-text">-</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-jg-bg-secondary flex items-center justify-center text-jg-text-muted">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                        </div>
+                        <div>
+                            <p class="text-[10px] font-bold text-jg-text-muted uppercase tracking-widest">{{ .T "my_account_label_access_expiry" }}</p>
+                            <p id="account-expiry" class="text-sm font-medium text-jg-text">{{ .T "my_account_no_expiry" }}</p>
                         </div>
                     </div>
                 </div>
-
-                <div class="mt-4 glass-card p-4 text-sm">
-                    <div class="flex flex-col gap-3">
-                        <a href="/admin/my-account" class="jg-btn jg-btn-ghost w-full">{{ .T "my_account_edit_profile" }}</a>
-                        <form method="POST" action="/admin/logout">
-                            <button type="submit" class="jg-btn w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">{{ .T "nav_logout" }}</button>
-                        </form>
-                    </div>
-                </div>
-            </aside>
-
-            <!-- Main forms (right column) -->
-            <div class="lg:col-span-2 space-y-6">
-                <section id="contact-card" class="glass-card p-6">
-                    <h2 class="text-lg font-semibold">{{ .T "my_account_section_contact" }}</h2>
-                    <p class="text-sm text-slate-500 mt-2">{{ .T "my_account_contact_help" }}</p>
-
-                    <form id="my-account-form" class="space-y-4 mt-5">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
-                                <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
-                            </div>
-                            <div>
-                                <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
-                                <select id="my-lang" class="jg-input">
-                                    <option value="">{{ .T "my_account_default_server_lang" }}</option>
-                                    <option value="fr">Français</option>
-                                    <option value="en">English</option>
-                                    <option value="de">Deutsch</option>
-                                    <option value="es">Español</option>
-                                    <option value="it">Italiano</option>
-                                    <option value="nl">Nederlands</option>
-                                    <option value="pl">Polski</option>
-                                    <option value="pt-br">Português (Brasil)</option>
-                                    <option value="ru">Русский</option>
-                                    <option value="zh">中文 (简体)</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="jg-label" for="my-discord">{{ .T "my_account_label_discord" }}</label>
-                                <input type="text" id="my-discord" class="jg-input" placeholder="ex: mael#1234">
-                            </div>
-                            <div>
-                                <label class="jg-label" for="my-telegram">{{ .T "my_account_label_telegram" }}</label>
-                                <input type="text" id="my-telegram" class="jg-input" placeholder="ex: @mael">
-                            </div>
-                        </div>
-
-                        <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_email_verification_label" }}</div>
-                                    <div class="mt-1 font-medium" id="email-verification-status">{{ .T "my_account_email_status_unverified" }}</div>
-                                    <p class="text-sm text-slate-500 mt-1" id="email-verification-help">{{ .T "my_account_email_verification_help" }}</p>
-                                    <p class="mt-2 text-sm text-amber-300 hidden" id="email-pending-value"></p>
-                                </div>
-                                <div>
-                                    <button type="button" id="email-verification-resend" class="jg-btn jg-btn-ghost">{{ .T "my_account_email_verification_resend" }}</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
-                                {{ .T "my_account_notify_expiry" }}
-                            </label>
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <input type="checkbox" id="my-notify-events" class="form-checkbox">
-                                {{ .T "my_account_notify_events" }}
-                            </label>
-                        </div>
-
-                        <div class="flex justify-end">
-                            <button type="submit" class="jg-btn">{{ .T "my_account_save_preferences" }}</button>
-                        </div>
-                    </form>
-                </section>
-
-                <section id="password-card" class="glass-card p-6">
-                    <h2 class="text-lg font-semibold">{{ .T "my_account_section_password" }}</h2>
-                    <p class="text-sm text-slate-500 mt-2">{{ .T "my_account_password_help" }}</p>
-
-                    <form id="my-password-form" class="space-y-4 mt-5">
-                        <div>
-                            <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
-                            <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
-                        </div>
-                        <div>
-                            <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
-                            <input type="password" id="my-password-confirm" class="jg-input" required>
-                        </div>
-                        <div class="flex justify-end">
-                            <button type="submit" class="jg-btn">{{ .T "my_account_update_password" }}</button>
-                        </div>
-                    </form>
-                </section>
             </div>
         </div>
-    </section>
-</main>
+
+        <div class="jg-card p-4 space-y-2">
+            <form method="POST" action="/admin/logout">
+                <button type="submit" class="w-full jg-btn jg-btn-danger jg-btn-ghost flex items-center justify-center gap-3 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                    {{ .T "nav_logout" }}
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    {{/* ── Settings Forms ────────────────────────────────────────── */}}
+    <div class="lg:col-span-8 space-y-6">
+        {{/* Contact Info */}}
+        <section class="jg-card p-8">
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-2xl bg-jg-accent/10 text-jg-accent flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-jg-text">{{ .T "my_account_section_contact" }}</h2>
+                    <p class="text-jg-text-muted text-sm">{{ .T "my_account_contact_help" }}</p>
+                </div>
+            </div>
+
+            <form id="my-account-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
+                        <input type="email" id="my-email" class="jg-input h-12" placeholder="nom@domaine.tld">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
+                        <select id="my-lang" class="jg-input h-12 text-sm">
+                            <option value="">{{ .T "my_account_default_server_lang" }}</option>
+                            <option value="fr">Français</option>
+                            <option value="en">English</option>
+                            <option value="de">Deutsch</option>
+                            <option value="es">Español</option>
+                            <option value="it">Italiano</option>
+                            <option value="nl">Nederlands</option>
+                            <option value="pl">Polski</option>
+                            <option value="pt-br">Português (Brasil)</option>
+                            <option value="ru">Русский</option>
+                            <option value="zh">中文 (简体)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="jg-label" for="my-discord">{{ .T "my_account_label_discord" }}</label>
+                        <div class="relative">
+                            <input type="text" id="my-discord" class="jg-input h-12 pl-12" placeholder="ex: user#1234">
+                            <div class="absolute left-4 top-3.5 text-jg-text-muted opacity-50">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037 19.736 19.736 0 0 0-4.885 1.515.069.069 0 0 0-.032.027C.533 9.048-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.23 10.23 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42.001 1.333-.956 2.418-2.157 2.418z" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="jg-label" for="my-telegram">{{ .T "my_account_label_telegram" }}</label>
+                        <div class="relative">
+                            <input type="text" id="my-telegram" class="jg-input h-12 pl-12" placeholder="ex: @username">
+                            <div class="absolute left-4 top-3.5 text-jg-text-muted opacity-50">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.35-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.35-.49.96-.75 3.78-1.65 6.31-2.74 7.58-3.27 3.61-1.51 4.35-1.77 4.84-1.78.11 0 .35.03.5.16.13.1.17.24.18.34.01.06.02.18.01.28z" /></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl bg-white/[0.02] border border-jg-border p-6 group hover:border-jg-accent/30 transition-all">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div class="space-y-1">
+                            <div class="text-[10px] font-black uppercase tracking-[0.2em] text-jg-text-muted mb-2 opacity-50">{{ .T "my_account_email_verification_label" }}</div>
+                            <div class="flex items-center gap-2">
+                                <span id="email-verification-status" class="text-sm font-black bg-jg-bg-secondary px-3 py-1 rounded-full text-jg-text-muted">{{ .T "my_account_email_status_unverified" }}</span>
+                            </div>
+                            <p id="email-verification-help" class="text-xs text-jg-text-muted max-w-sm">{{ .T "my_account_email_verification_help" }}</p>
+                            <p id="email-pending-value" class="mt-2 text-xs text-jg-accent hidden font-bold"></p>
+                        </div>
+                        <button type="button" id="email-verification-resend" class="jg-btn jg-btn-ghost text-xs font-bold py-3 px-6 h-auto">
+                            {{ .T "my_account_email_verification_resend" }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row md:items-center gap-8 py-4 border-t border-jg-border">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="my-notify-expiry" class="form-checkbox w-5 h-5 rounded-lg bg-jg-bg-secondary border-jg-border text-jg-accent focus:ring-jg-accent">
+                        <span class="text-sm text-jg-text-muted group-hover:text-jg-text transition-colors font-medium">{{ .T "my_account_notify_expiry" }}</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input type="checkbox" id="my-notify-events" class="form-checkbox w-5 h-5 rounded-lg bg-jg-bg-secondary border-jg-border text-jg-accent focus:ring-jg-accent">
+                        <span class="text-sm text-jg-text-muted group-hover:text-jg-text transition-colors font-medium">{{ .T "my_account_notify_events" }}</span>
+                    </label>
+                </div>
+
+                <div class="flex justify-end pt-4">
+                    <button type="submit" class="jg-btn jg-btn-primary px-10 py-4 font-bold tracking-wide shadow-lg shadow-jg-accent/20">
+                        {{ .T "my_account_save_preferences" }}
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        {{/* Password section */}}
+        <section class="jg-card p-8 relative overflow-hidden">
+            <div class="absolute top-0 right-0 p-8 opacity-5">
+                <svg class="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </div>
+            
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-jg-text">{{ .T "my_account_section_password" }}</h2>
+                    <p class="text-jg-text-muted text-sm">{{ .T "my_account_password_help" }}</p>
+                </div>
+            </div>
+
+            <form id="my-password-form" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="space-y-2">
+                        <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
+                        <input type="password" id="my-password" class="jg-input h-12" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
+                        <input type="password" id="my-password-confirm" class="jg-input h-12" required>
+                    </div>
+                </div>
+                <div class="flex justify-end pt-2">
+                    <button type="submit" class="jg-btn jg-btn-danger jg-btn-ghost px-10 py-4 font-bold tracking-wide">
+                        {{ .T "my_account_update_password" }}
+                    </button>
+                </div>
+            </form>
+        </section>
+    </div>
+</div>
 {{ end }}
 
 {{ define "scripts" }}

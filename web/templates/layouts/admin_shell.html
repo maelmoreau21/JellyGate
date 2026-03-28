@@ -1,0 +1,121 @@
+{{/* admin_shell.html — Shared Admin Layout */}}
+{{ template "base.html" . }}
+
+{{ define "body" }}
+<div class="jg-admin-layout">
+    {{/* ── Mobile Header ────────────────────────────────────────────────── */}}
+    <header class="jg-mobile-header lg:hidden jg-glass">
+        <div class="flex items-center justify-between px-4 h-16">
+            <div class="flex items-center gap-3">
+                {{ template "logo" . }}
+                <span class="font-bold text-lg tracking-tight">JellyGate</span>
+            </div>
+            <button id="mobile-menu-toggle" class="p-2 rounded-xl bg-white/5 text-jg-text-muted hover:text-jg-text transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    {{/* ── Sidebar (Shared) ─────────────────────────────────────────────── */}}
+    <aside id="sidebar" class="jg-sidebar jg-glass border-r border-jg-border">
+        <div class="jg-sidebar-inner flex flex-col h-full">
+            <div class="jg-sidebar-header px-6 py-8 hidden lg:flex items-center gap-3">
+                {{ template "logo" . }}
+                <span class="font-bold text-xl tracking-tight">JellyGate</span>
+            </div>
+
+            <nav class="jg-nav flex-1 px-3 space-y-1 overflow-y-auto">
+                {{/* Helper variable to determine active state */}}
+                {{ $current := .Section }}
+                
+                <a href="/admin/" class="jg-nav-item {{ if eq $current "dashboard" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                    <span class="jg-nav-label">{{ .T "nav_dashboard" }}</span>
+                </a>
+
+                <a href="/admin/my-account" class="jg-nav-item {{ if eq $current "my_account" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span class="jg-nav-label">{{ .T "nav_my_account" }}</span>
+                </a>
+
+                {{ if .IsAdmin }}
+                <div class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-jg-text-muted/50 mt-4">{{ .T "nav_group_admin" }}</div>
+                
+                <a href="/admin/users" class="jg-nav-item {{ if eq $current "users" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    <span class="jg-nav-label">{{ .T "nav_users" }}</span>
+                </a>
+
+                <a href="/admin/automation" class="jg-nav-item {{ if eq $current "automation" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
+                </a>
+                {{ end }}
+
+                {{ if .CanInvite }}
+                <a href="/admin/invitations" class="jg-nav-item {{ if eq $current "invitations" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    <span class="jg-nav-label">{{ .T "nav_invitations" }}</span>
+                </a>
+                {{ end }}
+
+                {{ if .IsAdmin }}
+                <a href="/admin/settings" class="jg-nav-item {{ if eq $current "settings" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
+                    <span class="jg-nav-label">{{ .T "nav_settings" }}</span>
+                </a>
+
+                <a href="/admin/logs" class="jg-nav-item {{ if eq $current "logs" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    <span class="jg-nav-label">{{ .T "nav_logs" }}</span>
+                </a>
+                {{ end }}
+            </nav>
+
+            <div class="jg-sidebar-footer p-4 space-y-3">
+                {{/* Language Selector (will be moved here by JS) */}}
+                <div id="sidebar-lang-target" class="w-full"></div>
+
+                {{/* Sidebar Collapse Toggle (Desktop only) */}}
+                <button id="sidebar-collapse-toggle" class="hidden lg:flex jg-btn jg-btn-ghost w-full h-10 mb-2 border-dashed border-jg-border-strong opacity-60 hover:opacity-100" title="{{ .T "nav_collapse" }}/{{ .T "nav_expand" }}">
+                    <svg class="w-4 h-4 transition-transform duration-300 collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+                    <span class="jg-nav-label ml-2 text-[10px] font-bold uppercase tracking-wider">{{ .T "nav_collapse" }}</span>
+                </button>
+
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle-btn" type="button" class="jg-btn jg-btn-ghost flex-1 h-11" title="{{ .T "nav_theme_title" }}">
+                        <span id="theme-toggle-icon">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </span>
+                        <span class="jg-nav-label ml-2 text-xs font-semibold">{{ .T "nav_theme" }}</span>
+                    </button>
+
+                    <form method="POST" action="/admin/logout" class="flex-1">
+                        <button type="submit" class="jg-btn jg-btn-danger w-full h-11">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="jg-version-text text-[9px] text-center text-jg-text-muted/40 font-mono tracking-widest uppercase py-2">
+                    JellyGate <span class="text-jg-accent font-bold">v{{ .AppVersion }}</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    {{/* ── Backdrop for mobile ───────────────────────────────────────────── */}}
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    {{/* ── Main content ────────────────────────────────────────────────── */}}
+    <main class="jg-main-content">
+        {{ block "admin_content" . }}{{ end }}
+    </main>
+</div>
+{{ end }}

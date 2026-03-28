@@ -529,22 +529,22 @@
             document.getElementById('edit-expiry').value = toDateTimeLocal(user.access_expires_at || '');
             document.getElementById('edit-clear-expiry').checked = false;
             document.getElementById('edit-can-invite').checked = !!user.can_invite;
-            document.getElementById('edit-modal').style.display = '';
+            JG.openModal('edit-modal');
         }
 
         function closeEditModal() {
-            document.getElementById('edit-modal').style.display = 'none';
+            JG.closeModal('edit-modal');
         }
 
         function confirmDelete(id, username) {
             pendingDeleteUser = { id, username };
             document.getElementById('delete-modal-text').textContent = fmtTemplate(i18n.deleteConfirmTemplate, { username });
-            document.getElementById('delete-modal').style.display = '';
+            JG.openModal('delete-modal');
         }
 
         function closeDeleteModal() {
             pendingDeleteUser = null;
-            document.getElementById('delete-modal').style.display = 'none';
+            JG.closeModal('delete-modal');
         }
 
         async function openTimelineModal(id) {
@@ -556,7 +556,7 @@
                 email: user.email || '-',
             });
             document.getElementById('timeline-list').innerHTML = '<div class="text-center text-slate-500 py-8"><span class="spinner"></span></div>';
-            document.getElementById('timeline-modal').style.display = '';
+            JG.openModal('timeline-modal');
 
             const res = await JG.api(`/admin/api/users/${id}/timeline`);
             if (!res.success) {
@@ -568,7 +568,7 @@
         }
 
         function closeTimelineModal() {
-            document.getElementById('timeline-modal').style.display = 'none';
+            JG.closeModal('timeline-modal');
         }
 
         document.getElementById('users-tbody').addEventListener('click', async (event) => {

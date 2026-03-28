@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
     const config = window.JGPageSettings || {};
     const i18n = config.i18n || {};
     let backupDatabaseType = 'sqlite';
@@ -654,7 +654,7 @@
         }
 
         frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#0f172a;">${JG.esc(t('preview_loading', 'Loading preview...'))}</div>`;
-        modal.style.display = '';
+        JG.openModal('email-preview-modal');
 
         const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
         const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
@@ -692,7 +692,7 @@
             return;
         }
 
-        modal.style.display = '';
+        JG.openModal('email-preview-modal');
         await requestBasePreview(frame, { showLoading: true });
     }
 
@@ -700,7 +700,7 @@
         const modal = document.getElementById('email-preview-modal');
         const frame = document.getElementById('email-preview-frame');
         if (frame) frame.srcdoc = '';
-        if (modal) modal.style.display = 'none';
+        if (modal) JG.closeModal('email-preview-modal');
     }
 
     function attachTemplatePreviewButtons() {
