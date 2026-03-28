@@ -1,7 +1,7 @@
 # JellyGate — Project Context
 
-> Dernière mise à jour : 2026-03-27
-> Version : 1.1.1
+> Dernière mise à jour : 2026-03-28
+> Version : 1.1.10
 > Auteur : Mael Moreau
 
 ## 1. Vision
@@ -257,6 +257,27 @@ go run ./cmd/i18ncoverage --max-same-as-base 195
 docker build -t jellygate:local .
 ```
 
+### Lancer localement (mode développement)
+
+Pour exécuter l'application localement sans dépendances externes (base SQLite), copiez/éditez `.env.local` puis lancez :
+
+```bash
+# Installer les dépendances CSS si nécessaire
+npm install
+# Générer le CSS Tailwind
+npm run build:css
+
+# Vérifier que .env.local contient DB_TYPE=sqlite et JELLYGATE_PORT=8097
+# Démarrer l'application (utilise .env.local si vous l'avez exporté dans l'environnement)
+go run ./cmd/jellygate
+
+# Ensuite ouvrez http://localhost:8097/admin/login dans votre navigateur
+```
+
+Remarques:
+- Si vous utilisez Windows PowerShell, vous pouvez charger les variables de `.env.local` avec un outil comme `direnv` ou définir manuellement les variables d'environnement avant d'exécuter `go run`.
+- Le fichier `web/static/css/tailwind.generated.css` est déjà présent dans le dépôt; si l'interface apparaît noire ou vide, reconstruisez le CSS avec `npm run build:css` puis rechargez la page.
+
 ## 11. Points d'attention pour les prochaines évolutions
 
 - améliorer la qualité réelle des traductions non `fr`/`en`
@@ -275,6 +296,13 @@ docker build -t jellygate:local .
 
 ## 13. Mise à jour récente
 
+- **Version 1.1.8** : Refonte de la page `Utilisateurs` (2026-03-28) — amélioration de la lisibilité, meilleure réactivité sur petits écrans, et correction de quelques `id` manquants nécessaires au JS (`bulk-selected-count`, `delete-modal-text`, `timeline-subtitle`). Compatibilité avec `web/static/js/pages/users.js` préservée ; relancer l'audit i18n après modifications de contenu.
+
+- **Version 1.1.9** : Refonte de la page `Automatisation` (2026-03-28) — tables rendues responsive (scroll horizontal via `overflow-x-auto`), tables forcées en `min-w-full` pour éviter l'écrasement des colonnes sur petits écrans, et petites améliorations d'accessibilité/aperçu des tâches. Aucune modification API : compatibilité avec `web/static/js/pages/automation.js` conservée. Effectuer une vérification visuelle après redémarrage.
+
+- **Version 1.1.10** : Refonte de la page `Invitations` (2026-03-28) — tables rendues responsive et `min-w-full` appliqué, ajout d'un résumé de politique d'invitation et de messages d'aide (`invite-policy-summary`, `inv-uses-help`, `inv-link-expiry-help`, `inv-can-invite-help`), correction des boutons rapides pour éviter les `id` dupliqués (ajout de classes utilitaires pour attacher les listeners), et ajout d'un emplacement pour le texte de confirmation de suppression (`delete-modal-text`). Compatibilité fonctionnelle avec `web/static/js/pages/invitations.js` préservée — lancer une QA visuelle après redémarrage.
+
+
 - Version produit portée en `1.1.0`.
 - Support PostgreSQL actif côté déploiement et configuration.
 - Vérification d'e-mail avant création de compte sur les invitations publiques, avec option admin activée par défaut.
@@ -283,4 +311,41 @@ docker build -t jellygate:local .
 - Refonte Esthétique "SaaS Professionnel" : Passage à une palette Gris Carbone (`#09090b`), typographie `Inter`, et retrait des effets "IA" (glows, dégradés radiaux, flous excessifs) pour un aspect haute performance et utilitaire.
 - Simplification "Minimale" appliquée à l'ensemble de l'interface d'administration : suppression des textes d'aide redondants, des bannières "Kicker", et des descriptions de sections pour un outil ultra-rapide et facile à prendre en main.
 - Support HTTPS natif intégré via `JELLYGATE_TLS_CERT` tel que `JELLYGATE_TLS_KEY`.
-- **Version 1.1.1** : Introduction de l'esthétique "Option A" - Dégradé Cyan/Émeraude (`#22d3ee` vers `#10b981`). Redesign des boutons principaux, des états de focus et de la page de connexion pour un aspect plus moderne et dynamique. Correction du bug de duplication d'étiquettes sur le bouton de thème.
+- **Version 1.1.1** : Introduction de l'esthétique "Option A" - Dégradé Cyan/Émeraude (`#22d3ee` vers `#10b981`). Redesign des boutons principaux, des états de focus et de la page de connexion pour un aspect plus moderne et dynamique. Correction du bug de duplication d'étiquettes sur le bouton de thème. Harmonisation complète du design system sur l'ensemble des pages d'administration (logos, encodage des titres, et suppression des couleurs legacy).
+- **Version 1.1.2** : Raffinement du portail de connexion. Relocalisation du sélecteur de langue sous le bouton de thème pour un flux vertical épuré. Remplacement des icônes images par une grille d'emojis drapeaux native, supprimant les dépendances externes (FlagCDN) et garantissant une lisibilité parfaite sur tous les navigateurs.
+ - **Version 1.1.3** : Refonte complète de la page `Mon compte` — nouveau layout responsive, meilleure hiérarchie visuelle, et conservation des points d'API/JS existants pour compatibilité (pas de changement fonctionnel côté back). Mise à jour des composants visuels pour correspondre au design system actuel.
+
+- **Version 1.1.4** : Refonte complète de la page `Automatisation` — nouveau layout responsive, meilleure hiérarchie visuelle, panneau d'aperçu des tâches et conservation de tous les `id` utilisés par `web/static/js/pages/automation.js` pour compatibilité. Vérifier `/admin/automation` après redémarrage pour valider le rendu et les traductions.
+
+- **Version 1.1.6** : Refonte complète de la page `Invitations` — nouveau layout responsive, meilleure hiérarchie visuelle, panneau sponsor + table principale, conservation des `id` utilisés par `web/static/js/pages/invitations.js` pour compatibilité, et relance de l'audit i18n pour vérifier la parité.
+
+- **Version 1.1.7** : Refonte complète de la page `Journaux` — nouveau layout responsive avec panneau de filtres latéral sticky, meilleure hiérarchie visuelle, conservation de tous les `id` utilisés par `web/static/js/pages/logs.js` pour compatibilité, et recommandation de relancer l'audit i18n après déploiement.
+
+- **Version 1.1.5** : Refonte complète de la page `Utilisateurs` — nouveau layout responsive, panneau d'aperçu, conservation des `id` utilisés par `web/static/js/pages/users.js` pour compatibilité, et relance de l'audit i18n pour vérifier la parité.
+
+## i18n — vérification et réparation
+
+- Problème fréquent : les fichiers JSON de traduction doivent être encodés en UTF-8 (sans BOM). Si un fichier est enregistré avec le mauvais encodage, l'interface affichera des caractères illisibles (mojibake) — surtout visible pour `zh.json` (chinois).
+- Audit rapide (détecte clés manquantes et propose une réparation partielle) :
+
+```powershell
+# depuis la racine du projet
+node scripts\i18n_inspect.js
+```
+
+Le script affiche trois blocs : `---ZH_FIXED---` (tentative de décodage des chaînes mojibake pour `zh.json`), `---MISSING_KEYS---` (liste des clés manquantes par fichier) et `---ALL_KEYS---` (ensemble complet des clés détectées).
+
+- Réparer l'encodage `zh.json` (tentative automatique) :
+
+```powershell
+# sauvegarde préalable conseillée
+node -e "const fs=require('fs');const p='web/i18n/zh.json';let raw=fs.readFileSync(p,'utf8');if(raw.charCodeAt(0)===0xFEFF) raw=raw.slice(1);let obj;try{obj=JSON.parse(raw)}catch(e){const maybe=Buffer.from(fs.readFileSync(p,'binary'),'binary').toString('utf8');obj=JSON.parse(maybe);}Object.keys(obj).forEach(k=>{if(typeof obj[k]==='string'){const dec=Buffer.from(obj[k],'binary').toString('utf8');if(/[\u4e00-\u9fff]/.test(dec)) obj[k]=dec;}});fs.writeFileSync(p,JSON.stringify(obj,null,4));console.log('zh.json: attempted repair (review required)');"
+```
+
+- Parité des clés : après toute modification de templates (nouvelles `{{ .T "..." }}`), assurez-vous que chaque fichier `web/i18n/*.json` contient les mêmes clés. Pour ajouter des clés manquantes automatiquement, utilisez le résultat `---MISSING_KEYS---` de `i18n_inspect.js` comme feuille de route, puis ajoutez des valeurs de secours (anglais ou langue principale) et demandez des traductions humaines ensuite.
+
+- Conseils d'édition :
+  - Toujours sauvegarder les fichiers `.json` en `UTF-8 (no BOM)`.
+  - Pour PowerShell 5, évitez `Set-Content -Encoding UTF8` (il écrit un BOM); préférez des éditeurs qui permettent explicitement `UTF-8 without BOM`, ou la commande Node ci-dessus.
+  - Après corrections, redémarrez l'application et contrôlez `/admin/my-account` en `zh` pour valider l'affichage.
+

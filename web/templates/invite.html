@@ -1,5 +1,5 @@
 {{/* invite.html — Formulaire d'inscription via invitation */}}
-{{ template "layouts/base.html" . }}
+{{ template "base.html" . }}
 
 {{ define "title" }}{{ .T "invite_title" }} — JellyGate{{ end }}
 
@@ -165,5 +165,5 @@
         },
     };
 </script>
-<script src="/static/js/pages/invite.js"></script>
+<script src="/static/js/pages/invite.js" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

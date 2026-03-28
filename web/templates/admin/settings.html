@@ -1,25 +1,13 @@
 {{/* settings.html — Page de configuration admin JellyGate */}}
 {{/* 4 onglets : Général, LDAP, SMTP, Webhooks — Dark Theme + Glassmorphism */}}
-{{ template "layouts/base.html" . }}
+{{ template "base.html" . }}
 
 {{ define "title" }}{{ .T "nav_settings" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 {{/* —— Sidebar ——————————————————————————————————————————————————————————— */}}
 <aside id="sidebar" class="jg-sidebar">
-  <div class="jg-sidebar-logo">
-    <svg viewBox="0 0 32 32" fill="none">
-      <circle cx="16" cy="16" r="14" fill="url(#grd)" />
-      <defs>
-        <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
-          <stop stop-color="#94a3b8" />
-          <stop offset="1" stop-color="#475569" />
-        </linearGradient>
-      </defs>
-      <path d="M10 22V10l12 6-12 6z" fill="#fff" />
-    </svg>
-    <span>JellyGate</span>
-  </div>
+    {{ template "logo" . }}
   <nav class="jg-nav">
     <a href="/admin/" class="jg-nav-item">
       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,6 +84,7 @@
         <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
       </button>
     </form>
+    <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
   </div>
 </aside>
 
@@ -136,7 +125,7 @@
       </button>
       <button data-tab-target="backup" id="tab-backup"
         class="tab-btn px-5 py-2.5 rounded-t-lg text-sm font-semibold transition-all whitespace-nowrap">
-        x {{ .T "settings_tab_backup" }}
+        {{ .T "settings_tab_backup" }}
       </button>
     </div>
 
@@ -165,7 +154,7 @@
                 <option value="pl">Polski</option>
                 <option value="pt-br">Português (Brasil)</option>
                 <option value="ru">Рђсский</option>
-                <option value="zh">中!</option>
+                <option value="zh">中文 (简体)</option>
               </select>
               
             </div>
@@ -197,7 +186,7 @@
 
             <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4">
               <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_quick_links" }}</h3>
-              <div class="fleflex-wrap gap-2">
+              <div class="flex flex-wrap gap-2">
                 <a id="shortcut-jellygate" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellygate_public" }}</a>
                 <a id="shortcut-jellyfin" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellyfin" }}</a>
                 <a id="shortcut-jellyseerr" href="#" target="_blank" rel="noopener noreferrer" class="jg-btn jg-btn-sm jg-btn-ghost hidden">{{ .T "settings_open_jellyseerr" }}</a>
@@ -206,8 +195,8 @@
             </div>
           </div>
 
-          <div class="mt-6 flejustify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">x {{ .T "btn_save" }}</button>
+          <div class="mt-6 flex justify-end">
+            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "btn_save" }}</button>
           </div>
         </form>
 
@@ -241,8 +230,8 @@
               </div>
             </div>
 
-            <label class="mt-4 inline-fleitems-start gap-3 text-sm text-slate-600 dark:text-slate-300">
-              <input type="checkbox" id="invite-profile-auto-delete-closed-links" class="form-checkbomt-1">
+            <label class="mt-4 inline-flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
+              <input type="checkbox" id="invite-profile-auto-delete-closed-links" class="form-checkbox">
               <span>
                 <span class="block text-slate-800 dark:text-slate-100">Supprimer automatiquement les liens d'invitation fermés</span>
                 <span class="mt-1 block text-xs text-slate-500">Les liens expirés ou qui ont atteint leur quota sont purgés automatiquement pour ne pas laisser de fauliens encore visibles.</span>
@@ -285,24 +274,24 @@
                   <option value="disable_then_delete">{{ .T "settings_expiry_action_disable_then_delete" }}</option>
                 </select>
               </div>
-              <div class="fleitems-center gap-3 pt-6">
+              <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-enable-downloads" class="form-checkbox" checked>
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-enable-downloads">{{ .T "settings_invite_enable_downloads" }}</label>
               </div>
-              <div class="fleitems-center gap-3 pt-6">
+              <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-require-email" class="form-checkbox" checked>
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-require-email">{{ .T "settings_invite_require_email" }}</label>
               </div>
-              <div class="fleitems-center gap-3 pt-6">
+              <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-require-email-verification" class="form-checkbox" checked>
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-require-email-verification">{{ .T "settings_invite_require_email_verification" }}</label>
               </div>
-              <div class="fleitems-center gap-3 pt-6">
+              <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-allow-inviter-grant" class="form-checkbox">
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-allow-inviter-grant">{{ .T "settings_invite_allow_inviter_grant" }}</label>
               </div>
               
-              <div class="fleitems-center gap-3 pt-6">
+              <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-allow-inviter-user-expiry" class="form-checkbox" checked>
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-allow-inviter-user-expiry">{{ .T "settings_invite_allow_inviter_user_expiry" }}</label>
               </div>
@@ -324,27 +313,27 @@
                 <input type="number" id="invite-profile-pw-max" min="1" class="jg-input" value="128">
               </div>
 
-              <label class="inline-fleitems-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-upper" class="form-checkbox">
                 {{ .T "settings_password_upper_required" }}
               </label>
-              <label class="inline-fleitems-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-lower" class="form-checkbox">
                 {{ .T "settings_password_lower_required" }}
               </label>
-              <label class="inline-fleitems-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-digit" class="form-checkbox">
                 {{ .T "settings_password_digit_required" }}
               </label>
-              <label class="inline-fleitems-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <input type="checkbox" id="invite-profile-pw-special" class="form-checkbox">
                 {{ .T "settings_password_special_required" }}
               </label>
               </div>
             </details>
 
-            <div class="mt-6 flejustify-end">
-              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">x {{ .T "settings_save_invite_profile" }}</button>
+            <div class="mt-6 flex justify-end">
+                 <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "settings_save_invite_profile" }}</button>
             </div>
           </form>
         </div>
@@ -359,12 +348,12 @@
       <div class="glass-card p-4 md:p-5">
 
         {{/* Master Toggle */}}
-        <div class="fleitems-center justify-between mb-3 pb-2 border-b border-black/5 dark:border-white/10">
+        <div class="flex items-center justify-between mb-3 pb-2 border-b border-black/5 dark:border-white/10">
           <div>
             <h2 class="text-lg font-semibold text-white">{{ .T "settings_ldap_title" }}</h2>
             
           </div>
-          <label class="relative inline-fleitems-center cursor-pointer">
+          <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" id="ldap-enabled" class="sr-only peer">
             <div
               class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500">
@@ -386,11 +375,11 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="fleitems-center gap-3">
+              <div class="flex items-center gap-3">
                 <input type="checkbox" id="ldap-tls" checked class="form-checkbox">
                 <label for="ldap-tls" class="text-sm text-slate-600 dark:text-slate-300">{{ .T "settings_ldap_tls" }}</label>
               </div>
-              <div class="fleitems-center gap-3">
+              <div class="flex items-center gap-3">
                 <input type="checkbox" id="ldap-skip-verify" class="form-checkbox">
                 <label for="ldap-skip-verify" class="text-sm text-slate-600 dark:text-slate-300">{{ .T "settings_ldap_skip_verify" }}</label>
               </div>
@@ -486,7 +475,7 @@
                     </div>
                   </div>
 
-                  <div class="fleflex-wrap gap-2">
+                  <div class="flex flex-wrap gap-2">
                     <button type="button" id="btn-ldap-test-conn" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_connection_btn" }}</button>
                     <button type="button" id="btn-ldap-test-user" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "settings_ldap_test_user_btn" }}</button>
                     <button type="button" id="btn-ldap-test-jf" class="jg-btn jg-btn-sm">{{ .T "settings_ldap_test_jellyfin_btn" }}</button>
@@ -500,8 +489,8 @@
             </details>
           </div>
 
-          <div class="mt-6 flejustify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">x {{ .T "settings_save_ldap" }}</button>
+          <div class="mt-6 flex justify-end">
+               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "settings_save_ldap" }}</button>
           </div>
         </form>
 
@@ -547,15 +536,15 @@
                 <label class="jg-label" for="smtp-from">{{ .T "settings_smtp_from" }}</label>
                 <input type="text" id="smtp-from" class="jg-input" placeholder="noreply@example.com">
               </div>
-              <div class="fleitems-center gap-3 pt-6">
+              <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="smtp-tls" checked class="form-checkbox">
                 <label for="smtp-tls" class="text-sm text-slate-600 dark:text-slate-300">{{ .T "settings_smtp_starttls" }}</label>
               </div>
             </div>
           </div>
 
-          <div class="mt-6 flejustify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">x {{ .T "settings_save_smtp" }}</button>
+          <div class="mt-6 flex justify-end">
+               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "settings_save_smtp" }}</button>
           </div>
         </form>
 
@@ -623,8 +612,8 @@
 
           </div>
 
-          <div class="mt-6 flejustify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">x {{ .T "settings_save_webhooks" }}</button>
+          <div class="mt-6 flex justify-end">
+               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "settings_save_webhooks" }}</button>
           </div>
         </form>
 
@@ -676,9 +665,9 @@
               <textarea id="tpl-base-footer" class="jg-input font-mono text-sm" rows="10"></textarea>
             </div>
           </div>
-          <div class="mt-4 fleitems-center justify-between gap-3 flex-wrap">
+          <div class="mt-4 flex items-center justify-between gap-3 flex-wrap">
             
-            <div class="fleitems-center gap-2 flex-wrap">
+            <div class="flex items-center gap-2 flex-wrap">
               <button type="button" id="tpl-base-restore-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_restore" }}</button>
               <button type="button" id="tpl-base-preview-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_preview" }}</button>
             </div>
@@ -699,11 +688,11 @@
           <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_delivery_title" }}</h3>
           
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 text-sm text-slate-600 dark:text-slate-300">
-            <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-confirmation-email" class="form-checkbox"> {{ .T "settings_email_tpl_confirmation" }}</label>
-            <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-expiry-reminder-email" class="form-checkbox"> {{ .T "settings_email_tpl_expiry_reminder" }}</label>
-            <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-invite-expiry-email" class="form-checkbox"> {{ .T "settings_email_tpl_invite_expiry" }}</label>
-            <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-welcome-email" class="form-checkbox"> {{ .T "settings_email_tpl_welcome" }}</label>
-            <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-user-creation-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_creation" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-confirmation-email" class="form-checkbox"> {{ .T "settings_email_tpl_confirmation" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-expiry-reminder-email" class="form-checkbox"> {{ .T "settings_email_tpl_expiry_reminder" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-invite-expiry-email" class="form-checkbox"> {{ .T "settings_email_tpl_invite_expiry" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-welcome-email" class="form-checkbox"> {{ .T "settings_email_tpl_welcome" }}</label>
+            <label class="inline-flex items-center gap-2"><input type="checkbox" id="tpl-enable-user-creation-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_creation" }}</label>
             <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-user-deletion-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_deletion" }}</label>
             <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-user-disabled-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_disabled" }}</label>
             <label class="inline-fleitems-center gap-2"><input type="checkbox" id="tpl-enable-user-enabled-email" class="form-checkbox"> {{ .T "settings_email_tpl_user_enabled" }}</label>
@@ -914,8 +903,8 @@
             </details>
           </div>
 
-          <div class="mt-6 flejustify-end">
-            <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">x {{ .T "settings_save_templates" }}</button>
+          <div class="mt-6 flex justify-end">
+               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "settings_save_templates" }}</button>
           </div>
         </form>
 
@@ -1053,7 +1042,7 @@
     },
   };
 </script>
-<script src="/static/js/pages/settings.js"></script>
+<script src="/static/js/pages/settings.js" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}
 
 {{ define "head" }}
@@ -1077,25 +1066,25 @@
     border-color: rgba(148, 163, 184, 0.48);
   }
 
-  #tab-general.active { border-bottom-color: #22d3ee; box-shadow: inset 0 -1p0 rgba(34, 211, 238, 0.3); }
-  #tab-ldap.active { border-bottom-color: #a78bfa; box-shadow: inset 0 -1p0 rgba(167, 139, 250, 0.3); }
-  #tab-smtp.active { border-bottom-color: #38bdf8; box-shadow: inset 0 -1p0 rgba(56, 189, 248, 0.3); }
-  #tab-webhooks.active { border-bottom-color: #34d399; box-shadow: inset 0 -1p0 rgba(52, 211, 153, 0.3); }
-  #tab-email-templates.active { border-bottom-color: #f59e0b; box-shadow: inset 0 -1p0 rgba(245, 158, 11, 0.3); }
-  #tab-backup.active { border-bottom-color: #fb7185; box-shadow: inset 0 -1p0 rgba(251, 113, 133, 0.3); }
+  #tab-general.active { border-bottom-color: var(--jg-accent-cyan); box-shadow: inset 0 -1px rgba(34, 211, 238, 0.12); }
+  #tab-ldap.active { border-bottom-color: #a78bfa; box-shadow: inset 0 -1px rgba(167, 139, 250, 0.12); }
+  #tab-smtp.active { border-bottom-color: var(--jg-accent-sky); box-shadow: inset 0 -1px rgba(56, 189, 248, 0.12); }
+  #tab-webhooks.active { border-bottom-color: var(--jg-accent-emerald); box-shadow: inset 0 -1px rgba(52, 211, 153, 0.12); }
+  #tab-email-templates.active { border-bottom-color: var(--jg-accent-amber); box-shadow: inset 0 -1px rgba(245, 158, 11, 0.12); }
+  #tab-backup.active { border-bottom-color: var(--jg-accent-rose); box-shadow: inset 0 -1px rgba(251, 113, 133, 0.12); }
 
   .settings-panel .glass-card {
-    border-top: 3psolid rgba(255, 255, 255, 0.28);
-    background: linear-gradient(180deg, rgba(16, 26, 46, 0.96), rgba(8, 14, 28, 0.98));
+    border-top: 3px solid transparent;
+    background: linear-gradient(180deg, rgba(16, 20, 24, 0.95), rgba(12, 14, 18, 0.97));
   }
 
-  .jg-settings-main .text-slate-500 dark:text-slate-400,
-  .jg-settings-main .text-slate-500 {
-    color: rgb(189 201 219);
+  .jg-settings-main .text-slate-500,
+  .jg-settings-main .dark .text-slate-500 {
+    color: var(--jg-text-muted);
   }
 
   .settings-collapsible {
-    border: 1psolid rgba(148, 163, 184, 0.3);
+    border: 1px solid rgba(148, 163, 184, 0.12);
     border-radius: 12px;
     background: rgba(15, 23, 42, 0.5);
     padding: 0.9rem 1rem;
@@ -1105,7 +1094,7 @@
     cursor: pointer;
     font-size: 0.88rem;
     font-weight: 700;
-    color: rgb(226 232 240);
+    color: var(--jg-text);
     list-style: none;
   }
 
@@ -1116,7 +1105,7 @@
   .settings-collapsible > summary::after {
     content: "+";
     float: right;
-    color: rgb(148 163 184);
+    color: var(--jg-text-muted);
   }
 
   .settings-collapsible[open] > summary::after {
@@ -1134,7 +1123,7 @@
     display: block;
     font-size: 0.8rem;
     font-weight: 500;
-    color: rgb(148 163 184);
+    color: var(--jg-text-muted);
     margin-bottom: 0.35rem;
   }
 
@@ -1152,7 +1141,7 @@
     flex-direction: column;
     gap: 0.5rem;
     background: rgba(15, 23, 42, 0.45);
-    border: 1psolid rgba(148, 163, 184, 0.16);
+    border: 1px solid rgba(148, 163, 184, 0.08);
     border-radius: 14px;
     padding: 0.65rem;
   }

@@ -30,6 +30,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/notify"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/scheduler"
+	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
 func main() {
@@ -166,6 +167,7 @@ func main() {
 	r.Use(chimw.RequestID)                 // ID unique par requête
 	r.Use(chimw.RealIP)                    // IP réelle derrière proxy
 	r.Use(chimw.Logger)                    // Log de chaque requête
+	r.Use(jgmw.LogPanics())                // Dev: log panics with stack trace
 	r.Use(chimw.Recoverer)                 // Récupération des panics
 	r.Use(chimw.Timeout(30 * time.Second)) // Timeout global 30s
 	r.Use(chimw.Compress(5))               // Compression gzip
@@ -214,6 +216,39 @@ func main() {
 		r.Get("/login", authHandler.LoginPage)
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/login", authHandler.LoginSubmit)
 		r.Post("/logout", authHandler.Logout)
+
+		// DEBUG ROUTE (local only): bypass auth and call ListInvitations with a fake admin session
+		// Use only for local debugging to reproduce API errors.
+		r.Get("/debug/invitations-bypass", func(w http.ResponseWriter, r *http.Request) {
+			sess := &session.Payload{UserID: "1", Username: "debug-admin", IsAdmin: true, Exp: time.Now().Add(24 * time.Hour).Unix()}
+			r = r.WithContext(session.NewContext(r.Context(), sess))
+			adminHandler.ListInvitations(w, r)
+		})
+
+		// DEBUG route for InvitationStats
+		r.Get("/debug/invitations-stats-bypass", func(w http.ResponseWriter, r *http.Request) {
+			sess := &session.Payload{UserID: "1", Username: "debug-admin", IsAdmin: true, Exp: time.Now().Add(24 * time.Hour).Unix()}
+			r = r.WithContext(session.NewContext(r.Context(), sess))
+			adminHandler.InvitationStats(w, r)
+		})
+
+		// DEBUG route: verify jellygate_session cookie using server secret and return error (local only)
+		r.Get("/debug/verify-session", func(w http.ResponseWriter, r *http.Request) {
+			cookie, err := r.Cookie(session.CookieName)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprintln(w, `{"success":false,"error":"cookie missing"}`)
+				return
+			}
+			p, err := session.Verify(cookie.Value, cfg.SecretKey)
+			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
+				fmt.Fprintf(w, "{\"success\":false,\"error\":%q}", err.Error())
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+			fmt.Fprintf(w, "{\"success\":true,\"user\":%q,\"is_admin\":%t}", p.Username, p.IsAdmin)
+		})
 
 		// Routes protégées par le middleware d'authentification global (standard + admin)
 		r.Group(func(r chi.Router) {

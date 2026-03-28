@@ -1,4 +1,4 @@
-﻿// Package handlers â€” password_reset.go
+// Package handlers â€” password_reset.go
 //
 // GÃ¨re le flux complet de rÃ©initialisation de mot de passe :
 //
@@ -107,9 +107,9 @@ func (h *PasswordResetHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
 // â”€â”€ GET /reset/ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// RequestPage affiche le formulaire de demande de rÃ©initialisation.
 func (h *PasswordResetHandler) RequestPage(w http.ResponseWriter, r *http.Request) {
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	td.Section = "login"
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
@@ -232,9 +232,10 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 
 // â”€â”€ GET /reset/{code} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ResetPage affiche le formulaire de saisie du nouveau mot de passe.
 func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	td.Section = "login"
 
 	// VÃ©rifier que le token est valide avant d'afficher le formulaire
 	_, _, err := h.getValidResetToken(code)
@@ -244,7 +245,6 @@ func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
@@ -486,9 +486,9 @@ func generateSecureToken(length int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-// renderSuccessPage affiche une page de succÃ¨s gÃ©nÃ©rique.
 func (h *PasswordResetHandler) renderSuccessPage(w http.ResponseWriter, r *http.Request, message string) {
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	td.Section = "login"
 	td.SuccessMessage = message
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL

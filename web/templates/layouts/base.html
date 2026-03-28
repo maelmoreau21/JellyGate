@@ -11,6 +11,11 @@
     <meta name="description" content='{{ block "meta_description" . }}{{ .T "app_description" }}{{ end }}'>
 
     <meta name="theme-color" content="#09090b">
+    
+    <style>
+        /* Hide the global floating switcher on the login page to avoid duplicates */
+        body.login-page #lang-switcher { display: none !important; }
+    </style>
 
     {{/* Tailwind CSS compilé localement */}}
     <link rel="stylesheet" href="/static/css/tailwind.generated.css">
@@ -25,7 +30,7 @@
     {{ block "head" . }}{{ end }}
     
     {{/* Pre-load theme to prevent FOUC */}}
-    <script>
+    <script nonce="{{ .ScriptNonce }}">
         (function() {
             var savedTheme = localStorage.getItem('jg-theme') || 'dark';
             if (savedTheme === 'light') {
@@ -37,7 +42,7 @@
     </script>
 </head>
 
-<body class="bg-jg-bg min-h-screen antialiased text-slate-800 dark:text-slate-100">
+<body class="bg-jg-bg min-h-screen antialiased text-slate-800 dark:text-slate-100 {{ if eq .Section "login" }}login-page{{ end }}">
 
     {{/* Toast container */}}
     <div id="toast-container" class="toast-container"></div>
@@ -45,10 +50,65 @@
     {{ block "body" . }}{{ end }}
 
     {{/* Language selector — moved into admin sidebar footer by app.js when available */}}
-    {{/* Floating language selector removed to avoid duplicate UI — language switcher is available in the login footer where needed. */}}
+    <div id="lang-switcher" class="jg-lang-switcher jg-lang-switcher-floating px-3 py-2 border-0 bg-transparent shadow-none">
+        <div class="jg-custom-select">
+            <div class="jg-select-trigger">
+                <span class="flex items-center gap-3">
+                    <img class="jg-current-flag jg-flag-icon" src="" alt="">
+                    <span class="jg-current-label"></span>
+                </span>
+                <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+            
+            <div class="jg-select-options">
+                <div class="jg-select-option {{ if eq .Lang "fr" }}active{{ end }}" data-value="fr">
+                    <img src="https://flagcdn.com/w20/fr.png" class="jg-flag-icon" alt="fr">
+                    <span>Français</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "en" }}active{{ end }}" data-value="en">
+                    <img src="https://flagcdn.com/w20/gb.png" class="jg-flag-icon" alt="en">
+                    <span>English</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "de" }}active{{ end }}" data-value="de">
+                    <img src="https://flagcdn.com/w20/de.png" class="jg-flag-icon" alt="de">
+                    <span>Deutsch</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "es" }}active{{ end }}" data-value="es">
+                    <img src="https://flagcdn.com/w20/es.png" class="jg-flag-icon" alt="es">
+                    <span>Español</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "it" }}active{{ end }}" data-value="it">
+                    <img src="https://flagcdn.com/w20/it.png" class="jg-flag-icon" alt="it">
+                    <span>Italiano</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "nl" }}active{{ end }}" data-value="nl">
+                    <img src="https://flagcdn.com/w20/nl.png" class="jg-flag-icon" alt="nl">
+                    <span>Nederlands</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "pl" }}active{{ end }}" data-value="pl">
+                    <img src="https://flagcdn.com/w20/pl.png" class="jg-flag-icon" alt="pl">
+                    <span>Polski</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "pt-br" }}active{{ end }}" data-value="pt-br">
+                    <img src="https://flagcdn.com/w20/br.png" class="jg-flag-icon" alt="br">
+                    <span>Português (Brasil)</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "ru" }}active{{ end }}" data-value="ru">
+                    <img src="https://flagcdn.com/w20/ru.png" class="jg-flag-icon" alt="ru">
+                    <span>Русский</span>
+                </div>
+                <div class="jg-select-option {{ if eq .Lang "zh" }}active{{ end }}" data-value="zh">
+                    <img src="https://flagcdn.com/w20/cn.png" class="jg-flag-icon" alt="cn">
+                    <span>中文 (简体)</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     {{/* App JS */}}
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/app.js" nonce="{{ .ScriptNonce }}"></script>
     {{ block "scripts" . }}{{ end }}
 </body>
 

@@ -205,9 +205,9 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// ── Auto-hide flash messages ────────────────────────────────────────────────
-
+// ── Auto-hide flash messages & UI Setup ─────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. Language switcher placement (Dashboard sidebar)
     const langSwitcher = document.getElementById('lang-switcher');
     if (langSwitcher) {
         const sidebar = document.querySelector('.jg-sidebar');
@@ -215,27 +215,82 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebar) {
             document.body.classList.add('jg-has-sidebar');
         }
-        if (sidebarFooter) {
+        if (sidebarFooter && !document.body.classList.contains('login-page')) {
             langSwitcher.classList.add('jg-lang-switcher-sidebar');
             langSwitcher.classList.remove('jg-lang-switcher-floating');
-            sidebarFooter.appendChild(langSwitcher);
+            // Insert the language switcher before the logout form if present,
+            // so the order becomes: theme toggle -> language -> logout -> version
+            const logoutForm = sidebarFooter.querySelector('form[action="/admin/logout"]') || sidebarFooter.querySelector('form');
+            if (logoutForm) {
+                sidebarFooter.insertBefore(langSwitcher, logoutForm);
+            } else {
+                sidebarFooter.appendChild(langSwitcher);
+            }
         }
     }
 
-    const langSelect = document.getElementById('lang-select');
-    if (langSelect) {
-        langSelect.addEventListener('change', (event) => {
-            JG.setLang(event.target && event.target.value);
-        });
-    }
+    // 2. Custom Select Logic (Universal for Language Switcher & others)
+    document.querySelectorAll('.jg-custom-select').forEach(container => {
+        const trigger = container.querySelector('.jg-select-trigger');
+        const optionsContainer = container.querySelector('.jg-select-options');
+        const currentFlag = container.querySelector('.jg-current-flag');
+        const currentLabel = container.querySelector('.jg-current-label');
 
-    // Auto-focus first input in forms
+        if (!trigger || !optionsContainer) return;
+
+        // Sync initial state
+        const activeOption = optionsContainer.querySelector('.jg-select-option.active');
+        if (activeOption) {
+            const img = activeOption.querySelector('img');
+            const label = activeOption.querySelector('span');
+            if (img && currentFlag) currentFlag.src = img.src;
+            if (label && currentLabel) currentLabel.textContent = label.textContent;
+        }
+
+        // Toggle dropdown
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            // Close all other open dropdowns
+            document.querySelectorAll('.jg-select-options.show').forEach(el => {
+                if (el !== optionsContainer) el.classList.remove('show');
+            });
+            optionsContainer.classList.toggle('show');
+        });
+
+        // Handle option clicks
+        optionsContainer.querySelectorAll('.jg-select-option').forEach(opt => {
+            opt.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const val = opt.getAttribute('data-value');
+                if (val) {
+                    // Visual feedback
+                    optionsContainer.querySelectorAll('.jg-select-option').forEach(o => o.classList.remove('active'));
+                    opt.classList.add('active');
+                    optionsContainer.classList.remove('show');
+
+                    // Global state change
+                    if (container.closest('#lang-switcher') || container.closest('.jg-login-lang-container')) {
+                        JG.setLang(val);
+                    }
+                }
+            });
+        });
+    });
+
+    // Global click listener to close dropdowns
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.jg-select-options.show').forEach(el => el.classList.remove('show'));
+    });
+
+    // 3. Auto-focus first input
     const firstInput = document.querySelector('form .jg-input');
     if (firstInput && !firstInput.value) {
         firstInput.focus();
     }
     
-    // Theme setup
+    // 4. Theme setup
     JG.setupThemeToggle();
 });
 
@@ -247,26 +302,25 @@ JG.setupThemeToggle = function () {
     function applyTheme(theme) {
         const iconContainer = btn.querySelector('#theme-icon-slot') || btn.querySelector('.jg-theme-btn-icon') || btn;
         const labelContainer = btn.querySelector('.jg-nav-label') || btn.querySelector('span:not(#theme-icon-slot)');
-        const isSidebar = btn.classList.contains('jg-theme-btn');
 
         if (theme === 'dark') {
             document.documentElement.classList.add('dark');
-            iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+            iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
             if (labelContainer) labelContainer.textContent = "Thème";
             btn.title = "Passer au thème clair";
         } else {
             document.documentElement.classList.remove('dark');
-            iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+            iconContainer.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
             if (labelContainer) labelContainer.textContent = "Thème";
             btn.title = "Passer au thème sombre";
         }
     }
 
-    // Default to dark unless explicitly set otherwise
     const savedTheme = localStorage.getItem('jg-theme') || 'dark';
     applyTheme(savedTheme);
 
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
         const isDark = document.documentElement.classList.contains('dark');
         const newTheme = isDark ? 'light' : 'dark';
         localStorage.setItem('jg-theme', newTheme);

@@ -1,24 +1,12 @@
-{{/* dashboard.html â€” Tableau de bord administrateur */}}
-{{ template "layouts/base.html" . }}
+{{/* dashboard.html — Tableau de bord administrateur */}}
+{{ template "base.html" . }}
 
-{{ define "title" }}{{ .T "dashboard_title" }} â€” JellyGate{{ end }}
+{{ define "title" }}{{ .T "dashboard_title" }} — JellyGate{{ end }}
 
 {{ define "body" }}
-{{/* â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
+{{/* ── Sidebar ───────────────────────────────────────────────────────────── */}}
 <aside id="sidebar" class="jg-sidebar">
-    <div class="jg-sidebar-logo">
-        <svg viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="14" fill="url(#grd)" />
-            <defs>
-                <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
-                    <stop stop-color="#94a3b8" />
-                    <stop offset="1" stop-color="#475569" />
-                </linearGradient>
-            </defs>
-            <path d="M10 22V10l12 6-12 6z" fill="#fff" />
-        </svg>
-        <span>JellyGate</span>
-    </div>
+    {{ template "logo" . }}
 
     <nav class="jg-nav">
         <a href="/admin/" class="jg-nav-item active">
@@ -97,10 +85,11 @@
                 <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
             </button>
         </form>
+        <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
     </div>
 </aside>
 
-{{/* â”€â”€ Main content â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}}
+{{/* ── Main content ────────────────────────────────────────────────────────── */}}
 <main class="jg-main">
     <section class="jg-page-stack">
         <div class="mb-6"><div class="glass-card jg-hero-panel p-4 md:p-5">
@@ -174,28 +163,28 @@
         <div class="glass-card-sm stat-card">
             
             <div>
-                <div class="stat-value" id="stat-users">â€”</div>
+                <div class="stat-value" id="stat-users">—</div>
                 <div class="stat-label">{{ .T "stat_total_users" }}</div>
             </div>
         </div>
         <div class="glass-card-sm stat-card">
             
             <div>
-                <div class="stat-value" id="stat-active">â€”</div>
+                <div class="stat-value" id="stat-active">—</div>
                 <div class="stat-label">{{ .T "stat_active_users" }}</div>
             </div>
         </div>
         <div class="glass-card-sm stat-card">
             
             <div>
-                <div class="stat-value" id="stat-invitations">â€”</div>
+                <div class="stat-value" id="stat-invitations">—</div>
                 <div class="stat-label">{{ .T "stat_invitations" }}</div>
             </div>
         </div>
         <div class="glass-card-sm stat-card">
             
             <div>
-                <div class="stat-value" id="stat-banned">â€”</div>
+                <div class="stat-value" id="stat-banned">—</div>
                 <div class="stat-label">{{ .T "stat_banned_users" }}</div>
             </div>
         </div>
@@ -209,7 +198,7 @@
                 
             </div>
             <a href="/admin/users" class="jg-btn jg-btn-ghost jg-btn-sm">
-                {{ .T "view_all" }} â†’
+                {{ .T "view_all" }} →
             </a>
         </div>
         <div class="jg-table-wrap">
@@ -247,5 +236,5 @@
         },
     };
 </script>
-<script src="/static/js/pages/dashboard.js"></script>
+<script src="/static/js/pages/dashboard.js" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

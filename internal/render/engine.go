@@ -37,6 +37,7 @@ type TemplateData struct {
 	AppVersion  string
 	ScriptNonce string
 	engine      *Engine
+	Section     string                 // Section actuelle (ex: "login", "users")
 	Data        map[string]interface{} // Données arbitraires
 	Error       string
 	Session     interface{}
@@ -179,6 +180,7 @@ func (e *Engine) NewTemplateData(lang string) *TemplateData {
 		Lang:       lang,
 		AppVersion: config.AppVersion,
 		engine:     e,
+		Section:    "",
 		Data:       make(map[string]interface{}),
 	}
 }
@@ -196,8 +198,13 @@ func (e *Engine) loadTemplates() error {
 		return fmt.Errorf("erreur glob layouts: %w", err)
 	}
 
-	// Chercher toutes les pages (récursivement)
+	// Chercher toutes les pages (récursivement). Séparer les partials
+	// (ex: web/templates/partials/*.html) des pages complètes pour éviter
+	// d'inclure TOUTES les pages lors du parsing (ce qui écrasait les
+	// définitions de blocs identiques). Nous inclurons uniquement les
+	// partials + layouts + la page courante lors du ParseFiles.
 	var pages []string
+	var partials []string
 	err = filepath.Walk(e.dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -213,6 +220,11 @@ func (e *Engine) loadTemplates() error {
 		if strings.HasPrefix(rel, "layouts") || strings.HasPrefix(rel, "emails") {
 			return nil
 		}
+		// Collecter les partials séparément (dossier "partials")
+		if strings.HasPrefix(rel, "partials") {
+			partials = append(partials, path)
+			return nil
+		}
 		pages = append(pages, path)
 		return nil
 	})
@@ -220,22 +232,22 @@ func (e *Engine) loadTemplates() error {
 		return fmt.Errorf("erreur walk templates: %w", err)
 	}
 
-	// Compiler chaque page avec les layouts
+	// Compiler chaque page avec les layouts + partials + la page courante.
+	// Cela permet d'exposer les partials (ex: `partials/logo.html`) sans
+	// inclure toutes les pages simultanément (ce qui entraînait des
+	// collisions de définitions de blocs).
 	for _, page := range pages {
 		// Nom relatif comme clé (ex: "invite.html", "admin/dashboard.html")
 		name, _ := filepath.Rel(e.dir, page)
 		name = filepath.ToSlash(name) // Normaliser sur Windows
 
-		// Combiner layouts + page
-		files := append(layouts, page)
+		files := append([]string{}, layouts...)
+		files = append(files, partials...)
+		files = append(files, page)
 
 		tmpl, err := template.ParseFiles(files...)
 		if err != nil {
-			slog.Warn("Erreur de compilation template (ignoré)",
-				"template", name,
-				"error", err,
-			)
-			continue
+			return fmt.Errorf("erreur compilation template %s: %w", name, err)
 		}
 
 		e.mu.Lock()

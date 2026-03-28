@@ -1,4 +1,4 @@
-﻿// Package handlers â€” invitations.go
+// Package handlers â€” invitations.go
 //
 // GÃ¨re le systÃ¨me d'invitations de JellyGate.
 // La route POST /invite/{code} implÃ©mente un flux de crÃ©ation atomique :
@@ -140,6 +140,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	td.Section = "login"
 	td.Invitation = inv
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -337,6 +338,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *http.Request, inv *invitation, message string, accountCreated bool) {
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	td.Section = "login"
 	td.Invitation = inv
 	td.SuccessMessage = message
 	links := resolvePortalLinks(h.cfg, h.db)

@@ -342,17 +342,15 @@
             });
         });
 
-        document.getElementById('btn-open-create-modal')?.addEventListener('click', openCreateModal);
+        document.querySelectorAll('.btn-open-create-modal').forEach((el) => el.addEventListener('click', openCreateModal));
         document.getElementById('btn-close-create-modal-top')?.addEventListener('click', closeCreateModal);
         document.getElementById('btn-close-create-modal-bottom')?.addEventListener('click', closeCreateModal);
         document.getElementById('btn-close-delete-modal')?.addEventListener('click', closeDeleteModal);
 
-        document.getElementById('btn-scroll-invitations')?.addEventListener('click', () => {
+        document.querySelectorAll('.btn-scroll-invitations').forEach((el) => el.addEventListener('click', () => {
             const target = document.getElementById('invites-tbody');
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        });
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }));
 
         document.getElementById('create-form')?.addEventListener('submit', submitCreate);
 

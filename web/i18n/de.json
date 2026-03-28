@@ -744,5 +744,11 @@
     "users_bulk_desc": "WÃ¤hlen Sie Benutzer, definieren Sie eine Aktion und prÃ¼fen Sie vor der AusfÃ¼hrung alle Pflichtparameter.",
     "users_table_title": "Kontenliste",
     "users_table_desc": "PrÃ¼fen Sie jedes lokale Konto und bearbeiten, setzen, verfolgen, aktivieren oder lÃ¶schen Sie es mit einem Klick.",
-    "nav_theme": "Design"
+    "nav_theme": "Design",
+    "dashboard_intro_title": "Jellyfin Access Manager",
+    "login_shortcuts": "Shortcuts",
+    "my_account_edit_profile": "Profil bearbeiten",
+    "my_account_subtitle": "Verwalten Sie Ihr Profil und Ihre Einstellungen",
+    "my_account_contact_help": "Aktualisieren Sie Kontaktinformationen und Benachrichtigungseinstellungen.",
+    "my_account_password_help": "Ändern Sie Ihr Passwort. Wählen Sie ein sicheres Passwort (mind. 8 Zeichen)."
 }

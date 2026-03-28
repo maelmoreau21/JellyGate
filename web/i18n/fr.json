@@ -745,5 +745,10 @@
     "users_bulk_desc": "Selectionnez des utilisateurs, choisissez une action puis validez les parametres requis avant execution.",
     "users_table_title": "Liste des comptes",
     "users_table_desc": "Inspectez chaque compte local puis modifiez, reinitialisez, tracez, activez ou supprimez en un clic.",
-    "nav_theme": "Thème"
+    "nav_theme": "Thème",
+    "dashboard_intro_title": "Gestionnaire d'accès Jellyfin",
+    "my_account_edit_profile": "Modifier le profil",
+    "my_account_subtitle": "Gérez votre profil et vos préférences",
+    "my_account_contact_help": "Mettez à jour vos coordonnées et préférences de notification.",
+    "my_account_password_help": "Changez votre mot de passe. Choisissez un mot de passe robuste (min. 8 caractères)."
 }

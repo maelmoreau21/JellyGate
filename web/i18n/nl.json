@@ -744,5 +744,11 @@
     "users_bulk_desc": "Selecteer gebruikers, kies een actie en valideer de verplichte parameters voor uitvoering.",
     "users_table_title": "Accountlijst",
     "users_table_desc": "Controleer elk lokaal account en bewerk, reset, volg, activeer of verwijder het met Ã©Ã©n klik.",
-    "nav_theme": "Thema"
+    "nav_theme": "Thema",
+    "dashboard_intro_title": "Beheer van toegang tot Jellyfin",
+    "login_shortcuts": "Snelkoppelingen",
+    "my_account_edit_profile": "Profiel bewerken",
+    "my_account_subtitle": "Beheer uw profiel en voorkeuren",
+    "my_account_contact_help": "Werk contactgegevens en meldingsvoorkeuren bij.",
+    "my_account_password_help": "Wijzig uw wachtwoord. Kies een sterk wachtwoord (min. 8 tekens)."
 }

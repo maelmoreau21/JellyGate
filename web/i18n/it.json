@@ -744,5 +744,11 @@
     "users_bulk_desc": "Seleziona gli utenti, scegli un'azione e valida i parametri obbligatori prima dell'esecuzione.",
     "users_table_title": "Elenco account",
     "users_table_desc": "Controlla ogni account locale e poi modifica, reimposta, traccia, abilita o elimina con un clic.",
-    "nav_theme": "Tema"
+    "nav_theme": "Tema",
+    "dashboard_intro_title": "Gestore accesso Jellyfin",
+    "login_shortcuts": "Scorciatoie",
+    "my_account_edit_profile": "Modifica profilo",
+    "my_account_subtitle": "Gestisci il tuo profilo e le preferenze",
+    "my_account_contact_help": "Aggiorna le informazioni di contatto e le preferenze di notifica.",
+    "my_account_password_help": "Cambia la password. Scegli una password sicura (min. 8 caratteri)."
 }

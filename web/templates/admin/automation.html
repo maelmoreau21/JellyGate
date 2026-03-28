@@ -1,23 +1,11 @@
-{{/* automation.html â€” Presets & scheduler */}}
-{{ template "layouts/base.html" . }}
+{{/* automation.html — Presets & scheduler */}}
+{{ template "base.html" . }}
 
-{{ define "title" }}{{ .T "nav_automation" }} â€” JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_automation" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
-    <div class="jg-sidebar-logo">
-        <svg viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="14" fill="url(#grd)" />
-            <defs>
-                <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
-                    <stop stop-color="#94a3b8" />
-                    <stop offset="1" stop-color="#475569" />
-                </linearGradient>
-            </defs>
-            <path d="M10 22V10l12 6-12 6z" fill="#fff" />
-        </svg>
-        <span>JellyGate</span>
-    </div>
+    {{ template "logo" . }}
     <nav class="jg-nav">
         <a href="/admin/" class="jg-nav-item">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -70,171 +58,200 @@
                 <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
             </button>
         </form>
+        <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
     </div>
 </aside>
 
 <main class="jg-main">
     <div class="flex flex-col gap-6">
         <section class="glass-card jg-hero-panel p-4 md:p-5">
-            <div>
-                <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
-                </button>
-                
-                <h1 class="text-2xl font-bold mt-1">{{ .T "nav_automation" }}</h1>
-                
-                <div class="flex flex-wrap gap-2 mt-5">
-                    <a href="#automation-presets" class="jg-btn jg-btn-ghost">{{ .T "automation_presets_title" }}</a>
-                    <a href="#automation-mappings" class="jg-btn jg-btn-ghost">{{ .T "automation_group_mappings_title" }}</a>
-                    <a href="#automation-tasks" class="jg-btn">{{ .T "automation_task_builder_title" }}</a>
+            <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                    <button id="sidebar-toggle" class="mr-1 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                    <div>
+                        <h1 class="text-2xl font-bold">{{ .T "nav_automation" }}</h1>
+                        <p class="text-sm text-slate-500 mt-1">{{ .T "automation_subheading" }}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <div class="text-sm text-slate-400 hidden md:block">{{ .T "dashboard_intro_title" }}</div>
+                    <div class="flex gap-2">
+                        <a href="#automation-presets" class="jg-btn jg-btn-ghost">{{ .T "automation_presets_title" }}</a>
+                        <a href="#automation-mappings" class="jg-btn jg-btn-ghost">{{ .T "automation_group_mappings_title" }}</a>
+                        <a href="#automation-tasks" class="jg-btn">{{ .T "automation_task_builder_title" }}</a>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <div class="stats-grid">
-            <div class="glass-card-sm stat-card">
-                <div>
-                    <div class="stat-value" id="automation-presets-count">0</div>
-                    <div class="stat-label">{{ .T "automation_presets_title" }}</div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="glass-card-sm stat-card p-4">
+                        <div>
+                            <div class="stat-value text-2xl font-bold" id="automation-presets-count">0</div>
+                            <div class="stat-label">{{ .T "automation_presets_title" }}</div>
+                        </div>
+                    </div>
+                    <div class="glass-card-sm stat-card p-4">
+                        <div>
+                            <div class="stat-value text-2xl font-bold" id="automation-mappings-count">0</div>
+                            <div class="stat-label">{{ .T "automation_group_mappings_title" }}</div>
+                        </div>
+                    </div>
+                    <div class="glass-card-sm stat-card p-4">
+                        <div>
+                            <div class="stat-value text-2xl font-bold" id="automation-tasks-count">0</div>
+                            <div class="stat-label">{{ .T "automation_tasks_title" }}</div>
+                        </div>
+                    </div>
                 </div>
+
+                <section id="automation-presets" class="glass-card p-4 jg-section-card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-lg font-semibold">{{ .T "automation_presets_title" }}</h2>
+                        <div class="flex gap-2">
+                            <button id="btn-preset-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
+                            <button id="btn-preset-save" class="jg-btn jg-btn-sm">{{ .T "automation_save" }}</button>
+                        </div>
+                    </div>
+
+                    <div class="jg-table-wrap overflow-x-auto">
+                        <table class="jg-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>{{ .T "automation_col_id" }}</th>
+                                    <th>{{ .T "automation_col_name" }}</th>
+                                    <th>{{ .T "automation_col_download" }}</th>
+                                    <th>{{ .T "automation_col_remote" }}</th>
+                                    <th>{{ .T "automation_col_sessions" }}</th>
+                                    <th>{{ .T "automation_col_bitrate" }}</th>
+                                    <th>{{ .T "automation_col_disable_days" }}</th>
+                                    <th>{{ .T "automation_col_delete_days" }}</th>
+                                    <th class="text-right">{{ .T "col_actions" }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="presets-body">
+                                <tr><td colspan="9" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="automation-mappings" class="glass-card p-4 jg-section-card">
+                    <div class="flex items-center justify-between mb-3">
+                        <h2 class="text-lg font-semibold">{{ .T "automation_group_mappings_title" }}</h2>
+                        <div class="flex gap-2">
+                            <button id="btn-group-map-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
+                            <button id="btn-group-map-save" class="jg-btn jg-btn-sm">{{ .T "automation_save" }}</button>
+                        </div>
+                    </div>
+
+                    <div class="jg-table-wrap overflow-x-auto">
+                        <table class="jg-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>{{ .T "automation_col_group" }}</th>
+                                    <th>{{ .T "automation_col_source" }}</th>
+                                    <th>{{ .T "automation_col_ldap_dn_optional" }}</th>
+                                    <th>{{ .T "automation_col_preset_target" }}</th>
+                                    <th class="text-right">{{ .T "col_actions" }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="group-mappings-body">
+                                <tr><td colspan="5" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
-            <div class="glass-card-sm stat-card">
-                <div>
-                    <div class="stat-value" id="automation-mappings-count">0</div>
-                    <div class="stat-label">{{ .T "automation_group_mappings_title" }}</div>
-                </div>
-            </div>
-            <div class="glass-card-sm stat-card">
-                <div>
-                    <div class="stat-value" id="automation-tasks-count">0</div>
-                    <div class="stat-label">{{ .T "automation_tasks_title" }}</div>
-                </div>
-            </div>
+
+            <aside class="lg:col-span-1 space-y-6">
+                <section id="automation-tasks" class="glass-card p-4 jg-section-card">
+                    <div class="mb-3 flex items-center justify-between">
+                        <h2 class="text-lg font-semibold">{{ .T "automation_tasks_title" }}</h2>
+                        <div class="text-sm text-slate-400">{{ .T "automation_task_builder_title" }}</div>
+                    </div>
+
+                    <div class="jg-form-surface mb-4">
+                        <form id="task-create-form" class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <label class="jg-label" for="task-name">{{ .T "automation_col_name" }}</label>
+                                    <input id="task-name" class="jg-input" placeholder='{{ .T "automation_task_name_placeholder" }}'>
+                                </div>
+                                <div>
+                                    <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
+                                    <select id="task-type" class="jg-input">
+                                        <option value="sync_users">sync_users</option>
+                                        <option value="cleanup_resets">cleanup_resets</option>
+                                        <option value="create_backup">create_backup</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="jg-label" for="task-hour">{{ .T "automation_task_hour_placeholder" }}</label>
+                                    <input id="task-hour" type="number" class="jg-input" min="0" max="23" placeholder='{{ .T "automation_task_hour_placeholder" }}'>
+                                </div>
+                                <div>
+                                    <label class="jg-label" for="task-minute">{{ .T "automation_task_minute_placeholder" }}</label>
+                                    <input id="task-minute" type="number" class="jg-input" min="0" max="59" placeholder='{{ .T "automation_task_minute_placeholder" }}'>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="jg-label" for="task-payload">{{ .T "automation_col_payload" }}</label>
+                                <input id="task-payload" class="jg-input" placeholder='{{ .T "automation_task_payload_placeholder" }}'>
+                            </div>
+
+                            <div class="flex items-center justify-between">
+                                <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                    <input id="task-enabled" type="checkbox" class="form-checkbox" checked>
+                                    {{ .T "automation_task_enabled" }}
+                                </label>
+                                <button type="submit" class="jg-btn">{{ .T "automation_create" }}</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="jg-table-wrap overflow-x-auto">
+                        <table class="jg-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>{{ .T "automation_col_name" }}</th>
+                                    <th>{{ .T "automation_col_type" }}</th>
+                                    <th>{{ .T "automation_col_schedule" }}</th>
+                                    <th>{{ .T "automation_col_payload" }}</th>
+                                    <th>{{ .T "automation_col_last_run" }}</th>
+                                    <th class="text-right">{{ .T "col_actions" }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasks-body">
+                                <tr><td colspan="6" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="glass-card p-4">
+                    <h3 class="text-sm font-semibold">{{ .T "automation_task_builder_title" }}</h3>
+                    <div class="mt-3 space-y-2 text-sm text-slate-700 dark:text-slate-200">
+                        <div><strong>{{ .T "automation_col_name" }}:</strong> <span id="automation-task-preview-name">—</span></div>
+                        <div><strong>{{ .T "automation_col_type" }}:</strong> <span id="automation-task-preview-type">—</span></div>
+                        <div><strong>{{ .T "automation_col_schedule" }}:</strong> <span id="automation-task-preview-schedule">--:--</span></div>
+                        <div><strong>{{ .T "automation_col_payload" }}:</strong> <span id="automation-task-preview-payload">—</span></div>
+                        <div><strong>{{ .T "automation_task_enabled" }}:</strong> <span id="automation-task-preview-state" class="badge badge-muted">—</span></div>
+                        <div id="automation-task-preview-note" class="text-xs text-slate-500"></div>
+                        <div id="automation-task-preview-empty" class="text-xs text-slate-400"></div>
+                    </div>
+                </section>
+            </aside>
         </div>
-
-        <section id="automation-presets" class="glass-card p-4 jg-section-card">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <h2 class="text-lg font-semibold">{{ .T "automation_presets_title" }}</h2>
-                    
-                </div>
-                <div class="flex gap-2">
-                    <button id="btn-preset-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
-                    <button id="btn-preset-save" class="jg-btn jg-btn-sm">{{ .T "automation_save" }}</button>
-                </div>
-            </div>
-            <div class="jg-table-wrap">
-                <table class="jg-table">
-                    <thead>
-                        <tr>
-                            <th>{{ .T "automation_col_id" }}</th>
-                            <th>{{ .T "automation_col_name" }}</th>
-                            <th>{{ .T "automation_col_download" }}</th>
-                            <th>{{ .T "automation_col_remote" }}</th>
-                            <th>{{ .T "automation_col_sessions" }}</th>
-                            <th>{{ .T "automation_col_bitrate" }}</th>
-                            <th>{{ .T "automation_col_disable_days" }}</th>
-                            <th>{{ .T "automation_col_delete_days" }}</th>
-                            <th class="text-right">{{ .T "col_actions" }}</th>
-                        </tr>
-                    </thead>
-                    <tbody id="presets-body">
-                        <tr><td colspan="9" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <section id="automation-mappings" class="glass-card p-4 jg-section-card">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold">{{ .T "automation_group_mappings_title" }}</h2>
-                <div class="flex gap-2">
-                    <button id="btn-group-map-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
-                    <button id="btn-group-map-save" class="jg-btn jg-btn-sm">{{ .T "automation_save" }}</button>
-                </div>
-            </div>
-            
-            <div class="jg-table-wrap">
-                <table class="jg-table">
-                    <thead>
-                        <tr>
-                            <th>{{ .T "automation_col_group" }}</th>
-                            <th>{{ .T "automation_col_source" }}</th>
-                            <th>{{ .T "automation_col_ldap_dn_optional" }}</th>
-                            <th>{{ .T "automation_col_preset_target" }}</th>
-                            <th class="text-right">{{ .T "col_actions" }}</th>
-                        </tr>
-                    </thead>
-                    <tbody id="group-mappings-body">
-                        <tr><td colspan="5" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <section id="automation-tasks" class="glass-card p-4 jg-section-card">
-            <div class="mb-3">
-                <h2 class="text-lg font-semibold">{{ .T "automation_tasks_title" }}</h2>
-                
-            </div>
-            <div class="jg-form-surface mb-4">
-                <div class="mb-4">
-                    <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100">{{ .T "automation_task_builder_title" }}</h3>
-                    
-                </div>
-                <form id="task-create-form" class="grid grid-cols-1 md:grid-cols-6 gap-3">
-                    <div class="md:col-span-2">
-                        <label class="jg-label" for="task-name">{{ .T "automation_col_name" }}</label>
-                        <input id="task-name" class="jg-input" placeholder='{{ .T "automation_task_name_placeholder" }}'>
-                    </div>
-                    <div>
-                        <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
-                        <select id="task-type" class="jg-input">
-                            <option value="sync_users">sync_users</option>
-                            <option value="cleanup_resets">cleanup_resets</option>
-                            <option value="create_backup">create_backup</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="jg-label" for="task-hour">{{ .T "automation_task_hour_placeholder" }}</label>
-                        <input id="task-hour" type="number" class="jg-input" min="0" max="23" placeholder='{{ .T "automation_task_hour_placeholder" }}'>
-                    </div>
-                    <div>
-                        <label class="jg-label" for="task-minute">{{ .T "automation_task_minute_placeholder" }}</label>
-                        <input id="task-minute" type="number" class="jg-input" min="0" max="59" placeholder='{{ .T "automation_task_minute_placeholder" }}'>
-                    </div>
-                    <div class="flex items-end">
-                        <button type="submit" class="jg-btn w-full">{{ .T "automation_create" }}</button>
-                    </div>
-                    <div class="md:col-span-6">
-                        <label class="jg-label" for="task-payload">{{ .T "automation_col_payload" }}</label>
-                        <input id="task-payload" class="jg-input" placeholder='{{ .T "automation_task_payload_placeholder" }}'>
-                    </div>
-                    <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 md:col-span-6">
-                        <input id="task-enabled" type="checkbox" class="form-checkbox" checked>
-                        {{ .T "automation_task_enabled" }}
-                    </label>
-                </form>
-            </div>
-
-            <div class="jg-table-wrap">
-                <table class="jg-table">
-                    <thead>
-                        <tr>
-                            <th>{{ .T "automation_col_name" }}</th>
-                            <th>{{ .T "automation_col_type" }}</th>
-                            <th>{{ .T "automation_col_schedule" }}</th>
-                            <th>{{ .T "automation_col_payload" }}</th>
-                            <th>{{ .T "automation_col_last_run" }}</th>
-                            <th class="text-right">{{ .T "col_actions" }}</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tasks-body">
-                        <tr><td colspan="6" class="text-center text-slate-500 py-8">{{ .T "settings_loading" }}</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
     </div>
 </main>
 {{ end }}
@@ -279,6 +296,6 @@
         },
     };
 </script>
-<script src="/static/js/pages/automation.js"></script>
+<script src="/static/js/pages/automation.js" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}
 

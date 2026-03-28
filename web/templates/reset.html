@@ -1,5 +1,5 @@
 {{/* reset.html — Réinitialisation de mot de passe */}}
-{{ template "layouts/base.html" . }}
+{{ template "base.html" . }}
 
 {{ define "title" }}{{ .T "reset_title" }} — JellyGate{{ end }}
 
@@ -105,5 +105,5 @@
         passwordMismatch: '{{ .T "password_mismatch" }}',
     };
 </script>
-<script src="/static/js/pages/reset.js"></script>
+<script src="/static/js/pages/reset.js" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

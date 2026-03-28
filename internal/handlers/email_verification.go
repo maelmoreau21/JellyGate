@@ -1,4 +1,4 @@
-﻿package handlers
+package handlers
 
 import (
 	"database/sql"
@@ -346,6 +346,7 @@ func renderEmailVerificationPage(r *http.Request, w http.ResponseWriter, rendere
 		return
 	}
 	td := applyRequestTemplateData(r, renderer.NewTemplateData(lang))
+	td.Section = "login"
 	td.SuccessMessage = message
 	td.Data["ResultTitle"] = title
 	td.Data["ResultHeading"] = heading

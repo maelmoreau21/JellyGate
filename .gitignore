@@ -4,3 +4,4 @@ node_modules/
 .tmp-smoke-ux/
 build.log
 *.exe
+.env.local

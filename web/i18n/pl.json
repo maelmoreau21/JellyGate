@@ -744,5 +744,11 @@
     "users_bulk_desc": "Wybierz uÅ¼ytkownikÃ³w, wskaÅ¼ akcjÄ™ i sprawdÅº wymagane parametry przed wykonaniem.",
     "users_table_title": "Lista kont",
     "users_table_desc": "Sprawdzaj kaÅ¼de konto lokalne, a potem edytuj, resetuj, Å›ledÅº, aktywuj lub usuwaj jednym klikniÄ™ciem.",
-    "nav_theme": "Motyw"
+    "nav_theme": "Motyw",
+    "dashboard_intro_title": "Menedżer dostępu Jellyfin",
+    "login_shortcuts": "Skróty",
+    "my_account_edit_profile": "Edytuj profil",
+    "my_account_subtitle": "Zarządzaj swoim profilem i preferencjami",
+    "my_account_contact_help": "Zaktualizuj dane kontaktowe i preferencje powiadomień.",
+    "my_account_password_help": "Zmień hasło. Wybierz silne hasło (min. 8 znaków)."
 }

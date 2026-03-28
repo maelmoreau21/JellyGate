@@ -744,5 +744,11 @@
     "users_bulk_desc": "Selecciona usuarios, elige una acciÃ³n y valida los parÃ¡metros obligatorios antes de ejecutar.",
     "users_table_title": "Lista de cuentas",
     "users_table_desc": "Revisa cada cuenta local y despuÃ©s edita, reinicia, consulta la cronologÃ­a, activa o elimina con un clic.",
-    "nav_theme": "Tema"
+    "nav_theme": "Tema",
+    "dashboard_intro_title": "Administrador de acceso Jellyfin",
+    "login_shortcuts": "Accesos rápidos",
+    "my_account_edit_profile": "Editar perfil",
+    "my_account_subtitle": "Mantenga su perfil y preferencias actualizados",
+    "my_account_contact_help": "Actualice la información de contacto y las preferencias de notificación.",
+    "my_account_password_help": "Cambie su contraseña. Elija una contraseña segura (mín. 8 caracteres)."
 }

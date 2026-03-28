@@ -1,4 +1,4 @@
-﻿// Package handlers â€” admin.go
+// Package handlers â€” admin.go
 //
 // GÃ¨re les endpoints JSON du tableau de bord administrateur.
 // Toutes les routes sont protÃ©gÃ©es par le middleware RequireAuth.
@@ -638,6 +638,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
+	td.Section = "dashboard"
 
 	if err := h.renderer.Render(w, "admin/dashboard.html", td); err != nil {
 		slog.Error("Erreur rendu dashboard", "error", err)
@@ -652,6 +653,7 @@ func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
+	td.Section = "my_account"
 
 	if err := h.renderer.Render(w, "admin/my_account.html", td); err != nil {
 		slog.Error("Erreur rendu my account page", "error", err)
@@ -1031,26 +1033,26 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// UsersPage affiche la page de gestion des utilisateurs.
 func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.Section = "users"
 	if err := h.renderer.Render(w, "admin/users.html", td); err != nil {
 		slog.Error("Erreur rendu users page", "error", err)
 		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
 	}
 }
 
-// SettingsPage affiche la page de configuration globale.
 func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.Section = "settings"
 	if err := h.renderer.Render(w, "admin/settings.html", td); err != nil {
 		slog.Error("Erreur rendu settings page", "error", err)
 		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
@@ -1099,6 +1101,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	td.Section = "invitations"
 
 	if err := h.renderer.Render(w, "admin/invitations.html", td); err != nil {
 		slog.Error("Erreur rendu invitations page", "error", err)
@@ -1106,13 +1109,13 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// LogsPage affiche la page du journal d'audit.
 func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.Section = "logs"
 	if err := h.renderer.Render(w, "admin/logs.html", td); err != nil {
 		slog.Error("Erreur rendu logs page", "error", err)
 		http.Error(w, "Erreur serveur", http.StatusInternalServerError)

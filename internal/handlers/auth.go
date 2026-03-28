@@ -1,4 +1,4 @@
-﻿// Package handlers contient les gestionnaires HTTP de JellyGate.
+// Package handlers contient les gestionnaires HTTP de JellyGate.
 //
 // Ce fichier implÃ©mente l'authentification admin dÃ©lÃ©guÃ©e Ã  Jellyfin :
 //   - Login via POST /Users/AuthenticateByName sur Jellyfin
@@ -65,6 +65,7 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Section = "login"
 
 	if err := h.renderer.Render(w, "admin/login.html", td); err != nil {
 		slog.Error("Erreur rendu login", "error", err)

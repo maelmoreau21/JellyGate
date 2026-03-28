@@ -1,23 +1,11 @@
-{{/* my_account.html â€” Gestion du profil utilisateur */}}
-{{ template "layouts/base.html" . }}
+{{/* my_account.html — Gestion du profil utilisateur */}}
+{{ template "base.html" . }}
 
-{{ define "title" }}{{ .T "nav_my_account" }} â€” JellyGate{{ end }}
+{{ define "title" }}{{ .T "nav_my_account" }} — JellyGate{{ end }}
 
 {{ define "body" }}
 <aside id="sidebar" class="jg-sidebar">
-    <div class="jg-sidebar-logo">
-        <svg viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="14" fill="url(#grd)" />
-            <defs>
-                <linearGradient id="grd" x1="0" y1="0" x2="32" y2="32">
-                    <stop stop-color="#94a3b8" />
-                    <stop offset="1" stop-color="#475569" />
-                </linearGradient>
-            </defs>
-            <path d="M10 22V10l12 6-12 6z" fill="#fff" />
-        </svg>
-        <span>JellyGate</span>
-    </div>
+    {{ template "logo" . }}
 
     <nav class="jg-nav">
         <a href="/admin/" class="jg-nav-item">
@@ -96,150 +84,160 @@
                 <span class="jg-nav-label">{{ .T "nav_logout" }}</span>
             </button>
         </form>
+        <p class="jg-version-text mt-3 text-center">JellyGate v{{ .AppVersion }}</p>
     </div>
 </aside>
 
 <main class="jg-main">
-    <section class="jg-page-stack">
-        <div class="jg-hero-grid mb-8">
-            <div class="glass-card jg-hero-panel p-4 md:p-5">
-                <button id="sidebar-toggle"
-                    class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
+    <section class="container mx-auto p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <button id="sidebar-toggle" class="mr-3 p-2 rounded-lg hover:bg-white/5 transition-colors lg:hidden inline-block align-middle">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
                 </button>
-                
-                <h1 class="text-3xl font-bold text-white mt-3">{{ .T "nav_my_account" }}</h1>
-                
-                <div class="mt-5 flex flex-wrap gap-2">
-                    <button type="button" class="jg-btn jg-btn-ghost" data-scroll-target="contact-card">{{ .T "my_account_section_contact" }}</button>
-                    <button type="button" class="jg-btn jg-btn-ghost" data-scroll-target="password-card">{{ .T "my_account_section_password" }}</button>
-                </div>
-            </div>
-
-            <div class="glass-card p-5 jg-aside-card">
-                <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_profile" }}</h2>
-                
-                <div class="mt-5 space-y-3 text-sm">
-                    <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_user" }}</div>
-                        <div class="font-semibold text-white mt-2" id="account-username">-</div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_role" }}</div>
-                            <div class="font-semibold text-slate-800 dark:text-slate-100 mt-2" id="account-role">-</div>
-                        </div>
-                        <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-                            <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_preferred_lang" }}</div>
-                            <div class="font-semibold text-slate-800 dark:text-slate-100 mt-2" id="account-language">-</div>
-                        </div>
-                    </div>
-                    <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_label_access_expiry" }}</div>
-                        <div class="font-semibold text-slate-800 dark:text-slate-100 mt-2" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
-                    </div>
-                </div>
+                <h1 class="text-2xl md:text-3xl font-bold inline-block">{{ .T "nav_my_account" }}</h1>
+                <p class="text-sm text-slate-500 mt-1">{{ .T "my_account_subtitle" }}</p>
             </div>
         </div>
 
-        <div class="jg-feature-grid">
-            <section id="contact-card" class="glass-card jg-feature-card p-6 md:col-span-2">
-                <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_contact" }}</h2>
-                
-                <form id="my-account-form" class="space-y-4 mt-5">
-                    <div>
-                        <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
-                        <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
-                        <div class="mt-3 rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-                            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                <div>
-                                    <div class="text-xs uppercase tracking-[0.24em] text-slate-500">{{ .T "my_account_email_verification_label" }}</div>
-                                    <div class="mt-2 text-sm font-semibold text-white" id="email-verification-status">{{ .T "my_account_email_status_unverified" }}</div>
-                                    <p class="mt-2 text-sm text-slate-500 dark:text-slate-400" id="email-verification-help">{{ .T "my_account_email_verification_help" }}</p>
-                                    <p class="mt-2 text-sm text-amber-300 hidden" id="email-pending-value"></p>
-                                </div>
-                                <button type="button" id="email-verification-resend" class="jg-btn jg-btn-ghost">{{ .T "my_account_email_verification_resend" }}</button>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Profile summary (left column) -->
+            <aside class="lg:col-span-1">
+                <div class="glass-card p-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl" style="background: var(--jg-gradient-accent)"> 
+                            <span id="account-initial">JG</span>
+                        </div>
+                        <div>
+                            <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_user" }}</div>
+                            <div class="text-lg font-semibold mt-1" id="account-username">-</div>
+                            <div class="text-sm text-slate-400 mt-1" id="account-role">-</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_email" }}</div>
+                                <div class="font-medium mt-1" id="account-email-summary">-</div>
                             </div>
                         </div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="jg-label" for="my-discord">{{ .T "my_account_label_discord" }}</label>
-                            <input type="text" id="my-discord" class="jg-input" placeholder="ex: mael#1234">
-                        </div>
-                        <div>
-                            <label class="jg-label" for="my-telegram">{{ .T "my_account_label_telegram" }}</label>
-                            <input type="text" id="my-telegram" class="jg-input" placeholder="ex: @mael">
-                        </div>
-                    </div>
-                    <div class="max-w-xs">
-                        <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
-                        <select id="my-lang" class="jg-input">
-                            <option value="">{{ .T "my_account_default_server_lang" }}</option>
-                            <option value="fr">Francais</option>
-                            <option value="en">English</option>
-                            <option value="de">Deutsch</option>
-                            <option value="es">Espanol</option>
-                            <option value="it">Italiano</option>
-                            <option value="nl">Nederlands</option>
-                            <option value="pl">Polski</option>
-                            <option value="pt-br">Portugues (Brasil)</option>
-                            <option value="ru">Russkii</option>
-                            <option value="zh">Zhongwen</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
-                            {{ .T "my_account_notify_expiry" }}
-                        </label>
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                            <input type="checkbox" id="my-notify-events" class="form-checkbox">
-                            {{ .T "my_account_notify_events" }}
-                        </label>
-                    </div>
-                    <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-                        <div class="text-xs uppercase tracking-[0.24em] text-slate-500 mb-3">{{ .T "my_account_channel_optin" }}</div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <input type="checkbox" id="my-opt-email" class="form-checkbox">
-                                {{ .T "my_account_channel_email" }}
-                            </label>
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <input type="checkbox" id="my-opt-discord" class="form-checkbox">
-                                {{ .T "my_account_channel_discord" }}
-                            </label>
-                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                                <input type="checkbox" id="my-opt-telegram" class="form-checkbox">
-                                {{ .T "my_account_channel_telegram" }}
-                            </label>
-                        </div>
-                    </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="jg-btn">{{ .T "my_account_save_preferences" }}</button>
-                    </div>
-                </form>
-            </section>
 
-            <section id="password-card" class="glass-card jg-feature-card p-6">
-                <h2 class="text-lg font-semibold text-white">{{ .T "my_account_section_password" }}</h2>
-                
-                <form id="my-password-form" class="space-y-4 mt-5">
-                    <div>
-                        <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
-                        <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_preferred_lang" }}</div>
+                                <div class="font-medium mt-1" id="account-language">-</div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_label_access_expiry" }}</div>
+                            <div class="font-medium mt-1" id="account-expiry">{{ .T "my_account_no_expiry" }}</div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
-                        <input type="password" id="my-password-confirm" class="jg-input" required>
+                </div>
+
+                <div class="mt-4 glass-card p-4 text-sm">
+                    <div class="flex flex-col gap-3">
+                        <a href="/admin/my-account" class="jg-btn jg-btn-ghost w-full">{{ .T "my_account_edit_profile" }}</a>
+                        <form method="POST" action="/admin/logout">
+                            <button type="submit" class="jg-btn w-full text-red-400 hover:text-red-300 hover:bg-red-500/10">{{ .T "nav_logout" }}</button>
+                        </form>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="jg-btn">{{ .T "my_account_update_password" }}</button>
-                    </div>
-                </form>
-            </section>
+                </div>
+            </aside>
+
+            <!-- Main forms (right column) -->
+            <div class="lg:col-span-2 space-y-6">
+                <section id="contact-card" class="glass-card p-6">
+                    <h2 class="text-lg font-semibold">{{ .T "my_account_section_contact" }}</h2>
+                    <p class="text-sm text-slate-500 mt-2">{{ .T "my_account_contact_help" }}</p>
+
+                    <form id="my-account-form" class="space-y-4 mt-5">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
+                                <input type="email" id="my-email" class="jg-input" placeholder="nom@domaine.tld">
+                            </div>
+                            <div>
+                                <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
+                                <select id="my-lang" class="jg-input">
+                                    <option value="">{{ .T "my_account_default_server_lang" }}</option>
+                                    <option value="fr">Français</option>
+                                    <option value="en">English</option>
+                                    <option value="de">Deutsch</option>
+                                    <option value="es">Español</option>
+                                    <option value="it">Italiano</option>
+                                    <option value="nl">Nederlands</option>
+                                    <option value="pl">Polski</option>
+                                    <option value="pt-br">Português (Brasil)</option>
+                                    <option value="ru">Русский</option>
+                                    <option value="zh">中文 (简体)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="jg-label" for="my-discord">{{ .T "my_account_label_discord" }}</label>
+                                <input type="text" id="my-discord" class="jg-input" placeholder="ex: mael#1234">
+                            </div>
+                            <div>
+                                <label class="jg-label" for="my-telegram">{{ .T "my_account_label_telegram" }}</label>
+                                <input type="text" id="my-telegram" class="jg-input" placeholder="ex: @mael">
+                            </div>
+                        </div>
+
+                        <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <div class="text-xs uppercase tracking-[0.18em] text-slate-500">{{ .T "my_account_email_verification_label" }}</div>
+                                    <div class="mt-1 font-medium" id="email-verification-status">{{ .T "my_account_email_status_unverified" }}</div>
+                                    <p class="text-sm text-slate-500 mt-1" id="email-verification-help">{{ .T "my_account_email_verification_help" }}</p>
+                                    <p class="mt-2 text-sm text-amber-300 hidden" id="email-pending-value"></p>
+                                </div>
+                                <div>
+                                    <button type="button" id="email-verification-resend" class="jg-btn jg-btn-ghost">{{ .T "my_account_email_verification_resend" }}</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <input type="checkbox" id="my-notify-expiry" class="form-checkbox">
+                                {{ .T "my_account_notify_expiry" }}
+                            </label>
+                            <label class="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <input type="checkbox" id="my-notify-events" class="form-checkbox">
+                                {{ .T "my_account_notify_events" }}
+                            </label>
+                        </div>
+
+                        <div class="flex justify-end">
+                            <button type="submit" class="jg-btn">{{ .T "my_account_save_preferences" }}</button>
+                        </div>
+                    </form>
+                </section>
+
+                <section id="password-card" class="glass-card p-6">
+                    <h2 class="text-lg font-semibold">{{ .T "my_account_section_password" }}</h2>
+                    <p class="text-sm text-slate-500 mt-2">{{ .T "my_account_password_help" }}</p>
+
+                    <form id="my-password-form" class="space-y-4 mt-5">
+                        <div>
+                            <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
+                            <input type="password" id="my-password" class="jg-input" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
+                        </div>
+                        <div>
+                            <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
+                            <input type="password" id="my-password-confirm" class="jg-input" required>
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="submit" class="jg-btn">{{ .T "my_account_update_password" }}</button>
+                        </div>
+                    </form>
+                </section>
+            </div>
         </div>
     </section>
 </main>
@@ -287,5 +285,5 @@
         },
     };
 </script>
-<script src="/static/js/pages/my-account.js"></script>
+<script src="/static/js/pages/my-account.js" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}
