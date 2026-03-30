@@ -5,13 +5,13 @@ if (Test-Path $env_file) {
     Get-Content $env_file | ForEach-Object {
         $line = $_.Trim()
         if ($line -and -not $line.StartsWith("#")) {
-            if ($line -match '^([^=]+)=(.*)$') {
-                $k = $Matches[1].Trim()
-                $v = $Matches[2].Trim()
-                # Clean quotes
-                $v = $v -replace '^["'']|["'']$', ''
-                [System.Environment]::SetEnvironmentVariable($k, $v, "Process")
-            }
+                    if ($line -match '^([^=]+)=(.*)$') {
+                        $k = $Matches[1].Trim()
+                        $v = $Matches[2].Trim()
+                        # Clean surrounding single or double quotes
+                        $v = $v.Trim('"', "'")
+                        [System.Environment]::SetEnvironmentVariable($k, $v, "Process")
+                    }
         }
     }
 }

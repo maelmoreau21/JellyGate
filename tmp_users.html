@@ -1,0 +1,613 @@
+
+
+
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Utilisateurs — JellyGate</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <meta name="description" content='Gestionnaire d&#39;invitations et d&#39;utilisateurs pour Jellyfin'>
+
+    <meta name="theme-color" content="#09090b">
+    
+    <style>
+         
+        body.login-page #lang-switcher { display: none !important; }
+    </style>
+
+    
+    <link rel="stylesheet" href="/static/css/tailwind.generated.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+
+    
+    <link rel="stylesheet" href="/static/css/custom.css">
+
+    
+    
+    
+    <script nonce="8e157ff1a8e3731171b6aa6d8baa6edd14175348342361aeee1e1432bb46bca6">
+        (function() {
+            var savedTheme = localStorage.getItem('jg-theme') || 'dark';
+            if (savedTheme === 'light') {
+                document.documentElement.classList.remove('dark');
+            } else {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+
+<body class="bg-jg-bg min-h-screen antialiased text-slate-800 dark:text-slate-100 ">
+
+    
+    <div id="toast-container" class="toast-container"></div>
+
+    
+<div class="jg-admin-layout">
+    
+    <header class="jg-mobile-header lg:hidden jg-glass">
+        <div class="flex items-center justify-between px-4 h-16">
+            <div class="flex items-center gap-3">
+                
+<div class="flex items-center gap-2">
+    <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="jg-logo-gradient" x1="0" y1="0" x2="32" y2="32">
+                <stop style="stop-color: var(--jg-accent-cyan)" />
+                <stop offset="1" style="stop-color: var(--jg-accent-emerald)" />
+            </linearGradient>
+        </defs>
+        <circle cx="16" cy="16" r="14" fill="url(#jg-logo-gradient)" />
+        <path d="M10 22V10l12 6-12 6z" fill="#fff" />
+    </svg>
+</div>
+
+                <span class="font-bold text-lg tracking-tight">JellyGate</span>
+            </div>
+            <button id="mobile-menu-toggle" class="p-2 rounded-xl bg-white/5 text-jg-text-muted hover:text-jg-text transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    
+    <aside id="sidebar" class="jg-sidebar jg-glass border-r border-jg-border">
+        <div class="jg-sidebar-inner flex flex-col h-full">
+            <div class="jg-sidebar-header px-6 py-8 hidden lg:flex items-center gap-3">
+                
+<div class="flex items-center gap-2">
+    <svg class="w-8 h-8 flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="jg-logo-gradient" x1="0" y1="0" x2="32" y2="32">
+                <stop style="stop-color: var(--jg-accent-cyan)" />
+                <stop offset="1" style="stop-color: var(--jg-accent-emerald)" />
+            </linearGradient>
+        </defs>
+        <circle cx="16" cy="16" r="14" fill="url(#jg-logo-gradient)" />
+        <path d="M10 22V10l12 6-12 6z" fill="#fff" />
+    </svg>
+</div>
+
+                <span class="font-bold text-xl tracking-tight">JellyGate</span>
+            </div>
+
+            <nav class="jg-nav flex-1 px-3 space-y-1 overflow-y-auto">
+                
+                
+                
+                <a href="/admin/" class="jg-nav-item ">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                    <span class="jg-nav-label">Tableau de bord</span>
+                </a>
+
+                <a href="/admin/my-account" class="jg-nav-item ">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9 9 0 1118.88 17.8M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    <span class="jg-nav-label">Mon compte</span>
+                </a>
+
+                
+                <div class="px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-jg-text-muted/50 mt-4">Administration</div>
+                
+                <a href="/admin/users" class="jg-nav-item active">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    <span class="jg-nav-label">Utilisateurs</span>
+                </a>
+
+                <a href="/admin/automation" class="jg-nav-item ">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    <span class="jg-nav-label">Automatisation</span>
+                </a>
+                
+
+                
+                <a href="/admin/invitations" class="jg-nav-item ">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    <span class="jg-nav-label">Invitations</span>
+                </a>
+                
+
+                
+                <a href="/admin/settings" class="jg-nav-item ">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /></svg>
+                    <span class="jg-nav-label">Paramètres</span>
+                </a>
+
+                <a href="/admin/logs" class="jg-nav-item ">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    <span class="jg-nav-label">Journaux</span>
+                </a>
+                
+            </nav>
+
+            <div class="jg-sidebar-footer p-4 space-y-3">
+                
+                <div id="sidebar-lang-target" class="w-full"></div>
+
+                
+                <button id="sidebar-collapse-toggle" class="hidden lg:flex jg-btn jg-btn-ghost w-full h-10 mb-2 border-dashed border-jg-border-strong opacity-60 hover:opacity-100" title="Collapse menu/Expand menu">
+                    <svg class="w-4 h-4 transition-transform duration-300 collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+                    <span class="jg-nav-label ml-2 text-[10px] font-bold uppercase tracking-wider">Collapse menu</span>
+                </button>
+
+                <div class="flex items-center gap-2">
+                    <button id="theme-toggle-btn" type="button" class="jg-btn jg-btn-ghost flex-1 h-11" title="Switch theme">
+                        <span id="theme-toggle-icon">
+                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                            </svg>
+                        </span>
+                        <span class="jg-nav-label ml-2 text-xs font-semibold">Thème</span>
+                    </button>
+
+                    <form method="POST" action="/admin/logout" class="flex-1">
+                        <button type="submit" class="jg-btn jg-btn-danger w-full h-11">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="jg-version-text text-[9px] text-center text-jg-text-muted/40 font-mono tracking-widest uppercase py-2">
+                    JellyGate <span class="text-jg-accent font-bold">v1.1.0</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden"></div>
+
+    
+    <main class="jg-main-content">
+        
+<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">Gestion des utilisateurs</h1>
+        <p class="text-jg-text-muted mt-2">Gérez vos utilisateurs Jellyfin et LDAP de manière centralisée.</p>
+    </div>
+    <div class="flex items-center gap-3">
+        <button id="btn-sync-users" class="jg-btn jg-btn-ghost">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            Synchroniser Jellyfin
+        </button>
+        <button id="btn-open-bulk-email" class="jg-btn jg-btn-primary">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            E-mail en lot
+        </button>
+    </div>
+</div>
+
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-jg-border-strong flex flex-col justify-center">
+        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">Comptes totaux</div>
+        <div class="text-2xl font-extrabold" id="users-stat-total">0</div>
+    </div>
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-jg-accent flex flex-col justify-center">
+        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">Visibles maintenant</div>
+        <div class="text-2xl font-extrabold text-jg-accent" id="users-stat-filtered">0</div>
+    </div>
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-amber-400 flex flex-col justify-center">
+        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">Peuvent inviter</div>
+        <div class="text-2xl font-extrabold text-amber-400" id="users-stat-inviters">0</div>
+    </div>
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-rose-400 flex flex-col justify-center">
+        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">Acces expires</div>
+        <div class="text-2xl font-extrabold text-rose-400" id="users-stat-expiring">0</div>
+    </div>
+</div>
+
+<div class="space-y-6">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <main class="lg:col-span-8 space-y-6">
+            
+            <div class="jg-card p-6 overflow-hidden shadow-2xl relative border-white/5">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                    <div class="flex items-start gap-3">
+                        <h2 class="font-bold text-xl text-jg-text">Liste des comptes</h2>
+                        <span id="user-count" class="px-2.5 py-0.5 rounded-full bg-jg-accent/10 text-jg-accent text-xs font-black"></span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button id="btn-sync-users" class="jg-btn jg-btn-ghost hidden md:inline-flex">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            Synchroniser Jellyfin
+                        </button>
+                        <button id="btn-open-bulk-email" class="jg-btn jg-btn-primary">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                            E-mail en lot
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col xl:flex-row xl:items-center gap-3">
+                    <div class="relative flex-1">
+                        <input type="text" id="search-users" class="jg-input h-10 pl-9 text-xs rounded-lg w-full transition-all focus:border-jg-accent/50" placeholder='Rechercher...'>
+                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-jg-text-muted font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2">
+                        <select id="filter-status" class="jg-input h-10 text-[11px] py-0 w-32">
+                            <option value="all">Statut</option>
+                            <option value="active">Actif</option>
+                            <option value="inactive">Inactif</option>
+                            <option value="banned">Banni</option>
+                        </select>
+
+                        <select id="filter-jellyfin" class="jg-input h-10 text-[11px] py-0 w-32">
+                            <option value="all">Jellyfin</option>
+                            <option value="ok">Jellyfin OK</option>
+                            <option value="disabled">Jellyfin desactive</option>
+                            <option value="missing">Absent de Jellyfin</option>
+                        </select>
+
+                        <select id="filter-invite" class="jg-input h-10 text-[11px] py-0 w-32">
+                            <option value="all">Invitation</option>
+                            <option value="enabled">Invitation active</option>
+                            <option value="disabled">Invitation desactivee</option>
+                        </select>
+
+                        <select id="filter-extra" class="jg-input h-10 text-[11px] py-0 w-32">
+                            <option value="all">Filtres Extras</option>
+                            <option value="with-email">Avec e-mail</option>
+                            <option value="without-email">Sans e-mail</option>
+                            <option value="expiry-active">Avec date d&#39;expiration</option>
+                            <option value="expiry-expired">Deja expire</option>
+                            <option value="expiry-none">Sans date d&#39;expiration</option>
+                        </select>
+
+                        <button id="btn-clear-filters" class="w-10 h-10 flex items-center justify-center rounded-lg jg-btn-ghost jg-btn-sm" title="Reinitialiser les filtres">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="jg-table-container mt-4 overflow-x-auto w-full border border-jg-border rounded">
+                    <table class="min-w-full w-full text-sm text-left align-middle whitespace-nowrap">
+                        <thead class="bg-jg-bg-secondary/30 text-jg-text-muted uppercase text-[10px] font-bold tracking-widest border-b border-jg-border">
+                            <tr>
+                                <th class="px-6 py-4 w-12 text-center"></th>
+                                <th class="px-4 py-4">Utilisateur</th>
+                                <th class="px-4 py-4">Statut</th>
+                                <th class="px-4 py-4">Jellyfin</th>
+                                <th class="px-4 py-4">Groupe</th>
+                                <th class="px-4 py-4">Expiration</th>
+                                <th class="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-tbody" class="divide-y divide-jg-border bg-black/5">
+                            <tr>
+                                <td colspan="7" class="text-center py-24">
+                                    <div class="flex flex-col items-center gap-3">
+                                        <span class="spinner w-8 h-8 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
+                                        <span class="text-jg-text-muted text-xs animate-pulse uppercase tracking-widest font-bold">Chargement......</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <aside class="lg:col-span-4 space-y-6" role="complementary" aria-labelledby="bulk-actions-title">
+            
+            <div id="bulk-card" class="jg-card shadow-lg jg-glass p-6 rounded-2xl users-aside">
+                <div class="flex items-center gap-4 mb-8">
+                    <div class="w-12 h-12 rounded-2xl bg-jg-accent/10 text-jg-accent flex items-center justify-center shadow-inner">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    </div>
+                    <div>
+                        <h2 id="bulk-actions-title" class="text-xl font-bold">Assistant en lot</h2>
+                        <p class="text-[10px] text-jg-text-muted uppercase tracking-widest font-black mt-1">
+                            <span id="bulk-selected-count" class="text-jg-accent px-1.5 py-0.5 rounded bg-jg-accent/10" aria-live="polite">0</span> utilisateurs selectionnes
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                    <div class="space-y-4">
+                        <label class="jg-label">Choisir l&#39;action</label>
+                        <select id="bulk-action" class="jg-input h-12">
+                            <option value="">Choisir une action en lot</option>
+                            <option value="send_email">Envoyer un e-mail</option>
+                            <option value="send_password_reset">Envoyer un reset mot de passe</option>
+                            <option value="set_expiry">Definir l&#39;expiration d&#39;acces</option>
+                            <option value="set_parrainage">Mettre a jour le droit d&#39;inviter</option>
+                            <option value="jellyfin_policy">Ajuster la politique Jellyfin</option>
+                            <option value="apply_preset">Appliquer un preset Jellyfin</option>
+                            <option value="activate">Activer le compte</option>
+                            <option value="deactivate">Desactiver le compte</option>
+                            <option value="delete">Supprimer le compte</option>
+                        </select>
+
+                        <div id="bulk-help" class="text-xs text-jg-text-muted leading-relaxed bg-white/5 p-3 rounded-lg border border-jg-border hidden"></div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="jg-label">Verifier la configuration</label>
+                        <div id="bulk-fields" class="space-y-4">
+                            <div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">
+                                Choisir une action en lot
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="jg-label">Validation</label>
+                        <div id="bulk-summary" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed font-medium">
+                            Le resume de l&#39;action s&#39;affichera ici.
+                        </div>
+                        <button id="bulk-apply" class="w-full jg-btn jg-btn-primary h-12 opacity-60 cursor-not-allowed uppercase tracking-widest font-bold shadow-lg" disabled>
+                            Appliquer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+
+<div id="edit-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" tabindex="-1">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>
+    <div class="jg-card jg-glass w-full max-w-xl relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200" role="document">
+        <h3 id="edit-modal-title" class="text-2xl font-bold mb-6 text-jg-text">Modifier le compte</h3>
+        <input type="hidden" id="edit-user-id">
+        <div class="space-y-5">
+            <div>
+                <label class="jg-label">Email</label>
+                <input type="email" id="edit-email" class="jg-input h-12" placeholder="nom@domaine.tld">
+            </div>
+            <div>
+                <label class="jg-label">Groupe</label>
+                <input type="text" id="edit-group-name" class="jg-input h-12" placeholder="Ex: Enfants">
+            </div>
+            <div>
+                <label class="jg-label">Expiration</label>
+                <input type="datetime-local" id="edit-expiry" class="jg-input h-12">
+            </div>
+            <div class="flex flex-col gap-3 pt-2">
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="edit-clear-expiry" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent">
+                    <span class="text-sm text-jg-text-muted group-hover:text-jg-text transition-colors">Supprimer l&#39;expiration</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer group">
+                    <input type="checkbox" id="edit-can-invite" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent">
+                    <span class="text-sm text-jg-text-muted group-hover:text-jg-text transition-colors">Peut inviter</span>
+                </label>
+            </div>
+        </div>
+        <div class="mt-10 flex flex-col md:flex-row justify-end gap-3">
+            <button class="jg-btn jg-btn-ghost h-12 px-8" id="edit-cancel-btn">Annuler</button>
+            <button class="jg-btn jg-btn-primary h-12 px-8" id="edit-save-btn">Enregistrer</button>
+        </div>
+    </div>
+</div>
+
+<div id="delete-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="delete-modal-title" tabindex="-1">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>
+    <div class="jg-card jg-glass w-full max-w-md relative z-10 text-center animate-in fade-in zoom-in duration-200" role="document">
+        <div class="w-20 h-20 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-6">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+        </div>
+        <h3 id="delete-modal-title" class="text-2xl font-bold mb-3">Supprimer l&#39;utilisateur</h3>
+        <p id="delete-modal-text" class="text-jg-text-muted mb-8 leading-relaxed"></p>
+        <div class="flex flex-col gap-3">
+            <button class="jg-btn jg-btn-danger h-12 font-bold uppercase tracking-widest" id="delete-confirm-btn" aria-describedby="delete-modal-text">Supprimer le compte</button>
+            <button class="jg-btn jg-btn-ghost h-12" id="delete-cancel-btn">Annuler</button>
+        </div>
+    </div>
+</div>
+
+<div id="timeline-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="timeline-modal-title" tabindex="-1">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>
+    <div class="jg-card jg-glass w-full max-w-3xl relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200" role="document">
+        <div class="flex items-start justify-between gap-6 mb-8">
+            <div>
+                <h3 id="timeline-modal-title" class="text-2xl font-bold text-jg-text">Timeline utilisateur</h3>
+                <div id="timeline-subtitle" class="text-sm text-jg-accent font-semibold mt-1 uppercase tracking-wider"></div>
+            </div>
+            <button class="jg-btn jg-btn-ghost jg-btn-sm" id="timeline-close-btn" aria-label="Fermer">Fermer</button>
+        </div>
+        <div id="timeline-list" class="flex-1 overflow-y-auto pr-4 space-y-4">
+            <div class="text-center py-20 text-jg-text-muted animate-pulse">Chargement de la timeline...</div>
+        </div>
+    </div>
+</div>
+
+    </main>
+</div>
+
+
+    
+    <div id="lang-switcher" class="jg-lang-switcher jg-lang-switcher-floating px-3 py-2 border-0 bg-transparent shadow-none">
+        <div class="jg-custom-select">
+            <div class="jg-select-trigger">
+                <span class="flex items-center gap-3">
+                    <img class="jg-current-flag jg-flag-icon" src="" alt="">
+                    <span class="jg-current-label"></span>
+                </span>
+                <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+            </div>
+            
+            <div class="jg-select-options">
+                <div class="jg-select-option active" data-value="fr">
+                    <img src="https://flagcdn.com/w20/fr.png" class="jg-flag-icon" alt="fr">
+                    <span>Français</span>
+                </div>
+                <div class="jg-select-option " data-value="en">
+                    <img src="https://flagcdn.com/w20/gb.png" class="jg-flag-icon" alt="en">
+                    <span>English</span>
+                </div>
+                <div class="jg-select-option " data-value="de">
+                    <img src="https://flagcdn.com/w20/de.png" class="jg-flag-icon" alt="de">
+                    <span>Deutsch</span>
+                </div>
+                <div class="jg-select-option " data-value="es">
+                    <img src="https://flagcdn.com/w20/es.png" class="jg-flag-icon" alt="es">
+                    <span>Español</span>
+                </div>
+                <div class="jg-select-option " data-value="it">
+                    <img src="https://flagcdn.com/w20/it.png" class="jg-flag-icon" alt="it">
+                    <span>Italiano</span>
+                </div>
+                <div class="jg-select-option " data-value="nl">
+                    <img src="https://flagcdn.com/w20/nl.png" class="jg-flag-icon" alt="nl">
+                    <span>Nederlands</span>
+                </div>
+                <div class="jg-select-option " data-value="pl">
+                    <img src="https://flagcdn.com/w20/pl.png" class="jg-flag-icon" alt="pl">
+                    <span>Polski</span>
+                </div>
+                <div class="jg-select-option " data-value="pt-br">
+                    <img src="https://flagcdn.com/w20/br.png" class="jg-flag-icon" alt="br">
+                    <span>Português (Brasil)</span>
+                </div>
+                <div class="jg-select-option " data-value="ru">
+                    <img src="https://flagcdn.com/w20/ru.png" class="jg-flag-icon" alt="ru">
+                    <span>Русский</span>
+                </div>
+                <div class="jg-select-option " data-value="zh">
+                    <img src="https://flagcdn.com/w20/cn.png" class="jg-flag-icon" alt="cn">
+                    <span>中文 (简体)</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <script src="/static/js/app.js" nonce="8e157ff1a8e3731171b6aa6d8baa6edd14175348342361aeee1e1432bb46bca6"></script>
+    
+<script nonce="8e157ff1a8e3731171b6aa6d8baa6edd14175348342361aeee1e1432bb46bca6">
+    window.JGPageUsers = {
+        i18n: {
+            usersDisplayed: 'affiches \/',
+            usersNoLocal: 'Aucun compte local trouve pour le moment.',
+            usersNoFilterMatch: 'Aucun compte ne correspond aux filtres actuels.',
+            bulkChooseAction: 'Choisis une action',
+            bulkActionGeneric: 'Action en lot',
+            bulkSelectOne: 'Selectionne au moins un utilisateur.',
+            bulkNeedEmailBody: 'Renseigne le sujet et le contenu du message.',
+            bulkNeedExpiry: 'Definis une date d\u0027expiration ou choisis de supprimer l\u0027existante.',
+            bulkNeedJellyfinParam: 'Modifie au moins un parametre de politique Jellyfin.',
+            bulkJellyfinInvalid: 'Un ou plusieurs parametres Jellyfin sont invalides.',
+            bulkNeedPreset: 'Choisis un preset Jellyfin avant de continuer.',
+            bulkConfigReady: 'Configuration valide',
+            bulkBlockedPrefix: 'Bloque',
+            bulkValidPrefix: 'Valide',
+            bulkReadySuffix: 'pret a appliquer',
+            bulkActionOn: 'pour',
+            bulkNone: 'aucun',
+            yes: 'Oui',
+            no: 'No',
+            timelineCritical: 'Critique',
+            timelineImportant: 'Important',
+            timelineInfo: 'Information',
+            timelineTrace: 'Trace',
+            timelineEmpty: 'Aucun evenement de timeline pour cet utilisateur.',
+            editUpdated: 'Compte mis a jour',
+            editUpdateError: 'Impossible d\u0027enregistrer les modifications du compte.',
+            deleteSuccess: 'Utilisateur supprime',
+            deleteError: 'Impossible de supprimer cet utilisateur.',
+            timelineLoadError: 'Impossible de charger la timeline utilisateur.',
+            resetSent: 'Password reset link sent to {username}',
+            resetError: 'Impossible d\u0027envoyer le lien de reinitialisation.',
+            toggleUpdated: 'Statut du compte mis a jour',
+            toggleError: 'Impossible de mettre a jour le statut du compte.',
+            loadError: 'Impossible de charger les utilisateurs',
+            loadErrorDetails: 'La liste des utilisateurs n\u0027a pas pu etre chargee.',
+            filtersNone: 'Aucun filtre actif.',
+            selectionEmpty: 'Aucun utilisateur selectionne.',
+            selectionMore: '\u002b{count} autres',
+            bulkActionFailed: 'L\u0027action en lot a echoue',
+            bulkDone: 'Action terminee : {success}\/{total} reussies',
+            syncConfirm: 'Lancer la synchronisation avec Jellyfin maintenant ?',
+            syncDone: 'Synchronisation Jellyfin terminee',
+            syncError: 'Echec de la synchronisation Jellyfin',
+            syncNetworkError: 'Erreur reseau pendant la synchronisation Jellyfin',
+            deleteConfirmTemplate: 'L\u0027utilisateur \u0022{username}\u0022 sera supprime d\u0027AD, de Jellyfin et de la base locale. Cette action est irreversible.',
+            timelineSubtitleTemplate: '{username} ({email})',
+            activate: 'Activer le compte',
+            deactivate: 'Desactiver le compte',
+            edit: 'Modifier',
+            reset: 'Reset',
+            timeline: 'Timeline utilisateur',
+            delete: 'Supprimer le compte',
+            jellyfinDisabled: 'Jellyfin disabled',
+            jellyfinMissing: 'Jellyfin missing',
+            statusBanned: 'Banni',
+            statusActive: 'Actif',
+            statusInactive: 'Inactif',
+        },
+        bulkActionMeta: {
+            send_email: { label: 'Envoyer un e-mail', help: 'Rediger un message ponctuel et l\u0027envoyer aux utilisateurs selectionnes.' },
+            send_password_reset: { label: 'Envoyer un reset mot de passe', help: 'Declencher l\u0027e-mail de reinitialisation pour tous les comptes selectionnes.' },
+            set_expiry: { label: 'Definir l\u0027expiration d\u0027acces', help: 'Definir ou supprimer la date d\u0027expiration des comptes selectionnes.' },
+            set_parrainage: { label: 'Mettre a jour le droit d\u0027inviter', help: 'Activer ou retirer le droit d\u0027inviter pour les comptes selectionnes.' },
+            jellyfin_policy: { label: 'Ajuster la politique Jellyfin', help: 'Modifier en masse les options de telechargement, acces distant, sessions et debit.' },
+            apply_preset: { label: 'Appliquer un preset Jellyfin', help: 'Applique un preset de politique Jellyfin a tous les comptes selectionnes.' },
+            activate: { label: 'Activer le compte', help: 'Reactive les comptes selectionnes sans modifier les autres parametres.' },
+            deactivate: { label: 'Desactiver le compte', help: 'Bloque temporairement l\u0027acces des comptes selectionnes.' },
+            delete: { label: 'Supprimer le compte', help: 'Supprime definitivement les comptes selectionnes sur tous les backends configures.' },
+        },
+        text: {
+            bulkConfirmTemplate: '{action}\u0060n\u0060nUtilisateurs cibles: {count}\u0060nConfirmer l\u0027execution ?',
+            bulkEmailSubjectPlaceholder: 'Sujet de l\u0027e-mail',
+            bulkEmailVariablesLabel: 'Variables disponibles',
+            bulkEmailBodyPlaceholder: 'Corps du message',
+            bulkInviteEnabled: 'Invitation active',
+            bulkInviteDisabled: 'Invitation desactivee',
+            bulkExpiryLabel: 'Expiration',
+            bulkClearExpiry: 'Supprimer l\u0027expiration',
+            bulkJfDownloadUnchanged: 'Telechargement inchange',
+            bulkJfDownloadAllowed: 'Telechargement autorise',
+            bulkJfDownloadBlocked: 'Telechargement bloque',
+            bulkJfRemoteUnchanged: 'Acces distant inchange',
+            bulkJfRemoteAllowed: 'Acces distant autorise',
+            bulkJfRemoteBlocked: 'Acces distant bloque',
+            bulkJfSessionsPlaceholder: 'Sessions simultanees max',
+            bulkJfBitratePlaceholder: 'Debit distant max (kbps)',
+            bulkSelectPreset: 'Choisir un preset',
+            bulkNoExtraParams: 'Cette action ne demande aucun parametre supplementaire.',
+        },
+    };
+</script>
+<script src="/static/js/pages/users.js" nonce="8e157ff1a8e3731171b6aa6d8baa6edd14175348342361aeee1e1432bb46bca6"></script>
+
+</body>
+
+</html>
+
+
+

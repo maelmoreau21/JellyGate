@@ -1,3 +1,46 @@
+# CLAUDE — Consignes d'agent et Contexte du projet JellyGate
+
+Dernière mise à jour : 2026-03-30
+
+Objectif
+- Fournir des directives concises et exploitables pour un assistant Claude travaillant sur ce dépôt, et rassembler le contexte produit/technique dans un seul fichier.
+
+Règles essentielles
+- Lire et utiliser la section "Contexte du projet" (plus bas dans ce fichier) comme source d'autorité avant toute décision, modification de code, ou proposition de PR.
+- Découvrir d'abord les conventions du projet : Go 1.26+, `html/template`, i18n JSON sous `web/i18n`, Tailwind CSS (build local via `npm run build:css`).
+- Proposer un plan succinct (3–6 étapes) pour toute tâche non triviale et utiliser la TODO/tool de suivi pour garder la trace des étapes.
+- Ne pas modifier la section "Contexte du projet" sans accord explicite : proposer les changements en commentaire ou en PR.
+- Principe "Link, don't embed" : lier la documentation existante plutôt que la dupliquer.
+- Préserver la compatibilité i18n : après toute modification de templates ou labels, vérifier chaque fichier `web/i18n/*.json` et lancer `go run ./cmd/i18ncheck` si pertinent.
+- Tests et validations locales recommandés : exécuter `go build ./...` et `go test ./...` après modifications Go ; pour le CSS, `npm run build:css`.
+- Encodage : sauvegarder les fichiers JSON en UTF-8 sans BOM (important pour `zh.json`).
+- Sécurité : ne jamais committer de secrets en clair dans le dépôt.
+
+Commandes rapides utiles
+- `npm run build:css`
+- `go build ./...`
+- `go test ./...`
+- `go run ./cmd/i18ncheck`
+
+Exemples de prompts (modèles)
+- "Avant toute modification, propose un plan en 3 étapes et liste les fichiers à modifier."
+- "Prépare le diff proposé pour une PR, liste les tests à exécuter et les commandes de validation." 
+- "Vérifie la parité i18n pour la clé 'invite-policy-summary' et propose des corrections si des clés manquent."
+
+Comportement attendu
+- Reste bref, factuel et orienté action.
+- Pose des questions de clarification pour tout changement impactant.
+- Proposer PRs/patches quand possible et énumérer les commandes de validation.
+
+Notes
+- Ce fichier suit le bootstrap décrit dans `init.prompt.md`: découvrir les conventions, explorer le code, générer ou fusionner (préférer les liens), et itérer avec retours.
+
+Si vous souhaitez des règles supplémentaires (hooks git, conventions de commit, checks CI), indiquez lesquelles et je les ajouterai ici.
+
+---
+
+<!-- Contenu importé : Project Context (project_context.md) -->
+
 # JellyGate — Project Context
 
 > Dernière mise à jour : 2026-03-28
@@ -33,27 +76,27 @@ Le CSS Tailwind est généré localement via `npm run build:css` et servi depuis
 
 ```text
 cmd/
-  i18ncheck/               # check i18n CI
-  jellygate/               # point d'entrée HTTP
+	i18ncheck/               # check i18n CI
+	jellygate/               # point d'entrée HTTP
 internal/
-  backup/                  # sauvegarde / restauration
-  config/                  # config runtime et structs métiers
-  database/                # migrations, accès SQL, settings
-  handlers/                # pages et API admin/public
-  i18nreport/              # rapport qualité des traductions
-  integrations/            # provisioning tiers
-  jellyfin/                # client Jellyfin
-  ldap/                    # client LDAP / AD
-  mail/                    # mailer SMTP
-  middleware/              # auth, i18n, sécurité, rate limit
-  notify/                  # webhooks
-  render/                  # moteur de rendu + traduction
-  scheduler/               # tâches périodiques
-  session/                 # cookies signés
+	backup/                  # sauvegarde / restauration
+	config/                  # config runtime et structs métiers
+	database/                # migrations, accès SQL, settings
+	handlers/                # pages et API admin/public
+	i18nreport/              # rapport qualité des traductions
+	integrations/            # provisioning tiers
+	jellyfin/                # client Jellyfin
+	ldap/                    # client LDAP / AD
+	mail/                    # mailer SMTP
+	middleware/              # auth, i18n, sécurité, rate limit
+	notify/                  # webhooks
+	render/                  # moteur de rendu + traduction
+	scheduler/               # tâches périodiques
+	session/                 # cookies signés
 web/
-  i18n/                    # locales JSON
-  static/                  # css, js, favicon
-  templates/               # pages, layouts, emails
+	i18n/                    # locales JSON
+	static/                  # css, js, favicon
+	templates/               # pages, layouts, emails
 ```
 
 ## 4. Capacités produit
@@ -310,37 +353,6 @@ Remarques:
 - Audit automatisé via `cmd/i18ncheck` pour garantir 0 oubli dans les templates.
 - Normalisation des clés en snake_case et suppression des chaînes codées en dur dans les templates.
 
-## 5. État d'avancement (Crystal Clear v2)
-
-### 5.1 Fait (Mars 2026)
-- **Refonte UI Shell** : Sidebar rétractable, mode mobile optimisé, glassmorphism.
-- **Gestion des Modaux** : Centralisation via `JG.openModal` / `JG.closeModal`.
-- **Pages Admin** : Refonte "Automation" (onglets) et "Logs" (filtres horizontaux).
-- **i18n Audit** : Synchronisation complète des 10 langues.
-- **Correction ZH** : Réparation de l'encodage et traduction complète du chinois.
-
-- Version produit portée en `1.1.0`.
-- Support PostgreSQL actif côté déploiement et configuration.
-- Vérification d'e-mail avant création de compte sur les invitations publiques, avec option admin activée par défaut.
-- Les messages e-mail no-code acceptent les variables- Refonte UI/UX "Crystal Clear v2" : Sidebar rétractable, système d'onglets pour l'Automatisation, filtres horizontaux pour les Journaux.
-- Correction du bug des modales (Timeline, Invitations) restées visibles par défaut.
-- Optimisation de la réactivité mobile et de l'espace sur desktop.
-itaires de la sidebar admin : le sélecteur de langue et le bouton de thème sont désormais centrés et plus élégants. Les drapeaux (emojis) ont été ajoutés pour une visibilité parfaite sur PC et Mobile.
-- Refonte Esthétique "SaaS Professionnel" : Passage à une palette Gris Carbone (`#09090b`), typographie `Inter`, et retrait des effets "IA" (glows, dégradés radiaux, flous excessifs) pour un aspect haute performance et utilitaire.
-- Simplification "Minimale" appliquée à l'ensemble de l'interface d'administration : suppression des textes d'aide redondants, des bannières "Kicker", et des descriptions de sections pour un outil ultra-rapide et facile à prendre en main.
-- Support HTTPS natif intégré via `JELLYGATE_TLS_CERT` tel que `JELLYGATE_TLS_KEY`.
-- **Version 1.1.1** : Introduction de l'esthétique "Option A" - Dégradé Cyan/Émeraude (`#22d3ee` vers `#10b981`). Redesign des boutons principaux, des états de focus et de la page de connexion pour un aspect plus moderne et dynamique. Correction du bug de duplication d'étiquettes sur le bouton de thème. Harmonisation complète du design system sur l'ensemble des pages d'administration (logos, encodage des titres, et suppression des couleurs legacy).
-- **Version 1.1.2** : Raffinement du portail de connexion. Relocalisation du sélecteur de langue sous le bouton de thème pour un flux vertical épuré. Remplacement des icônes images par une grille d'emojis drapeaux native, supprimant les dépendances externes (FlagCDN) et garantissant une lisibilité parfaite sur tous les navigateurs.
- - **Version 1.1.3** : Refonte complète de la page `Mon compte` — nouveau layout responsive, meilleure hiérarchie visuelle, et conservation des points d'API/JS existants pour compatibilité (pas de changement fonctionnel côté back). Mise à jour des composants visuels pour correspondre au design system actuel.
-
-- **Version 1.1.4** : Refonte complète de la page `Automatisation` — nouveau layout responsive, meilleure hiérarchie visuelle, panneau d'aperçu des tâches et conservation de tous les `id` utilisés par `web/static/js/pages/automation.js` pour compatibilité. Vérifier `/admin/automation` après redémarrage pour valider le rendu et les traductions.
-
-- **Version 1.1.6** : Refonte complète de la page `Invitations` — nouveau layout responsive, meilleure hiérarchie visuelle, panneau sponsor + table principale, conservation des `id` utilisés par `web/static/js/pages/invitations.js` pour compatibilité, et relance de l'audit i18n pour vérifier la parité.
-
-- **Version 1.1.7** : Refonte complète de la page `Journaux` — nouveau layout responsive avec panneau de filtres latéral sticky, meilleure hiérarchie visuelle, conservation de tous les `id` utilisés par `web/static/js/pages/logs.js` pour compatibilité, et recommandation de relancer l'audit i18n après déploiement.
-
-- **Version 1.2.0** : Lancement d'une refonte complète de l'UI/UX (Crystal Clear) — abandon des Sidebars dupliquées au profit d'une structure centralisée, amélioration de la densité d'information (désencombrement), et optimisation mobile-first avec une navigation adaptative. Harmonisation visuelle basée sur le glassmorphism tout en conservant l'âme sombre et les dégradés signature. (En cours)
-
 ## i18n — vérification et réparation
 
 - Problème fréquent : les fichiers JSON de traduction doivent être encodés en UTF-8 (sans BOM). Si un fichier est enregistré avec le mauvais encodage, l'interface affichera des caractères illisibles (mojibake) — surtout visible pour `zh.json` (chinois).
@@ -348,7 +360,7 @@ itaires de la sidebar admin : le sélecteur de langue et le bouton de thème son
 
 ```powershell
 # depuis la racine du projet
-node scripts\i18n_inspect.js
+node scripts\\i18n_inspect.js
 ```
 
 Le script affiche trois blocs : `---ZH_FIXED---` (tentative de décodage des chaînes mojibake pour `zh.json`), `---MISSING_KEYS---` (liste des clés manquantes par fichier) et `---ALL_KEYS---` (ensemble complet des clés détectées).
@@ -357,13 +369,12 @@ Le script affiche trois blocs : `---ZH_FIXED---` (tentative de décodage des cha
 
 ```powershell
 # sauvegarde préalable conseillée
-node -e "const fs=require('fs');const p='web/i18n/zh.json';let raw=fs.readFileSync(p,'utf8');if(raw.charCodeAt(0)===0xFEFF) raw=raw.slice(1);let obj;try{obj=JSON.parse(raw)}catch(e){const maybe=Buffer.from(fs.readFileSync(p,'binary'),'binary').toString('utf8');obj=JSON.parse(maybe);}Object.keys(obj).forEach(k=>{if(typeof obj[k]==='string'){const dec=Buffer.from(obj[k],'binary').toString('utf8');if(/[\u4e00-\u9fff]/.test(dec)) obj[k]=dec;}});fs.writeFileSync(p,JSON.stringify(obj,null,4));console.log('zh.json: attempted repair (review required)');"
+node -e "const fs=require('fs');const p='web/i18n/zh.json';let raw=fs.readFileSync(p,'utf8');if(raw.charCodeAt(0)===0xFEFF) raw=raw.slice(1);let obj;try{obj=JSON.parse(raw)}catch(e){const maybe=Buffer.from(fs.readFileSync(p,'binary'),'binary').toString('utf8');obj=JSON.parse(maybe);}Object.keys(obj).forEach(k=>{if(typeof obj[k]==='string'){const dec=Buffer.from(obj[k],'binary').toString('utf8');if(/[\\u4e00-\\u9fff]/.test(dec)) obj[k]=dec;}});fs.writeFileSync(p,JSON.stringify(obj,null,4));console.log('zh.json: attempted repair (review required)');"
 ```
 
 - Parité des clés : après toute modification de templates (nouvelles `{{ .T "..." }}`), assurez-vous que chaque fichier `web/i18n/*.json` contient les mêmes clés. Pour ajouter des clés manquantes automatiquement, utilisez le résultat `---MISSING_KEYS---` de `i18n_inspect.js` comme feuille de route, puis ajoutez des valeurs de secours (anglais ou langue principale) et demandez des traductions humaines ensuite.
 
 - Conseils d'édition :
-  - Toujours sauvegarder les fichiers `.json` en `UTF-8 (no BOM)`.
-  - Pour PowerShell 5, évitez `Set-Content -Encoding UTF8` (il écrit un BOM); préférez des éditeurs qui permettent explicitement `UTF-8 without BOM`, ou la commande Node ci-dessus.
-  - Après corrections, redémarrez l'application et contrôlez `/admin/my-account` en `zh` pour valider l'affichage.
-
+	- Toujours sauvegarder les fichiers `.json` en `UTF-8 (no BOM)`.
+	- Pour PowerShell 5, évitez `Set-Content -Encoding UTF8` (il écrit un BOM); préférez des éditeurs qui permettent explicitement `UTF-8 without BOM`, ou la commande Node ci-dessus.
+	- Après corrections, redémarrez l'application et contrôlez `/admin/my-account` en `zh` pour valider l'affichage.

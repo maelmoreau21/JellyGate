@@ -64,15 +64,18 @@
 
         function presetRow(preset, idx) {
             return `<tr>
-            <td><input class="jg-input" data-p="${idx}" data-k="id" value="${JG.esc(preset.id || '')}"></td>
-            <td><input class="jg-input" data-p="${idx}" data-k="name" value="${JG.esc(preset.name || '')}"></td>
-            <td><input type="checkbox" class="form-checkbox" data-p="${idx}" data-k="enable_download" ${preset.enable_download ? 'checked' : ''}></td>
-            <td><input type="checkbox" class="form-checkbox" data-p="${idx}" data-k="enable_remote_access" ${preset.enable_remote_access ? 'checked' : ''}></td>
-            <td><input type="number" class="jg-input" data-p="${idx}" data-k="max_sessions" value="${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}"></td>
-            <td><input type="number" class="jg-input" data-p="${idx}" data-k="bitrate_limit" value="${Number.isInteger(preset.bitrate_limit) ? preset.bitrate_limit : 0}"></td>
-            <td><input type="number" class="jg-input" data-p="${idx}" data-k="disable_after_days" min="0" value="${Number.isInteger(preset.disable_after_days) ? preset.disable_after_days : 0}"></td>
-            <td><input type="number" class="jg-input" data-p="${idx}" data-k="delete_after_days" min="0" value="${Number.isInteger(preset.delete_after_days) ? preset.delete_after_days : 0}"></td>
-            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="preset-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button></td>
+            <td class="font-medium text-jg-text">${JG.esc(preset.id || '')}</td>
+            <td>${JG.esc(preset.name || '')}</td>
+            <td>${preset.enable_download ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-danger">Non</span>'}</td>
+            <td>${preset.enable_remote_access ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-danger">Non</span>'}</td>
+            <td>${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}</td>
+            <td>${Number.isInteger(preset.bitrate_limit) ? preset.bitrate_limit : 0}</td>
+            <td class="text-right">
+                <div class="flex justify-end gap-2">
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="preset-edit" data-index="${idx}">${JG.esc(i18n.edit || 'Éditer')}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="preset-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button>
+                </div>
+            </td>
         </tr>`;
         }
 
@@ -101,38 +104,43 @@
         }
 
         function collectPresetsFromUI() {
-            const rows = document.querySelectorAll('#presets-body tr');
-            const next = [];
-            rows.forEach((_, idx) => {
-                const read = (key) => document.querySelector(`[data-p="${idx}"][data-k="${key}"]`);
-                const idEl = read('id');
-                const nameEl = read('name');
-                if (!idEl || !nameEl) {
-                    return;
-                }
-                const existing = presets[idx] || {};
-                next.push({
-                    ...existing,
-                    id: (idEl.value || '').trim(),
-                    name: (nameEl.value || '').trim(),
-                    enable_download: !!read('enable_download')?.checked,
-                    enable_remote_access: !!read('enable_remote_access')?.checked,
-                    max_sessions: parseInt(read('max_sessions')?.value || '0', 10) || 0,
-                    bitrate_limit: parseInt(read('bitrate_limit')?.value || '0', 10) || 0,
-                    enable_all_folders: existing.enable_all_folders !== false,
-                    enabled_folder_ids: Array.isArray(existing.enabled_folder_ids) ? existing.enabled_folder_ids : [],
-                    password_min_length: Number.isInteger(existing.password_min_length) ? existing.password_min_length : 8,
-                    require_upper: !!existing.require_upper,
-                    require_lower: !!existing.require_lower,
-                    require_digit: !!existing.require_digit,
-                    require_special: !!existing.require_special,
-                    disable_after_days: parseInt(read('disable_after_days')?.value || '0', 10) || 0,
-                    expiry_action: existing.expiry_action || 'disable',
-                    delete_after_days: parseInt(read('delete_after_days')?.value || '0', 10) || 0,
-                });
-            });
-            return next;
+            return presets;
         }
+        
+        // Modal Preset Handlers
+        let currentPresetIndex = -1;
+        
+        function openPresetModal(idx) {
+            currentPresetIndex = idx;
+            const preset = presets[idx] || {};
+            document.getElementById('preset-id').value = preset.id || '';
+            document.getElementById('preset-name').value = preset.name || '';
+            document.getElementById('preset-enable-download').checked = !!preset.enable_download;
+            document.getElementById('preset-enable-remote').checked = !!preset.enable_remote_access;
+            document.getElementById('preset-max-sessions').value = preset.max_sessions || 0;
+            document.getElementById('preset-bitrate').value = preset.bitrate_limit || 0;
+            document.getElementById('preset-disable-days').value = preset.disable_after_days || 0;
+            document.getElementById('preset-delete-days').value = preset.delete_after_days || 0;
+            JG.openModal('modal-preset-form');
+        }
+        
+        document.getElementById('preset-form-internal')?.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const idx = currentPresetIndex;
+            if (idx < 0 || idx >= presets.length) return;
+            
+            presets[idx].id = document.getElementById('preset-id').value.trim();
+            presets[idx].name = document.getElementById('preset-name').value.trim();
+            presets[idx].enable_download = document.getElementById('preset-enable-download').checked;
+            presets[idx].enable_remote_access = document.getElementById('preset-enable-remote').checked;
+            presets[idx].max_sessions = parseInt(document.getElementById('preset-max-sessions').value, 10) || 0;
+            presets[idx].bitrate_limit = parseInt(document.getElementById('preset-bitrate').value, 10) || 0;
+            presets[idx].disable_after_days = parseInt(document.getElementById('preset-disable-days').value, 10) || 0;
+            presets[idx].delete_after_days = parseInt(document.getElementById('preset-delete-days').value, 10) || 0;
+            
+            renderPresets();
+            JG.closeModal('modal-preset-form');
+        });
 
         function groupPresetOptions(selectedID) {
             const options = [`<option value="">${JG.esc(i18n.selectPreset)}</option>`];
@@ -264,6 +272,7 @@
                 delete_after_days: 0,
             });
             renderPresets();
+            openPresetModal(presets.length - 1);
         });
 
         document.getElementById('btn-preset-save')?.addEventListener('click', async () => {
@@ -282,15 +291,16 @@
 
         document.getElementById('presets-body')?.addEventListener('click', (event) => {
             const button = event.target.closest('button');
-            if (!button || button.dataset.action !== 'preset-delete') {
-                return;
-            }
+            if (!button) return;
             const index = parseInt(button.dataset.index || '-1', 10);
-            if (!Number.isInteger(index) || index < 0) {
-                return;
+            if (!Number.isInteger(index) || index < 0) return;
+            
+            if (button.dataset.action === 'preset-delete') {
+                presets.splice(index, 1);
+                renderPresets();
+            } else if (button.dataset.action === 'preset-edit') {
+                openPresetModal(index);
             }
-            presets.splice(index, 1);
-            renderPresets();
         });
 
         document.getElementById('btn-group-map-add')?.addEventListener('click', () => {
@@ -353,6 +363,9 @@
             event.target.reset();
             document.getElementById('task-enabled').checked = true;
             updateTaskPreview();
+            if (typeof JG.closeModal === 'function') {
+                JG.closeModal('modal-task-form');
+            }
             await loadTasks();
         });
 

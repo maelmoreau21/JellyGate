@@ -157,36 +157,73 @@
 
             if (users.length === 0) {
                 const help = allUsers.length === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
-                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-slate-500 py-12">${JG.esc(help)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-500 py-24">${JG.esc(help)}</td></tr>`;
                 updateSelectionUI();
                 return;
             }
 
             tbody.innerHTML = users.map((user) => {
                 const checked = selectedIds.has(user.id) ? 'checked' : '';
-                const rowClass = selectedIds.has(user.id) ? ' class="is-selected"' : '';
+                const isSelected = selectedIds.has(user.id);
+                const bgClass = isSelected ? 'bg-jg-accent/10' : 'hover:bg-white/[0.03]';
                 const toggleLabel = user.is_active ? i18n.deactivate : i18n.activate;
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '—';
-                const expiryClass = isExpired(user) ? 'text-red-300' : 'text-slate-400';
-
-                return `<tr${rowClass}>
-                    <td><input type="checkbox" class="form-checkbox row-check" data-id="${user.id}" ${checked}></td>
-                    <td><span class="font-medium">${JG.esc(user.username)}</span></td>
-                    <td class="text-slate-300">${JG.esc(user.email || '—')}</td>
-                    <td>${userStatusBadge(user)}</td>
-                    <td>${jellyfinStatusBadge(user)}</td>
-                    <td class="text-slate-400">${JG.esc(user.invited_by || '—')}</td>
-                    <td class="text-slate-300">${JG.esc(user.group_name || '—')}</td>
-                    <td>${user.can_invite ? `<span class="badge badge-success">${JG.esc(i18n.yes)}</span>` : `<span class="badge badge-muted">${JG.esc(i18n.no)}</span>`}</td>
-                    <td class="${expiryClass}">${JG.esc(expiry)}</td>
-                    <td class="text-slate-500 text-sm">${JG.esc(fmtDate(user.created_at))}</td>
-                    <td class="text-right">
-                        <div class="flex justify-end gap-1 flex-wrap">
-                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-timeline" data-id="${user.id}">${JG.esc(i18n.timeline)}</button>
-                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-edit" data-id="${user.id}">${JG.esc(i18n.edit)}</button>
-                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-reset" data-id="${user.id}">${JG.esc(i18n.reset)}</button>
-                            <button class="jg-btn jg-btn-sm jg-btn-ghost action-toggle" data-id="${user.id}">${toggleLabel}</button>
-                            <button class="jg-btn jg-btn-sm jg-btn-danger action-delete" data-id="${user.id}">${JG.esc(i18n.delete)}</button>
+                const expiryClass = isExpired(user) ? 'text-rose-400 font-bold' : 'text-slate-400 text-[11px] font-medium';
+                
+                return `
+                <tr class="group ${bgClass} border-b border-white/5 transition-colors">
+                    <td class="px-6 py-4 w-12 text-center align-middle">
+                        <input type="checkbox" class="form-checkbox row-check w-4 h-4 rounded border-jg-border bg-black/20 accent-jg-accent transition-colors opacity-50 group-hover:opacity-100" data-id="${user.id}" ${checked}>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-jg-bg-secondary/50 to-jg-bg-primary/50 border border-white/5 flex items-center justify-center text-jg-text font-bold shadow-inner flex-shrink-0">
+                                ${JG.esc(user.username.charAt(0).toUpperCase())}
+                            </div>
+                            <div class="flex flex-col min-w-[120px]">
+                                <span class="font-bold text-jg-text leading-tight group-hover:text-jg-accent transition-colors truncate max-w-[200px]" title="${JG.esc(user.username)}">${JG.esc(user.username)}</span>
+                                <span class="text-[10px] text-jg-text-muted mt-0.5 truncate max-w-[200px]" title="${JG.esc(user.email || '')}">${JG.esc(user.email || '—')}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                        ${userStatusBadge(user)}
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                        <div class="flex flex-col gap-1.5 items-start">
+                            ${jellyfinStatusBadge(user)}
+                            ${user.can_invite ? `<span class="badge bg-amber-500/10 text-amber-500 border-amber-500/20 text-[9px] py-0 px-1.5">Invites ON</span>` : ''}
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                        <div class="flex flex-col">
+                            <span class="text-xs text-slate-300 font-medium">${JG.esc(user.group_name || '—')}</span>
+                            <span class="text-[9px] text-jg-text-muted uppercase tracking-widest mt-1">Via ${JG.esc(user.invited_by || 'Admin')}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4 align-middle">
+                        <div class="flex flex-col">
+                            <span class="${expiryClass}">${JG.esc(expiry)}</span>
+                            <span class="text-[9px] text-jg-text-muted mt-1 uppercase tracking-wider" title="${JG.esc(fmtDate(user.created_at))}">+ Add ${JG.esc(user.created_at.split('T')[0])}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-right align-middle">
+                        <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors action-timeline" data-id="${user.id}" title="${JG.esc(i18n.timeline)}">
+                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </button>
+                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-jg-accent hover:bg-jg-accent/10 flex items-center justify-center transition-colors action-edit" data-id="${user.id}" title="${JG.esc(i18n.edit)}">
+                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </button>
+                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors action-reset" data-id="${user.id}" title="${JG.esc(i18n.reset)}">
+                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4v-4l5.659-5.659C9.092 9.896 9-2...M15 7a2 2 0 00-2-2"/></svg>
+                            </button>
+                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 flex items-center justify-center transition-colors action-toggle" data-id="${user.id}" title="${toggleLabel}">
+                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.242A5.242 5.242 0 1012 6.758a5.242 5.242 0 000 10.484z" /></svg>
+                            </button>
+                             <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition-colors action-delete" data-id="${user.id}" title="${JG.esc(i18n.delete)}">
+                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
                         </div>
                     </td>
                 </tr>`;

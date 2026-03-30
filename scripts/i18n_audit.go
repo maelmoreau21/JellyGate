@@ -1,4 +1,4 @@
-package main
+package scripts
 
 import (
 	"encoding/json"
@@ -96,7 +96,10 @@ func keysToSortedList(m map[string]bool) []string {
 	return arr
 }
 
-func main() {
+// RunI18nAudit performs a coverage audit of web/i18n against used keys.
+// Converted from a standalone main to a callable function so the
+// package compiles cleanly during global builds.
+func RunI18nAudit() {
 	root, _ := os.Getwd()
 	i18nDir := filepath.Join(root, "web", "i18n")
 	langs, union, err := collectI18n(i18nDir)

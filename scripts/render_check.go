@@ -1,4 +1,4 @@
-package main
+package scripts
 
 import (
 	"bytes"
@@ -7,7 +7,10 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/render"
 )
 
-func main() {
+// RunRenderCheck verifies template rendering using the render engine.
+// Converted from a standalone main to a callable function so the
+// package compiles with the rest of the repo during global builds.
+func RunRenderCheck() {
 	engine, err := render.NewEngine("web/templates", "web/i18n")
 	if err != nil {
 		fmt.Printf("engine init error: %v\n", err)

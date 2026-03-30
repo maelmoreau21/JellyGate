@@ -32,106 +32,176 @@
 
     {{/* ── Tab: Tasks ────────────────────────────────────────────────── */}}
     <div id="tab-tasks" class="jg-tab-pane active">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            <div class="lg:col-span-8">
-                <section id="automation-tasks-list" class="jg-card p-0 overflow-hidden shadow-2xl">
-                    <div class="px-6 py-5 border-b border-jg-border bg-white/[0.01]">
-                        <h2 class="font-bold text-lg text-jg-text">{{ .T "automation_tasks_title" }}</h2>
-                    </div>
-                    <div class="jg-table-wrap overflow-x-auto">
-                        <table class="jg-table w-full text-sm text-left">
-                            <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest">
-                                <tr>
-                                    <th class="px-6 py-4">{{ .T "automation_col_name" }}</th>
-                                    <th class="px-6 py-4">{{ .T "automation_col_type" }}</th>
-                                    <th class="px-6 py-4">{{ .T "automation_col_schedule" }}</th>
-                                    <th class="px-6 py-4">{{ .T "automation_col_last_run" }}</th>
-                                    <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tasks-body" class="divide-y divide-jg-border">
-                                <tr><td colspan="5" class="text-center py-12 text-jg-text-muted">{{ .T "settings_loading" }}</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+        <section id="automation-tasks-list" class="jg-card p-0 overflow-hidden shadow-2xl relative border-white/5">
+            <div class="px-6 py-5 border-b border-jg-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
+                <h2 class="font-bold text-lg text-jg-text">{{ .T "automation_tasks_title" }}</h2>
+                <div class="flex gap-2">
+                    <button class="jg-btn jg-btn-primary jg-btn-sm font-bold tracking-widest uppercase text-[10px]" onclick="JG.openModal('modal-task-form')">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        {{ .T "automation_add" }}
+                    </button>
+                </div>
+            </div>
+            <div class="jg-table-wrap overflow-x-auto w-full">
+                <table class="jg-table w-full text-sm text-left">
+                    <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest border-b border-jg-border">
+                        <tr>
+                            <th class="px-6 py-4">{{ .T "automation_col_name" }}</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_type" }}</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_schedule" }}</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_last_run" }}</th>
+                            <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasks-body" class="divide-y divide-jg-border bg-jg-bg-card">
+                        <tr>
+                            <td colspan="5" class="text-center py-20">
+                                <div class="flex flex-col items-center gap-3">
+                                    <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
+                                    <span class="text-jg-text-muted animate-pulse">{{ .T "settings_loading" }}...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    {{/* ── Modals for Tasks ─────────────────────────────────────────── */}}
+    <div id="modal-task-form" class="hidden fixed inset-0 z-[100] items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="JG.closeModal('modal-task-form')"></div>
+        <div class="jg-card glass-card relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl">
+            <button onclick="JG.closeModal('modal-task-form')" class="absolute top-4 right-4 text-jg-text-muted hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-10 h-10 rounded-xl bg-jg-accent/10 text-jg-accent flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                </div>
+                <h2 class="text-xl font-bold">{{ .T "automation_task_builder_title" }}</h2>
             </div>
 
-            <aside class="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
-                <div id="automation-tasks" class="jg-card shadow-lg border-jg-accent/20">
-                    <div class="flex items-center gap-3 mb-8">
-                        <div class="w-10 h-10 rounded-xl bg-jg-accent/10 text-jg-accent flex items-center justify-center">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
-                        </div>
-                        <h2 class="text-xl font-bold">{{ .T "automation_task_builder_title" }}</h2>
-                    </div>
-
-                    <form id="task-create-form" class="space-y-5">
-                        <div>
-                            <label class="jg-label" for="task-name">{{ .T "automation_col_name" }}</label>
-                            <input id="task-name" class="jg-input h-12" placeholder='{{ .T "automation_task_name_placeholder" }}'>
-                        </div>
-                        
-                        <div>
-                            <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
-                            <select id="task-type" class="jg-input h-12">
-                                <option value="sync_users">sync_users</option>
-                                <option value="cleanup_resets">cleanup_resets</option>
-                                <option value="create_backup">create_backup</option>
-                            </select>
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="jg-label" for="task-hour">{{ .T "automation_task_hour_placeholder" }}</label>
-                                <input id="task-hour" type="number" class="jg-input h-12" min="0" max="23" placeholder="HH">
-                            </div>
-                            <div>
-                                <label class="jg-label" for="task-minute">{{ .T "automation_task_minute_placeholder" }}</label>
-                                <input id="task-minute" type="number" class="jg-input h-12" min="0" max="59" placeholder="MM">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="jg-label" for="task-payload">{{ .T "automation_col_payload" }}</label>
-                            <input id="task-payload" class="jg-input h-12" placeholder='{{ .T "automation_task_payload_placeholder" }}'>
-                        </div>
-
-                        <div class="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-jg-border">
-                            <label class="flex items-center gap-3 cursor-pointer group">
-                                <input id="task-enabled" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent" checked>
-                                <span class="text-sm font-bold group-hover:text-jg-accent transition-colors">{{ .T "automation_task_enabled" }}</span>
-                            </label>
-                            <button type="submit" class="jg-btn jg-btn-primary h-12 px-6 font-bold uppercase tracking-widest text-xs">
-                                {{ .T "automation_create" }}
-                            </button>
-                        </div>
-                    </form>
+            <form id="task-create-form" class="space-y-5">
+                <div>
+                    <label class="jg-label" for="task-name">{{ .T "automation_col_name" }}</label>
+                    <input id="task-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_task_name_placeholder" }}'>
+                </div>
+                
+                <div>
+                    <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
+                    <select id="task-type" class="jg-input h-11 bg-black/20 text-sm py-0">
+                        <option value="sync_users">sync_users</option>
+                        <option value="cleanup_resets">cleanup_resets</option>
+                        <option value="create_backup">create_backup</option>
+                    </select>
                 </div>
 
-                <div class="jg-card jg-glass p-6">
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-jg-text-muted mb-4">Aperçu de la tâche</h3>
-                    <div class="space-y-3 text-sm">
-                        <div class="flex justify-between border-b border-jg-border/50 pb-2">
-                            <span class="text-jg-text-muted font-semibold">{{ .T "automation_col_name" }}:</span>
-                            <span id="automation-task-preview-name" class="font-bold">—</span>
-                        </div>
-                        <div class="flex justify-between border-b border-jg-border/50 pb-2">
-                            <span class="text-jg-text-muted font-semibold">{{ .T "automation_col_type" }}:</span>
-                            <span id="automation-task-preview-type" class="text-jg-accent font-bold">—</span>
-                        </div>
-                        <div class="flex justify-between border-b border-jg-border/50 pb-2">
-                            <span class="text-jg-text-muted font-semibold">{{ .T "automation_col_schedule" }}:</span>
-                            <span id="automation-task-preview-schedule" class="font-mono font-bold">--:--</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-jg-text-muted font-semibold">État:</span>
-                            <span id="automation-task-preview-state" class="font-bold">—</span>
-                        </div>
-                        <div id="automation-task-preview-note" class="text-[10px] text-jg-text-muted leading-relaxed bg-white/5 p-3 rounded-lg mt-4 hidden"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="jg-label" for="task-hour">{{ .T "automation_task_hour_placeholder" }}</label>
+                        <input id="task-hour" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0" max="23" placeholder="HH">
+                    </div>
+                    <div>
+                        <label class="jg-label" for="task-minute">{{ .T "automation_task_minute_placeholder" }}</label>
+                        <input id="task-minute" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0" max="59" placeholder="MM">
                     </div>
                 </div>
-            </aside>
+
+                <div>
+                    <label class="jg-label" for="task-payload">{{ .T "automation_col_payload" }}</label>
+                    <input id="task-payload" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_task_payload_placeholder" }}'>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white/5 rounded-2xl border border-jg-border mt-6">
+                    <label class="flex items-center gap-3 cursor-pointer group">
+                        <input id="task-enabled" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent" checked>
+                        <span class="text-xs font-bold uppercase tracking-widest group-hover:text-jg-accent transition-colors">{{ .T "automation_task_enabled" }}</span>
+                    </label>
+                    <button type="submit" class="jg-btn jg-btn-primary h-11 px-6 font-bold uppercase tracking-widest text-[#101010]">
+                        {{ .T "automation_create" }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- The task preview modal can also be helpful, but we don't necessarily need it unless JS calls it. I'll include the DOM elements used for task preview so JS doesn't break. -->
+    <div id="modal-task-preview" class="hidden">
+        <span id="automation-task-preview-name"></span>
+        <span id="automation-task-preview-type"></span>
+        <span id="automation-task-preview-schedule"></span>
+        <span id="automation-task-preview-state"></span>
+        <div id="automation-task-preview-note"></div>
+    </div>
+
+    {{/* ── Modals for Presets ────────────────────────────────────────── */}}
+    <div id="modal-preset-form" class="hidden fixed inset-0 z-[100] items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="JG.closeModal('modal-preset-form')"></div>
+        <div class="jg-card glass-card relative z-10 w-full max-w-xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl mx-auto mt-[5vh]">
+            <button onclick="JG.closeModal('modal-preset-form')" class="absolute top-4 right-4 text-jg-text-muted hover:text-white transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+            
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" /></svg>
+                </div>
+                <h2 class="text-xl font-bold">Éditer le Preset</h2>
+            </div>
+
+            <form id="preset-form-internal" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="jg-label" for="preset-id">{{ .T "automation_col_id" }}</label>
+                        <input id="preset-id" class="jg-input h-11 bg-black/20 text-sm" placeholder='Ex: basic'>
+                    </div>
+                    <div>
+                        <label class="jg-label" for="preset-name">{{ .T "automation_col_name" }}</label>
+                        <input id="preset-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='Ex: Standard'>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label class="flex items-center gap-3 cursor-pointer group bg-white/5 p-4 rounded-xl border border-white/5">
+                        <input id="preset-enable-download" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                        <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted group-hover:text-white transition-colors">{{ .T "automation_col_download" }}</span>
+                    </label>
+                    <label class="flex items-center gap-3 cursor-pointer group bg-white/5 p-4 rounded-xl border border-white/5">
+                        <input id="preset-enable-remote" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                        <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted group-hover:text-white transition-colors">{{ .T "automation_col_remote" }}</span>
+                    </label>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="jg-label" for="preset-max-sessions">{{ .T "automation_col_sessions" }}</label>
+                        <input id="preset-max-sessions" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                    </div>
+                    <div>
+                        <label class="jg-label" for="preset-bitrate">{{ .T "automation_col_bitrate" }} (Mbps)</label>
+                        <input id="preset-bitrate" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
+                    <div>
+                        <label class="jg-label" for="preset-disable-days">Désactiver après X jours</label>
+                        <input id="preset-disable-days" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                    </div>
+                    <div>
+                        <label class="jg-label" for="preset-delete-days">Supprimer après X jours</label>
+                        <input id="preset-delete-days" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-4 pt-6">
+                    <button type="submit" class="jg-btn w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-black h-11 px-8 font-bold uppercase tracking-widest transition-colors rounded-lg">
+                        Valider
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

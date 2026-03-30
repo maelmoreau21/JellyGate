@@ -1,4 +1,4 @@
-package main
+package scripts
 
 import (
 	"bufio"
@@ -36,7 +36,11 @@ func readSecretFromEnvFile(path string) string {
 	return ""
 }
 
-func main() {
+// RunGenerateSessionCookie generates and prints a signed session cookie.
+// This used to be a standalone `main` in scripts/ but was converted
+// to a library-style function so the package compiles with the rest
+// of the repository (allowing `go build ./...`).
+func RunGenerateSessionCookie() {
 	secret := os.Getenv("JELLYGATE_SECRET_KEY")
 	if secret == "" {
 		secret = readSecretFromEnvFile(".env.local")

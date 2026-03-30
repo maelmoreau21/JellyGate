@@ -6,200 +6,176 @@
 {{ define "head" }}{{ end }}
 
 {{ define "body" }}
-<div class="jg-portal-wrapper">
-    <div class="jg-portal-container">
-        
-        {{/* Column 1: Spacer (balances the grid so Column 2 stays anchored) */}}
-        <div class="hidden 1440:block"></div>
-
-        {{/* Column 2: Main Login */}}
-        <div class="jg-login-main-section">
-            <div class="glass-card jg-login-card glow-accent">
-                <div class="jg-login-header">
-                    <div class="jg-login-logo">
-                        <svg class="w-10 h-10" fill="currentColor" viewBox="0 0 24 24">
+<div class="h-[100dvh] w-full flex flex-col lg:flex-row relative bg-jg-bg-primary overflow-hidden">
+    
+    {{/* ── Colonne Gauche: Formulaire de connexion ───────────────────────── */}}
+    <div class="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-12 z-20 relative">
+        <div class="w-full max-w-sm flex flex-col gap-6">
+            
+            <div class="glass-card shadow-2xl p-8 relative border border-white/10 dark:border-white/5 rounded-3xl">
+                <div class="text-center mb-8">
+                    <div class="w-14 h-14 mx-auto bg-gradient-to-br from-jg-accent-cyan to-jg-accent-emerald rounded-2xl flex items-center justify-center text-white mb-4 shadow-xl">
+                        <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                         </svg>
                     </div>
-                    <h1 class="jg-login-title">JellyGate</h1>
-                    <p class="jg-login-subtitle">{{ .T "login_subheading" }}</p>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-jg-text">JellyGate</h1>
+                    <p class="text-xs font-semibold text-jg-text-muted mt-2">{{ .T "login_subheading" }}</p>
                 </div>
 
                 {{ if .Error }}
-                <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-sm text-center">
+                <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-xs text-center font-bold uppercase tracking-wider shadow-lg backdrop-blur-sm">
                     {{ if eq .Error "required" }}{{ .T "login_error_required" }}{{ end }}
                     {{ if eq .Error "invalid" }}{{ .T "login_error_invalid" }}{{ end }}
                     {{ if eq .Error "forbidden" }}{{ .T "login_error_forbidden" }}{{ end }}
                 </div>
                 {{ end }}
 
-                <form method="POST" action="/admin/login">
-                    <div class="mb-5">
+                <form method="POST" action="/admin/login" class="space-y-5">
+                    <div>
                         <label class="jg-label" for="username">{{ .T "field_username" }}</label>
-                        <input type="text" id="username" name="username" class="jg-input" value='{{ index .Data "SubmittedUsername" }}' placeholder='{{ .T "field_username_placeholder" }}' required autocomplete="username" autofocus>
+                        <input type="text" id="username" name="username" class="jg-input h-11 bg-black/5 dark:bg-black/10 text-sm" value='{{ index .Data "SubmittedUsername" }}' placeholder='{{ .T "field_username_placeholder" }}' required autocomplete="username" autofocus>
                     </div>
 
-                    <div class="mb-2">
+                    <div>
                         <label class="jg-label" for="password">{{ .T "field_password" }}</label>
-                        <input type="password" id="password" name="password" class="jg-input" placeholder='{{ .T "field_password_placeholder" }}' required autocomplete="current-password">
+                        <input type="password" id="password" name="password" class="jg-input h-11 bg-black/5 dark:bg-black/10 text-sm" placeholder='{{ .T "field_password_placeholder" }}' required autocomplete="current-password">
                     </div>
 
-                    <div class="text-right mb-6">
-                        <a href="/reset" class="jg-forgot-link">
+                    <div class="text-right pb-2">
+                        <a href="/reset" class="text-xs font-semibold text-jg-text-muted hover:text-jg-accent transition-colors">
                             {{ .T "login_forgot_password" }}
                         </a>
                     </div>
 
-                    <button type="submit" class="jg-btn jg-btn-primary w-full py-3.5 text-lg">
+                    <button type="submit" class="jg-btn w-full h-12 bg-gray-900 dark:bg-white text-white dark:text-black font-extrabold tracking-widest uppercase hover:bg-gray-800 dark:hover:bg-gray-200 transition-all rounded-xl shadow-xl hover:-translate-y-0.5 text-xs">
                         {{ .T "login_submit" }}
                     </button>
                 </form>
             </div>
 
-            {{/* Theme Toggle (Moved from base.html to here for the card footer) */}}
-            <div class="jg-login-footer-row flex flex-col gap-4 mt-6">
-                <button id="theme-toggle-btn" type="button" class="jg-theme-btn w-full justify-center" title="Changer le thème">
-                    <span id="theme-icon-slot">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                    </span>
-                    <span>{{ .T "nav_theme" }}</span>
-                </button>
-
-                {{/* Centered Custom Dropdown Select */}}
-                <div class="jg-login-lang-container mt-0 pt-0 border-0">
-                    <div class="jg-custom-select">
-                        <div class="jg-select-trigger">
-                            <span class="flex items-center gap-3">
-                                <img class="jg-current-flag jg-flag-icon" src="" alt="">
-                                <span class="jg-current-label"></span>
-                            </span>
-                            <svg class="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                            </svg>
+            <div class="flex items-center justify-between px-2 gap-4">
+                <div class="jg-login-lang-container relative z-50 border-none bg-transparent m-0 p-0 shadow-none">
+                    <div class="jg-custom-select cursor-pointer">
+                        <div class="jg-select-trigger flex items-center gap-2 bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 px-3 py-2 rounded-lg border border-black/5 dark:border-white/10 transition-colors shadow-sm backdrop-blur-sm">
+                            <img class="jg-current-flag jg-flag-icon" src="" alt="">
+                            <span class="jg-current-label text-[10px] font-bold text-jg-text-muted uppercase tracking-wider"></span>
+                            <svg class="w-3 h-3 text-jg-text-muted opacity-50 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                         </div>
                         
-                        <div class="jg-select-options">
-                            {{/* FR */}}
+                        <div class="jg-select-options absolute bottom-full left-0 mb-2 w-48 max-h-64 overflow-y-auto bg-jg-bg-card border border-white/10 rounded-xl shadow-2xl z-50 p-1 hidden backdrop-blur-xl">
                             <div class="jg-select-option {{ if eq .Lang "fr" }}active{{ end }}" data-value="fr">
-                                <img src="https://flagcdn.com/w20/fr.png" class="jg-flag-icon" alt="fr">
-                                <span>Français</span>
+                                <img src="https://flagcdn.com/w20/fr.png" class="jg-flag-icon" alt="fr"><span>Français</span>
                             </div>
-                            {{/* EN */}}
                             <div class="jg-select-option {{ if eq .Lang "en" }}active{{ end }}" data-value="en">
-                                <img src="https://flagcdn.com/w20/gb.png" class="jg-flag-icon" alt="gb">
-                                <span>English</span>
+                                <img src="https://flagcdn.com/w20/gb.png" class="jg-flag-icon" alt="gb"><span>English</span>
                             </div>
-                            {{/* DE */}}
                             <div class="jg-select-option {{ if eq .Lang "de" }}active{{ end }}" data-value="de">
-                                <img src="https://flagcdn.com/w20/de.png" class="jg-flag-icon" alt="de">
-                                <span>Deutsch</span>
+                                <img src="https://flagcdn.com/w20/de.png" class="jg-flag-icon" alt="de"><span>Deutsch</span>
                             </div>
-                            {{/* ES */}}
                             <div class="jg-select-option {{ if eq .Lang "es" }}active{{ end }}" data-value="es">
-                                <img src="https://flagcdn.com/w20/es.png" class="jg-flag-icon" alt="es">
-                                <span>Español</span>
+                                <img src="https://flagcdn.com/w20/es.png" class="jg-flag-icon" alt="es"><span>Español</span>
                             </div>
-                            {{/* IT */}}
                             <div class="jg-select-option {{ if eq .Lang "it" }}active{{ end }}" data-value="it">
-                                <img src="https://flagcdn.com/w20/it.png" class="jg-flag-icon" alt="it">
-                                <span>Italiano</span>
+                                <img src="https://flagcdn.com/w20/it.png" class="jg-flag-icon" alt="it"><span>Italiano</span>
                             </div>
-                            {{/* NL */}}
                             <div class="jg-select-option {{ if eq .Lang "nl" }}active{{ end }}" data-value="nl">
-                                <img src="https://flagcdn.com/w20/nl.png" class="jg-flag-icon" alt="nl">
-                                <span>Nederlands</span>
+                                <img src="https://flagcdn.com/w20/nl.png" class="jg-flag-icon" alt="nl"><span>Nederlands</span>
                             </div>
-                            {{/* PL */}}
                             <div class="jg-select-option {{ if eq .Lang "pl" }}active{{ end }}" data-value="pl">
-                                <img src="https://flagcdn.com/w20/pl.png" class="jg-flag-icon" alt="pl">
-                                <span>Polski</span>
+                                <img src="https://flagcdn.com/w20/pl.png" class="jg-flag-icon" alt="pl"><span>Polski</span>
                             </div>
-                            {{/* PT-BR */}}
                             <div class="jg-select-option {{ if eq .Lang "pt-br" }}active{{ end }}" data-value="pt-br">
-                                <img src="https://flagcdn.com/w20/br.png" class="jg-flag-icon" alt="br">
-                                <span>Português (Brasil)</span>
+                                <img src="https://flagcdn.com/w20/br.png" class="jg-flag-icon" alt="br"><span>Português (Brasil)</span>
                             </div>
-                            {{/* RU */}}
                             <div class="jg-select-option {{ if eq .Lang "ru" }}active{{ end }}" data-value="ru">
-                                <img src="https://flagcdn.com/w20/ru.png" class="jg-flag-icon" alt="ru">
-                                <span>Русский</span>
+                                <img src="https://flagcdn.com/w20/ru.png" class="jg-flag-icon" alt="ru"><span>Русский</span>
                             </div>
-                            {{/* ZH */}}
                             <div class="jg-select-option {{ if eq .Lang "zh" }}active{{ end }}" data-value="zh">
-                                <img src="https://flagcdn.com/w20/cn.png" class="jg-flag-icon" alt="cn">
-                                <span>中文 (简体)</span>
+                                <img src="https://flagcdn.com/w20/cn.png" class="jg-flag-icon" alt="cn"><span>中文 (简体)</span>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <div class="text-[9px] uppercase tracking-widest font-mono font-bold text-jg-text-muted/40">
+                    v{{ .AppVersion }}
+                </div>
+
+                <button id="theme-toggle-btn" class="flex-shrink-0 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 dark:bg-white/5 dark:hover:bg-white/10 text-jg-text-muted hover:text-jg-text border border-black/5 dark:border-white/10 transition-colors shadow-sm backdrop-blur-sm" title="{{ .T "nav_theme" }}">
+                    <span id="theme-icon-slot"></span>
+                </button>
             </div>
             
-            <p class="jg-version-text text-center mt-6">JellyGate v{{ .AppVersion }}</p>
         </div>
+    </div>
 
-        {{/* Column 3: Raccourcis shortcuts */}}
-        {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}
-        <div class="jg-login-side-section">
-            <h2 class="jg-side-title">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+    {{/* ── Colonne Droite: Décoration et Raccourcis ──────────────────────── */}}
+    <div class="hidden lg:flex lg:w-1/2 relative flex-col items-center justify-center p-12 bg-gradient-to-br from-jg-bg-secondary to-jg-bg-primary overflow-hidden items-center z-10 border-l border-white/5">
+        
+        {{/* Cercles de fond fluides */}}
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--jg-accent-glow),transparent_50%)] pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,hsla(var(--jg-h-emerald),60%,50%,0.1),transparent_50%)] pointer-events-none"></div>
+        
+        <div class="relative z-10 flex flex-col items-center max-w-md w-full text-center">
+            
+            <div class="mb-10 p-5 rounded-[2rem] bg-white/5 backdrop-blur-md border border-white/10 shadow-2xl">
+                <svg class="w-16 h-16 text-jg-accent drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
                 </svg>
-                {{ .T "login_shortcuts" }}
-            </h2>
+            </div>
             
-            <div class="flex flex-col gap-4">
+            <h2 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-jg-accent-cyan to-jg-accent-emerald mb-4 tracking-tight drop-shadow-sm">Administration</h2>
+            <p class="text-jg-text-muted font-medium mb-12 text-sm leading-relaxed max-w-sm">
+                Authentifiez-vous pour gérer vos utilisateurs, personnaliser vos alertes et configurer l'automatisation.
+            </p>
+
+            {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}
+            <div class="w-full relative">
+                <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div class="w-full border-t border-black/10 dark:border-white/10"></div>
+                </div>
+                <div class="relative flex justify-center">
+                    <span class="px-3 bg-jg-bg-primary text-[10px] font-bold uppercase tracking-widest text-jg-text-muted/60">
+                        Accès directs
+                    </span>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3 pt-8 w-full">
                 {{ if .Data.JellyfinURL }}
-                <a href="{{ .Data.JellyfinURL }}" target="_blank" class="jg-shortcut-card shortcut-jellyfin">
-                    <div class="jg-shortcut-icon">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </div>
-                    <div class="jg-shortcut-info">
-                        <span class="jg-shortcut-name">Jellyfin</span>
-                        <span class="jg-shortcut-desc">{{ .T "login_jellyfin_desc" }}</span>
-                    </div>
+                <a href="{{ .Data.JellyfinURL }}" target="_blank" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
+                    <svg class="w-4 h-4 text-jg-accent group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Jellyfin
                 </a>
                 {{ end }}
-
                 {{ if .Data.JellyseerrURL }}
-                <a href="{{ .Data.JellyseerrURL }}" target="_blank" class="jg-shortcut-card shortcut-jellyseerr">
-                    <div class="jg-shortcut-icon">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                    </div>
-                    <div class="jg-shortcut-info">
-                        <span class="jg-shortcut-name">Jellyseerr</span>
-                        <span class="jg-shortcut-desc">{{ .T "login_jellyseerr_desc" }}</span>
-                    </div>
+                <a href="{{ .Data.JellyseerrURL }}" target="_blank" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
+                    <svg class="w-4 h-4 text-emerald-500 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    Req
                 </a>
                 {{ end }}
-
                 {{ if .Data.JellyTrackURL }}
-                <a href="{{ .Data.JellyTrackURL }}" target="_blank" class="jg-shortcut-card shortcut-jellytrack">
-                    <div class="jg-shortcut-icon">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                        </svg>
-                    </div>
-                    <div class="jg-shortcut-info">
-                        <span class="jg-shortcut-name">JellyTrack</span>
-                        <span class="jg-shortcut-desc">{{ .T "login_jellytrack_desc" }}</span>
-                    </div>
+                <a href="{{ .Data.JellyTrackURL }}" target="_blank" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
+                    <svg class="w-4 h-4 text-purple-500 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    Track
                 </a>
                 {{ end }}
             </div>
+            {{ end }}
+
         </div>
-        {{ end }}
 
     </div>
+
 </div>
 {{ end }}
 
-{{ define "scripts" }}{{ end }}
-
-
+{{ define "scripts" }}
+<script nonce="{{ .ScriptNonce }}">
+// Set default icon for theme toggle if not handled by app.js instantly
+document.getElementById('theme-icon-slot').innerHTML = document.documentElement.classList.contains('dark') 
+    ? '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>'
+    : '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>';
+</script>
+{{ end }}

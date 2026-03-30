@@ -42,19 +42,98 @@
     --jg-blur: 16px;
 }
 
-/* ── Light Mode Base Variables ───────────────────────────────────────────── */
+/* ── Light Mode Base Variables (adjusted for less aggressive contrast) ───── */
 html:not(.dark) body {
-    --jg-bg-primary: #ffffff;
-    --jg-bg-secondary: #f8fafc;
-    --jg-bg-card: #ffffff;
-    --jg-bg-glass: rgba(255, 255, 255, 0.85);
-    --jg-border: rgba(0, 0, 0, 0.06);
-    --jg-border-strong: rgba(0, 0, 0, 0.12);
-    --jg-text: #0f172a;
-    --jg-text-muted: #64748b;
-    --jg-accent: #0891b2;
-    --jg-accent-hover: #0e7490;
-    --jg-accent-glow: rgba(8, 145, 178, 0.08);
+    /* Neutral, slightly warmer greys to reduce harshness */
+    --jg-bg-primary: #f3f4f6; /* gray-100 */
+    --jg-bg-secondary: #eef2f7; /* soft header/bg */
+    --jg-bg-card: #ffffff; /* cards: pure white for clarity */
+    --jg-bg-glass: rgba(255, 255, 255, 0.85); /* Frosty glass */
+    --jg-border: rgba(15, 23, 42, 0.06); /* subtle slate tint */
+    --jg-border-strong: rgba(15, 23, 42, 0.12);
+    --jg-text: #0f172a; /* Deep slate */
+    --jg-text-muted: #475569; /* slightly stronger muted */
+    --jg-accent: #0369a1; /* toned accent */
+    --jg-accent-hover: #075985;
+    --jg-accent-glow: rgba(3, 105, 161, 0.08);
+}
+
+/* ── Light mode component overrides (reduce black artifacts / dark patches) ─ */
+html:not(.dark) .jg-table-container {
+    border-color: var(--jg-border);
+}
+html:not(.dark) .jg-table th {
+    background: var(--jg-bg-secondary);
+    color: var(--jg-text-muted);
+    border-bottom-color: var(--jg-border);
+}
+html:not(.dark) .jg-table td {
+    color: var(--jg-text);
+    border-bottom-color: var(--jg-border);
+}
+html:not(.dark) .jg-table tr:hover td {
+    background: rgba(2,6,23,0.03);
+}
+html:not(.dark) .jg-input {
+    background: var(--jg-bg-card) !important;
+    border-color: var(--jg-border-strong) !important;
+    color: var(--jg-text) !important;
+}
+html:not(.dark) .jg-card, html:not(.dark) .glass-card {
+    background: var(--jg-bg-card) !important;
+    border-color: var(--jg-border) !important;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.04);
+}
+html:not(.dark) .jg-glass-hover:hover {
+    background: rgba(255,255,255,0.03);
+    border-color: var(--jg-border-strong);
+}
+/* Tailwind utility overrides commonly used in templates (escape slashes) */
+html:not(.dark) .bg-black\/20 { background-color: rgba(0,0,0,0.03) !important; }
+html:not(.dark) .bg-black\/5  { background-color: rgba(0,0,0,0.015) !important; }
+html:not(.dark) .border-white\/5 { border-color: var(--jg-border) !important; }
+html:not(.dark) .text-slate-300 { color: var(--jg-text-muted) !important; }
+html:not(.dark) .text-slate-400 { color: var(--jg-text-muted) !important; }
+
+/* Users page specific helpers */
+.users-aside {
+    position: sticky;
+    top: 1.5rem;
+}
+
+.jg-table-container table th,
+.jg-table-container table td {
+    vertical-align: middle;
+}
+
+/* Medium-level visual tuning for Users page (increased spacing, badges, accessibility) */
+.users-aside { top: 2rem; }
+
+.jg-table-container table th,
+.jg-table-container table td { padding: 0.95rem 1.1rem; }
+
+.jg-badge, .user-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.78rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.03);
+    color: var(--jg-text);
+}
+
+/* Ensure keyboard focus indicators are visible (accessibility) */
+:focus-visible {
+    outline: 3px solid var(--jg-focus-ring);
+    outline-offset: 2px;
+}
+
+/* Slightly larger clickable targets on desktop for better hit area */
+@media (min-width: 768px) {
+    .jg-btn { padding: 0.9rem 1.35rem; }
+}
+
+@media (min-width: 1024px) {
+    .jg-card.p-6 { padding: 1.25rem; }
 }
 
 /* ── Glassmorphism ───────────────────────────────────────────────────────── */
@@ -139,6 +218,11 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     position: relative;
     transition: var(--jg-transition);
+}
+
+html.dark .glass-card:hover {
+    box-shadow: 0 8px 24px var(--jg-accent-glow);
+    border-color: var(--jg-border-focus);
 }
 
 .glass-card-sm {
@@ -748,6 +832,49 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 
     .jg-admin-layout.is-sidebar-collapsed .jg-sidebar-header {
         justify-content: center;
+    }
+
+    /* Footer tweaks for collapsed mode */
+    .jg-admin-layout.is-sidebar-collapsed .jg-sidebar-footer {
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    .jg-admin-layout.is-sidebar-collapsed .jg-sidebar-footer > .flex.items-center.gap-2 {
+        flex-direction: column;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .jg-admin-layout.is-sidebar-collapsed .jg-sidebar-footer .jg-btn {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 12px;
+        margin: 0 auto;
+    }
+
+    .jg-admin-layout.is-sidebar-collapsed .jg-lang-switcher-sidebar label,
+    .jg-admin-layout.is-sidebar-collapsed .jg-current-label,
+    .jg-admin-layout.is-sidebar-collapsed .jg-select-trigger svg {
+        display: none !important;
+    }
+
+    .jg-admin-layout.is-sidebar-collapsed .jg-lang-switcher-sidebar .jg-lang-select {
+        min-width: 40px;
+        width: 40px;
+        padding-left: 0;
+        padding-right: 0;
+        border-radius: 12px;
+    }
+
+    .jg-admin-layout.is-sidebar-collapsed .jg-select-trigger span {
+        gap: 0;
+        justify-content: center;
+        width: 100%;
     }
 }
 
@@ -2196,4 +2323,41 @@ html.dark .jg-shortcut-name {
     object-fit: cover;
     border-radius: 2px;
     flex-shrink: 0;
+}
+
+/* ── Sidebar Collapsed Overrides ─────────────────────────────────────────── */
+
+.is-sidebar-collapsed .jg-sidebar {
+    width: var(--jg-sidebar-collapsed);
+}
+
+.is-sidebar-collapsed .jg-sidebar-header span {
+    display: none;
+}
+
+.is-sidebar-collapsed .jg-nav-label {
+    display: none;
+}
+
+.is-sidebar-collapsed .jg-main-content {
+    margin-left: var(--jg-sidebar-collapsed);
+}
+
+.is-sidebar-collapsed .text-\[10px\] {
+    display: none;
+}
+
+.is-sidebar-collapsed .jg-sidebar-footer #sidebar-lang-target,
+.is-sidebar-collapsed .jg-sidebar-footer .jg-version-text {
+    display: none;
+}
+
+.is-sidebar-collapsed .jg-sidebar-footer form button svg {
+    margin: 0 auto;
+}
+
+.is-sidebar-collapsed .jg-sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
