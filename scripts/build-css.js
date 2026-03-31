@@ -5,7 +5,7 @@ const path = require('node:path');
 // specific CLI file path which changed between Tailwind major versions.
 async function build() {
   const postcss = require('postcss');
-  const tailwindcss = require('tailwindcss');
+  const tailwindcss = require('@tailwindcss/postcss');
 
   const inputPath = path.resolve(__dirname, '..', 'web', 'static', 'css', 'tailwind.input.css');
   const outputPath = path.resolve(__dirname, '..', 'web', 'static', 'css', 'tailwind.generated.css');
