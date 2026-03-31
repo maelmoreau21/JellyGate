@@ -6,8 +6,8 @@
     "screenshots": "node ./scripts/screenshots.js"
   },
   "devDependencies": {
-    "tailwindcss": "^3.4.19",
     "minimist": "^1.2.8",
-    "puppeteer": "^21.3.8"
+    "puppeteer": "^24.40.0",
+    "tailwindcss": "^4.2.2"
   }
 }
