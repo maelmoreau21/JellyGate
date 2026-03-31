@@ -46,18 +46,61 @@
         }
 
         function updateSelectionUI() {
-            document.getElementById('bulk-selected-count').textContent = selectedIds.size;
-            const focusSelected = document.getElementById('users-focus-selected');
-            if (focusSelected) {
-                focusSelected.textContent = `${selectedIds.size}`;
+            const count = selectedIds.size;
+            document.getElementById('bulk-selected-count')?.setAttribute('text', count);
+            document.getElementById('bulk-drawer-count').textContent = `${count} sélectionnés`;
+            
+            const selectionCount = document.getElementById('selection-count');
+            if (selectionCount) selectionCount.textContent = count;
+            
+            const selectionBar = document.getElementById('selection-bar');
+            if (selectionBar) {
+                if (count > 0) {
+                    selectionBar.classList.add('active');
+                } else {
+                    selectionBar.classList.remove('active');
+                    closeBulkDrawer();
+                }
             }
+            
             const checkAll = document.getElementById('check-all');
-            const selectable = filteredUsers.map((user) => user.id);
-            const selectedVisible = selectable.filter((id) => selectedIds.has(id)).length;
-            checkAll.checked = selectable.length > 0 && selectedVisible === selectable.length;
-            checkAll.indeterminate = selectedVisible > 0 && selectedVisible < selectable.length;
-            renderSelectionPreview();
+            if (checkAll) {
+                const selectable = filteredUsers.map((user) => user.id);
+                const selectedVisible = selectable.filter((id) => selectedIds.has(id)).length;
+                checkAll.checked = selectable.length > 0 && selectedVisible === selectable.length;
+                checkAll.indeterminate = selectedVisible > 0 && selectedVisible < selectable.length;
+            }
+            
             updateBulkWizardState();
+        }
+
+        function openBulkDrawer() {
+            document.getElementById('bulk-drawer').classList.add('open');
+            document.getElementById('bulk-drawer-overlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+            resetBulkFields();
+        }
+
+        function closeBulkDrawer() {
+            document.getElementById('bulk-drawer').classList.remove('open');
+            document.getElementById('bulk-drawer-overlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function toggleFilterPanel() {
+            const panel = document.getElementById('filter-panel');
+            const btn = document.getElementById('btn-toggle-filters');
+            const isHidden = panel.classList.contains('hidden');
+            
+            if (isHidden) {
+                panel.classList.remove('hidden');
+                btn.classList.add('bg-white/10', 'border-jg-accent/30', 'text-jg-accent');
+                btn.classList.remove('hover:bg-white/10');
+            } else {
+                panel.classList.add('hidden');
+                btn.classList.remove('bg-white/10', 'border-jg-accent/30', 'text-jg-accent');
+                btn.classList.add('hover:bg-white/10');
+            }
         }
 
         function renderFilterSnapshot() {
@@ -119,20 +162,23 @@
         }
 
         function openBulkEmailComposer() {
-            const bulkCard = document.getElementById('bulk-card');
+            // New logic for drawer-based bulk assistant
+            if (selectedIds.size === 0) {
+                JG.toast(i18n.bulkSelectOne, 'info');
+                return;
+            }
+            
+            openBulkDrawer();
+            
             const actionSelect = document.getElementById('bulk-action');
-            if (!bulkCard || !actionSelect) return;
-
-            bulkCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            actionSelect.value = 'send_email';
-            actionSelect.dispatchEvent(new Event('change'));
+            if (actionSelect) {
+                actionSelect.value = 'send_email';
+                actionSelect.dispatchEvent(new Event('change'));
+            }
 
             setTimeout(() => {
-                const subjectInput = document.getElementById('bulk-email-subject');
-                if (subjectInput) {
-                    subjectInput.focus();
-                }
-            }, 180);
+                document.getElementById('bulk-email-subject')?.focus();
+            }, 300);
         }
 
         function fmtTemplate(template, values) {
@@ -216,7 +262,7 @@
                                 <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
                             </button>
                             <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors action-reset" data-id="${user.id}" title="${JG.esc(i18n.reset)}">
-                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4v-4l5.659-5.659C9.092 9.896 9-2...M15 7a2 2 0 00-2-2"/></svg>
+                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4v-4l5.659-5.659C9.092 9.896 9 7 9 7m6-2a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                             </button>
                             <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 flex items-center justify-center transition-colors action-toggle" data-id="${user.id}" title="${toggleLabel}">
                                 <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.242A5.242 5.242 0 1012 6.758a5.242 5.242 0 000 10.484z" /></svg>
@@ -233,11 +279,14 @@
         }
 
         function applyFilters() {
-            const query = document.getElementById('search-users').value.trim().toLowerCase();
-            const status = document.getElementById('filter-status').value;
-            const jellyfin = document.getElementById('filter-jellyfin').value;
-            const invite = document.getElementById('filter-invite').value;
-            const extra = document.getElementById('filter-extra').value;
+            const searchInput = document.getElementById('search-users');
+            if (!searchInput) return;
+            
+            const query = searchInput.value.trim().toLowerCase();
+            const status = document.getElementById('filter-status')?.value || 'all';
+            const jellyfin = document.getElementById('filter-jellyfin')?.value || 'all';
+            const invite = document.getElementById('filter-invite')?.value || 'all';
+            const extra = document.getElementById('filter-extra')?.value || 'all';
 
             const result = allUsers.filter((user) => {
                 const textMatch = !query ||
@@ -276,7 +325,26 @@
                 return textMatch && statusMatch && jellyfinMatch && inviteMatch && extraMatch;
             });
 
-            renderFilterSnapshot();
+            // Update active filter count
+            let activeFilters = 0;
+            if (status !== 'all') activeFilters++;
+            if (jellyfin !== 'all') activeFilters++;
+            if (invite !== 'all') activeFilters++;
+            if (extra !== 'all') activeFilters++;
+            
+            const countBadge = document.getElementById('active-filter-count');
+            const clearBtn = document.getElementById('btn-clear-filters');
+            
+            if (activeFilters > 0) {
+                countBadge.textContent = activeFilters;
+                countBadge.classList.remove('hidden');
+                clearBtn.classList.remove('hidden');
+            } else {
+                countBadge.classList.add('hidden');
+                if (!query) clearBtn.classList.add('hidden');
+            }
+            if (query) clearBtn.classList.remove('hidden');
+
             renderUsers(result);
         }
 
@@ -342,41 +410,17 @@
         }
 
         function updateBulkWizardState() {
-            const action = document.getElementById('bulk-action').value;
+            const actionSel = document.getElementById('bulk-action');
+            if (!actionSel) return;
+            const action = actionSel.value;
             const userIDs = Array.from(selectedIds);
             const payload = collectBulkPayload(action, userIDs);
             const validationError = validateBulkPayload(action, payload);
 
-            const stepSelect = document.getElementById('bulk-step-select');
-            const stepAction = document.getElementById('bulk-step-action');
-            const stepConfig = document.getElementById('bulk-step-config');
+            document.getElementById('bulk-drawer-count').textContent = `${userIDs.length} sélectionnés`;
 
-            stepSelect.classList.remove('active', 'done');
-            stepAction.classList.remove('active', 'done');
-            stepConfig.classList.remove('active', 'done');
-
-            if (userIDs.length > 0) {
-                stepSelect.classList.add('done');
-            } else {
-                stepSelect.classList.add('active');
-            }
-
-            if (action) {
-                stepAction.classList.add('done');
-            } else if (userIDs.length > 0) {
-                stepAction.classList.add('active');
-            }
-
-            if (action) {
-                if (validationError) {
-                    stepConfig.classList.add('active');
-                } else {
-                    stepConfig.classList.add('done');
-                }
-            }
-
-            document.getElementById('bulk-action-label').textContent = actionLabel(action);
-            document.getElementById('bulk-validation-text').textContent = validationError || i18n.bulkConfigReady;
+            document.getElementById('bulk-action-label' || 'dummy').textContent = actionLabel(action);
+            document.getElementById('bulk-validation-text' || 'dummy').textContent = validationError || i18n.bulkConfigReady;
 
             const summary = document.getElementById('bulk-summary');
             const selectedUsers = allUsers.filter((user) => selectedIds.has(user.id));
@@ -401,7 +445,10 @@
         function resetBulkFields() {
             const container = document.getElementById('bulk-fields');
             const help = document.getElementById('bulk-help');
-            const action = document.getElementById('bulk-action').value;
+            const actionSel = document.getElementById('bulk-action');
+            if (!container || !help || !actionSel) return;
+            
+            const action = actionSel.value;
             if (!action) {
                 container.classList.add('hidden');
                 container.innerHTML = '';
@@ -653,7 +700,7 @@
             updateSelectionUI();
         });
 
-        document.getElementById('check-all').addEventListener('change', (event) => {
+        document.getElementById('check-all')?.addEventListener('change', (event) => {
             const checked = event.target.checked;
             filteredUsers.forEach((user) => {
                 if (checked) selectedIds.add(user.id);
@@ -662,13 +709,15 @@
             renderUsers(filteredUsers);
         });
 
-        document.getElementById('btn-select-filtered').addEventListener('click', () => {
+        document.getElementById('btn-select-filtered')?.addEventListener('click', () => {
             filteredUsers.forEach((user) => selectedIds.add(user.id));
             renderUsers(filteredUsers);
         });
 
-        document.getElementById('edit-save-btn').addEventListener('click', async () => {
-            const id = Number(document.getElementById('edit-user-id').value);
+        document.getElementById('edit-save-btn')?.addEventListener('click', async () => {
+            const userIdEl = document.getElementById('edit-user-id');
+            if (!userIdEl) return;
+            const id = Number(userIdEl.value);
             const payload = {
                 email: document.getElementById('edit-email').value.trim(),
                 group_name: document.getElementById('edit-group-name').value.trim(),
@@ -735,8 +784,10 @@
         });
 
         ['search-users', 'filter-status', 'filter-jellyfin', 'filter-invite', 'filter-extra'].forEach((id) => {
-            document.getElementById(id).addEventListener('input', applyFilters);
-            document.getElementById(id).addEventListener('change', applyFilters);
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.addEventListener('input', applyFilters);
+            el.addEventListener('change', applyFilters);
         });
 
         document.querySelectorAll('.modal-overlay').forEach((overlay) => {
@@ -748,21 +799,18 @@
             });
         });
 
-        document.getElementById('sidebar-toggle')?.addEventListener('click', () => {
-            const sidebar = document.getElementById('sidebar');
-            if (sidebar) sidebar.classList.toggle('open');
-        });
+        document.getElementById('btn-toggle-filters')?.addEventListener('click', toggleFilterPanel);
+        document.getElementById('btn-open-bulk')?.addEventListener('click', openBulkDrawer);
+        document.getElementById('btn-close-bulk')?.addEventListener('click', closeBulkDrawer);
+        document.getElementById('bulk-drawer-overlay')?.addEventListener('click', closeBulkDrawer);
 
-        document.getElementById('btn-open-bulk-email')?.addEventListener('click', openBulkEmailComposer);
         document.getElementById('btn-sync-users')?.addEventListener('click', syncUsers);
         document.getElementById('btn-clear-filters')?.addEventListener('click', clearFilters);
-        document.getElementById('btn-clear-selection')?.addEventListener('click', () => {
-            selectedIds.clear();
-            renderUsers(filteredUsers);
-        });
+
         document.getElementById('edit-cancel-btn')?.addEventListener('click', closeEditModal);
         document.getElementById('delete-cancel-btn')?.addEventListener('click', closeDeleteModal);
         document.getElementById('timeline-close-btn')?.addEventListener('click', closeTimelineModal);
+        document.getElementById('btn-open-bulk-email')?.addEventListener('click', openBulkEmailComposer);
 
         document.getElementById('delete-confirm-btn')?.addEventListener('click', async () => {
             if (!pendingDeleteUser) return;
@@ -781,8 +829,6 @@
         (async () => {
             await loadPresets();
             resetBulkFields();
-            renderFilterSnapshot();
-            renderSelectionPreview();
             await loadUsers();
         })();
 

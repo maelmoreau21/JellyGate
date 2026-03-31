@@ -338,8 +338,9 @@ html.dark .glass-card:hover {
     border: 1px solid var(--jg-border-strong);
     border-radius: var(--jg-radius-sm);
     color: var(--jg-text);
-    padding: 0.82rem 1rem;
+    padding: 0.75rem 1rem;
     font-size: 0.925rem;
+    line-height: normal;
     transition: var(--jg-transition);
     width: 100%;
     outline: none;
@@ -467,11 +468,18 @@ html.dark .jg-lang-switcher {
     border: 1px solid rgba(148, 163, 184, 0.15);
     border-radius: 999px;
     padding-top: 0.4rem;
-    padding-bottom: 0.4rem;
-    width: auto;
-    min-width: 160px;
     text-align: center;
     cursor: pointer;
+}
+
+html:not(.dark) .jg-lang-switcher-sidebar .jg-lang-select {
+    color: var(--jg-text);
+    border-color: rgba(0, 0, 0, 0.15);
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+html:not(.dark) .jg-lang-switcher-sidebar label {
+    color: var(--jg-text-muted);
 }
 
 /* Force emoji-capable fonts for language flags so they render on Windows/PC */
@@ -931,8 +939,19 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
 .jg-nav-item svg {
     width: 20px;
     height: 20px;
-    opacity: 0.7;
+    opacity: 0.95;
     transition: var(--jg-transition);
+}
+
+html:not(.dark) .jg-nav-item svg {
+    color: var(--jg-accent-hover);
+    opacity: 0.9;
+}
+
+.jg-nav-item.active svg {
+    opacity: 1;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 5px var(--jg-accent-glow));
 }
 
 .jg-nav-item:hover svg,
@@ -2279,14 +2298,163 @@ html.dark .jg-shortcut-name {
     align-items: center;
     justify-content: space-between;
     padding: 0.75rem 1rem;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.08);
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border-strong);
     border-radius: 999px; /* Rounded pill style */
-    color: rgba(255,255,255,0.8);
-    font-size: 0.9rem;
+    color: var(--jg-text);
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    min-height: 48px;
+    min-height: 40px;
+}
+
+/* ── Unified Filter Bar ──────────────────────────────────────────────────── */
+.jg-filter-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    padding: 0.75rem;
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border);
+    border-radius: 24px;
+    margin-bottom: 2rem;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+}
+
+.jg-filter-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.jg-filter-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    padding: 1.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    animation: jg-slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes jg-slide-down {
+    from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.jg-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.jg-filter-label {
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--jg-text-muted);
+}
+
+/* ── Side Drawer (Bulk Assistant) ────────────────────────────────────────── */
+.jg-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.jg-drawer-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.jg-drawer {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    width: min(480px, calc(100vw - 2rem));
+    background: var(--jg-bg-glass);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--jg-border-strong);
+    border-radius: 28px;
+    box-shadow: -20px 0 50px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+    transform: translateX(calc(100% + 2rem));
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+html.dark .jg-drawer {
+    background: linear-gradient(165deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.98));
+}
+
+.jg-drawer.open {
+    transform: translateX(0);
+}
+
+.jg-drawer-header {
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--jg-border);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.jg-drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem;
+}
+
+.jg-drawer-footer {
+    padding: 1.5rem;
+    border-top: 1px solid var(--jg-border);
+    background: rgba(0, 0, 0, 0.1);
+}
+
+/* ── Selection Bar (Bottom Popover) ────────────────────────────────────────── */
+.jg-selection-bar {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(200%);
+    z-index: 900;
+    background: var(--jg-bg-card);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--jg-accent);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 0 0 15px var(--jg-accent-glow);
+    padding: 0.75rem 1.5rem;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    color: var(--jg-text);
+    font-weight: 600;
+}
+
+.jg-selection-bar.active {
+    transform: translateX(-50%) translateY(0);
+}
+
+
+html:not(.dark) .jg-select-trigger {
+    background: rgba(0, 0, 0, 0.035);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: var(--jg-text);
 }
 
 .jg-select-trigger:hover {

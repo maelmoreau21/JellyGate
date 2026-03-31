@@ -41,68 +41,75 @@
 </div>
 
 <div class="space-y-6">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <main class="lg:col-span-8 space-y-6">
-            {{/* ── Main Table Card (refactored layout) ───────────────────────── */}}
-            <div class="jg-card p-6 overflow-hidden shadow-2xl relative border-white/5">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                    <div class="flex items-start gap-3">
-                        <h2 class="font-bold text-xl text-jg-text">{{ .T "users_table_title" }}</h2>
-                        <span id="user-count" class="px-2.5 py-0.5 rounded-full bg-jg-accent/10 text-jg-accent text-xs font-black"></span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button id="btn-sync-users" class="jg-btn jg-btn-ghost hidden md:inline-flex">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                            {{ .T "users_sync_jellyfin" }}
-                        </button>
-                        <button id="btn-open-bulk-email" class="jg-btn jg-btn-primary">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                            {{ .T "users_bulk_email" }}
-                        </button>
-                    </div>
-                </div>
+    {{/* ── Unified Search & Filter Bar ───────────────────────────────────── */}}
+    <div class="jg-card p-5 shadow-xl border-white/5 mb-8">
+        <div class="flex flex-col md:flex-row md:items-center gap-5">
+            <div class="relative flex-1 group">
+                <input type="text" id="search-users" class="jg-input h-14 pl-12 text-sm rounded-2xl w-full transition-all focus:border-jg-accent/40 bg-white/5" style="padding-left: 3rem !important" placeholder='{{ .T "users_search_placeholder" }}'>
+                <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-jg-text-muted group-focus-within:text-jg-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+            <div class="flex items-center gap-3">
+                <button id="btn-toggle-filters" class="jg-btn jg-btn-ghost h-14 px-8 flex items-center gap-3 font-bold whitespace-nowrap border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    <span>Filtres</span>
+                    <span id="active-filter-count" class="hidden px-2 py-0.5 rounded-full bg-jg-accent text-black text-[10px] font-black shadow-lg">0</span>
+                </button>
+                <button id="btn-clear-filters" class="w-14 h-14 flex items-center justify-center rounded-2xl jg-btn-ghost text-rose-400 hover:bg-rose-400/10 border border-white/5 transition-all hidden" title="{{ .T "users_filters_clear" }}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </div>
 
-                <div class="flex flex-col xl:flex-row xl:items-center gap-3">
-                    <div class="relative flex-1">
-                        <input type="text" id="search-users" class="jg-input h-10 pl-9 text-xs rounded-lg w-full transition-all focus:border-jg-accent/50" placeholder='{{ .T "users_search_placeholder" }}'>
-                        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-jg-text-muted font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </div>
+        {{/* Collapsible Filter Panel */}}
+        <div id="filter-panel" class="hidden mt-4 pt-4 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div class="jg-filter-group">
+                <label class="jg-filter-label">{{ .T "col_status" }}</label>
+                <select id="filter-status" class="jg-input h-11 text-xs">
+                    <option value="all">{{ .T "col_status" }} (Tous)</option>
+                    <option value="active">{{ .T "status_active" }}</option>
+                    <option value="inactive">{{ .T "status_inactive" }}</option>
+                    <option value="banned">{{ .T "status_banned" }}</option>
+                </select>
+            </div>
+            <div class="jg-filter-group">
+                <label class="jg-filter-label">Jellyfin</label>
+                <select id="filter-jellyfin" class="jg-input h-11 text-xs">
+                    <option value="all">Jellyfin (Tous)</option>
+                    <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
+                    <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
+                    <option value="missing">{{ .T "users_filter_jellyfin_missing" }}</option>
+                </select>
+            </div>
+            <div class="jg-filter-group">
+                <label class="jg-filter-label">{{ .T "users_col_invite" }}</label>
+                <select id="filter-invite" class="jg-input h-11 text-xs">
+                    <option value="all">{{ .T "users_col_invite" }} (Tous)</option>
+                    <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
+                    <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
+                </select>
+            </div>
+            <div class="jg-filter-group">
+                <label class="jg-filter-label">Filtres Spéciaux</label>
+                <select id="filter-extra" class="jg-input h-11 text-xs">
+                    <option value="all">Extras (Aucun)</option>
+                    <option value="with-email">{{ .T "users_filter_with_email" }}</option>
+                    <option value="without-email">{{ .T "users_filter_without_email" }}</option>
+                    <option value="expiry-active">{{ .T "users_filter_expiry_active" }}</option>
+                    <option value="expiry-expired">{{ .T "users_filter_expiry_expired" }}</option>
+                    <option value="expiry-none">{{ .T "users_filter_expiry_none" }}</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
-                    <div class="flex flex-wrap items-center gap-2">
-                        <select id="filter-status" class="jg-input h-10 text-[11px] py-0 w-32">
-                            <option value="all">{{ .T "col_status" }}</option>
-                            <option value="active">{{ .T "status_active" }}</option>
-                            <option value="inactive">{{ .T "status_inactive" }}</option>
-                            <option value="banned">{{ .T "status_banned" }}</option>
-                        </select>
-
-                        <select id="filter-jellyfin" class="jg-input h-10 text-[11px] py-0 w-32">
-                            <option value="all">Jellyfin</option>
-                            <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
-                            <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
-                            <option value="missing">{{ .T "users_filter_jellyfin_missing" }}</option>
-                        </select>
-
-                        <select id="filter-invite" class="jg-input h-10 text-[11px] py-0 w-32">
-                            <option value="all">{{ .T "users_col_invite" }}</option>
-                            <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
-                            <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
-                        </select>
-
-                        <select id="filter-extra" class="jg-input h-10 text-[11px] py-0 w-32">
-                            <option value="all">Filtres Extras</option>
-                            <option value="with-email">{{ .T "users_filter_with_email" }}</option>
-                            <option value="without-email">{{ .T "users_filter_without_email" }}</option>
-                            <option value="expiry-active">{{ .T "users_filter_expiry_active" }}</option>
-                            <option value="expiry-expired">{{ .T "users_filter_expiry_expired" }}</option>
-                            <option value="expiry-none">{{ .T "users_filter_expiry_none" }}</option>
-                        </select>
-
-                        <button id="btn-clear-filters" class="w-10 h-10 flex items-center justify-center rounded-lg jg-btn-ghost jg-btn-sm" title="{{ .T "users_filters_clear" }}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                </div>
+    {{/* ── Main Full-Width Table ─────────────────────────────────────────── */}}
+    <div class="jg-card p-0 overflow-hidden shadow-2xl relative border-white/5">
+        <div class="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <h2 class="font-bold text-xl text-jg-text">{{ .T "users_table_title" }}</h2>
+                <span id="user-count" class="px-2.5 py-0.5 rounded-full bg-jg-accent/10 text-jg-accent text-xs font-black"></span>
+            </div>
+        </div>
 
                 <div class="jg-table-container mt-4 overflow-x-auto w-full border border-jg-border rounded">
                     <table class="min-w-full w-full text-sm text-left align-middle whitespace-nowrap">
@@ -132,84 +139,81 @@
                     </table>
                 </div>
             </div>
-        </main>
+        </div>
 
-        <aside class="lg:col-span-4 space-y-6" role="complementary" aria-labelledby="bulk-actions-title">
-            {{/* ── Bulk Actions (moved to aside for clearer layout) */}}
-            <div id="bulk-card" class="jg-card shadow-lg jg-glass p-6 rounded-2xl users-aside">
-                <div class="flex items-center gap-4 mb-8">
-                    <div class="w-12 h-12 rounded-2xl bg-jg-accent/10 text-jg-accent flex items-center justify-center shadow-inner">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        <div id="selection-bar" class="jg-selection-bar">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center text-xs" id="selection-count">0</span>
+                <span>{{ .T "users_bulk_selected_suffix" }}</span>
+            </div>
+            <div class="h-6 w-px bg-black/20"></div>
+            <button id="btn-open-bulk" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <span>Actions en lot</span>
+            </button>
+        </div>
+
+        {{/* ── Bulk Actions Drawer ───────────────────────────────────────────── */}}
+        <div id="bulk-drawer-overlay" class="jg-drawer-overlay"></div>
+        <div id="bulk-drawer" class="jg-drawer">
+            <div class="jg-drawer-header">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-jg-accent/10 text-jg-accent flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
                     <div>
-                        <h2 id="bulk-actions-title" class="text-xl font-bold">{{ .T "users_bulk_title" }}</h2>
-                        <p class="text-[10px] text-jg-text-muted uppercase tracking-widest font-black mt-1">
-                            <span id="bulk-selected-count" class="text-jg-accent px-1.5 py-0.5 rounded bg-jg-accent/10" aria-live="polite">0</span> {{ .T "users_bulk_selected_suffix" }}
-                        </p>
+                        <h2 class="text-lg font-bold">{{ .T "users_bulk_title" }}</h2>
+                        <p class="text-[10px] text-jg-text-muted uppercase tracking-widest font-black" id="bulk-drawer-count">0 sélectionnés</p>
                     </div>
                 </div>
+                <button id="btn-close-bulk" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
 
-                <div class="bulk-steps-grid mb-4">
-                    <div id="bulk-step-select" class="bulk-step-card active">
-                        <div class="bulk-step-title">{{ .T "users_bulk_step_select" }}</div>
-                        <div class="bulk-step-text" id="bulk-action-label">{{ .T "users_bulk_choose_action" }}</div>
-                    </div>
-                    <div id="bulk-step-action" class="bulk-step-card">
-                        <div class="bulk-step-title">{{ .T "users_bulk_step_action" }}</div>
-                        <div class="bulk-step-text" id="bulk-validation-text">{{ .T "users_bulk_complete_required" }}</div>
-                    </div>
-                    <div id="bulk-step-config" class="bulk-step-card">
-                        <div class="bulk-step-title">{{ .T "users_bulk_step_verify" }}</div>
-                    </div>
+            <div class="jg-drawer-body space-y-8">
+                <div class="space-y-4">
+                    <label class="jg-label">{{ .T "users_bulk_step_action" }}</label>
+                    <select id="bulk-action" class="jg-input h-12">
+                        <option value="">{{ .T "users_bulk_action_placeholder" }}</option>
+                        <option value="send_email">{{ .T "users_action_send_email" }}</option>
+                        <option value="send_password_reset">{{ .T "users_action_send_password_reset" }}</option>
+                        <option value="set_expiry">{{ .T "users_action_set_expiry" }}</option>
+                        <option value="set_parrainage">{{ .T "users_action_set_invite" }}</option>
+                        <option value="jellyfin_policy">{{ .T "users_action_jellyfin_policy" }}</option>
+                        <option value="apply_preset">{{ .T "users_action_apply_preset" }}</option>
+                        <option value="activate">{{ .T "users_action_activate" }}</option>
+                        <option value="deactivate">{{ .T "users_action_deactivate" }}</option>
+                        <option value="delete">{{ .T "users_action_delete" }}</option>
+                    </select>
+                    <div id="bulk-help" class="text-xs text-jg-text-muted leading-relaxed bg-white/5 p-3 rounded-lg border border-jg-border hidden"></div>
                 </div>
 
-                <div class="flex items-center justify-between flex-wrap gap-3 mb-2">
-                    <div class="text-sm text-jg-text-muted">{{ .T "users_bulk_assistant_desc" }}</div>
-                    <button class="jg-btn jg-btn-ghost jg-btn-sm" id="btn-select-filtered">{{ .T "users_select_filtered" }}</button>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="space-y-4">
-                        <label class="jg-label">{{ .T "users_bulk_step_action" }}</label>
-                        <select id="bulk-action" class="jg-input h-12">
-                            <option value="">{{ .T "users_bulk_action_placeholder" }}</option>
-                            <option value="send_email">{{ .T "users_action_send_email" }}</option>
-                            <option value="send_password_reset">{{ .T "users_action_send_password_reset" }}</option>
-                            <option value="set_expiry">{{ .T "users_action_set_expiry" }}</option>
-                            <option value="set_parrainage">{{ .T "users_action_set_invite" }}</option>
-                            <option value="jellyfin_policy">{{ .T "users_action_jellyfin_policy" }}</option>
-                            <option value="apply_preset">{{ .T "users_action_apply_preset" }}</option>
-                            <option value="activate">{{ .T "users_action_activate" }}</option>
-                            <option value="deactivate">{{ .T "users_action_deactivate" }}</option>
-                            <option value="delete">{{ .T "users_action_delete" }}</option>
-                        </select>
-
-                        <div id="bulk-help" class="text-xs text-jg-text-muted leading-relaxed bg-white/5 p-3 rounded-lg border border-jg-border hidden"></div>
-                    </div>
-
-                    <div class="space-y-4">
-                        <label class="jg-label">{{ .T "users_bulk_step_verify" }}</label>
-                        <div id="bulk-fields" class="space-y-4">
-                            <div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">
-                                {{ .T "users_bulk_action_placeholder" }}
-                            </div>
+                <div class="space-y-4">
+                    <label class="jg-label">{{ .T "users_bulk_step_verify" }}</label>
+                    <div id="bulk-fields" class="space-y-4">
+                        <div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">
+                            {{ .T "users_bulk_action_placeholder" }}
                         </div>
                     </div>
+                </div>
 
-                    <div class="space-y-4">
-                        <label class="jg-label">Validation</label>
-                        <div id="bulk-summary" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed font-medium">
-                            {{ .T "users_bulk_summary_placeholder" }}
-                        </div>
-                        <button id="bulk-apply" class="w-full jg-btn jg-btn-primary h-12 opacity-60 cursor-not-allowed uppercase tracking-widest font-bold shadow-lg" disabled>
-                            {{ .T "users_apply" }}
-                        </button>
+                <div class="space-y-4">
+                    <label class="jg-label">Validation</label>
+                    <div id="bulk-summary" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed font-medium">
+                        {{ .T "users_bulk_summary_placeholder" }}
                     </div>
                 </div>
             </div>
-        </aside>
-    </div>
-</div>
+
+            <div class="jg-drawer-footer">
+                <button id="bulk-apply" class="w-full jg-btn jg-btn-primary h-14 uppercase tracking-widest font-black shadow-lg opacity-60 cursor-not-allowed" disabled>
+                    {{ .T "users_apply" }}
+                </button>
+            </div>
+        </div>
+            </div>
+        </div>
 
 {{/* ── Modals ──────────────────────────────────────────────────────────── */}}
 <div id="edit-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" tabindex="-1">
