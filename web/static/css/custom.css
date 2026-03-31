@@ -2327,13 +2327,6 @@ html.dark .jg-shortcut-name {
     vertical-align: middle;
 }
 
-/* Global image defaults: make images responsive by default */
-img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-}
-
 /* Helpers to preserve aspect ratios and cover behavior */
 .jg-img-responsive { width: 100%; height: auto; display: block; object-fit: contain; }
 .jg-img-cover { width: 100%; height: 100%; display: block; object-fit: cover; }
