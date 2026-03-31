@@ -2320,10 +2320,43 @@ html.dark .jg-shortcut-name {
 .jg-flag-icon {
     width: 20px;
     height: 14px;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 2px;
     flex-shrink: 0;
+    display: inline-block;
+    vertical-align: middle;
 }
+
+/* Global image defaults: make images responsive by default */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Helpers to preserve aspect ratios and cover behavior */
+.jg-img-responsive { width: 100%; height: auto; display: block; object-fit: contain; }
+.jg-img-cover { width: 100%; height: 100%; display: block; object-fit: cover; }
+
+/* Aspect ratio containers (modern browsers) */
+.jg-aspect {
+    position: relative;
+    overflow: hidden;
+    display: block;
+}
+.jg-aspect-16-9 { aspect-ratio: 16 / 9; width: 100%; }
+.jg-aspect-4-3  { aspect-ratio: 4 / 3; width: 100%; }
+.jg-aspect-1-1  { aspect-ratio: 1 / 1; width: 100%; }
+
+.jg-aspect img, .jg-aspect .bg-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+/* Utility to center inline images inside buttons/menus */
+.jg-img-center { display: inline-block; vertical-align: middle; }
 
 /* ── Sidebar Collapsed Overrides ─────────────────────────────────────────── */
 
