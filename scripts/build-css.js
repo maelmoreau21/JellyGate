@@ -1,25 +1,29 @@
-const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
 const path = require('node:path');
 
-const tailwindCLI = path.resolve(__dirname, '..', 'node_modules', 'tailwindcss', 'lib', 'cli.js');
-const args = [
-    tailwindCLI,
-    '-i', './web/static/css/tailwind.input.css',
-    '-c', './tailwind.config.js',
-    '-o', './web/static/css/tailwind.generated.css',
-    '--minify',
-];
+// Build Tailwind using PostCSS programmatically. This avoids relying on a
+// specific CLI file path which changed between Tailwind major versions.
+async function build() {
+  const postcss = require('postcss');
+  const tailwindcss = require('tailwindcss');
 
-const result = spawnSync(process.execPath, args, {
-    stdio: 'inherit',
-    env: {
-        ...process.env,
-        BROWSERSLIST_IGNORE_OLD_DATA: '1',
-    },
-});
+  const inputPath = path.resolve(__dirname, '..', 'web', 'static', 'css', 'tailwind.input.css');
+  const outputPath = path.resolve(__dirname, '..', 'web', 'static', 'css', 'tailwind.generated.css');
+  const configPath = path.resolve(__dirname, '..', 'tailwind.config.js');
 
-if (result.error) {
-    throw result.error;
+  const input = await fs.promises.readFile(inputPath, 'utf8');
+  const config = require(configPath);
+
+  const result = await postcss([tailwindcss(config)]).process(input, { from: inputPath, to: outputPath });
+
+  await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.promises.writeFile(outputPath, result.css, 'utf8');
+  if (result.map) {
+    await fs.promises.writeFile(outputPath + '.map', result.map.toString(), 'utf8');
+  }
 }
 
-process.exit(result.status ?? 1);
+build().then(() => process.exit(0)).catch(err => {
+  console.error(err);
+  process.exit(1);
+});
