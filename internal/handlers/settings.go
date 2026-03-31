@@ -1,4 +1,4 @@
-﻿// Package handlers â€” settings.go
+// Package handlers â€” settings.go
 //
 // API REST pour la gestion des paramÃ¨tres stockÃ©s en base (table settings).
 // Permet de lire et sauvegarder la configuration gÃ©nÃ©rale, LDAP, SMTP et Webhooks

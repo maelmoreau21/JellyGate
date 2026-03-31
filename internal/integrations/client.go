@@ -84,8 +84,6 @@ func (c *Client) createJellyseerrUser(username, password, email string) error {
 	)
 }
 
-
-
 func (c *Client) doJSONRequest(method, url, authHeader, authValue string, payload interface{}) error {
 	body, err := json.Marshal(payload)
 	if err != nil {
