@@ -1,4 +1,4 @@
-﻿module.exports = {
+module.exports = {
   darkMode: 'class',
   content: [
     './web/templates/**/*.html',
@@ -15,8 +15,12 @@
           card: 'var(--jg-bg-card)',
           accent: '#14b8a6',
           'accent-light': '#2dd4bf',
+          'accent-cyan': '#22d3ee',
+          'accent-emerald': '#10b981',
           gold: '#f59e0b',
           ink: '#e5eefb',
+          text: 'var(--jg-text)',
+          'text-muted': 'var(--jg-text-muted)',
         },
       },
     },
@@ -43,6 +47,10 @@
     'bg-cyan-500/15',
     'bg-purple-500/15',
     'bg-amber-500/15',
-    'shadow-purple-500/20'
+    'shadow-purple-500/20',
+    'text-jg-accent-cyan',
+    'text-jg-accent-emerald',
+    'bg-jg-accent-cyan',
+    'bg-jg-accent-emerald'
   ],
 };

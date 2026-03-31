@@ -27,6 +27,10 @@
     --jg-gradient-accent: linear-gradient(135deg, #22d3ee, #10b981);
     --jg-accent-glow: hsla(var(--jg-h-cyan), 80%, 60%, 0.15);
     
+    /* Clipping fix for Tailwind v4 on some browsers */
+    --jg-clip-text: text;
+    --jg-webkit-clip-text: text;
+    
     --jg-success: #10b981;
     --jg-danger: #ef4444;
     --jg-warning: #f59e0b;
@@ -42,20 +46,25 @@
     --jg-blur: 16px;
 }
 
-/* ── Light Mode Base Variables (adjusted for less aggressive contrast) ───── */
+/* ── Light Mode Base Variables (Soft Slate palette) ────────────────────────── */
+html:not(.dark) {
+    --jg-bg-primary: #f8fafc; /* Slate-50: Softer, less blinding */
+    --jg-bg-secondary: #f1f5f9; /* Slate-100: Soft contrast */
+    --jg-bg-card: #ffffff; 
+    --jg-bg-glass: rgba(248, 250, 252, 0.85); 
+    --jg-border: rgba(15, 23, 42, 0.04); 
+    --jg-border-strong: rgba(15, 23, 42, 0.08);
+    --jg-text: #0f172a; 
+    --jg-text-muted: #475569; 
+    --jg-accent: #0284c7; 
+    --jg-accent-hover: #0369a1;
+    --jg-accent-glow: rgba(2, 132, 199, 0.08);
+}
+
+/* Force variable application on body to ensure legacy overrides don't stick */
 html:not(.dark) body {
-    /* Neutral, slightly warmer greys to reduce harshness */
-    --jg-bg-primary: #f3f4f6; /* gray-100 */
-    --jg-bg-secondary: #eef2f7; /* soft header/bg */
-    --jg-bg-card: #ffffff; /* cards: pure white for clarity */
-    --jg-bg-glass: rgba(255, 255, 255, 0.85); /* Frosty glass */
-    --jg-border: rgba(15, 23, 42, 0.06); /* subtle slate tint */
-    --jg-border-strong: rgba(15, 23, 42, 0.12);
-    --jg-text: #0f172a; /* Deep slate */
-    --jg-text-muted: #475569; /* slightly stronger muted */
-    --jg-accent: #0369a1; /* toned accent */
-    --jg-accent-hover: #075985;
-    --jg-accent-glow: rgba(3, 105, 161, 0.08);
+    color: var(--jg-text);
+    background-color: var(--jg-bg-primary);
 }
 
 /* ── Light mode component overrides (reduce black artifacts / dark patches) ─ */
@@ -145,6 +154,12 @@ html:not(.dark) .text-slate-400 { color: var(--jg-text-muted) !important; }
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
 }
 
+/* Force standard clipping for gradients */
+.bg-clip-text {
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+}
+
 .jg-glass-hover:hover {
     background: rgba(255, 255, 255, 0.05);
     border-color: var(--jg-border-strong);
@@ -154,27 +169,26 @@ html:not(.dark) .jg-glass-hover:hover {
     background: rgba(0, 0, 0, 0.02);
 }
 
-/* ── Base ────────────────────────────────────────────────────────────────── */
-body {
-    background-color: var(--jg-bg-primary);
-    background-image: 
-        radial-gradient(at 0% 0%, hsla(var(--jg-h-cyan), 80%, 20%, 0.05) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, hsla(var(--jg-h-emerald), 80%, 20%, 0.05) 0px, transparent 50%);
-    color: var(--jg-text);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    overflow-x: hidden;
-    transition: background-color 0.4s ease, color 0.4s ease;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-}
+/* ── Base Layer (Precedence fix for Tailwind utilities) ──────────────────── */
+@layer base {
+    body {
+        background-color: var(--jg-bg-primary);
+        background-image: 
+            radial-gradient(at 0% 0%, hsla(var(--jg-h-cyan), 80%, 20%, 0.05) 0px, transparent 50%),
+            radial-gradient(at 100% 100%, hsla(var(--jg-h-emerald), 80%, 20%, 0.05) 0px, transparent 50%);
+        color: var(--jg-text);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        overflow-x: hidden;
+        transition: background-color 0.4s ease, color 0.4s ease;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+    }
 
-body::before { display: none; }
-
-/* ── Typography & Headings ───────────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
-    color: var(--jg-text);
-    font-weight: 700;
-    letter-spacing: -0.025em;
+    h1, h2, h3, h4, h5, h6 {
+        color: var(--jg-text);
+        font-weight: 700;
+        letter-spacing: -0.025em;
+    }
 }
 
 /* ── Scrollbars ─────────────────────────────────────────────────────────── */
@@ -215,9 +229,13 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--jg-bg-card);
     border: 1px solid var(--jg-border);
     border-radius: var(--jg-radius);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Much softer shadow in light mode if not .dark */
     position: relative;
     transition: var(--jg-transition);
+}
+
+html.dark .glass-card {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 html.dark .glass-card:hover {
@@ -2283,13 +2301,14 @@ html.dark .jg-shortcut-name {
     left: 0;
     right: 0;
     margin-bottom: 0.5rem;
-    background: #18181b;
-    border: 1px solid rgba(255,255,255,0.08);
+    background: var(--jg-bg-card);
+    border: 1px solid var(--jg-border);
     border-radius: 0.75rem;
     box-shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
     z-index: 100;
     max-height: 280px;
     overflow-y: auto;
+    backdrop-filter: blur(12px);
 }
 
 .jg-select-options.show {
@@ -2303,7 +2322,7 @@ html.dark .jg-shortcut-name {
     padding: 0.75rem 1rem;
     cursor: pointer;
     transition: all 0.15s;
-    color: rgba(255,255,255,0.7);
+    color: var(--jg-text);
     font-size: 0.85rem;
 }
 

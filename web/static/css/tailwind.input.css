@@ -1,3 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "./custom.css";
+@config "../../../tailwind.config.js";
+
+@source "../../../web/templates/**/*.html";
+@source "../../../web/static/js/**/*.js";
+
+@theme {
+  --font-sans: "Sora", "system-ui", "sans-serif";
+  
+  --color-jg-bg: var(--jg-bg-primary);
+  --color-jg-card: var(--jg-bg-card);
+  --color-jg-accent: #14b8a6;
+  --color-jg-accent-light: #2dd4bf;
+  --color-jg-gold: #f59e0b;
+  --color-jg-ink: #e5eefb;
+  
+  /* Missing colors from v3 config that are used in templates */
+  --color-jg-accent-cyan: #22d3ee;
+  --color-jg-accent-emerald: #10b981;
+  
+  /* Additional tokens mapped to CSS variables for Tailwind utility generation */
+  --color-jg-text: var(--jg-text);
+  --color-jg-text-muted: var(--jg-text-muted);
+}

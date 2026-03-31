@@ -12,9 +12,8 @@ async function build() {
   const configPath = path.resolve(__dirname, '..', 'tailwind.config.js');
 
   const input = await fs.promises.readFile(inputPath, 'utf8');
-  const config = require(configPath);
-
-  const result = await postcss([tailwindcss(config)]).process(input, { from: inputPath, to: outputPath });
+  // In Tailwind 4, the config is discovered via @import "tailwindcss" and @config in the CSS file.
+  const result = await postcss([tailwindcss()]).process(input, { from: inputPath, to: outputPath });
 
   await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.promises.writeFile(outputPath, result.css, 'utf8');
