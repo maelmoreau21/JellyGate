@@ -4,6 +4,20 @@
     const taskTypeDescriptions = config.taskTypeDescriptions || {};
 
     document.addEventListener('DOMContentLoaded', () => {
+        // --- CSP Compliant Modal Handlers ---
+        document.addEventListener("click", (e) => { if(e.target.closest("#btn-open-task-modal")) { JG.openModal("modal-task-form"); } }); //
+            JG.openModal("modal-task-form");
+        });
+
+        document.querySelectorAll(".modal-backdrop, .modal-close-btn").forEach(el => {
+            el.addEventListener("click", (e) => {
+                const modalId = el.getAttribute("data-modal");
+                if (modalId) {
+                    JG.closeModal(modalId);
+                }
+            });
+        });
+
         let presets = [];
         let groupMappings = [];
         let tasks = [];

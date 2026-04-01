@@ -2994,6 +2994,17 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		req.MaxUses = 0
 	}
 
+	// Validation : forced_username nécessite max_uses = 1 (usage unique)
+	if strings.TrimSpace(req.ForcedUsername) != "" && req.MaxUses != 1 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Un nom d'utilisateur réservé nécessite un lien à usage unique (max_uses = 1)"})
+		return
+	}
+
+	// Les non-admins doivent toujours spécifier une limite d'utilisation
+	if !sess.IsAdmin && req.MaxUses <= 0 {
+		req.MaxUses = 1
+	}
+
 	// GÃ©nÃ©rer code alÃ©atoire (ici via crypt/rand classique, 12 caractÃ¨res)
 	code, err := generateSecureToken(12)
 	if err != nil {

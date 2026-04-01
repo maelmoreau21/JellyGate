@@ -182,12 +182,14 @@ JG.closeModal = function (id) {
         const modal = document.getElementById(id);
         if (modal) {
             modal.classList.remove('open', 'show');
+            modal.classList.add('hidden');
             modal.style.display = 'none';
         }
     } else {
         // Fallback for legacy calls or any open modal
         document.querySelectorAll('.modal-overlay').forEach(m => {
             m.classList.remove('open', 'show');
+            m.classList.add('hidden');
             m.style.display = 'none';
         });
     }

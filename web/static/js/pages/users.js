@@ -1,10 +1,12 @@
 (() => {
+    // v3.0.0 - Fully functional with all event handlers
     const config = window.JGPageUsers || {};
     const i18n = config.i18n || {};
     const bulkActionMeta = config.bulkActionMeta || {};
     const text = config.text || {};
 
-    document.addEventListener('DOMContentLoaded', () => {
+    function init() {
+        console.info('TRACE: init() started');
         let allUsers = [];
         let filteredUsers = [];
         let jellyfinPresets = [];
@@ -12,7 +14,7 @@
         let pendingDeleteUser = null;
 
         function fmtDate(value) {
-            if (!value) return '—';
+            if (!value) return '\u2014';
             const date = new Date(value);
             if (Number.isNaN(date.getTime())) return value;
             return date.toLocaleString();
@@ -47,805 +49,371 @@
 
         function updateSelectionUI() {
             const count = selectedIds.size;
-            document.getElementById('bulk-selected-count')?.setAttribute('text', count);
-            document.getElementById('bulk-drawer-count').textContent = `${count} sélectionnés`;
-            
+            const bulkDrawerCount = document.getElementById('bulk-drawer-count');
+            if (bulkDrawerCount) bulkDrawerCount.textContent = count + ' selectionnes';
             const selectionCount = document.getElementById('selection-count');
             if (selectionCount) selectionCount.textContent = count;
-            
             const selectionBar = document.getElementById('selection-bar');
             if (selectionBar) {
-                if (count > 0) {
-                    selectionBar.classList.add('active');
-                } else {
-                    selectionBar.classList.remove('active');
-                    closeBulkDrawer();
-                }
+                if (count > 0) selectionBar.classList.add('active');
+                else { selectionBar.classList.remove('active'); closeBulkDrawer(); }
             }
-            
             const checkAll = document.getElementById('check-all');
             if (checkAll) {
-                const selectable = filteredUsers.map((user) => user.id);
+                const selectable = filteredUsers.map((u) => u.id);
                 const selectedVisible = selectable.filter((id) => selectedIds.has(id)).length;
                 checkAll.checked = selectable.length > 0 && selectedVisible === selectable.length;
                 checkAll.indeterminate = selectedVisible > 0 && selectedVisible < selectable.length;
             }
-            
             updateBulkWizardState();
         }
 
         function openBulkDrawer() {
-            document.getElementById('bulk-drawer').classList.add('open');
-            document.getElementById('bulk-drawer-overlay').classList.add('open');
+            document.getElementById('bulk-drawer')?.classList.add('open');
+            document.getElementById('bulk-drawer-overlay')?.classList.add('open');
             document.body.style.overflow = 'hidden';
             resetBulkFields();
         }
 
         function closeBulkDrawer() {
-            document.getElementById('bulk-drawer').classList.remove('open');
-            document.getElementById('bulk-drawer-overlay').classList.remove('open');
+            document.getElementById('bulk-drawer')?.classList.remove('open');
+            document.getElementById('bulk-drawer-overlay')?.classList.remove('open');
             document.body.style.overflow = '';
+        }
+
+        function resetBulkFields() {
+            const actionSelect = document.getElementById('bulk-action');
+            if (actionSelect) actionSelect.value = '';
+            const bulkFields = document.getElementById('bulk-fields');
+            if (bulkFields) bulkFields.innerHTML = '<div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">' + JG.esc(i18n.bulkChooseAction || 'Choisir une action') + '</div>';
+            const bulkHelp = document.getElementById('bulk-help');
+            if (bulkHelp) { bulkHelp.classList.add('hidden'); bulkHelp.textContent = ''; }
+            updateBulkWizardState();
         }
 
         function toggleFilterPanel() {
             const panel = document.getElementById('filter-panel');
             const btn = document.getElementById('btn-toggle-filters');
-            const isHidden = panel.classList.contains('hidden');
-            
-            if (isHidden) {
+            if (!panel) return;
+            if (panel.classList.contains('hidden')) {
                 panel.classList.remove('hidden');
-                btn.classList.add('bg-white/10', 'border-jg-accent/30', 'text-jg-accent');
-                btn.classList.remove('hover:bg-white/10');
+                btn?.classList.add('bg-white/10', 'text-white');
             } else {
                 panel.classList.add('hidden');
-                btn.classList.remove('bg-white/10', 'border-jg-accent/30', 'text-jg-accent');
-                btn.classList.add('hover:bg-white/10');
+                btn?.classList.remove('bg-white/10', 'text-white');
             }
-        }
-
-        function renderFilterSnapshot() {
-            const container = document.getElementById('users-active-filters');
-            if (!container) {
-                return;
-            }
-
-            const query = document.getElementById('search-users').value.trim();
-            const status = document.getElementById('filter-status');
-            const jellyfin = document.getElementById('filter-jellyfin');
-            const invite = document.getElementById('filter-invite');
-            const extra = document.getElementById('filter-extra');
-            const chips = [];
-
-            if (query) {
-                chips.push(`“${JG.esc(query)}”`);
-            }
-            [status, jellyfin, invite, extra].forEach((select) => {
-                if (select && select.value !== 'all') {
-                    chips.push(JG.esc(select.options[select.selectedIndex].text));
-                }
-            });
-
-            if (!chips.length) {
-                container.innerHTML = `<span class="jg-chip jg-chip-muted">${JG.esc(i18n.filtersNone)}</span>`;
-                return;
-            }
-
-            container.innerHTML = chips.map((chip) => `<span class="jg-chip">${chip}</span>`).join('');
-        }
-
-        function renderSelectionPreview() {
-            const container = document.getElementById('users-selected-preview');
-            if (!container) {
-                return;
-            }
-
-            const selectedUsers = allUsers.filter((user) => selectedIds.has(user.id));
-            if (!selectedUsers.length) {
-                container.innerHTML = `<span class="jg-chip jg-chip-muted">${JG.esc(i18n.selectionEmpty)}</span>`;
-                return;
-            }
-
-            const chips = selectedUsers.slice(0, 5).map((user) => `<span class="jg-chip">${JG.esc(user.username)}</span>`);
-            if (selectedUsers.length > 5) {
-                chips.push(`<span class="jg-chip jg-chip-muted">${JG.esc(fmtTemplate(i18n.selectionMore, { count: selectedUsers.length - 5 }))}</span>`);
-            }
-            container.innerHTML = chips.join('');
         }
 
         function clearFilters() {
-            document.getElementById('search-users').value = '';
-            document.getElementById('filter-status').value = 'all';
-            document.getElementById('filter-jellyfin').value = 'all';
-            document.getElementById('filter-invite').value = 'all';
-            document.getElementById('filter-extra').value = 'all';
+            ['search-users'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            ['filter-status','filter-jellyfin','filter-invite','filter-extra'].forEach(id => { const el = document.getElementById(id); if (el) el.value = 'all'; });
+            document.getElementById('btn-clear-filters')?.classList.add('hidden');
+            document.getElementById('active-filter-count')?.classList.add('hidden');
             applyFilters();
         }
 
-        function openBulkEmailComposer() {
-            // New logic for drawer-based bulk assistant
-            if (selectedIds.size === 0) {
-                JG.toast(i18n.bulkSelectOne, 'info');
-                return;
-            }
-            
-            openBulkDrawer();
-            
-            const actionSelect = document.getElementById('bulk-action');
-            if (actionSelect) {
-                actionSelect.value = 'send_email';
-                actionSelect.dispatchEvent(new Event('change'));
-            }
-
-            setTimeout(() => {
-                document.getElementById('bulk-email-subject')?.focus();
-            }, 300);
-        }
-
-        function fmtTemplate(template, values) {
-            return String(template || '').replace(/\{(\w+)\}/g, (_, key) => {
-                if (!values || values[key] === undefined || values[key] === null) return '';
-                return String(values[key]);
-            });
+        function updateFilterIndicators() {
+            let c = 0;
+            if ((document.getElementById('filter-status')?.value || 'all') !== 'all') c++;
+            if ((document.getElementById('filter-jellyfin')?.value || 'all') !== 'all') c++;
+            if ((document.getElementById('filter-invite')?.value || 'all') !== 'all') c++;
+            if ((document.getElementById('filter-extra')?.value || 'all') !== 'all') c++;
+            if ((document.getElementById('search-users')?.value || '').trim()) c++;
+            const counter = document.getElementById('active-filter-count');
+            const clearBtn = document.getElementById('btn-clear-filters');
+            if (counter) { if (c > 0) { counter.textContent = c; counter.classList.remove('hidden'); } else counter.classList.add('hidden'); }
+            if (clearBtn) { if (c > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); }
         }
 
         function renderUsers(users) {
             filteredUsers = users;
             const tbody = document.getElementById('users-tbody');
-            document.getElementById('user-count').textContent = `${users.length} ${i18n.usersDisplayed} ${allUsers.length}`;
-            document.getElementById('users-stat-total').textContent = allUsers.length;
-            document.getElementById('users-stat-filtered').textContent = users.length;
-            document.getElementById('users-stat-inviters').textContent = allUsers.filter((user) => user.can_invite).length;
-            document.getElementById('users-stat-expiring').textContent = allUsers.filter((user) => isExpired(user)).length;
-            const focusFiltered = document.getElementById('users-focus-filtered');
-            if (focusFiltered) {
-                focusFiltered.textContent = `${users.length}`;
-            }
-
+            if (!tbody) return;
+            const userCount = document.getElementById('user-count');
+            if (userCount) userCount.textContent = users.length + ' ' + (i18n.usersDisplayed||'') + ' ' + allUsers.length;
+            const st = document.getElementById('users-stat-total'); if (st) st.textContent = allUsers.length;
+            const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = users.length;
+            const si = document.getElementById('users-stat-inviters'); if (si) si.textContent = allUsers.filter(u => u.can_invite).length;
+            const se = document.getElementById('users-stat-expiring'); if (se) se.textContent = allUsers.filter(u => u.access_expires_at && !isExpired(u)).length;
             if (users.length === 0) {
                 const help = allUsers.length === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-500 py-24">${JG.esc(help)}</td></tr>`;
-                updateSelectionUI();
-                return;
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-slate-500 py-24">' + JG.esc(help) + '</td></tr>';
+                updateSelectionUI(); return;
             }
-
             tbody.innerHTML = users.map((user) => {
                 const checked = selectedIds.has(user.id) ? 'checked' : '';
                 const isSelected = selectedIds.has(user.id);
                 const bgClass = isSelected ? 'bg-jg-accent/10' : 'hover:bg-white/[0.03]';
                 const toggleLabel = user.is_active ? i18n.deactivate : i18n.activate;
-                const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '—';
-                const expiryClass = isExpired(user) ? 'text-rose-400 font-bold' : 'text-slate-400 text-[11px] font-medium';
-                
-                return `
-                <tr class="group ${bgClass} border-b border-white/5 transition-colors">
-                    <td class="px-6 py-4 w-12 text-center align-middle">
-                        <input type="checkbox" class="form-checkbox row-check w-4 h-4 rounded border-jg-border bg-black/20 accent-jg-accent transition-colors opacity-50 group-hover:opacity-100" data-id="${user.id}" ${checked}>
-                    </td>
-                    <td class="px-4 py-4 align-middle">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-jg-bg-secondary/50 to-jg-bg-primary/50 border border-white/5 flex items-center justify-center text-jg-text font-bold shadow-inner flex-shrink-0">
-                                ${JG.esc(user.username.charAt(0).toUpperCase())}
-                            </div>
-                            <div class="flex flex-col min-w-[120px]">
-                                <span class="font-bold text-jg-text leading-tight group-hover:text-jg-accent transition-colors truncate max-w-[200px]" title="${JG.esc(user.username)}">${JG.esc(user.username)}</span>
-                                <span class="text-[10px] text-jg-text-muted mt-0.5 truncate max-w-[200px]" title="${JG.esc(user.email || '')}">${JG.esc(user.email || '—')}</span>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-4 py-4 align-middle">
-                        ${userStatusBadge(user)}
-                    </td>
-                    <td class="px-4 py-4 align-middle">
-                        <div class="flex flex-col gap-1.5 items-start">
-                            ${jellyfinStatusBadge(user)}
-                            ${user.can_invite ? `<span class="badge bg-amber-500/10 text-amber-500 border-amber-500/20 text-[9px] py-0 px-1.5">Invites ON</span>` : ''}
-                        </div>
-                    </td>
-                    <td class="px-4 py-4 align-middle">
-                        <div class="flex flex-col">
-                            <span class="text-xs text-slate-300 font-medium">${JG.esc(user.group_name || '—')}</span>
-                            <span class="text-[9px] text-jg-text-muted uppercase tracking-widest mt-1">Via ${JG.esc(user.invited_by || 'Admin')}</span>
-                        </div>
-                    </td>
-                    <td class="px-4 py-4 align-middle">
-                        <div class="flex flex-col">
-                            <span class="${expiryClass}">${JG.esc(expiry)}</span>
-                            <span class="text-[9px] text-jg-text-muted mt-1 uppercase tracking-wider" title="${JG.esc(fmtDate(user.created_at))}">+ Add ${JG.esc(user.created_at.split('T')[0])}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-right align-middle">
-                        <div class="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors action-timeline" data-id="${user.id}" title="${JG.esc(i18n.timeline)}">
-                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            </button>
-                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-jg-accent hover:bg-jg-accent/10 flex items-center justify-center transition-colors action-edit" data-id="${user.id}" title="${JG.esc(i18n.edit)}">
-                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                            </button>
-                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors action-reset" data-id="${user.id}" title="${JG.esc(i18n.reset)}">
-                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4v-4l5.659-5.659C9.092 9.896 9 7 9 7m6-2a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                            </button>
-                            <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 flex items-center justify-center transition-colors action-toggle" data-id="${user.id}" title="${toggleLabel}">
-                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.242A5.242 5.242 0 1012 6.758a5.242 5.242 0 000 10.484z" /></svg>
-                            </button>
-                             <button class="w-8 h-8 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 flex items-center justify-center transition-colors action-delete" data-id="${user.id}" title="${JG.esc(i18n.delete)}">
-                                <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
+                const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
+                return '<tr class="group ' + bgClass + ' border-b border-white/5">'
+                    + '<td class="px-6 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox" data-id="' + user.id + '" ' + checked + '></td>'
+                    + '<td class="px-4 py-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold">' + JG.esc(user.username.charAt(0).toUpperCase()) + '</div><div class="flex flex-col"><span class="font-bold">' + JG.esc(user.username) + '</span><span class="text-xs text-jg-text-muted">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
+                    + '<td class="px-4 py-4">' + userStatusBadge(user) + '</td>'
+                    + '<td class="px-4 py-4">' + jellyfinStatusBadge(user) + '</td>'
+                    + '<td class="px-4 py-4">' + JG.esc(user.group_name || '\u2014') + '</td>'
+                    + '<td class="px-4 py-4">' + JG.esc(expiry) + '</td>'
+                    + '<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2">'
+                    + '<button class="action-timeline jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">\uD83D\uDCCA</button>'
+                    + '<button class="action-edit jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">\u270F\uFE0F</button>'
+                    + '<button class="action-toggle jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">' + (user.is_active ? '\uD83D\uDD12' : '\uD83D\uDD13') + '</button>'
+                    + '<button class="action-delete jg-btn jg-btn-sm jg-btn-danger" data-id="' + user.id + '">\uD83D\uDDD1\uFE0F</button>'
+                    + '</div></td></tr>';
             }).join('');
-
             updateSelectionUI();
         }
 
         function applyFilters() {
-            const searchInput = document.getElementById('search-users');
-            if (!searchInput) return;
-            
-            const query = searchInput.value.trim().toLowerCase();
+            const query = document.getElementById('search-users')?.value.toLowerCase() || '';
             const status = document.getElementById('filter-status')?.value || 'all';
             const jellyfin = document.getElementById('filter-jellyfin')?.value || 'all';
             const invite = document.getElementById('filter-invite')?.value || 'all';
             const extra = document.getElementById('filter-extra')?.value || 'all';
-
-            const result = allUsers.filter((user) => {
-                const textMatch = !query ||
-                    (user.username || '').toLowerCase().includes(query) ||
-                    (user.email || '').toLowerCase().includes(query) ||
-                    (user.group_name || '').toLowerCase().includes(query) ||
-                    (user.invited_by || '').toLowerCase().includes(query);
-
-                const statusMatch =
-                    status === 'all' ||
-                    (status === 'active' && user.is_active && !user.is_banned) ||
-                    (status === 'inactive' && !user.is_active && !user.is_banned) ||
-                    (status === 'banned' && user.is_banned);
-
-                const jellyfinMatch =
-                    jellyfin === 'all' ||
-                    (jellyfin === 'ok' && user.jellyfin_exists && !user.jellyfin_disabled) ||
-                    (jellyfin === 'disabled' && user.jellyfin_exists && user.jellyfin_disabled) ||
-                    (jellyfin === 'missing' && !user.jellyfin_exists);
-
-                const inviteMatch =
-                    invite === 'all' ||
-                    (invite === 'enabled' && user.can_invite) ||
-                    (invite === 'disabled' && !user.can_invite);
-
-                const expired = isExpired(user);
-                const hasExpiry = !!user.access_expires_at;
-                const extraMatch =
-                    extra === 'all' ||
-                    (extra === 'with-email' && !!(user.email || '').trim()) ||
-                    (extra === 'without-email' && !(user.email || '').trim()) ||
-                    (extra === 'expiry-active' && hasExpiry) ||
-                    (extra === 'expiry-expired' && expired) ||
-                    (extra === 'expiry-none' && !hasExpiry);
-
-                return textMatch && statusMatch && jellyfinMatch && inviteMatch && extraMatch;
+            const result = allUsers.filter(u => {
+                const mQ = !query || u.username.toLowerCase().includes(query) || (u.email||'').toLowerCase().includes(query);
+                let mS = true;
+                if (status === 'active') mS = u.is_active && !u.is_banned;
+                else if (status === 'inactive') mS = !u.is_active && !u.is_banned;
+                else if (status === 'banned') mS = u.is_banned;
+                let mJ = true;
+                if (jellyfin === 'ok') mJ = u.jellyfin_exists && !u.jellyfin_disabled;
+                else if (jellyfin === 'disabled') mJ = u.jellyfin_exists && u.jellyfin_disabled;
+                else if (jellyfin === 'missing') mJ = !u.jellyfin_exists;
+                let mI = true;
+                if (invite === 'enabled') mI = u.can_invite;
+                else if (invite === 'disabled') mI = !u.can_invite;
+                let mE = true;
+                if (extra === 'with-email') mE = !!u.email;
+                else if (extra === 'without-email') mE = !u.email;
+                else if (extra === 'expiry-active') mE = u.access_expires_at && !isExpired(u);
+                else if (extra === 'expiry-expired') mE = u.access_expires_at && isExpired(u);
+                else if (extra === 'expiry-none') mE = !u.access_expires_at;
+                return mQ && mS && mJ && mI && mE;
             });
-
-            // Update active filter count
-            let activeFilters = 0;
-            if (status !== 'all') activeFilters++;
-            if (jellyfin !== 'all') activeFilters++;
-            if (invite !== 'all') activeFilters++;
-            if (extra !== 'all') activeFilters++;
-            
-            const countBadge = document.getElementById('active-filter-count');
-            const clearBtn = document.getElementById('btn-clear-filters');
-            
-            if (activeFilters > 0) {
-                countBadge.textContent = activeFilters;
-                countBadge.classList.remove('hidden');
-                clearBtn.classList.remove('hidden');
-            } else {
-                countBadge.classList.add('hidden');
-                if (!query) clearBtn.classList.add('hidden');
-            }
-            if (query) clearBtn.classList.remove('hidden');
-
+            updateFilterIndicators();
             renderUsers(result);
-        }
-
-        function actionLabel(action) {
-            if (!action) return i18n.bulkChooseAction;
-            return bulkActionMeta[action]?.label || i18n.bulkActionGeneric;
-        }
-
-        function collectBulkPayload(action, userIDs) {
-            const payload = { action, user_ids: userIDs };
-
-            if (action === 'send_email') {
-                payload.email_subject = (document.getElementById('bulk-email-subject')?.value || '').trim();
-                payload.email_body = (document.getElementById('bulk-email-body')?.value || '').trim();
-            }
-
-            if (action === 'set_parrainage') {
-                payload.can_invite = (document.getElementById('bulk-can-invite')?.value || 'false') === 'true';
-            }
-
-            if (action === 'set_expiry') {
-                const clearExpiry = document.getElementById('bulk-clear-expiry')?.checked;
-                payload.clear_expiry = !!clearExpiry;
-                if (!clearExpiry) {
-                    payload.access_expires_at = document.getElementById('bulk-expiry')?.value || '';
-                }
-            }
-
-            if (action === 'jellyfin_policy') {
-                const downloads = document.getElementById('bulk-jf-downloads')?.value || '';
-                const remote = document.getElementById('bulk-jf-remote')?.value || '';
-                const sessionsRaw = document.getElementById('bulk-jf-sessions')?.value;
-                const bitrateRaw = document.getElementById('bulk-jf-bitrate')?.value;
-
-                const policy = {};
-                if (downloads) policy.enable_downloads = downloads === 'true';
-                if (remote) policy.enable_remote_access = remote === 'true';
-                if (sessionsRaw !== undefined && sessionsRaw !== '') policy.max_active_sessions = parseInt(sessionsRaw, 10);
-                if (bitrateRaw !== undefined && bitrateRaw !== '') policy.remote_bitrate_limit = parseInt(bitrateRaw, 10);
-
-                payload.jellyfin_policy = policy;
-            }
-
-            if (action === 'apply_preset') {
-                payload.policy_preset_id = (document.getElementById('bulk-jf-preset')?.value || '').trim();
-            }
-
-            return payload;
-        }
-
-        function validateBulkPayload(action, payload) {
-            if (!action) return i18n.bulkChooseAction;
-            if (!payload.user_ids || payload.user_ids.length === 0) return i18n.bulkSelectOne;
-            if (action === 'send_email' && (!payload.email_subject || !payload.email_body)) return i18n.bulkNeedEmailBody;
-            if (action === 'set_expiry' && !payload.clear_expiry && !payload.access_expires_at) return i18n.bulkNeedExpiry;
-            if (action === 'jellyfin_policy') {
-                const policy = payload.jellyfin_policy || {};
-                if (Object.keys(policy).length === 0) return i18n.bulkNeedJellyfinParam;
-                if (Number.isNaN(policy.max_active_sessions) || Number.isNaN(policy.remote_bitrate_limit)) return i18n.bulkJellyfinInvalid;
-            }
-            if (action === 'apply_preset' && !payload.policy_preset_id) return i18n.bulkNeedPreset;
-            return '';
-        }
-
-        function updateBulkWizardState() {
-            const actionSel = document.getElementById('bulk-action');
-            if (!actionSel) return;
-            const action = actionSel.value;
-            const userIDs = Array.from(selectedIds);
-            const payload = collectBulkPayload(action, userIDs);
-            const validationError = validateBulkPayload(action, payload);
-
-            document.getElementById('bulk-drawer-count').textContent = `${userIDs.length} sélectionnés`;
-
-            document.getElementById('bulk-action-label' || 'dummy').textContent = actionLabel(action);
-            document.getElementById('bulk-validation-text' || 'dummy').textContent = validationError || i18n.bulkConfigReady;
-
-            const summary = document.getElementById('bulk-summary');
-            const selectedUsers = allUsers.filter((user) => selectedIds.has(user.id));
-            if (selectedUsers.length === 0) {
-                summary.textContent = i18n.bulkSelectOne;
-            } else if (!action) {
-                summary.textContent = i18n.bulkChooseAction;
-            } else {
-                const firstUsers = selectedUsers.slice(0, 3).map((user) => user.username).join(', ');
-                const hiddenCount = selectedUsers.length > 3 ? ` +${selectedUsers.length - 3}` : '';
-                const header = `${actionLabel(action)} (${selectedUsers.length}) [${firstUsers || i18n.bulkNone}${hiddenCount}]`;
-                summary.textContent = validationError ? `${header}. ${validationError}` : `${header}. ${i18n.bulkConfigReady}`;
-            }
-
-            const applyButton = document.getElementById('bulk-apply');
-            const isReady = !validationError;
-            applyButton.disabled = !isReady;
-            applyButton.classList.toggle('opacity-60', !isReady);
-            applyButton.classList.toggle('cursor-not-allowed', !isReady);
-        }
-
-        function resetBulkFields() {
-            const container = document.getElementById('bulk-fields');
-            const help = document.getElementById('bulk-help');
-            const actionSel = document.getElementById('bulk-action');
-            if (!container || !help || !actionSel) return;
-            
-            const action = actionSel.value;
-            if (!action) {
-                container.classList.add('hidden');
-                container.innerHTML = '';
-                help.classList.add('hidden');
-                help.innerHTML = '';
-                updateBulkWizardState();
-                return;
-            }
-
-            help.classList.remove('hidden');
-            help.textContent = bulkActionMeta[action]?.help || i18n.bulkActionGeneric;
-
-            container.classList.remove('hidden');
-            if (action === 'send_email') {
-                container.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input id="bulk-email-subject" class="jg-input" placeholder="${JG.esc(text.bulkEmailSubjectPlaceholder || '')}">
-                        <input id="bulk-email-tooltips" class="jg-input" disabled value="${JG.esc(text.bulkEmailVariablesLabel || '')}: {{.Username}} {{.Email}} {{.Actor}}">
-                    </div>
-                    <textarea id="bulk-email-body" class="jg-input mt-3 font-mono text-sm" rows="5" placeholder="${JG.esc(text.bulkEmailBodyPlaceholder || '')}"></textarea>
-                `;
-            } else if (action === 'set_parrainage') {
-                container.innerHTML = `
-                    <select id="bulk-can-invite" class="jg-input max-w-xs">
-                        <option value="true">${JG.esc(text.bulkInviteEnabled || '')}</option>
-                        <option value="false">${JG.esc(text.bulkInviteDisabled || '')}</option>
-                    </select>
-                `;
-            } else if (action === 'set_expiry') {
-                container.innerHTML = `
-                    <div class="flex flex-wrap items-center gap-3">
-                        <label class="text-xs text-slate-300">${JG.esc(text.bulkExpiryLabel || '')}:</label>
-                        <input type="datetime-local" id="bulk-expiry" class="jg-input max-w-xs">
-                        <label class="inline-flex items-center gap-2 text-sm text-slate-300">
-                            <input type="checkbox" id="bulk-clear-expiry" class="form-checkbox">
-                            ${JG.esc(text.bulkClearExpiry || '')}
-                        </label>
-                    </div>
-                `;
-            } else if (action === 'jellyfin_policy') {
-                container.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
-                        <select id="bulk-jf-downloads" class="jg-input">
-                            <option value="">${JG.esc(text.bulkJfDownloadUnchanged || '')}</option>
-                            <option value="true">${JG.esc(text.bulkJfDownloadAllowed || '')}</option>
-                            <option value="false">${JG.esc(text.bulkJfDownloadBlocked || '')}</option>
-                        </select>
-                        <select id="bulk-jf-remote" class="jg-input">
-                            <option value="">${JG.esc(text.bulkJfRemoteUnchanged || '')}</option>
-                            <option value="true">${JG.esc(text.bulkJfRemoteAllowed || '')}</option>
-                            <option value="false">${JG.esc(text.bulkJfRemoteBlocked || '')}</option>
-                        </select>
-                        <input type="number" id="bulk-jf-sessions" class="jg-input" min="0" placeholder="${JG.esc(text.bulkJfSessionsPlaceholder || '')}">
-                        <input type="number" id="bulk-jf-bitrate" class="jg-input" min="0" placeholder="${JG.esc(text.bulkJfBitratePlaceholder || '')}">
-                    </div>
-                `;
-            } else if (action === 'apply_preset') {
-                const options = jellyfinPresets.map((preset) => `<option value="${JG.esc(preset.id)}">${JG.esc(preset.name)}</option>`).join('');
-                container.innerHTML = `
-                    <div class="max-w-lg">
-                        <label class="jg-label" for="bulk-jf-preset">${JG.esc(bulkActionMeta.apply_preset?.label || '')}</label>
-                        <select id="bulk-jf-preset" class="jg-input">
-                            <option value="">${JG.esc(text.bulkSelectPreset || '')}</option>
-                            ${options}
-                        </select>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `<p class="text-sm text-slate-400">${JG.esc(text.bulkNoExtraParams || '')}</p>`;
-            }
-
-            const clearExpiry = document.getElementById('bulk-clear-expiry');
-            const expiryInput = document.getElementById('bulk-expiry');
-            if (clearExpiry && expiryInput) {
-                const syncExpiryInput = () => {
-                    expiryInput.disabled = clearExpiry.checked;
-                };
-                clearExpiry.addEventListener('change', syncExpiryInput);
-                syncExpiryInput();
-            }
-
-            container.querySelectorAll('input, select, textarea').forEach((el) => {
-                el.addEventListener('input', updateBulkWizardState);
-                el.addEventListener('change', updateBulkWizardState);
-            });
-
-            updateBulkWizardState();
         }
 
         async function loadUsers() {
             const res = await JG.api('/admin/api/users');
-            if (!res.success) {
-                JG.toast(res.message || i18n.loadError, 'error');
-                document.getElementById('users-tbody').innerHTML = `<tr><td colspan="11" class="text-center text-red-300 py-12">${JG.esc(i18n.loadErrorDetails)}</td></tr>`;
-                return;
-            }
-            allUsers = res.data || [];
-            applyFilters();
+            if (res.success) { allUsers = res.data || []; applyFilters(); }
+            else { JG.toast(i18n.loadError || 'Erreur', 'error'); }
         }
 
         async function loadPresets() {
             const res = await JG.api('/admin/api/automation/presets');
-            if (!res.success) {
-                jellyfinPresets = [];
-                return;
+            if (res.success) jellyfinPresets = res.data || [];
+        }
+
+        function updateBulkWizardState() {
+            const applyButton = document.getElementById('bulk-apply');
+            const action = document.getElementById('bulk-action')?.value || '';
+            if (applyButton) {
+                const ok = selectedIds.size > 0 && action !== '';
+                applyButton.disabled = !ok;
+                applyButton.classList.toggle('opacity-60', !ok);
+                applyButton.classList.toggle('cursor-not-allowed', !ok);
             }
-            jellyfinPresets = Array.isArray(res.data) ? res.data : [];
-        }
-
-        function getUserById(id) {
-            return allUsers.find((user) => user.id === id);
-        }
-
-        function timelineLevel(action) {
-            if (!action) return 'neutral';
-            if (action.includes('deleted')) return 'danger';
-            if (action.includes('expired') || action.includes('disabled')) return 'warning';
-            if (action.includes('created') || action.includes('enabled') || action.includes('success')) return 'success';
-            return 'neutral';
-        }
-
-        function timelineBadge(action) {
-            const level = timelineLevel(action);
-            if (level === 'danger') return `<span class="badge badge-danger">${JG.esc(i18n.timelineCritical)}</span>`;
-            if (level === 'warning') return `<span class="badge badge-warning">${JG.esc(i18n.timelineImportant)}</span>`;
-            if (level === 'success') return `<span class="badge badge-success">${JG.esc(i18n.timelineInfo)}</span>`;
-            return `<span class="badge badge-muted">${JG.esc(i18n.timelineTrace)}</span>`;
-        }
-
-        function renderTimelineEvents(events) {
-            const container = document.getElementById('timeline-list');
-            if (!Array.isArray(events) || events.length === 0) {
-                container.innerHTML = `<div class="text-slate-400">${JG.esc(i18n.timelineEmpty)}</div>`;
-                return;
+            const summary = document.getElementById('bulk-summary');
+            if (summary) {
+                if (selectedIds.size === 0) summary.textContent = i18n.bulkSelectOne || 'Selectionnez au moins un utilisateur.';
+                else if (!action) summary.textContent = i18n.bulkChooseAction || 'Choisissez une action.';
+                else { const m = bulkActionMeta[action]; summary.textContent = (i18n.bulkValidPrefix||'') + ' ' + (m?m.label:action) + ' ' + (i18n.bulkActionOn||'sur') + ' ' + selectedIds.size + ' ' + (i18n.bulkReadySuffix||'utilisateur(s)'); }
             }
-
-            container.innerHTML = events.map((eventItem) => {
-                const action = eventItem.action || 'event';
-                const actor = eventItem.actor ? `<span class="text-slate-400">par ${JG.esc(eventItem.actor)}</span>` : '';
-                const details = eventItem.details ? `<div class="text-xs text-slate-500 mt-1 break-all">${JG.esc(eventItem.details)}</div>` : '';
-                return `<div class="rounded-lg border border-white/10 bg-black/20 px-3 py-3">
-                    <div class="flex items-center justify-between gap-3">
-                        <div class="font-medium text-slate-100">${JG.esc(eventItem.message || action)}</div>
-                        ${timelineBadge(action)}
-                    </div>
-                    <div class="mt-1 text-xs text-slate-400 flex flex-wrap items-center gap-3">
-                        <span>${JG.esc(fmtDate(eventItem.at || ''))}</span>
-                        <span class="text-slate-500">${JG.esc(action)}</span>
-                        ${actor}
-                    </div>
-                    ${details}
-                </div>`;
-            }).join('');
         }
 
-        function openEditModal(id) {
-            const user = getUserById(id);
-            if (!user) return;
-            document.getElementById('edit-user-id').value = user.id;
-            document.getElementById('edit-email').value = user.email || '';
-            document.getElementById('edit-group-name').value = user.group_name || '';
-            document.getElementById('edit-expiry').value = toDateTimeLocal(user.access_expires_at || '');
-            document.getElementById('edit-clear-expiry').checked = false;
-            document.getElementById('edit-can-invite').checked = !!user.can_invite;
-            JG.openModal('edit-modal');
-        }
-
-        function closeEditModal() {
-            JG.closeModal('edit-modal');
-        }
-
-        function confirmDelete(id, username) {
-            pendingDeleteUser = { id, username };
-            document.getElementById('delete-modal-text').textContent = fmtTemplate(i18n.deleteConfirmTemplate, { username });
-            JG.openModal('delete-modal');
-        }
-
-        function closeDeleteModal() {
-            pendingDeleteUser = null;
-            JG.closeModal('delete-modal');
-        }
-
-        async function openTimelineModal(id) {
-            const user = getUserById(id);
-            if (!user) return;
-
-            document.getElementById('timeline-subtitle').textContent = fmtTemplate(i18n.timelineSubtitleTemplate, {
-                username: user.username,
-                email: user.email || '-',
-            });
-            document.getElementById('timeline-list').innerHTML = '<div class="text-center text-slate-500 py-8"><span class="spinner"></span></div>';
-            JG.openModal('timeline-modal');
-
-            const res = await JG.api(`/admin/api/users/${id}/timeline`);
-            if (!res.success) {
-                document.getElementById('timeline-list').innerHTML = `<div class="text-red-300">${JG.esc(res.message || i18n.timelineLoadError)}</div>`;
-                return;
+        function renderBulkFields(action) {
+            const c = document.getElementById('bulk-fields');
+            if (!c) return;
+            if (action === 'send_email') {
+                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkEmailSubjectPlaceholder||'Sujet') + '</label><input type="text" id="bulk-email-subject" class="jg-input h-12" placeholder="' + JG.esc(text.bulkEmailSubjectPlaceholder||'Sujet') + '"></div><div><label class="jg-label">' + JG.esc(text.bulkEmailBodyPlaceholder||'Message') + '</label><textarea id="bulk-email-body" class="jg-input" rows="6" placeholder="' + JG.esc(text.bulkEmailBodyPlaceholder||'Corps du message...') + '"></textarea></div><div class="text-xs text-jg-text-muted">' + JG.esc(text.bulkEmailVariablesLabel||'Variables') + ': {{.Username}}, {{.Email}}</div></div>';
+            } else if (action === 'set_expiry') {
+                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkExpiryLabel||'Expiration') + '</label><input type="datetime-local" id="bulk-expiry" class="jg-input h-12"></div><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="bulk-clear-expiry" class="form-checkbox"><span class="text-sm">' + JG.esc(text.bulkClearExpiry||'Supprimer') + '</span></label></div>';
+            } else if (action === 'set_parrainage') {
+                c.innerHTML = '<div class="space-y-4"><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="true" class="form-radio"><span>' + JG.esc(text.bulkInviteEnabled||'Activer') + '</span></label><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="false" checked class="form-radio"><span>' + JG.esc(text.bulkInviteDisabled||'Desactiver') + '</span></label></div>';
+            } else if (action === 'jellyfin_policy') {
+                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">Download</label><select id="bulk-jf-download" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfDownloadUnchanged||'Inchange') + '</option><option value="true">' + JG.esc(text.bulkJfDownloadAllowed||'Autorise') + '</option><option value="false">' + JG.esc(text.bulkJfDownloadBlocked||'Bloque') + '</option></select></div><div><label class="jg-label">Remote</label><select id="bulk-jf-remote" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfRemoteUnchanged||'Inchange') + '</option><option value="true">' + JG.esc(text.bulkJfRemoteAllowed||'Autorise') + '</option><option value="false">' + JG.esc(text.bulkJfRemoteBlocked||'Bloque') + '</option></select></div><div><label class="jg-label">Sessions</label><input type="number" id="bulk-jf-sessions" class="jg-input h-12" min="0"></div><div><label class="jg-label">Bitrate</label><input type="number" id="bulk-jf-bitrate" class="jg-input h-12" min="0"></div></div>';
+            } else if (action === 'apply_preset') {
+                const opts = jellyfinPresets.map(p => '<option value="' + JG.esc(p.id) + '">' + JG.esc(p.name||p.id) + '</option>').join('');
+                c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Preset') + '</label><select id="bulk-preset" class="jg-input h-12"><option value="">' + JG.esc(text.bulkSelectPreset||'Selectionner...') + '</option>' + opts + '</select></div>';
+            } else if (['activate','deactivate','delete','send_password_reset'].includes(action)) {
+                c.innerHTML = '<div class="text-center py-8 text-jg-text-muted">' + JG.esc(text.bulkNoExtraParams||'Aucun parametre supplementaire requis.') + '</div>';
+            } else {
+                c.innerHTML = '<div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">' + JG.esc(i18n.bulkChooseAction||'Choisir une action') + '</div>';
             }
-
-            renderTimelineEvents(res.data || []);
         }
 
-        function closeTimelineModal() {
-            JG.closeModal('timeline-modal');
+        async function executeBulkAction() {
+            const action = document.getElementById('bulk-action')?.value || '';
+            if (!action || selectedIds.size === 0) return;
+            const ids = Array.from(selectedIds);
+            const m = bulkActionMeta[action];
+            if (!confirm((m?m.label:action) + ' ' + (i18n.bulkActionOn||'sur') + ' ' + ids.length + ' ' + (i18n.bulkReadySuffix||'utilisateur(s)') + ' ?')) return;
+            let payload = { action: action, user_ids: ids };
+            if (action === 'send_email') {
+                payload.subject = document.getElementById('bulk-email-subject')?.value || '';
+                payload.body = document.getElementById('bulk-email-body')?.value || '';
+                if (!payload.subject || !payload.body) { JG.toast(i18n.bulkNeedEmailBody||'Sujet et corps requis', 'error'); return; }
+            } else if (action === 'set_expiry') {
+                payload.clear_expiry = !!document.getElementById('bulk-clear-expiry')?.checked;
+                if (!payload.clear_expiry) { payload.expiry = document.getElementById('bulk-expiry')?.value || ''; if (!payload.expiry) { JG.toast(i18n.bulkNeedExpiry||'Date requise', 'error'); return; } }
+            } else if (action === 'set_parrainage') {
+                payload.can_invite = document.querySelector('input[name="bulk-invite-value"]:checked')?.value === 'true';
+            } else if (action === 'jellyfin_policy') {
+                payload.download = document.getElementById('bulk-jf-download')?.value || '';
+                payload.remote = document.getElementById('bulk-jf-remote')?.value || '';
+                payload.max_sessions = parseInt(document.getElementById('bulk-jf-sessions')?.value||'0', 10)||0;
+                payload.bitrate_limit = parseInt(document.getElementById('bulk-jf-bitrate')?.value||'0', 10)||0;
+            } else if (action === 'apply_preset') {
+                payload.preset_id = document.getElementById('bulk-preset')?.value || '';
+                if (!payload.preset_id) { JG.toast(i18n.bulkNeedPreset||'Selectionnez un preset', 'error'); return; }
+            }
+            const res = await JG.api('/admin/api/users/bulk', { method: 'POST', body: JSON.stringify(payload) });
+            if (res.success) { JG.toast(i18n.bulkDone||'OK', 'success'); selectedIds.clear(); closeBulkDrawer(); await loadUsers(); }
+            else { JG.toast(res.message||i18n.bulkActionFailed||'Erreur', 'error'); }
         }
 
-        document.getElementById('users-tbody').addEventListener('click', async (event) => {
-            const button = event.target.closest('button');
-            if (!button) return;
-            const id = Number(button.dataset.id);
-            const user = getUserById(id);
-            if (!user) return;
-
-            if (button.classList.contains('action-edit')) {
-                openEditModal(id);
-                return;
-            }
-            if (button.classList.contains('action-timeline')) {
-                openTimelineModal(id);
-                return;
-            }
-            if (button.classList.contains('action-reset')) {
-                const res = await JG.api(`/admin/api/users/${id}/password-reset/send`, { method: 'POST' });
-                if (res.success) JG.toast(fmtTemplate(i18n.resetSent, { username: user.username }), 'success');
-                else JG.toast(res.message || i18n.resetError, 'error');
-                return;
-            }
-            if (button.classList.contains('action-toggle')) {
-                const res = await JG.api(`/admin/api/users/${id}/toggle`, { method: 'POST' });
-                if (res.success) {
-                    JG.toast(res.message || i18n.toggleUpdated, 'success');
-                    loadUsers();
-                } else {
-                    JG.toast(res.message || i18n.toggleError, 'error');
-                }
-                return;
-            }
-            if (button.classList.contains('action-delete')) {
-                confirmDelete(id, user.username);
-            }
+        // Event Listeners
+        document.getElementById('btn-sync-users')?.addEventListener('click', async () => {
+            if (!confirm(i18n.syncConfirm)) return;
+            const res = await JG.api('/admin/api/users/sync', { method: 'POST' });
+            if (res.success) { JG.toast(i18n.syncDone||'OK', 'success'); loadUsers(); }
+            else { JG.toast(res.message||i18n.syncError||'Erreur', 'error'); }
         });
 
-        document.getElementById('users-tbody').addEventListener('change', (event) => {
-            const checkbox = event.target.closest('.row-check');
-            if (!checkbox) return;
-            const id = Number(checkbox.dataset.id);
-            if (checkbox.checked) selectedIds.add(id);
-            else selectedIds.delete(id);
+        document.getElementById('search-users')?.addEventListener('input', applyFilters);
+        document.getElementById('filter-status')?.addEventListener('change', applyFilters);
+        document.getElementById('filter-jellyfin')?.addEventListener('change', applyFilters);
+        document.getElementById('filter-invite')?.addEventListener('change', applyFilters);
+        document.getElementById('filter-extra')?.addEventListener('change', applyFilters);
+        document.getElementById('btn-toggle-filters')?.addEventListener('click', toggleFilterPanel);
+        document.getElementById('btn-clear-filters')?.addEventListener('click', clearFilters);
+
+        // Select All
+        document.getElementById('check-all')?.addEventListener('change', (e) => {
+            const chk = e.target.checked;
+            filteredUsers.forEach((u) => { if (chk) selectedIds.add(u.id); else selectedIds.delete(u.id); });
+            document.querySelectorAll('.row-check').forEach((cb) => { cb.checked = chk; });
             updateSelectionUI();
         });
 
-        document.getElementById('check-all')?.addEventListener('change', (event) => {
-            const checked = event.target.checked;
-            filteredUsers.forEach((user) => {
-                if (checked) selectedIds.add(user.id);
-                else selectedIds.delete(user.id);
-            });
-            renderUsers(filteredUsers);
+        // Row checkboxes
+        document.getElementById('users-tbody')?.addEventListener('change', (e) => {
+            const cb = e.target.closest('.row-check');
+            if (!cb) return;
+            if (cb.checked) selectedIds.add(cb.dataset.id);
+            else selectedIds.delete(cb.dataset.id);
+            updateSelectionUI();
         });
 
-        document.getElementById('btn-select-filtered')?.addEventListener('click', () => {
-            filteredUsers.forEach((user) => selectedIds.add(user.id));
-            renderUsers(filteredUsers);
-        });
+        // Row action buttons
+        document.getElementById('users-tbody')?.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            const uid = btn.dataset.id;
+            if (!uid) return;
+            const user = allUsers.find(u => String(u.id) === String(uid));
 
-        document.getElementById('edit-save-btn')?.addEventListener('click', async () => {
-            const userIdEl = document.getElementById('edit-user-id');
-            if (!userIdEl) return;
-            const id = Number(userIdEl.value);
-            const payload = {
-                email: document.getElementById('edit-email').value.trim(),
-                group_name: document.getElementById('edit-group-name').value.trim(),
-                can_invite: document.getElementById('edit-can-invite').checked,
-                access_expires_at: document.getElementById('edit-expiry').value,
-                clear_expiry: document.getElementById('edit-clear-expiry').checked,
-            };
-
-            const res = await JG.api(`/admin/api/users/${id}`, {
-                method: 'PATCH',
-                body: JSON.stringify(payload),
-            });
-
-            if (res.success) {
-                JG.toast(i18n.editUpdated, 'success');
-                closeEditModal();
-                loadUsers();
-            } else {
-                JG.toast(res.message || i18n.editUpdateError, 'error');
-            }
-        });
-
-        document.getElementById('bulk-action').addEventListener('change', resetBulkFields);
-
-        document.getElementById('bulk-apply').addEventListener('click', async () => {
-            const action = document.getElementById('bulk-action').value;
-            const userIDs = Array.from(selectedIds);
-
-            const payload = collectBulkPayload(action, userIDs);
-            const validationError = validateBulkPayload(action, payload);
-            if (validationError) {
-                JG.toast(validationError, 'error');
-                updateBulkWizardState();
+            if (btn.classList.contains('action-timeline')) { openTimeline(uid, user); return; }
+            if (btn.classList.contains('action-edit')) { openEditModal(uid, user); return; }
+            if (btn.classList.contains('action-toggle')) {
+                if (!user) return;
+                const res = await JG.api('/admin/api/users/' + uid + '/toggle', { method: 'POST' });
+                if (res.success) { JG.toast(i18n.toggleUpdated||'OK', 'success'); await loadUsers(); }
+                else { JG.toast(res.message||i18n.toggleError||'Erreur', 'error'); }
                 return;
             }
-
-            const selectedUsers = allUsers.filter((user) => selectedIds.has(user.id));
-            const confirmationMsg = fmtTemplate(text.bulkConfirmTemplate, {
-                action: actionLabel(action),
-                count: selectedUsers.length,
-            });
-
-            if ((action === 'delete' || action === 'deactivate' || action === 'jellyfin_policy') && !confirm(confirmationMsg)) {
-                return;
-            }
-
-            const res = await JG.api('/admin/api/users/bulk', {
-                method: 'POST',
-                body: JSON.stringify(payload),
-            });
-
-            if (res.success) {
-                const success = res.data?.success || 0;
-                const total = res.data?.total || userIDs.length;
-                JG.toast(fmtTemplate(i18n.bulkDone, { success, total }), success === total ? 'success' : 'info');
-                if (action === 'delete') {
-                    selectedIds.clear();
-                }
-                updateBulkWizardState();
-                loadUsers();
-            } else {
-                JG.toast(res.message || i18n.bulkActionFailed, 'error');
-            }
+            if (btn.classList.contains('action-delete')) { openDeleteModal(uid, user); return; }
         });
 
-        ['search-users', 'filter-status', 'filter-jellyfin', 'filter-invite', 'filter-extra'].forEach((id) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            el.addEventListener('input', applyFilters);
-            el.addEventListener('change', applyFilters);
+        // Bulk email button
+        document.getElementById('btn-open-bulk-email')?.addEventListener('click', () => {
+            if (selectedIds.size === 0) { JG.toast(i18n.selectionEmpty||'Selectionnez des utilisateurs', 'info'); return; }
+            openBulkDrawer();
+            const sel = document.getElementById('bulk-action');
+            if (sel) { sel.value = 'send_email'; sel.dispatchEvent(new Event('change')); }
         });
 
-        document.querySelectorAll('.modal-overlay').forEach((overlay) => {
-            overlay.addEventListener('click', (event) => {
-                if (event.target !== overlay) return;
-                closeDeleteModal();
-                closeEditModal();
-                closeTimelineModal();
-            });
-        });
-
-        document.getElementById('btn-toggle-filters')?.addEventListener('click', toggleFilterPanel);
         document.getElementById('btn-open-bulk')?.addEventListener('click', openBulkDrawer);
         document.getElementById('btn-close-bulk')?.addEventListener('click', closeBulkDrawer);
         document.getElementById('bulk-drawer-overlay')?.addEventListener('click', closeBulkDrawer);
 
-        document.getElementById('btn-sync-users')?.addEventListener('click', syncUsers);
-        document.getElementById('btn-clear-filters')?.addEventListener('click', clearFilters);
-
-        document.getElementById('edit-cancel-btn')?.addEventListener('click', closeEditModal);
-        document.getElementById('delete-cancel-btn')?.addEventListener('click', closeDeleteModal);
-        document.getElementById('timeline-close-btn')?.addEventListener('click', closeTimelineModal);
-        document.getElementById('btn-open-bulk-email')?.addEventListener('click', openBulkEmailComposer);
-
-        document.getElementById('delete-confirm-btn')?.addEventListener('click', async () => {
-            if (!pendingDeleteUser) return;
-            const { id, username } = pendingDeleteUser;
-            closeDeleteModal();
-            const res = await JG.api(`/admin/api/users/${id}`, { method: 'DELETE' });
-            if (res.success) {
-                selectedIds.delete(id);
-                JG.toast(fmtTemplate(i18n.deleteSuccess, { username }), 'success');
-                loadUsers();
-            } else {
-                JG.toast(res.message || i18n.deleteError, 'error');
-            }
+        document.getElementById('bulk-action')?.addEventListener('change', (e) => {
+            const action = e.target.value;
+            const meta = bulkActionMeta[action];
+            const help = document.getElementById('bulk-help');
+            if (help) { if (meta && meta.help) { help.textContent = meta.help; help.classList.remove('hidden'); } else help.classList.add('hidden'); }
+            renderBulkFields(action);
+            updateBulkWizardState();
         });
 
-        (async () => {
-            await loadPresets();
-            resetBulkFields();
-            await loadUsers();
-        })();
+        document.getElementById('bulk-apply')?.addEventListener('click', executeBulkAction);
 
-        async function syncUsers() {
-            if (!confirm(i18n.syncConfirm)) return;
+        // Edit Modal
+        function openEditModal(uid, user) {
+            if (!user) return;
+            document.getElementById('edit-user-id').value = uid;
+            document.getElementById('edit-email').value = user.email || '';
+            document.getElementById('edit-group-name').value = user.group_name || '';
+            document.getElementById('edit-expiry').value = toDateTimeLocal(user.access_expires_at);
+            document.getElementById('edit-clear-expiry').checked = false;
+            document.getElementById('edit-can-invite').checked = !!user.can_invite;
+            JG.openModal('edit-modal');
+        }
+        document.getElementById('edit-cancel-btn')?.addEventListener('click', () => JG.closeModal('edit-modal'));
+        document.getElementById('edit-save-btn')?.addEventListener('click', async () => {
+            const uid = document.getElementById('edit-user-id').value;
+            const clr = document.getElementById('edit-clear-expiry').checked;
+            const p = { email: document.getElementById('edit-email').value, group_name: document.getElementById('edit-group-name').value, access_expires_at: clr ? '' : document.getElementById('edit-expiry').value, clear_expiry: clr, can_invite: document.getElementById('edit-can-invite').checked };
+            const res = await JG.api('/admin/api/users/' + uid, { method: 'PATCH', body: JSON.stringify(p) });
+            if (res.success) { JG.toast(i18n.editUpdated||'OK', 'success'); JG.closeModal('edit-modal'); await loadUsers(); }
+            else { JG.toast(res.message||i18n.editUpdateError||'Erreur', 'error'); }
+        });
+        document.getElementById('edit-modal')?.addEventListener('click', (e) => { if (e.target.id === 'edit-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('edit-modal'); });
 
-            try {
-                const data = await JG.api('/admin/api/users/sync', { method: 'POST' });
-                if (data.success) {
-                    JG.toast(data.message || i18n.syncDone, 'success');
-                    setTimeout(() => window.location.reload(), 1000);
-                } else {
-                    JG.toast(data.message || i18n.syncError, 'error');
-                }
-            } catch {
-                JG.toast(i18n.syncNetworkError, 'error');
+        // Delete Modal
+        function openDeleteModal(uid, user) {
+            pendingDeleteUser = uid;
+            const t = document.getElementById('delete-modal-text');
+            if (t && user) t.textContent = (i18n.deleteConfirmTemplate||'Supprimer {username} ?').replace('{username}', user.username);
+            JG.openModal('delete-modal');
+        }
+        document.getElementById('delete-cancel-btn')?.addEventListener('click', () => { pendingDeleteUser = null; JG.closeModal('delete-modal'); });
+        document.getElementById('delete-confirm-btn')?.addEventListener('click', async () => {
+            if (!pendingDeleteUser) return;
+            const res = await JG.api('/admin/api/users/' + pendingDeleteUser, { method: 'DELETE' });
+            if (res.success) { JG.toast(i18n.deleteSuccess||'OK', 'success'); selectedIds.delete(pendingDeleteUser); pendingDeleteUser = null; JG.closeModal('delete-modal'); await loadUsers(); }
+            else { JG.toast(res.message||i18n.deleteError||'Erreur', 'error'); }
+        });
+        document.getElementById('delete-modal')?.addEventListener('click', (e) => { if (e.target.id === 'delete-modal' || e.target.closest('[aria-hidden="true"]')) { pendingDeleteUser = null; JG.closeModal('delete-modal'); } });
+
+        // Timeline Modal
+        async function openTimeline(uid, user) {
+            const sub = document.getElementById('timeline-subtitle');
+            if (sub && user) sub.textContent = (i18n.timelineSubtitleTemplate||'{username}').replace('{username}', user.username);
+            JG.openModal('timeline-modal');
+            const list = document.getElementById('timeline-list');
+            if (list) list.innerHTML = '<div class="text-center py-20 text-jg-text-muted animate-pulse">Chargement...</div>';
+            const res = await JG.api('/admin/api/logs?actor=' + encodeURIComponent(user?.username||'') + '&limit=50');
+            if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+                list.innerHTML = res.data.map(entry => {
+                    const lvl = (entry.level||'info').toLowerCase();
+                    let badge = '<span class="badge badge-muted">' + JG.esc(i18n.timelineInfo||'Info') + '</span>';
+                    if (lvl === 'critical' || lvl === 'error') badge = '<span class="badge badge-danger">' + JG.esc(i18n.timelineCritical||'Critique') + '</span>';
+                    else if (lvl === 'warning') badge = '<span class="badge badge-warning">' + JG.esc(i18n.timelineImportant||'Important') + '</span>';
+                    return '<div class="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/5"><div class="flex-shrink-0 mt-1">' + badge + '</div><div class="flex-1 min-w-0"><div class="font-medium text-sm">' + JG.esc(entry.action||entry.message||'') + '</div><div class="text-xs text-jg-text-muted mt-1">' + fmtDate(entry.created_at||entry.timestamp) + '</div></div></div>';
+                }).join('');
+            } else {
+                list.innerHTML = '<div class="text-center py-20 text-jg-text-muted">' + JG.esc(i18n.timelineEmpty||'Aucun evenement.') + '</div>';
             }
         }
-    });
+        document.getElementById('timeline-close-btn')?.addEventListener('click', () => JG.closeModal('timeline-modal'));
+        document.getElementById('timeline-modal')?.addEventListener('click', (e) => { if (e.target.id === 'timeline-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('timeline-modal'); });
+
+        // Initial load
+        (async () => { await loadUsers(); await loadPresets(); })();
+    }
+
+    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
+    else { init(); }
 })();

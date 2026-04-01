@@ -1,6 +1,6 @@
 # CLAUDE — Consignes d'agent et Contexte du projet JellyGate
 
-Dernière mise à jour : 2026-03-30
+Dernière mise à jour : 2026-04-01
 
 Objectif
 - Fournir des directives concises et exploitables pour un assistant Claude travaillant sur ce dépôt, et rassembler le contexte produit/technique dans un seul fichier.
@@ -344,6 +344,19 @@ Remarques:
 - **Version 1.1.9** : Refonte de la page `Automatisation` (2026-03-28) — tables rendues responsive (scroll horizontal via `overflow-x-auto`), tables forcées en `min-w-full` pour éviter l'écrasement des colonnes sur petits écrans, et petites améliorations d'accessibilité/aperçu des tâches. Aucune modification API : compatibilité avec `web/static/js/pages/automation.js` conservée. Effectuer une vérification visuelle après redémarrage.
 
 - **Version 1.1.10** : Refonte de la page `Invitations` (2026-03-28) — tables rendues responsive et `min-w-full` appliqué, ajout d'un résumé de politique d'invitation et de messages d'aide (`invite-policy-summary`, `inv-uses-help`, `inv-link-expiry-help`, `inv-can-invite-help`), correction des boutons rapides pour éviter les `id` dupliqués (ajout de classes utilitaires pour attacher les listeners), et ajout d'un emplacement pour le texte de confirmation de suppression (`delete-modal-text`). Compatibilité fonctionnelle avec `web/static/js/pages/invitations.js` préservée — lancer une QA visuelle après redémarrage.
+
+- **Version 1.1.11** : Correction des boutons et interactions cassés (2026-04-01) — Trois corrections majeures :
+  1. **Page Utilisateurs** (`users.js` v3.0.0) : réécriture complète ajoutant tous les event listeners manquants — checkbox « Sélectionner tout » (`check-all`), checkboxes individuelles par ligne, bouton « E-mail en lot » (`btn-open-bulk-email`), ouverture/fermeture du drawer d'actions en lot, changement d'action bulk avec rendu dynamique des champs, gestion complète des actions par ligne (éditer, supprimer, timeline, toggle actif), modal d'édition, modal de suppression, modal timeline, filtres avancés (Jellyfin, invitation, extras) et indicateurs de filtres actifs.
+  2. **Page Invitations** (`invitations.html`) : les boutons « Voir tout » et « Nouvelle invitation » utilisaient des `id` (`btn-scroll-invitations`, `btn-open-create-modal`) alors que le JS `invitations.js` attendait des classes CSS (`.btn-scroll-invitations`, `.btn-open-create-modal`). Correction en remplaçant les ID par les classes correspondantes.
+  3. **Page Automatisation** (`automation.html`) : les modales de création de tâche (`modal-task-form`) et d'édition de preset (`modal-preset-form`) n'avaient pas la classe `flex` dans leur conteneur, empêchant le centrage correct via `JG.openModal()`. Ajout de `flex` aux classes CSS des deux modales.
+
+- **Version 1.1.12** : Durcissement Sécurité et Conformité CSP (2026-04-01) :
+  1. **Politique d'Invitation** : Le champ « Nom d'utilisateur réservé » (forced_username) est désormais **strictement restreint** aux invitations à usage unique (`max_uses = 1`). Le UI désactive dynamiquement le champ et le backend rejette toute configuration incohérente (forced_username + max_uses ≠ 1).
+  2. **Contrôle d'Usage** : Les non-admins ne peuvent plus créer d'invitations illimitées (plusieurs utilisateurs pour un seul lien) si `InviterMaxUses` est configuré, et sont forcés à `max_uses >= 1` par défaut.
+  3. **Conformité CSP** : Suppression de tous les attributs `onclick` en ligne dans `automation.html` au profit d'event listeners dans `automation.js`. Les modales utilisent désormais des classes communes (`modal-backdrop`, `modal-close-btn`) pour une gestion unifiée et sécurisée.
+  4. **Amélioration UI `select`** : Refonte du style des menus de sélection dans le thème sombre (teintes Cyan/Émeraude, chevrons personnalisés), assurant une cohérence visuelle parfaite dans tous les builders (Automation et Invitations).
+  5. **Fix `JG.closeModal`** : Correction du helper global pour garantir que la classe `hidden` est correctement restaurée, évitant les overlays fantômes qui bloquent l'interface.
+
 
 ### 4.6 Internationalisation (i18n)
 

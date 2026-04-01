@@ -36,7 +36,7 @@
             <div class="px-6 py-5 border-b border-jg-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
                 <h2 class="font-bold text-lg text-jg-text">{{ .T "automation_tasks_title" }}</h2>
                 <div class="flex gap-2">
-                    <button class="jg-btn jg-btn-primary jg-btn-sm font-bold tracking-widest uppercase text-[10px]" onclick="JG.openModal('modal-task-form')">
+                    <button class="jg-btn jg-btn-primary jg-btn-sm font-bold tracking-widest uppercase text-[10px]" id="btn-open-task-modal">
                         <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                         {{ .T "automation_add" }}
                     </button>
@@ -69,10 +69,10 @@
     </div>
 
     {{/* ── Modals for Tasks ─────────────────────────────────────────── */}}
-    <div id="modal-task-form" class="hidden fixed inset-0 z-[100] items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="JG.closeModal('modal-task-form')"></div>
+    <div id="modal-task-form" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm modal-backdrop" data-modal="modal-task-form"></div>
         <div class="jg-card glass-card relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl">
-            <button onclick="JG.closeModal('modal-task-form')" class="absolute top-4 right-4 text-jg-text-muted hover:text-white transition-colors">
+            <button class="absolute top-4 right-4 text-jg-text-muted hover:text-white transition-colors modal-close-btn" data-modal="modal-task-form">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             
@@ -137,10 +137,10 @@
     </div>
 
     {{/* ── Modals for Presets ────────────────────────────────────────── */}}
-    <div id="modal-preset-form" class="hidden fixed inset-0 z-[100] items-center justify-center p-4">
-        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm" onclick="JG.closeModal('modal-preset-form')"></div>
+    <div id="modal-preset-form" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div class="fixed inset-0 bg-black/60 backdrop-blur-sm modal-backdrop" data-modal="modal-preset-form"></div>
         <div class="jg-card glass-card relative z-10 w-full max-w-xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-2xl mx-auto mt-[5vh]">
-            <button onclick="JG.closeModal('modal-preset-form')" class="absolute top-4 right-4 text-jg-text-muted hover:text-white transition-colors">
+            <button class="absolute top-4 right-4 text-jg-text-muted hover:text-white transition-colors modal-close-btn" data-modal="modal-preset-form">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             
