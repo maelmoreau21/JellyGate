@@ -113,6 +113,8 @@ web/
 - l'e-mail d'invitation n'ajoute plus de bloc d'expiration si aucun délai n'est défini
 - les blocs d'aide et d'expiration peuvent être désactivés depuis l'admin
 - un toggle permet de purger automatiquement les liens expirés ou épuisés
+- un "Nom d'utilisateur réservé" (Forced Username) ne peut être défini que pour les invitations à usage unique (`max_uses = 1`) afin d'éviter les conflits de création de compte
+- les utilisateurs non-admins ne peuvent plus créer d'invitations à usage illimité (`max_uses` doit être >= 1)
 - base technique prête pour un futur mode parrainage utilisateur depuis `Mon compte`
 
 ### 4.2 Utilisateurs
@@ -274,6 +276,9 @@ L'interface suit actuellement ces principes:
 - sur l'écran de connexion, le selecteur de langue et le bouton de thème sont regroupés sous la carte de connexion pour un aspect épuré et moderne.
 
 Le design system partagé est porté par `web/static/css/custom.css` et `web/templates/layouts/base.html`.
+- **Select Premium** : Utiliser la classe `jg-select-premium` pour les menus déroulants afin de bénéficier de l'accentuation Cyan-Émeraude et de la flèche personnalisée.
+- **Conformité CSP** : Interdiction des gestionnaires d'événements inline (`onclick`, etc.). Utiliser des écouteurs d'événements dans les fichiers `.js` correspondants et des attributs `data-modal` pour les interactions de modales.
+- **Modales** : Utiliser `JG.openModal(id)` et `JG.closeModal(id)` pour gérer l'affichage via les classes `hidden` et `open`.
 
 ## 9. CI / Docker
 
@@ -350,13 +355,11 @@ Remarques:
   2. **Page Invitations** (`invitations.html`) : les boutons « Voir tout » et « Nouvelle invitation » utilisaient des `id` (`btn-scroll-invitations`, `btn-open-create-modal`) alors que le JS `invitations.js` attendait des classes CSS (`.btn-scroll-invitations`, `.btn-open-create-modal`). Correction en remplaçant les ID par les classes correspondantes.
   3. **Page Automatisation** (`automation.html`) : les modales de création de tâche (`modal-task-form`) et d'édition de preset (`modal-preset-form`) n'avaient pas la classe `flex` dans leur conteneur, empêchant le centrage correct via `JG.openModal()`. Ajout de `flex` aux classes CSS des deux modales.
 
-- **Version 1.1.12** : Durcissement Sécurité et Conformité CSP (2026-04-01) :
-  1. **Politique d'Invitation** : Le champ « Nom d'utilisateur réservé » (forced_username) est désormais **strictement restreint** aux invitations à usage unique (`max_uses = 1`). Le UI désactive dynamiquement le champ et le backend rejette toute configuration incohérente (forced_username + max_uses ≠ 1).
-  2. **Contrôle d'Usage** : Les non-admins ne peuvent plus créer d'invitations illimitées (plusieurs utilisateurs pour un seul lien) si `InviterMaxUses` est configuré, et sont forcés à `max_uses >= 1` par défaut.
-  3. **Conformité CSP** : Suppression de tous les attributs `onclick` en ligne dans `automation.html` au profit d'event listeners dans `automation.js`. Les modales utilisent désormais des classes communes (`modal-backdrop`, `modal-close-btn`) pour une gestion unifiée et sécurisée.
-  4. **Amélioration UI `select`** : Refonte du style des menus de sélection dans le thème sombre (teintes Cyan/Émeraude, chevrons personnalisés), assurant une cohérence visuelle parfaite dans tous les builders (Automation et Invitations).
-  5. **Fix `JG.closeModal`** : Correction du helper global pour garantir que la classe `hidden` est correctement restaurée, évitant les overlays fantômes qui bloquent l'interface.
-
+- **Version 1.1.12** : Sécurisation et Standardisation UI (2026-04-02)
+  - **Sécurité Invitations** : Restriction du champ "Nom d'utilisateur réservé" aux invitations à usage unique (`max_uses = 1`) côté frontend et backend. Interdiction des invitations illimitées pour les non-administrateurs.
+  - **Standardisation UI** : Application du style `jg-select-premium` (flèche accentuée teal, options dark mode) aux sélecteurs de type de tâche.
+  - **Correctif CSP** : Suppression totale des handlers `onclick` dans `automation.html` et `invitations.html`. Migration vers une délégation d'événements dans `automation.js` et `invitations.js` pour l'ouverture/fermeture des modales.
+  - **Robustesse Modales** : Mise à jour de `app.js` (`JG.closeModal`) pour garantir l'ajout systématique de la classe `hidden` et du style `display: none`.
 
 ### 4.6 Internationalisation (i18n)
 

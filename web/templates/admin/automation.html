@@ -49,6 +49,7 @@
                             <th class="px-6 py-4">{{ .T "automation_col_name" }}</th>
                             <th class="px-6 py-4">{{ .T "automation_col_type" }}</th>
                             <th class="px-6 py-4">{{ .T "automation_col_schedule" }}</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_payload" }}</th>
                             <th class="px-6 py-4">{{ .T "automation_col_last_run" }}</th>
                             <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
                         </tr>
@@ -299,7 +300,9 @@
             taskPreviewEmpty: '{{ .T "automation_task_preview_empty" }}',
             taskPayloadReady: '{{ .T "automation_task_payload_ready" }}',
             taskPayloadEmpty: '{{ .T "automation_task_payload_empty" }}',
+            taskEnabled: '{{ .T "automation_task_enabled" }}',
             taskDisabled: '{{ .T "automation_disable" }}',
+            deleteLabel: '{{ .T "automation_delete" }}'
         },
         taskTypeDescriptions: {
             sync_users: '{{ .T "automation_type_sync_users_desc" }}',

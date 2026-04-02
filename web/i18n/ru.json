@@ -761,5 +761,10 @@
     "verify_email_invite_failed_message": "ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð·Ð°Ð²ÐµÑ€ÑˆÐ¸Ñ‚ÑŒ ÑÐ¾Ð·Ð´Ð°Ð½Ð¸Ðµ Ð°ÐºÐºÐ°ÑƒÐ½Ñ‚Ð° Ð¿Ð¾ ÑÑ‚Ð¾Ð¼Ñƒ Ð¿Ñ€Ð¸Ð³Ð»Ð°ÑˆÐµÐ½Ð¸ÑŽ. ÐžÑ‚Ð¿Ñ€Ð°Ð²ÑŒÑ‚Ðµ Ñ„Ð¾Ñ€Ð¼Ñƒ Ð¿Ñ€Ð¸Ð³Ð»Ð°ÑˆÐµÐ½Ð¸Ñ ÑÐ½Ð¾Ð²Ð° Ð¸Ð»Ð¸ Ð·Ð°Ð¿Ñ€Ð¾ÑÐ¸Ñ‚Ðµ Ð½Ð¾Ð²Ð¾Ðµ Ð¿Ñ€Ð¸Ð³Ð»Ð°ÑˆÐµÐ½Ð¸Ðµ.",
     "verify_email_invite_success_heading": "ÐŸÐ¾Ñ‡Ñ‚Ð° Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½Ð°, Ð°ÐºÐºÐ°ÑƒÐ½Ñ‚ ÑÐ¾Ð·Ð´Ð°Ð½",
     "verify_email_invite_success_message": "Ð’Ð°Ñˆ Ð°Ð´Ñ€ÐµÑ ÑÐ»ÐµÐºÑ‚Ñ€Ð¾Ð½Ð½Ð¾Ð¹ Ð¿Ð¾Ñ‡Ñ‚Ñ‹ Ð¿Ð¾Ð´Ñ‚Ð²ÐµÑ€Ð¶Ð´ÐµÐ½, Ð¸ Ð²Ð°Ñˆ Ð°ÐºÐºÐ°ÑƒÐ½Ñ‚ Ð³Ð¾Ñ‚Ð¾Ð². Ð¢ÐµÐ¿ÐµÑ€ÑŒ Ð²Ñ‹ Ð¼Ð¾Ð¶ÐµÑ‚Ðµ Ð²Ð¾Ð¹Ñ‚Ð¸ Ð² Jellyfin.",
-    "view_all": "ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚ÑŒ Ð²ÑÐµ"
+    "view_all": "ÐŸÐ¾ÐºÐ°Ð·Ð°Ñ‚ÑŒ Ð²ÑÐµ",
+    "login_admin_title": "Administration",
+    "login_admin_desc": "Sign in to manage users, customize alerts, and configure automation.",
+    "login_direct_access": "Direct access",
+    "invitations_forced_username_limit_hint": "Reserved username is only available for single-use links (max = 1).",
+    "invitations_forced_username_limit_error": "Reserved username requires a single-use link (max = 1)."
 }

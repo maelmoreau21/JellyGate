@@ -493,6 +493,8 @@
     "invitations_forced_username": "Reserved username",
     "invitations_forced_username_help": "Optional. Lock the signup to a single username when you need a pre-assigned account.",
     "invitations_forced_username_placeholder": "Leave blank to let the user choose",
+    "invitations_forced_username_limit_hint": "Reserved username is only available for single-use links (max = 1).",
+    "invitations_forced_username_limit_error": "Reserved username requires a single-use link (max = 1).",
     "invitations_group_default": "Default group",
     "invitations_group_prefix": "Group: {group}",
     "invitations_invalid_max_uses": "Your current policy allows between 1 and {n} uses per link.",

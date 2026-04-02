@@ -153,6 +153,8 @@
     "invitations_forced_username": "Nom d utilisateur reserve",
     "invitations_forced_username_help": "Optionnel. Verrouillez l inscription sur un seul identifiant quand vous preparez un compte attribue a l avance.",
     "invitations_forced_username_placeholder": "Laisser vide pour laisser l utilisateur choisir",
+    "invitations_forced_username_limit_hint": "Le nom reserve n est disponible que pour les liens a usage unique (max = 1).",
+    "invitations_forced_username_limit_error": "Le nom reserve necessite un lien a usage unique (max = 1).",
     "invitations_group_default": "Groupe par defaut",
     "invitations_group_prefix": "Groupe : {group}",
     "invitations_invalid_max_uses": "Votre politique actuelle autorise entre 1 et {n} utilisations par lien.",

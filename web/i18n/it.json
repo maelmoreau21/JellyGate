@@ -761,5 +761,10 @@
     "verify_email_invite_failed_message": "Non siamo riusciti a completare la creazione del tuo account da questo invito. Invia di nuovo il modulo o chiedi un nuovo invito.",
     "verify_email_invite_success_heading": "Email verificata, account creato",
     "verify_email_invite_success_message": "Il tuo indirizzo email e stato confermato e il tuo account e pronto. Ora puoi accedere a Jellyfin.",
-    "view_all": "Vedi tutto"
+    "view_all": "Vedi tutto",
+    "login_admin_title": "Administration",
+    "login_admin_desc": "Sign in to manage users, customize alerts, and configure automation.",
+    "login_direct_access": "Direct access",
+    "invitations_forced_username_limit_hint": "Reserved username is only available for single-use links (max = 1).",
+    "invitations_forced_username_limit_error": "Reserved username requires a single-use link (max = 1)."
 }

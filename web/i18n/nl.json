@@ -91,7 +91,7 @@
     "dashboard_panel_invites_title": "Uitnodigingen",
     "dashboard_panel_settings_desc": "Systeemconfiguratie en integraties",
     "dashboard_panel_settings_title": "Instellingen",
-    "dashboard_panel_users_desc": "Beheer Jellyfin \u0026 LDAP toegang",
+    "dashboard_panel_users_desc": "Beheer Jellyfin & LDAP toegang",
     "dashboard_panel_users_title": "Gebruikers",
     "dashboard_recent_users": "Recente gebruikers",
     "dashboard_stats_title": "Activiteit",
@@ -761,5 +761,10 @@
     "verify_email_invite_failed_message": "We konden het aanmaken van je account met deze uitnodiging niet voltooien. Verstuur het uitnodigingsformulier opnieuw of vraag om een nieuwe uitnodiging.",
     "verify_email_invite_success_heading": "E-mail bevestigd, account aangemaakt",
     "verify_email_invite_success_message": "Je e-mailadres is bevestigd en je account is nu klaar. Je kunt nu inloggen op Jellyfin.",
-    "view_all": "Alles bekijken"
+    "view_all": "Alles bekijken",
+    "login_admin_title": "Administration",
+    "login_admin_desc": "Sign in to manage users, customize alerts, and configure automation.",
+    "login_direct_access": "Direct access",
+    "invitations_forced_username_limit_hint": "Reserved username is only available for single-use links (max = 1).",
+    "invitations_forced_username_limit_error": "Reserved username requires a single-use link (max = 1)."
 }

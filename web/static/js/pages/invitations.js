@@ -45,16 +45,27 @@
             const forcedUserWrap = document.getElementById('inv-forced-user-wrap');
             const forcedUserHelp = document.getElementById('inv-forced-user-help');
             if (!maxUsesInput || !forcedUserInput) return;
+            
             const maxUses = parseInt(maxUsesInput.value, 10);
             const isAllowed = maxUses === 1;
+            const policyI18n = i18n.policy || {};
+            
             forcedUserInput.disabled = !isAllowed;
             if (!isAllowed) forcedUserInput.value = '';
+            
             if (forcedUserWrap) {
                 forcedUserWrap.classList.toggle('opacity-40', !isAllowed);
                 forcedUserWrap.classList.toggle('pointer-events-none', !isAllowed);
             }
+            
             if (forcedUserHelp) {
-                forcedUserHelp.textContent = isAllowed ? '' : 'Le nom reserve n est disponible que pour les liens a usage unique (max = 1).';
+                if (!isAllowed) {
+                    forcedUserHelp.textContent = policyI18n.forced_username_limit_hint || "Le nom reserve n est disponible que pour les liens a usage unique (max = 1).";
+                    forcedUserHelp.classList.add('text-amber-500');
+                } else {
+                    forcedUserHelp.textContent = i18n.forced_username_help || "";
+                    forcedHelp.classList.remove('text-amber-500');
+                }
             }
         }
 
@@ -296,133 +307,141 @@
                 return;
             }
 
-            if (userExpiryEnabled && userExpiryAt) {
-                const expiryTimestamp = Date.parse(userExpiryAt);
-                if (Number.isNaN(expiryTimestamp) || expiryTimestamp <= Date.now()) {
-                    btn.disabled = false;
-                    btn.innerHTML = createBtnLabel();
-                    JG.toast(i18n.userExpiryFuture, 'error');
-                    return;
-                }
-            }
-
             if (forcedUsername && maxUses !== 1) {
                 btn.disabled = false;
                 btn.innerHTML = createBtnLabel();
-                JG.toast('Le nom reserve necessite un lien a usage unique (max = 1).', 'error');
+                const errorText = i18n.policy?.forced_username_limit_error || "Le nom reserve necessite un lien a usage unique (max = 1).";
+                JG.toast(errorText, 'error');
                 return;
             }
 
-            const payload = {
-                label: '',
+            const data = {
                 max_uses: maxUses,
-                expires_at: document.getElementById('inv-expires-link').value || '',
-                apply_user_expiry: userExpiryEnabled,
-                disable_after_days: userExpiryEnabled ? userExpiryDays : 0,
-                user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
-                user_expires_at: userExpiryEnabled ? userExpiryAt : '',
-                new_user_can_invite: grantInvite,
-                send_to_email: document.getElementById('inv-email').value,
-                email_message: '',
-                group_name: '',
-                forced_username: document.getElementById('inv-forced-user').value,
-                libraries: [],
+                expires_at: (document.getElementById('inv-link-expiry').value || '').trim(),
+                email: (document.getElementById('inv-email').value || '').trim(),
+                forced_username: forcedUsername,
+                jellyfin_profile: {
+                    preset_id: parseInt(document.getElementById('inv-preset').value, 10) || 0,
+                    group_name: (document.getElementById('inv-group').value || '').trim(),
+                    can_invite: grantInvite,
+                    user_expiry_days: userExpiryDays,
+                    user_expires_at: userExpiryAt,
+                    delete_after_days: parseInt(document.getElementById('inv-delete-after').value, 10) || 0
+                }
             };
 
             const res = await JG.api('/admin/api/invitations', {
                 method: 'POST',
-                body: JSON.stringify(payload),
+                body: JSON.stringify(data)
             });
-
             btn.disabled = false;
             btn.innerHTML = createBtnLabel();
 
             if (res.success) {
-                const createdLink = (res.data && res.data.url) ? res.data.url : '';
-                if (createdLink) {
-                    await copyLinkToClipboard(createdLink);
-                }
-                JG.toast(i18n.created, 'success');
+                JG.toast(i18n.invitationCreated, 'success');
                 closeCreateModal();
                 loadInvitations();
                 loadSponsorStats();
             } else {
-                JG.toast(res.message || i18n.unknownError, 'error');
+                JG.toast(res.error || i18n.unknownError, 'error');
             }
         }
 
-        const userExpiryToggle = document.getElementById('inv-user-expiry-enabled');
-        const userExpiryDaysField = document.getElementById('inv-user-expiry-days');
-        const userExpiryAtField = document.getElementById('inv-user-expiry-at');
-        if (userExpiryToggle && userExpiryDaysField) {
-            userExpiryToggle.addEventListener('change', () => {
-                userExpiryDaysField.disabled = !userExpiryToggle.checked;
-                if (userExpiryAtField) {
-                    userExpiryAtField.disabled = !userExpiryToggle.checked;
-                }
+        async function submitDelete() {
+            if (pendingDeleteInvitationID <= 0) return;
+            const res = await JG.api(`/admin/api/invitations/${pendingDeleteInvitationID}`, {
+                method: 'DELETE'
             });
-        }
-
-        document.querySelectorAll('.modal-overlay').forEach((overlay) => {
-            overlay.addEventListener('click', (event) => {
-                if (event.target === overlay) {
-                    closeCreateModal();
-                    closeDeleteModal();
-                }
-            });
-        });
-
-        document.querySelectorAll('.btn-open-create-modal').forEach((el) => el.addEventListener('click', openCreateModal));
-        document.getElementById('btn-close-create-modal-top')?.addEventListener('click', closeCreateModal);
-        document.getElementById('btn-close-create-modal-bottom')?.addEventListener('click', closeCreateModal);
-        document.getElementById('btn-close-delete-modal')?.addEventListener('click', closeDeleteModal);
-
-        document.querySelectorAll('.btn-scroll-invitations').forEach((el) => el.addEventListener('click', () => {
-            const target = document.getElementById('invites-tbody');
-            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }));
-
-        document.getElementById('create-form')?.addEventListener('submit', submitCreate);
-
-        document.getElementById('delete-confirm-btn')?.addEventListener('click', async () => {
-            if (!pendingDeleteInvitationID) {
-                return;
-            }
-            const res = await JG.api(`/admin/api/invitations/${pendingDeleteInvitationID}`, { method: 'DELETE' });
             if (res.success) {
-                JG.toast(i18n.deleted, 'success');
+                JG.toast(i18n.invitationDeleted, 'success');
                 closeDeleteModal();
                 loadInvitations();
                 loadSponsorStats();
+            } else {
+                JG.toast(res.error || i18n.unknownError, 'error');
             }
-        });
+        }
 
-        document.getElementById('invites-tbody')?.addEventListener('click', async (event) => {
-            const copyButton = event.target.closest('.action-copy-link');
-            if (copyButton) {
-                await copyLinkToClipboard(decodeURIComponent(copyButton.dataset.link || ''));
+        // --- Listeners (CSP Compliant) ---
+        document.body.addEventListener('click', (e) => {
+            const btnOpen = e.target.closest('.btn-open-create-modal');
+            if (btnOpen) {
+                openCreateModal();
                 return;
             }
 
-            const deleteButton = event.target.closest('.action-delete-invite');
-            if (deleteButton) {
-                confirmDelete(Number(deleteButton.dataset.id || '0'));
+            const btnScroll = e.target.closest('.btn-scroll-invitations');
+            if (btnScroll) {
+                const target = document.getElementById('all-invitations-section');
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            const btnCloseModal = e.target.closest('[data-modal-close]');
+            if (btnCloseModal) {
+                const modalId = btnCloseModal.getAttribute('data-modal-close');
+                if (modalId === 'create-modal') closeCreateModal();
+                else if (modalId === 'delete-modal') closeDeleteModal();
+                else JG.closeModal(modalId);
+                return;
+            }
+
+            const btnCopy = e.target.closest('.action-copy-link');
+            if (btnCopy) {
+                const link = decodeURIComponent(btnCopy.getAttribute('data-link'));
+                copyLinkToClipboard(link);
+                return;
+            }
+
+            const btnDelete = e.target.closest('.action-delete-invite');
+            if (btnDelete) {
+                const id = parseInt(btnDelete.getAttribute('data-id'), 10);
+                confirmDelete(id);
+                return;
+            }
+
+            const btnConfirmDelete = e.target.closest('#confirm-delete-btn');
+            if (btnConfirmDelete) {
+                submitDelete();
+                return;
             }
         });
 
-        const toggle = document.getElementById('sidebar-toggle');
-        if (toggle) {
-            toggle.addEventListener('click', () => {
-                const sidebar = document.getElementById('sidebar');
-                if (sidebar) sidebar.classList.toggle('open');
+        const createForm = document.getElementById('create-form');
+        if (createForm) {
+            createForm.addEventListener('submit', submitCreate);
+        }
+
+        const maxUsesInput = document.getElementById('inv-uses');
+        const forcedUserInput = document.getElementById('inv-forced-user');
+
+        if (maxUsesInput) {
+            maxUsesInput.addEventListener('input', updateForcedUsernameState);
+            maxUsesInput.addEventListener('change', updateForcedUsernameState);
+        }
+
+        if (forcedUserInput) {
+            forcedUserInput.addEventListener('input', () => {
+                const maxUses = parseInt(maxUsesInput?.value, 10);
+                if (maxUses !== 1 && forcedUserInput.value.length > 0) {
+                    const errorText = i18n.policy?.forced_username_limit_error || "Le nom reserve necessite un lien a usage unique (max = 1).";
+                    JG.showNotification(errorText, 'error');
+                    forcedUserInput.value = '';
+                }
             });
         }
 
-        document.getElementById('inv-uses')?.addEventListener('input', updateForcedUsernameState);
-        document.getElementById('inv-uses')?.addEventListener('change', updateForcedUsernameState);
+        const expiryEnabled = document.getElementById('inv-user-expiry-enabled');
+        if (expiryEnabled) {
+            expiryEnabled.addEventListener('change', () => {
+                const days = document.getElementById('inv-user-expiry-days');
+                const at = document.getElementById('inv-user-expiry-at');
+                if (days) days.disabled = !expiryEnabled.checked;
+                if (at) at.disabled = !expiryEnabled.checked;
+            });
+        }
 
         loadInvitations();
         loadSponsorStats();
-        applyInvitationPolicyUI();
     });
 })();
