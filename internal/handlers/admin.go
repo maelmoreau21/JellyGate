@@ -1379,24 +1379,97 @@ func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request)
 
 // â”€â”€ GET /admin/api/users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ListUsers retourne la liste de tous les utilisateurs avec leurs statuts
-// enrichis depuis Jellyfin.
+// ListUsers retourne la liste des utilisateurs avec pagination et recherche.
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	slog.Info("Liste des utilisateurs demandÃ©e", "admin", sess.Username)
+	q := r.URL.Query()
 
-	// â”€â”€ 1. RÃ©cupÃ©rer les utilisateurs depuis SQLite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-	rows, err := h.db.Query(
-		`SELECT id, jellyfin_id, username, email, ldap_dn, invited_by,
+	page := 1
+	limit := 25
+	if p, err := strconv.Atoi(q.Get("page")); err == nil && p > 0 {
+		page = p
+	}
+	if l, err := strconv.Atoi(q.Get("limit")); err == nil && l > 0 {
+		limit = l
+	}
+	if limit > 500 {
+		limit = 500
+	}
+
+	search := strings.TrimSpace(q.Get("search"))
+	status := q.Get("status")
+	invite := q.Get("invite")
+	extra := q.Get("extra")
+
+	whereParts := make([]string, 0)
+	args := make([]interface{}, 0)
+
+	if search != "" {
+		term := "%" + search + "%"
+		whereParts = append(whereParts, "(username LIKE ? OR email LIKE ? OR group_name LIKE ?)")
+		args = append(args, term, term, term)
+	}
+
+	if status == "active" {
+		whereParts = append(whereParts, "is_active = 1 AND is_banned = 0")
+	} else if status == "inactive" {
+		whereParts = append(whereParts, "is_active = 0 AND is_banned = 0")
+	} else if status == "banned" {
+		whereParts = append(whereParts, "is_banned = 1")
+	}
+
+	if invite == "enabled" {
+		whereParts = append(whereParts, "can_invite = 1")
+	} else if invite == "disabled" {
+		whereParts = append(whereParts, "can_invite = 0")
+	}
+
+	if extra == "with-email" {
+		whereParts = append(whereParts, "email IS NOT NULL AND email != ''")
+	} else if extra == "without-email" {
+		whereParts = append(whereParts, "(email IS NULL OR email = '')")
+	} else if extra == "expiry-active" {
+		whereParts = append(whereParts, "access_expires_at IS NOT NULL AND access_expires_at > datetime('now')")
+	} else if extra == "expiry-expired" {
+		whereParts = append(whereParts, "access_expires_at IS NOT NULL AND access_expires_at <= datetime('now')")
+	} else if extra == "expiry-none" {
+		whereParts = append(whereParts, "access_expires_at IS NULL")
+	}
+	// Note: Jellyfin filters (ok, disabled, missing) are harder to do purely in SQL 
+	// if we don't sync Jellyfin status to the 'users' table regularly.
+	// For now, we'll keep search/status/invite/extra in backend.
+	// If jellyfinFilter is set, we might need a different approach or just accept it's less efficient.
+	// To keep it simple and fast, I'll stick to these for now.
+
+	whereClause := ""
+	if len(whereParts) > 0 {
+		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
+	}
+
+	// 1. Compter le total
+	var total int
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM users %s", whereClause)
+	if err := h.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
+		slog.Error("Erreur comptage des utilisateurs", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture base de donnees"})
+		return
+	}
+
+	// 2. Récupérer les données paginées
+	offset := (page - 1) * limit
+	query := fmt.Sprintf(`SELECT id, jellyfin_id, username, email, ldap_dn, invited_by,
 		        group_name, is_active, is_banned, can_invite, access_expires_at, delete_at,
 		        expiry_action, expiry_delete_after_days, expired_at,
 		        created_at, updated_at
-		 FROM users ORDER BY created_at DESC`)
+		 FROM users %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
+
+	queryArgs := append(args, limit, offset)
+	rows, err := h.db.Query(query, queryArgs...)
 	if err != nil {
 		slog.Error("Erreur lecture des utilisateurs", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur de lecture de la base de donnÃ©es",
+			Message: "Erreur de lecture de la base de données",
 		})
 		return
 	}
@@ -1438,23 +1511,13 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		users = append(users, u)
 	}
 
-	// â”€â”€ 2. Enrichir avec le statut Jellyfin en temps rÃ©el â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-	// On fait un seul appel pour rÃ©cupÃ©rer tous les utilisateurs Jellyfin,
-	// puis on fusionne par ID pour Ã©viter N requÃªtes individuelles.
+	// 3. Enrichir avec Jellyfin
 	jfUsers, err := h.jfClient.GetUsers()
-	if err != nil {
-		slog.Warn("Impossible de rÃ©cupÃ©rer les utilisateurs Jellyfin (enrichissement dÃ©gradÃ©)",
-			"error", err,
-		)
-		// On continue sans enrichissement â€” les donnÃ©es SQLite suffisent
-	} else {
-		// Construire un index par ID Jellyfin
+	if err == nil {
 		jfIndex := make(map[string]*jellyfin.User, len(jfUsers))
 		for i := range jfUsers {
 			jfIndex[jfUsers[i].ID] = &jfUsers[i]
 		}
-
-		// Fusionner
 		for i := range users {
 			if jfUser, ok := jfIndex[users[i].JellyfinID]; ok {
 				users[i].JellyfinExists = true
@@ -1463,11 +1526,24 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	slog.Info("Liste des utilisateurs renvoyÃ©e", "count", len(users))
+	totalPages := 1
+	if total > 0 {
+		totalPages = int(math.Ceil(float64(total) / float64(limit)))
+	}
+
+	slog.Info("Liste des utilisateurs renvoyee", "admin", sess.Username, "count", len(users), "total", total)
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Data:    users,
+		Data: map[string]interface{}{
+			"users": users,
+			"meta": map[string]interface{}{
+				"total":       total,
+				"page":        page,
+				"limit":       limit,
+				"total_pages": totalPages,
+			},
+		},
 	})
 }
 

@@ -138,6 +138,27 @@
                         </tbody>
                     </table>
                 </div>
+
+                {{/* ── Pagination ── */}}
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-black/10 border-t border-white/5">
+                    <div class="flex items-center gap-3 text-xs text-jg-text-muted">
+                        <span>Afficher</span>
+                        <select id="items-per-page" class="jg-input h-9 px-3 py-0 text-[11px] w-20 bg-white/5 border-jg-border rounded-xl">
+                            <option value="25">25</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                        <span>{{ .T "logs_per_page_suffix" }}</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-1" id="pagination-controls">
+                        {{/* Injected via JS */}}
+                    </div>
+
+                    <div class="text-[10px] uppercase tracking-widest font-black text-jg-text-muted/60" id="pagination-info">
+                        {{ .T "logs_page_label" }} 1 {{ .T "logs_of_label" }} 1
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -345,6 +366,10 @@
             statusBanned: '{{ .T "status_banned" }}',
             statusActive: '{{ .T "status_active" }}',
             statusInactive: '{{ .T "status_inactive" }}',
+            next: '{{ .T "common_next" }}',
+            previous: '{{ .T "common_previous" }}',
+            pageOf: '{{ .T "logs_of_label" }}',
+            pageLabel: '{{ .T "logs_page_label" }}',
         },
         bulkActionMeta: {
             send_email: { label: '{{ .T "users_action_send_email" }}', help: '{{ .T "users_action_send_email_help" }}' },

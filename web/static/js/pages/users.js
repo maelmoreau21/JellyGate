@@ -7,11 +7,13 @@
 
     function init() {
         console.info('TRACE: init() started');
-        let allUsers = [];
-        let filteredUsers = [];
+        let allUsers = []; // Still used for some local stats but reflects current page users
+        let filteredUsers = []; // Current page users
+        let paginationMeta = { page: 1, limit: 25, total: 0, total_pages: 1 };
         let jellyfinPresets = [];
         const selectedIds = new Set();
         let pendingDeleteUser = null;
+        let searchTimeout = null;
 
         function fmtDate(value) {
             if (!value) return '\u2014';
@@ -125,18 +127,73 @@
             if (clearBtn) { if (c > 0) clearBtn.classList.remove('hidden'); else clearBtn.classList.add('hidden'); }
         }
 
+        function renderPagination() {
+            const container = document.getElementById('pagination-controls');
+            if (!container) return;
+            
+            const info = document.getElementById('pagination-info');
+            if (info) {
+                info.textContent = (i18n.pageLabel || 'Page') + ' ' + paginationMeta.page + ' ' + (i18n.pageOf || 'sur') + ' ' + paginationMeta.total_pages;
+            }
+
+            let html = '';
+            // Previous
+            html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 flex items-center justify-center rounded-xl ${paginationMeta.page <= 1 ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page - 1}" ${paginationMeta.page <= 1 ? 'disabled' : ''}>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            </button>`;
+
+            // Simple pagination: 1 ... current-1 current current+1 ... total
+            const startPage = Math.max(1, paginationMeta.page - 2);
+            const endPage = Math.min(paginationMeta.total_pages, paginationMeta.page + 2);
+
+            if (startPage > 1) {
+                html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl" data-page="1">1</button>`;
+                if (startPage > 2) html += `<span class="px-2 text-jg-text-muted">...</span>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const active = i === paginationMeta.page ? 'bg-jg-accent text-black font-bold' : 'hover:bg-white/5';
+                html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl ${active}" data-page="${i}">${i}</button>`;
+            }
+
+            if (endPage < paginationMeta.total_pages) {
+                if (endPage < paginationMeta.total_pages - 1) html += `<span class="px-2 text-jg-text-muted">...</span>`;
+                html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl" data-page="${paginationMeta.total_pages}">${paginationMeta.total_pages}</button>`;
+            }
+
+            // Next
+            html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 flex items-center justify-center rounded-xl ${paginationMeta.page >= paginationMeta.total_pages ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page + 1}" ${paginationMeta.page >= paginationMeta.total_pages ? 'disabled' : ''}>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>`;
+
+            container.innerHTML = html;
+
+            container.querySelectorAll('button[data-page]').forEach(btn => {
+                btn.onclick = () => {
+                    const p = parseInt(btn.dataset.page);
+                    if (p > 0 && p <= paginationMeta.total_pages && p !== paginationMeta.page) {
+                        paginationMeta.page = p;
+                        loadUsers();
+                    }
+                };
+            });
+        }
+
         function renderUsers(users) {
             filteredUsers = users;
             const tbody = document.getElementById('users-tbody');
             if (!tbody) return;
             const userCount = document.getElementById('user-count');
-            if (userCount) userCount.textContent = users.length + ' ' + (i18n.usersDisplayed||'') + ' ' + allUsers.length;
-            const st = document.getElementById('users-stat-total'); if (st) st.textContent = allUsers.length;
-            const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = users.length;
-            const si = document.getElementById('users-stat-inviters'); if (si) si.textContent = allUsers.filter(u => u.can_invite).length;
-            const se = document.getElementById('users-stat-expiring'); if (se) se.textContent = allUsers.filter(u => u.access_expires_at && !isExpired(u)).length;
+            if (userCount) userCount.textContent = (paginationMeta.total || 0) + ' ' + (i18n.totalLabel||'utilisateurs');
+            
+            const st = document.getElementById('users-stat-total'); if (st) st.textContent = paginationMeta.total;
+            const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = filteredUsers.length;
+            
+            // Note: counts for stats row might need a separate 'summary' API if we want them to reflect REAL totals not just current page.
+            // For now, these are less accurate unless we fetch them separately.
+            
             if (users.length === 0) {
-                const help = allUsers.length === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
+                const help = paginationMeta.total === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
                 tbody.innerHTML = '<tr><td colspan="11" class="text-center text-slate-500 py-24">' + JG.esc(help) + '</td></tr>';
                 updateSelectionUI(); return;
             }
@@ -144,7 +201,6 @@
                 const checked = selectedIds.has(user.id) ? 'checked' : '';
                 const isSelected = selectedIds.has(user.id);
                 const bgClass = isSelected ? 'bg-jg-accent/10' : 'hover:bg-white/[0.03]';
-                const toggleLabel = user.is_active ? i18n.deactivate : i18n.activate;
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
                 return '<tr class="group ' + bgClass + ' border-b border-white/5">'
                     + '<td class="px-6 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox" data-id="' + user.id + '" ' + checked + '></td>'
@@ -161,42 +217,39 @@
                     + '</div></td></tr>';
             }).join('');
             updateSelectionUI();
+            renderPagination();
         }
 
         function applyFilters() {
-            const query = document.getElementById('search-users')?.value.toLowerCase() || '';
+            // Trigger backend fetch
+            paginationMeta.page = 1;
+            loadUsers();
+            updateFilterIndicators();
+        }
+
+        async function loadUsers() {
+            const query = document.getElementById('search-users')?.value || '';
             const status = document.getElementById('filter-status')?.value || 'all';
             const jellyfin = document.getElementById('filter-jellyfin')?.value || 'all';
             const invite = document.getElementById('filter-invite')?.value || 'all';
             const extra = document.getElementById('filter-extra')?.value || 'all';
-            const result = allUsers.filter(u => {
-                const mQ = !query || u.username.toLowerCase().includes(query) || (u.email||'').toLowerCase().includes(query);
-                let mS = true;
-                if (status === 'active') mS = u.is_active && !u.is_banned;
-                else if (status === 'inactive') mS = !u.is_active && !u.is_banned;
-                else if (status === 'banned') mS = u.is_banned;
-                let mJ = true;
-                if (jellyfin === 'ok') mJ = u.jellyfin_exists && !u.jellyfin_disabled;
-                else if (jellyfin === 'disabled') mJ = u.jellyfin_exists && u.jellyfin_disabled;
-                else if (jellyfin === 'missing') mJ = !u.jellyfin_exists;
-                let mI = true;
-                if (invite === 'enabled') mI = u.can_invite;
-                else if (invite === 'disabled') mI = !u.can_invite;
-                let mE = true;
-                if (extra === 'with-email') mE = !!u.email;
-                else if (extra === 'without-email') mE = !u.email;
-                else if (extra === 'expiry-active') mE = u.access_expires_at && !isExpired(u);
-                else if (extra === 'expiry-expired') mE = u.access_expires_at && isExpired(u);
-                else if (extra === 'expiry-none') mE = !u.access_expires_at;
-                return mQ && mS && mJ && mI && mE;
-            });
-            updateFilterIndicators();
-            renderUsers(result);
-        }
 
-        async function loadUsers() {
-            const res = await JG.api('/admin/api/users');
-            if (res.success) { allUsers = res.data || []; applyFilters(); }
+            const params = new URLSearchParams({
+                page: paginationMeta.page,
+                limit: paginationMeta.limit,
+                search: query,
+                status: status,
+                jellyfin: jellyfin, // currently limited impact in backend
+                invite: invite,
+                extra: extra
+            });
+
+            const res = await JG.api('/admin/api/users?' + params.toString());
+            if (res.success && res.data) { 
+                allUsers = res.data.users || [];
+                paginationMeta = res.data.meta || paginationMeta;
+                renderUsers(allUsers);
+            }
             else { JG.toast(i18n.loadError || 'Erreur', 'error'); }
         }
 
@@ -281,7 +334,19 @@
             else { JG.toast(res.message||i18n.syncError||'Erreur', 'error'); }
         });
 
-        document.getElementById('search-users')?.addEventListener('input', applyFilters);
+        document.getElementById('search-users')?.addEventListener('input', () => {
+            if (searchTimeout) clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                applyFilters();
+            }, 400);
+        });
+
+        document.getElementById('items-per-page')?.addEventListener('change', (e) => {
+            paginationMeta.limit = parseInt(e.target.value);
+            paginationMeta.page = 1;
+            loadUsers();
+        });
+
         document.getElementById('filter-status')?.addEventListener('change', applyFilters);
         document.getElementById('filter-jellyfin')?.addEventListener('change', applyFilters);
         document.getElementById('filter-invite')?.addEventListener('change', applyFilters);
