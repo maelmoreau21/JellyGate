@@ -30,7 +30,7 @@
                 return;
             }
 
-            const users = usersRes.data || [];
+            const users = (usersRes.data && usersRes.data.users) ? usersRes.data.users : (Array.isArray(usersRes.data) ? usersRes.data : []);
             const invitations = invitationsRes && invitationsRes.success ? (invitationsRes.data || []) : [];
             document.getElementById('stat-users').textContent = users.length;
             document.getElementById('stat-active').textContent = users.filter((user) => user.is_active && !user.is_banned).length;

@@ -47,6 +47,7 @@ type TemplateData struct {
 	AdminUsername       string
 	IsAdmin             bool
 	CanInvite           bool
+	LDAPEnabled         bool
 	ShowNewPasswordForm bool
 	ResetCode           string
 	SuccessMessage      string

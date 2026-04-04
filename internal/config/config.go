@@ -868,6 +868,13 @@ type JellyfinPolicyPreset struct {
 	DisableAfterDays   int      `json:"disable_after_days"`
 	ExpiryAction       string   `json:"expiry_action"`
 	DeleteAfterDays    int      `json:"delete_after_days"`
+
+	// Parrainage / Sponsorship
+	CanInvite           bool     `json:"can_invite"`
+	TargetPresetID      string   `json:"target_preset_id"`       // Le preset assigne aux personnes invitees
+	InviteQuota         int      `json:"invite_quota"`           // Quota mensuel d'invitations
+	InviteMaxUses       int      `json:"invite_max_uses"`        // Nombre d'utilisations par lien d'invitation
+	InviteMaxLinkHours  int      `json:"invite_max_link_hours"`  // Duree de validite d'un lien en heures
 }
 
 // InvitationProfileConfig contient la politique appliquee a chaque nouvelle invitation.

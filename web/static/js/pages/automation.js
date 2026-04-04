@@ -8,7 +8,13 @@
         document.addEventListener("click", (e) => {
             const openBtn = e.target.closest("#btn-open-task-modal");
             if (openBtn) {
+                console.log("Opening task modal...");
                 JG.openModal("modal-task-form");
+            }
+            
+            const addPresetBtn = e.target.closest("#btn-preset-add");
+            if (addPresetBtn) {
+                // Handled in specific listener below, but delegating here for consistency
             }
 
             const closeBtn = e.target.closest(".modal-close-btn");
@@ -23,7 +29,52 @@
             }
         });
 
+        // Double check for task button explicitly
+        const taskBtn = document.getElementById('btn-open-task-modal');
+        if (taskBtn) {
+            taskBtn.onclick = () => JG.openModal("modal-task-form");
+        }
 
+        // --- Custom Confirm Logic ---
+        function confirmAction(title, message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('modal-confirm');
+                if (!modal) {
+                    resolve(window.confirm(message));
+                    return;
+                }
+                const titleEl = document.getElementById('confirm-modal-title');
+                const messageEl = document.getElementById('confirm-modal-message');
+                if (titleEl) titleEl.textContent = title;
+                if (messageEl) messageEl.textContent = message;
+
+                JG.openModal('modal-confirm');
+
+                const btnConfirm = document.getElementById('btn-confirm-action');
+                const btnCancel = document.getElementById('btn-confirm-cancel');
+
+                const cleanup = () => {
+                    btnConfirm.removeEventListener('click', onConfirm);
+                    btnCancel.removeEventListener('click', onCancel);
+                    /* Also close if backdrop or X is clicked (handled globally by closeModal)
+                       But to be robust, we wait a bit in interval to check if modal is hidden */
+                };
+
+                const onConfirm = () => {
+                    JG.closeModal('modal-confirm');
+                    cleanup();
+                    resolve(true);
+                };
+                const onCancel = () => {
+                    JG.closeModal('modal-confirm');
+                    cleanup();
+                    resolve(false);
+                };
+
+                btnConfirm.addEventListener('click', onConfirm);
+                btnCancel.addEventListener('click', onCancel);
+            });
+        }
 
         let presets = [];
         let groupMappings = [];
@@ -85,7 +136,6 @@
 
         function presetRow(preset, idx) {
             return `<tr>
-            <td class="font-medium text-jg-text">${JG.esc(preset.id || '')}</td>
             <td>${JG.esc(preset.name || '')}</td>
             <td>${preset.enable_download ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-danger">Non</span>'}</td>
             <td>${preset.enable_remote_access ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-danger">Non</span>'}</td>
@@ -107,11 +157,10 @@
             }
             updateOverview();
             if (!presets.length) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center text-slate-500 py-8">${JG.esc(i18n.noPresets)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-500 py-8">${JG.esc(i18n.noPresets)}</td></tr>`;
                 return;
             }
             tbody.innerHTML = presets.map((preset, idx) => presetRow(preset, idx)).join('');
-            renderGroupMappings();
         }
 
         async function loadPresets() {
@@ -124,118 +173,240 @@
             renderPresets();
         }
 
-        function collectPresetsFromUI() {
-            return presets;
-        }
-        
-        // Modal Preset Handlers
-        let currentPresetIndex = -1;
-        
-        function openPresetModal(idx) {
-            currentPresetIndex = idx;
-            const preset = presets[idx] || {};
-            document.getElementById('preset-id').value = preset.id || '';
-            document.getElementById('preset-name').value = preset.name || '';
-            document.getElementById('preset-enable-download').checked = !!preset.enable_download;
-            document.getElementById('preset-enable-remote').checked = !!preset.enable_remote_access;
-            document.getElementById('preset-max-sessions').value = preset.max_sessions || 0;
-            document.getElementById('preset-bitrate').value = preset.bitrate_limit || 0;
-            document.getElementById('preset-disable-days').value = preset.disable_after_days || 0;
-            document.getElementById('preset-delete-days').value = preset.delete_after_days || 0;
-            JG.openModal('modal-preset-form');
-        }
-        
-        document.getElementById('preset-form-internal')?.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const idx = currentPresetIndex;
-            if (idx < 0 || idx >= presets.length) return;
-            
-            presets[idx].id = document.getElementById('preset-id').value.trim();
-            presets[idx].name = document.getElementById('preset-name').value.trim();
-            presets[idx].enable_download = document.getElementById('preset-enable-download').checked;
-            presets[idx].enable_remote_access = document.getElementById('preset-enable-remote').checked;
-            presets[idx].max_sessions = parseInt(document.getElementById('preset-max-sessions').value, 10) || 0;
-            presets[idx].bitrate_limit = parseInt(document.getElementById('preset-bitrate').value, 10) || 0;
-            presets[idx].disable_after_days = parseInt(document.getElementById('preset-disable-days').value, 10) || 0;
-            presets[idx].delete_after_days = parseInt(document.getElementById('preset-delete-days').value, 10) || 0;
-            
-            renderPresets();
-            JG.closeModal('modal-preset-form');
-        });
-
-        function groupPresetOptions(selectedID) {
-            const options = [`<option value="">${JG.esc(i18n.selectPreset)}</option>`];
-            presets.forEach((preset) => {
-                const value = JG.esc(preset.id || '');
-                const selected = (preset.id || '') === (selectedID || '') ? 'selected' : '';
-                options.push(`<option value="${value}" ${selected}>${JG.esc(preset.name || preset.id || '')}</option>`);
-            });
-            return options.join('');
-        }
-
-        function groupMappingRow(mapping, idx) {
-            return `<tr>
-            <td><input class="jg-input" data-g="${idx}" data-k="group_name" value="${JG.esc(mapping.group_name || '')}" placeholder="Enfants"></td>
-            <td>
-                <select class="jg-input" data-g="${idx}" data-k="source">
-                    <option value="internal" ${(mapping.source || 'internal') === 'internal' ? 'selected' : ''}>internal</option>
-                    <option value="ldap" ${(mapping.source || '') === 'ldap' ? 'selected' : ''}>ldap</option>
-                </select>
-            </td>
-            <td><input class="jg-input" data-g="${idx}" data-k="ldap_group_dn" value="${JG.esc(mapping.ldap_group_dn || '')}" placeholder="CN=Enfants,CN=Users,DC=home,DC=lan"></td>
-            <td>
-                <select class="jg-input" data-g="${idx}" data-k="policy_preset_id">
-                    ${groupPresetOptions(mapping.policy_preset_id || '')}
-                </select>
-            </td>
-            <td class="text-right"><button class="jg-btn jg-btn-sm jg-btn-danger" data-action="group-map-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button></td>
-        </tr>`;
-        }
-
-        function renderGroupMappings() {
-            const tbody = document.getElementById('group-mappings-body');
-            if (!tbody) {
-                return;
-            }
-            updateOverview();
-            if (!groupMappings.length) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-8">${JG.esc(i18n.noGroupMappings)}</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = groupMappings.map((mapping, idx) => groupMappingRow(mapping, idx)).join('');
-        }
-
-        function collectGroupMappingsFromUI() {
-            const rows = document.querySelectorAll('#group-mappings-body tr');
-            const next = [];
-            rows.forEach((_, idx) => {
-                const read = (key) => document.querySelector(`[data-g="${idx}"][data-k="${key}"]`);
-                const groupName = (read('group_name')?.value || '').trim();
-                const source = (read('source')?.value || 'internal').trim();
-                const ldapGroupDN = (read('ldap_group_dn')?.value || '').trim();
-                const policyPresetID = (read('policy_preset_id')?.value || '').trim();
-                if (!groupName || !policyPresetID) {
-                    return;
-                }
-                next.push({
-                    group_name: groupName,
-                    source: source === 'ldap' ? 'ldap' : 'internal',
-                    ldap_group_dn: ldapGroupDN,
-                    policy_preset_id: policyPresetID,
-                });
-            });
-            return next;
-        }
-
-        async function loadGroupMappings() {
+        async function loadMappings() {
             const res = await JG.api('/admin/api/automation/group-mappings');
             if (!res.success) {
                 JG.toast(res.message || i18n.errorGroupMappings, 'error');
                 return;
             }
             groupMappings = Array.isArray(res.data) ? res.data : [];
-            renderGroupMappings();
+            renderMappings();
         }
+
+        document.getElementById('btn-group-map-add')?.addEventListener('click', () => {
+             groupMappings.push({
+                 group_name: '',
+                 source: 'ldap',
+                 ldap_group_dn: '',
+                 policy_preset_id: presets.length ? presets[0].id : ''
+             });
+             renderMappings();
+        });
+
+        document.getElementById('btn-group-map-save')?.addEventListener('click', async () => {
+            const rows = document.querySelectorAll('#group-mappings-body tr');
+            const data = [];
+            rows.forEach((row, idx) => {
+                if (idx >= groupMappings.length) return;
+                const nameInput = row.querySelector('input[data-field="group_name"]');
+                const sourceSelect = row.querySelector('select[data-field="source"]');
+                const ldapInput = row.querySelector('input[data-field="ldap_group_dn"]');
+                const presetSelect = row.querySelector('select[data-field="policy_preset_id"]');
+                
+                if (nameInput && sourceSelect && presetSelect) {
+                    data.push({
+                        group_name: nameInput.value.trim(),
+                        source: sourceSelect.value,
+                        ldap_group_dn: ldapInput ? ldapInput.value.trim() : '',
+                        policy_preset_id: presetSelect.value
+                    });
+                } else {
+                    // If it's a rendered row (static), use existing data
+                    data.push(groupMappings[idx]);
+                }
+            });
+
+            const res = await JG.api('/admin/api/automation/group-mappings', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            });
+
+            if (!res.success) {
+                JG.toast(res.message || i18n.saveMappingsFailed, 'error');
+                return;
+            }
+            JG.toast(i18n.mappingsSaved, 'success');
+            await loadMappings();
+        });
+
+        document.getElementById('group-mappings-body')?.addEventListener('click', async (e) => {
+             const btn = e.target.closest('button');
+             if (!btn) return;
+             if (btn.dataset.action === 'mapping-delete') {
+                 const idx = parseInt(btn.dataset.index);
+                 const agreed = await confirmAction('Supprimer le mapping', 'Voulez-vous supprimer ce mapping de groupe ?');
+                 if (!agreed) return;
+                 groupMappings.splice(idx, 1);
+                 renderMappings();
+             }
+        });
+
+        function mappingRow(mapping, idx) {
+            const presetOptions = presets.map(p => `<option value="${JG.esc(p.id)}" ${p.id === mapping.policy_preset_id ? 'selected' : ''}>${JG.esc(p.name || p.id)}</option>`).join('');
+            
+            return `<tr>
+                <td><input type="text" class="jg-input jg-input-sm" data-field="group_name" value="${JG.esc(mapping.group_name || '')}" placeholder="Nom du groupe"></td>
+                <td>
+                    <select class="jg-input jg-input-sm py-0" data-field="source">
+                        <option value="internal" ${mapping.source === 'internal' ? 'selected' : ''}>Interne</option>
+                        <option value="ldap" ${mapping.source === 'ldap' ? 'selected' : ''}>LDAP</option>
+                    </select>
+                </td>
+                <td><input type="text" class="jg-input jg-input-sm text-xs" data-field="ldap_group_dn" value="${JG.esc(mapping.ldap_group_dn || '')}" placeholder="CN=...,DC=..."></td>
+                <td>
+                    <select class="jg-input jg-input-sm py-0" data-field="policy_preset_id">
+                        ${presetOptions}
+                    </select>
+                </td>
+                <td class="text-right">
+                    <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="mapping-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button>
+                </td>
+            </tr>`;
+        }
+
+        function renderMappings() {
+            const tbody = document.getElementById('group-mappings-body');
+            if (!tbody) return;
+            updateOverview();
+            if (!groupMappings.length) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-8">${JG.esc(i18n.noGroupMappings)}</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = groupMappings.map((m, idx) => mappingRow(m, idx)).join('');
+        }
+
+        async function loadMappings() {
+            const res = await JG.api('/admin/api/automation/group-mappings');
+            if (!res.success) {
+                JG.toast(res.message || i18n.errorGroupMappings, 'error');
+                return;
+            }
+            groupMappings = Array.isArray(res.data) ? res.data : [];
+            renderMappings();
+        }
+
+        // Modal Preset Handlers
+        let currentPresetIndex = -1;
+        
+        function getSlug(text) {
+            return (text || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+        }
+
+        function openPresetModal(idx) {
+            currentPresetIndex = idx;
+            const preset = presets[idx] || {};
+            document.getElementById('preset-name').value = preset.name || '';
+            const ldapInput = document.getElementById('preset-ldap-dn');
+            if (ldapInput) ldapInput.value = preset._ldap_dn || '';
+            document.getElementById('preset-enable-download').checked = !!preset.enable_download;
+            document.getElementById('preset-enable-remote').checked = !!preset.enable_remote_access;
+            document.getElementById('preset-max-sessions').value = preset.max_sessions || 0;
+            document.getElementById('preset-bitrate').value = preset.bitrate_limit || 0;
+            document.getElementById('preset-disable-days').value = preset.disable_after_days || 0;
+            document.getElementById('preset-delete-days').value = preset.delete_after_days || 0;
+            
+            // Sponsorship / Parrainage
+            document.getElementById('preset-can-invite').checked = !!preset.can_invite;
+            document.getElementById('preset-invite-quota').value = preset.invite_quota || 0;
+            document.getElementById('preset-invite-max-uses').value = preset.invite_max_uses || 1;
+            document.getElementById('preset-invite-max-hours').value = preset.invite_max_link_hours || 48;
+            
+            const targetSelect = document.getElementById('preset-target-preset');
+            if (targetSelect) {
+                targetSelect.innerHTML = `<option value="">(Même preset que le parrain)</option>` + 
+                    presets.filter(p => p.id && p.id !== preset.id).map(p => `<option value="${JG.esc(p.id)}">${JG.esc(p.name || p.id)}</option>`).join('');
+                targetSelect.value = preset.target_preset_id || '';
+            }
+            
+            const sponsorshipOpts = document.getElementById('preset-sponsorship-options');
+            if (sponsorshipOpts) {
+                sponsorshipOpts.style.display = preset.can_invite ? 'grid' : 'none';
+            }
+
+            document.getElementById('preset-can-invite')?.addEventListener('change', (e) => {
+                const sponsorshipOpts = document.getElementById('preset-sponsorship-options');
+                if (sponsorshipOpts) {
+                    sponsorshipOpts.style.display = e.target.checked ? 'grid' : 'none';
+                }
+            });
+
+            JG.openModal('modal-preset-form');
+        }
+        
+        document.getElementById('preset-form-internal')?.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idx = currentPresetIndex;
+            if (idx < 0 || idx >= presets.length) return;
+            
+            const name = document.getElementById('preset-name').value.trim();
+            if (!presets[idx].id) {
+                 // New preset, generate slug
+                 presets[idx].id = getSlug(name) || 'preset-' + Math.random().toString(36).substr(2, 5);
+            }
+            presets[idx].name = name;
+            const ldapInput = document.getElementById('preset-ldap-dn');
+            presets[idx]._ldap_dn = ldapInput ? ldapInput.value.trim() : '';
+            
+            presets[idx].enable_download = document.getElementById('preset-enable-download').checked;
+            presets[idx].enable_remote_access = document.getElementById('preset-enable-remote').checked;
+            presets[idx].max_sessions = parseInt(document.getElementById('preset-max-sessions').value, 10) || 0;
+            presets[idx].bitrate_limit = parseInt(document.getElementById('preset-bitrate').value, 10) || 0;
+            presets[idx].disable_after_days = parseInt(document.getElementById('preset-disable-days').value, 10) || 0;
+            presets[idx].delete_after_days = parseInt(document.getElementById('preset-delete-days').value, 10) || 0;
+            presets[idx].can_invite = document.getElementById('preset-can-invite').checked;
+            presets[idx].target_preset_id = document.getElementById('preset-target-preset').value || '';
+            presets[idx].invite_quota = parseInt(document.getElementById('preset-invite-quota').value, 10) || 0;
+            presets[idx].invite_max_uses = parseInt(document.getElementById('preset-invite-max-uses').value, 10) || 1;
+            presets[idx].invite_max_link_hours = parseInt(document.getElementById('preset-invite-max-hours').value, 10) || 48;
+            
+            // Clean payload
+            const payload = presets.map(p => {
+                const cleaned = {...p};
+                delete cleaned._ldap_dn;
+                return cleaned;
+            });
+            
+            const res = await JG.api('/admin/api/automation/presets', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            
+            if (!res.success) {
+                JG.toast(res.message || i18n.savePresetsFailed, 'error');
+                return;
+            }
+            
+            // Also generate and save Group Mappings
+            const mappingsPayload = [];
+            presets.forEach(p => {
+                // Internal group mapping (implicit)
+                mappingsPayload.push({
+                    group_name: p.name,
+                    source: 'internal',
+                    ldap_group_dn: '',
+                    policy_preset_id: p.id
+                });
+                
+                // LDAP group mapping (if defined)
+                if (p._ldap_dn) {
+                    mappingsPayload.push({
+                        group_name: p.name,
+                        source: 'ldap',
+                        ldap_group_dn: p._ldap_dn,
+                        policy_preset_id: p.id
+                    });
+                }
+            });
+            
+            await JG.api('/admin/api/automation/group-mappings', {
+                method: 'POST',
+                body: JSON.stringify(mappingsPayload),
+            });
+            
+            JG.toast(i18n.presetsSaved, 'success');
+            await loadPresets();
+            JG.closeModal('modal-preset-form');
+        });
 
         function renderTasks() {
             const tbody = document.getElementById('tasks-body');
@@ -275,8 +446,8 @@
 
         document.getElementById('btn-preset-add')?.addEventListener('click', () => {
             presets.push({
-                id: `preset-${presets.length + 1}`,
-                name: i18n.newPreset,
+                id: '', // Empty ID = new preset flag
+                name: '',
                 enable_download: true,
                 enable_remote_access: true,
                 max_sessions: 0,
@@ -291,74 +462,75 @@
                 disable_after_days: 0,
                 expiry_action: 'disable',
                 delete_after_days: 0,
+                can_invite: false,
+                target_preset_id: '',
+                invite_quota: 0,
+                invite_max_uses: 1,
+                invite_max_link_hours: 48,
+                _ldap_dn: '',
             });
-            renderPresets();
             openPresetModal(presets.length - 1);
         });
 
-        document.getElementById('btn-preset-save')?.addEventListener('click', async () => {
-            const payload = collectPresetsFromUI();
-            const res = await JG.api('/admin/api/automation/presets', {
-                method: 'POST',
-                body: JSON.stringify(payload),
-            });
-            if (!res.success) {
-                JG.toast(res.message || i18n.savePresetsFailed, 'error');
-                return;
-            }
-            JG.toast(i18n.presetsSaved, 'success');
-            await loadPresets();
-        });
-
-        document.getElementById('presets-body')?.addEventListener('click', (event) => {
+        document.getElementById('presets-body')?.addEventListener('click', async (event) => {
             const button = event.target.closest('button');
             if (!button) return;
             const index = parseInt(button.dataset.index || '-1', 10);
             if (!Number.isInteger(index) || index < 0) return;
             
             if (button.dataset.action === 'preset-delete') {
+                const agreed = await confirmAction('Supprimer ce preset', 'Cette action va rendre caduc le preset pour les utilisateurs assignés.');
+                if (!agreed) return;
+
+                const deletedPresetID = presets[index].id;
                 presets.splice(index, 1);
+                
+                // Clean payload
+                const payload = presets.map(p => {
+                    const cleaned = {...p};
+                    delete cleaned._ldap_dn;
+                    return cleaned;
+                });
+                
+                const res = await JG.api('/admin/api/automation/presets', {
+                    method: 'POST',
+                    body: JSON.stringify(payload),
+                });
+                
+                if (!res.success) {
+                    JG.toast('Erreur lors de la suppression', 'error');
+                    await loadPresets();
+                    return;
+                }
+                
+                // Also update mappings by just sending the alive ones
+                const mappingsPayload = [];
+                presets.forEach(p => {
+                    mappingsPayload.push({
+                        group_name: p.name,
+                        source: 'internal',
+                        ldap_group_dn: '',
+                        policy_preset_id: p.id
+                    });
+                    if (p._ldap_dn) {
+                        mappingsPayload.push({
+                            group_name: p.name,
+                            source: 'ldap',
+                            ldap_group_dn: p._ldap_dn,
+                            policy_preset_id: p.id
+                        });
+                    }
+                });
+                await JG.api('/admin/api/automation/group-mappings', {
+                    method: 'POST',
+                    body: JSON.stringify(mappingsPayload),
+                });
+
+                JG.toast('Preset supprimé', 'success');
                 renderPresets();
             } else if (button.dataset.action === 'preset-edit') {
                 openPresetModal(index);
             }
-        });
-
-        document.getElementById('btn-group-map-add')?.addEventListener('click', () => {
-            groupMappings.push({
-                group_name: '',
-                source: 'internal',
-                ldap_group_dn: '',
-                policy_preset_id: presets[0]?.id || '',
-            });
-            renderGroupMappings();
-        });
-
-        document.getElementById('btn-group-map-save')?.addEventListener('click', async () => {
-            const payload = collectGroupMappingsFromUI();
-            const res = await JG.api('/admin/api/automation/group-mappings', {
-                method: 'POST',
-                body: JSON.stringify(payload),
-            });
-            if (!res.success) {
-                JG.toast(res.message || i18n.saveMappingsFailed, 'error');
-                return;
-            }
-            JG.toast(i18n.mappingsSaved, 'success');
-            await loadGroupMappings();
-        });
-
-        document.getElementById('group-mappings-body')?.addEventListener('click', (event) => {
-            const button = event.target.closest('button');
-            if (!button || button.dataset.action !== 'group-map-delete') {
-                return;
-            }
-            const index = parseInt(button.dataset.index || '-1', 10);
-            if (!Number.isInteger(index) || index < 0) {
-                return;
-            }
-            groupMappings.splice(index, 1);
-            renderGroupMappings();
         });
 
         document.getElementById('task-create-form')?.addEventListener('submit', async (event) => {
@@ -400,7 +572,8 @@
             const task = tasks.find((entry) => String(entry.id) === String(id));
 
             if (action === 'task-delete') {
-                if (!confirm(i18n.taskDeleteConfirm)) {
+                const agreed = await confirmAction('Supprimer la tâche', 'Êtes-vous sûr de vouloir supprimer cette tâche planifiée ?');
+                if (!agreed) {
                     return;
                 }
                 const res = await JG.api(`/admin/api/automation/tasks/${id}`, { method: 'DELETE' });
@@ -464,7 +637,7 @@
         (async () => {
             updateTaskPreview();
             await loadPresets();
-            await loadGroupMappings();
+            await loadMappings();
             await loadTasks();
         })();
     });

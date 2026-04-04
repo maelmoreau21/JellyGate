@@ -13,10 +13,12 @@
         <div class="jg-stat-value text-jg-text" id="automation-presets-count">0</div>
         <div class="jg-stat-label">{{ .T "automation_presets_title" }}</div>
     </div>
+    {{ if .LDAPEnabled }}
     <div class="jg-card jg-stat-card">
         <div class="jg-stat-value text-jg-text" id="automation-mappings-count">0</div>
         <div class="jg-stat-label">{{ .T "automation_group_mappings_title" }}</div>
     </div>
+    {{ end }}
     <div class="jg-card jg-stat-card">
         <div class="jg-stat-value text-jg-text" id="automation-tasks-count">0</div>
         <div class="jg-stat-label">{{ .T "automation_tasks_title" }}</div>
@@ -27,7 +29,9 @@
     <div class="jg-tabs-nav">
         <button class="jg-tab-btn active" data-tab="tab-tasks">{{ .T "automation_tasks_title" }}</button>
         <button class="jg-tab-btn" data-tab="tab-presets">{{ .T "automation_presets_title" }}</button>
+        {{ if .LDAPEnabled }}
         <button class="jg-tab-btn" data-tab="tab-mappings">{{ .T "automation_group_mappings_title" }}</button>
+        {{ end }}
     </div>
 
     {{/* ── Tab: Tasks ────────────────────────────────────────────────── */}}
@@ -154,10 +158,12 @@
 
             <form id="preset-form-internal" class="space-y-5">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {{ if .LDAPEnabled }}
                     <div>
-                        <label class="jg-label" for="preset-id">{{ .T "automation_col_id" }}</label>
-                        <input id="preset-id" class="jg-input h-11 bg-black/20 text-sm" placeholder='Ex: basic'>
+                        <label class="jg-label" for="preset-ldap-dn">Groupe LDAP Associé (Optionnel)</label>
+                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=Groupe,DC=...'>
                     </div>
+                    {{ end }}
                     <div>
                         <label class="jg-label" for="preset-name">{{ .T "automation_col_name" }}</label>
                         <input id="preset-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='Ex: Standard'>
@@ -237,7 +243,7 @@
         </section>
     </div>
 
-    {{/* ── Tab: Mappings ─────────────────────────────────────────────── */}}
+    {{ if .LDAPEnabled }}
     <div id="tab-mappings" class="jg-tab-pane">
         <section id="automation-mappings" class="jg-card p-0 overflow-hidden shadow-2xl">
             <div class="px-6 py-5 border-b border-jg-border flex items-center justify-between bg-white/[0.01]">
@@ -265,6 +271,7 @@
             </div>
         </section>
     </div>
+    {{ end }}
 </div>
 
 {{ end }}

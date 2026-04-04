@@ -31,6 +31,7 @@ type DB struct {
 	conn   *sql.DB
 	path   string
 	driver string
+	cfg    config.DatabaseConfig
 }
 
 // Rows encapsule sql.Rows avec un Scan tolerant aux valeurs temporelles.
@@ -118,7 +119,12 @@ func New(dbCfg config.DatabaseConfig, dataDir string) (*DB, error) {
 		return nil, fmt.Errorf("impossible de ping la base de donnees: %w", err)
 	}
 
-	db := &DB{conn: conn, path: path, driver: driver}
+	db := &DB{
+		conn:   conn,
+		path:   path,
+		driver: driver,
+		cfg:    dbCfg,
+	}
 	if err := db.migrate(); err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("erreur lors des migrations: %w", err)
@@ -163,7 +169,15 @@ func (db *DB) Path() string { return db.path }
 // Driver renvoie le dialecte actif: sqlite ou postgres.
 func (db *DB) Driver() string { return db.driver }
 
-func (db *DB) IsSQLite() bool { return db.driver == DialectSQLite }
+// IsSQLite retourne true si la base courante est SQLite.
+func (db *DB) IsSQLite() bool {
+	return db.driver == DialectSQLite
+}
+
+// GetConfig retourne la configuration de connexion.
+func (db *DB) GetConfig() config.DatabaseConfig {
+	return db.cfg
+}
 
 func (db *DB) IsPostgres() bool { return db.driver == DialectPostgres }
 
@@ -446,26 +460,39 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_action TEXT NOT NULL DEFAULT 'disable'`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expired_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN preset_id TEXT`) // NEW
 		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN used BOOLEAN NOT NULL DEFAULT 0`)
 	} else {
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS can_invite BOOLEAN NOT NULL DEFAULT FALSE`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_lang TEXT NOT NULL DEFAULT ''`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_expiry_reminder BOOLEAN NOT NULL DEFAULT TRUE`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_account_events BOOLEAN NOT NULL DEFAULT TRUE`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_discord TEXT NOT NULL DEFAULT ''`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_telegram TEXT NOT NULL DEFAULT ''`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_email BOOLEAN NOT NULL DEFAULT TRUE`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_discord BOOLEAN NOT NULL DEFAULT FALSE`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_telegram BOOLEAN NOT NULL DEFAULT FALSE`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email TEXT NOT NULL DEFAULT ''`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMPTZ`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS group_name TEXT NOT NULL DEFAULT ''`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS delete_at TIMESTAMPTZ`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_action TEXT NOT NULL DEFAULT 'disable'`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`)
-		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ`)
-		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN IF NOT EXISTS used BOOLEAN NOT NULL DEFAULT FALSE`)
+		// Postgres: on utilise IF NOT EXISTS pour la compatibilité (9.6+)
+		queries := []string{
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS can_invite BOOLEAN NOT NULL DEFAULT FALSE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_lang TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_expiry_reminder BOOLEAN NOT NULL DEFAULT TRUE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_account_events BOOLEAN NOT NULL DEFAULT TRUE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_discord TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_telegram TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_email BOOLEAN NOT NULL DEFAULT TRUE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_discord BOOLEAN NOT NULL DEFAULT FALSE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_telegram BOOLEAN NOT NULL DEFAULT FALSE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMPTZ`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS group_name TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS delete_at TIMESTAMPTZ`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_action TEXT NOT NULL DEFAULT 'disable'`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ`,
+			`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS preset_id TEXT`,
+			`ALTER TABLE pending_invite_signups ADD COLUMN IF NOT EXISTS used BOOLEAN NOT NULL DEFAULT FALSE`,
+		}
+		for _, q := range queries {
+			if _, err := db.conn.Exec(q); err != nil {
+				// S'assurer que l'absence de IF NOT EXISTS (vieilles versions Postgres) ne bloque pas tout
+				slog.Warn("Migration manuelle Postgres (ignorable si deja fait/vieille version)", "query", q, "error", err)
+			}
+		}
 	}
 
 	if err := db.backfillExistingEmailVerificationState(); err != nil {
@@ -506,8 +533,8 @@ func (db *DB) seedDefaultTasks() error {
 	for _, t := range tasks {
 		_, err := db.Exec(
 			`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
-			 VALUES (?, ?, 1, ?, ?, 'system', ?, ?)`,
-			t.name, t.taskType, t.hour, t.minute, now, now,
+			 VALUES (?, ?, ?, ?, ?, 'system', ?, ?)`,
+			t.name, t.taskType, true, t.hour, t.minute, now, now,
 		)
 		if err != nil {
 			slog.Error("Erreur lors de l'insertion d'une tache par defaut", "name", t.name, "error", err)
@@ -570,6 +597,7 @@ func (db *DB) sqliteMigrations() []migration {
 				email_verification_sent_at DATETIME,
 				ldap_dn           TEXT,
 				group_name        TEXT    NOT NULL DEFAULT '',
+				preset_id         TEXT,
 				invited_by        TEXT,
 				is_active         BOOLEAN NOT NULL DEFAULT 1,
 				is_banned         BOOLEAN NOT NULL DEFAULT 0,
@@ -579,8 +607,8 @@ func (db *DB) sqliteMigrations() []migration {
 				expiry_action     TEXT    NOT NULL DEFAULT 'disable',
 				expiry_delete_after_days INTEGER NOT NULL DEFAULT 0,
 				expired_at        DATETIME,
-				created_at        DATETIME NOT NULL DEFAULT (datetime('now')),
-				updated_at        DATETIME NOT NULL DEFAULT (datetime('now'))
+				created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -594,7 +622,7 @@ func (db *DB) sqliteMigrations() []migration {
 				jellyfin_profile TEXT,
 				expires_at       DATETIME,
 				created_by       TEXT,
-				created_at       DATETIME NOT NULL DEFAULT (datetime('now'))
+				created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -605,7 +633,7 @@ func (db *DB) sqliteMigrations() []migration {
 				code       TEXT    UNIQUE NOT NULL,
 				expires_at DATETIME NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT 0,
-				created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -617,7 +645,7 @@ func (db *DB) sqliteMigrations() []migration {
 				code       TEXT    UNIQUE NOT NULL,
 				expires_at DATETIME NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT 0,
-				created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -631,7 +659,7 @@ func (db *DB) sqliteMigrations() []migration {
 				password_ciphertext TEXT    NOT NULL,
 				expires_at          DATETIME NOT NULL,
 				used                BOOLEAN NOT NULL DEFAULT 0,
-				created_at          DATETIME NOT NULL DEFAULT (datetime('now'))
+				created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -639,7 +667,7 @@ func (db *DB) sqliteMigrations() []migration {
 			sql: `CREATE TABLE IF NOT EXISTS settings (
 				key        TEXT PRIMARY KEY,
 				value      TEXT,
-				updated_at DATETIME NOT NULL DEFAULT (datetime('now'))
+				updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -650,7 +678,7 @@ func (db *DB) sqliteMigrations() []migration {
 				actor      TEXT,
 				target     TEXT,
 				details    TEXT,
-				created_at DATETIME NOT NULL DEFAULT (datetime('now'))
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -744,6 +772,7 @@ func (db *DB) postgresMigrations() []migration {
 				email_verification_sent_at TIMESTAMPTZ,
 				ldap_dn           TEXT,
 				group_name        TEXT NOT NULL DEFAULT '',
+				preset_id         TEXT,
 				invited_by        TEXT,
 				is_active         BOOLEAN NOT NULL DEFAULT TRUE,
 				is_banned         BOOLEAN NOT NULL DEFAULT FALSE,

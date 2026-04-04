@@ -805,6 +805,8 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	deleteAfterDays := 0
 	groupName := ""
 	canInviteFromProfile := false
+	var presetID interface{}
+	
 	if inv.JellyfinProfile != "" {
 		var pf jellyfin.InviteProfile
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &pf); err == nil {
@@ -823,6 +825,9 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 			}
 			groupName = strings.TrimSpace(pf.GroupName)
 			canInviteFromProfile = pf.CanInvite
+			if strings.TrimSpace(pf.PresetID) != "" {
+				presetID = strings.TrimSpace(pf.PresetID)
+			}
 		}
 	}
 
@@ -849,9 +854,9 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, email_verified, ldap_dn, group_name, invited_by, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL)`,
-		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays,
+		`INSERT INTO users (jellyfin_id, username, email, email_verified, ldap_dn, group_name, invited_by, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at, preset_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL, ?)`,
+		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insÃ©rer l'utilisateur %q: %w", form.Username, err)

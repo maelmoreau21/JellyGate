@@ -150,9 +150,9 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		Value:    cookieValue,
 		Path:     "/",
 		MaxAge:   int(session.Duration.Seconds()),
-		HttpOnly: true,                    // Pas accessible en JavaScript
-		Secure:   r.TLS != nil,            // Secure si HTTPS
-		SameSite: http.SameSiteStrictMode, // Protection CSRF
+		HttpOnly: true,                 // Pas accessible en JavaScript
+		Secure:   r.TLS != nil,         // Secure si HTTPS
+		SameSite: http.SameSiteLaxMode, // Plus compatible que Strict pour le dev/local
 	})
 
 	if preferredLang := h.resolvePreferredLang(authResp.User.ID, authResp.User.Name); preferredLang != "" {
@@ -233,8 +233,9 @@ func (h *AuthHandler) authenticateWithJellyfin(username, password string) (*jell
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Emby-Authorization",
-		fmt.Sprintf(`MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="%s"`, config.AppVersion))
+	embyAuth := fmt.Sprintf(`MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="%s"`, config.AppVersion)
+	req.Header.Set("Authorization", embyAuth)
+	req.Header.Set("X-Emby-Authorization", embyAuth)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

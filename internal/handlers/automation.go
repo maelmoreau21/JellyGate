@@ -33,6 +33,7 @@ func (h *AutomationHandler) AutomationPage(w http.ResponseWriter, r *http.Reques
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "automation"
 	if err := h.renderer.Render(w, "admin/automation.html", td); err != nil {
 		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)

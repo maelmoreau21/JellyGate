@@ -10,8 +10,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -55,6 +57,10 @@ func (s *Service) requireSQLiteArchive(action string) error {
 	}
 	if s == nil || s.db == nil {
 		return fmt.Errorf("%w: %s impossible (service indisponible)", ErrSQLiteOnly, action)
+	}
+	// For backups, we will now allow postgres
+	if action == "creation de sauvegarde" {
+		return nil
 	}
 	return fmt.Errorf("%w: %s non supporte avec %q (utiliser pg_dump/pg_restore)", ErrSQLiteOnly, action, s.db.Driver())
 }
@@ -121,9 +127,31 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 		return info, err
 	}
 
-	quotedSnapshot := strings.ReplaceAll(snapshotPath, "'", "''")
-	if _, err := s.db.Exec("VACUUM INTO '" + quotedSnapshot + "'"); err != nil {
-		return info, fmt.Errorf("snapshot sqlite (VACUUM INTO): %w", err)
+	var dbFileToZip string
+	var zipFileName string
+
+	if s.db.IsSQLite() {
+		quotedSnapshot := strings.ReplaceAll(snapshotPath, "'", "''")
+		if _, err := s.db.Exec("VACUUM INTO '" + quotedSnapshot + "'"); err != nil {
+			return info, fmt.Errorf("snapshot sqlite (VACUUM INTO): %w", err)
+		}
+		dbFileToZip = snapshotPath
+		zipFileName = "jellygate.db"
+	} else {
+		// PostgreSQL logic using pg_dump
+		cfg := s.db.GetConfig()
+		dbFileToZip = filepath.Join(s.restoreDir, fmt.Sprintf("snapshot-%s.sql", stamp))
+		zipFileName = "jellygate.sql"
+		
+		_ = os.Setenv("PGPASSWORD", cfg.Password)
+		defer os.Unsetenv("PGPASSWORD")
+		
+		cmd := exec.Command("pg_dump", "-h", cfg.Host, "-p", strconv.Itoa(cfg.Port), "-U", cfg.User, "-d", cfg.Name, "-F", "p", "-f", dbFileToZip)
+		cmdOutput, err := cmd.CombinedOutput()
+		if err != nil {
+			return info, fmt.Errorf("dump postgresql echoue: %w (output: %s)", err, string(cmdOutput))
+		}
+		defer os.Remove(dbFileToZip)
 	}
 
 	f, err := os.Create(path)
@@ -134,14 +162,14 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 
 	zw := zip.NewWriter(f)
 
-	dbBytes, err := os.ReadFile(snapshotPath)
+	dbBytes, err := os.ReadFile(dbFileToZip)
 	if err != nil {
 		_ = zw.Close()
-		return info, fmt.Errorf("lecture sqlite: %w", err)
+		return info, fmt.Errorf("lecture base de versement: %w", err)
 	}
-	if err := writeZipEntry(zw, "jellygate.db", dbBytes); err != nil {
+	if err := writeZipEntry(zw, zipFileName, dbBytes); err != nil {
 		_ = zw.Close()
-		return info, fmt.Errorf("ajout jellygate.db: %w", err)
+		return info, fmt.Errorf("ajout fichier db compressé: %w", err)
 	}
 
 	settingsMap, err := s.db.GetAllSettings()
@@ -474,7 +502,7 @@ func (s *Service) StartScheduler(ctx context.Context) {
 }
 
 func (s *Service) runScheduledTick() {
-	if !s.SupportsSQLiteArchive() {
+	if !s.SupportsSQLiteArchive() && s.db.Driver() != "postgres" {
 		return
 	}
 

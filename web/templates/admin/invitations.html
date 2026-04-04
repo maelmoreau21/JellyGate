@@ -9,7 +9,6 @@
         <p class="text-jg-text-muted mt-2">Créez et gérez des liens d'invitation pour automatiser les inscriptions.</p>
     </div>
     <div class="flex items-center gap-3">
-        <button class="jg-btn jg-btn-ghost btn-scroll-invitations">{{ .T "view_all" }}</button>
         <button class="jg-btn jg-btn-primary btn-open-create-modal">
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
             {{ .T "invitations_new_invitation" }}
@@ -112,7 +111,7 @@
                 <h2 class="text-2xl font-bold">{{ .T "invitations_create_title" }}</h2>
                 <div id="invite-policy-summary" class="text-sm text-jg-accent font-semibold mt-1 uppercase tracking-wider"></div>
             </div>
-            <button id="btn-close-create-modal-top" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted hover:text-rose-400 transition-colors">
+            <button data-modal-close="create-modal" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted hover:text-rose-400 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
@@ -193,7 +192,7 @@
                 </div>
 
                 <div class="mt-12 flex flex-col md:flex-row justify-end gap-3 pt-8 border-t border-jg-border">
-                    <button type="button" class="jg-btn jg-btn-ghost h-14 px-8" id="btn-close-create-modal-bottom">{{ .T "cancel" }}</button>
+                    <button type="button" class="jg-btn jg-btn-ghost h-14 px-8" data-modal-close="create-modal">{{ .T "cancel" }}</button>
                     <button type="submit" class="jg-btn jg-btn-primary h-14 px-10 font-bold uppercase tracking-widest" id="create-btn">
                         {{ .T "invitations_create_link" }}
                     </button>
@@ -215,7 +214,7 @@
 
         <div class="flex flex-col gap-3">
             <button class="jg-btn jg-btn-danger h-12 font-bold uppercase tracking-widest" id="delete-confirm-btn">{{ .T "invitations_delete" }}</button>
-            <button class="jg-btn jg-btn-ghost h-12" id="btn-close-delete-modal">{{ .T "cancel" }}</button>
+            <button class="jg-btn jg-btn-ghost h-12" data-modal-close="delete-modal">{{ .T "cancel" }}</button>
         </div>
     </div>
 </div>

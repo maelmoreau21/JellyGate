@@ -159,7 +159,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 		_ = s.db.LogAction("task.sync_users", "scheduler", task.Name, fmt.Sprintf("%d nouveaux utilisateurs", added))
 
 	case "cleanup_resets":
-		res, err := s.db.Exec(`DELETE FROM password_resets WHERE used = TRUE OR expires_at < datetime('now', '-24 hours')`)
+		res, err := s.db.Exec(`DELETE FROM password_resets WHERE used = TRUE OR expires_at < (CURRENT_TIMESTAMP - INTERVAL '24 hours')`)
 		if err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, fmt.Sprintf("%d tokens nettoyes", n))
 
 	case "dispatch_campaigns":
-		_, _ = s.db.Exec(`UPDATE scheduled_tasks SET enabled = FALSE, updated_at = datetime('now') WHERE id = ?`, task.ID)
+		_, _ = s.db.Exec(`UPDATE scheduled_tasks SET enabled = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, task.ID)
 		_ = s.db.LogAction("task.dispatch_campaigns.disabled", "scheduler", task.Name, "Type de tache retire avec la suppression de la messagerie")
 
 	case "create_backup":
@@ -185,7 +185,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 		return fmt.Errorf("type de tache non supporte: %s", task.TaskType)
 	}
 
-	_, err := s.db.Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = datetime('now') WHERE id = ?`, now, task.ID)
+	_, err := s.db.Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, now, task.ID)
 	return err
 }
 
@@ -222,7 +222,7 @@ func (s *Service) dispatchCampaignMessages() error {
 
 	for _, c := range campaigns {
 		if !strings.Contains(strings.ToLower(c.channels), "email") || s.mailer == nil {
-			_, _ = s.db.Exec(`UPDATE user_messages SET sent_at = datetime('now') WHERE id = ?`, c.id)
+			_, _ = s.db.Exec(`UPDATE user_messages SET sent_at = CURRENT_TIMESTAMP WHERE id = ?`, c.id)
 			continue
 		}
 
@@ -250,7 +250,7 @@ func (s *Service) dispatchCampaignMessages() error {
 			sentCount++
 		}
 
-		_, _ = s.db.Exec(`UPDATE user_messages SET sent_at = datetime('now') WHERE id = ?`, c.id)
+		_, _ = s.db.Exec(`UPDATE user_messages SET sent_at = CURRENT_TIMESTAMP WHERE id = ?`, c.id)
 		_ = s.db.LogAction("task.dispatch_campaigns", "scheduler", strconv.FormatInt(c.id, 10), fmt.Sprintf("%d emails envoyes", sentCount))
 	}
 

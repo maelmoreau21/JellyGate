@@ -560,9 +560,9 @@ func (h *AdminHandler) runExpirationCheck() {
 			}
 		}
 
-		_, err := h.db.Exec(`UPDATE users SET is_active = FALSE, expired_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`, u.ID)
+		_, err := h.db.Exec(`UPDATE users SET is_active = FALSE, expired_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, u.ID)
 		if err != nil {
-			slog.Error("Erreur lors de la desactivation SQLite (Expiration)", "error", err)
+			slog.Error("Erreur lors de la desactivation (Expiration)", "error", err, "driver", h.db.Driver())
 		}
 
 		_ = h.db.LogAction("user.expired", "system", u.Username, fmt.Sprintf("Compte desactive automatiquement (policy=%s)", u.ExpiryAction))
@@ -689,12 +689,15 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 	if err == nil {
 		_, upErr := h.db.Exec(
 			`UPDATE users
-			 SET jellyfin_id = ?, is_active = TRUE, can_invite = ?, updated_at = datetime('now')
+			 SET jellyfin_id = ?, is_active = TRUE, can_invite = ?, updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`,
 			sess.UserID,
 			sess.IsAdmin,
 			userID,
 		)
+		if upErr != nil {
+			slog.Error("Erreur mise a jour profil session (LDAP path)", "username", sess.Username, "error", upErr)
+		}
 		return upErr
 	}
 	if err != sql.ErrNoRows {
@@ -704,11 +707,14 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 	_, err = h.db.Exec(
 		`INSERT INTO users (jellyfin_id, username, is_active, can_invite)
 			 VALUES (?, ?, TRUE, ?)
-		 ON CONFLICT(jellyfin_id) DO UPDATE SET username = excluded.username, updated_at = datetime('now')`,
+		 ON CONFLICT(jellyfin_id) DO UPDATE SET username = excluded.username, updated_at = CURRENT_TIMESTAMP`,
 		sess.UserID,
 		sess.Username,
 		sess.IsAdmin,
 	)
+	if err != nil {
+		slog.Error("Erreur insertion profil session (Default path)", "username", sess.Username, "error", err)
+	}
 	return err
 }
 
@@ -723,8 +729,9 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 	_ = h.ensureUserRowForSession(sess)
 
 	var canInvite bool
+	var presetID sql.NullString
 	err := h.db.QueryRow(
-		`SELECT can_invite
+		`SELECT can_invite, preset_id
 		 FROM users
 		 WHERE jellyfin_id = ? OR username = ?
 		 ORDER BY CASE WHEN jellyfin_id = ? THEN 0 ELSE 1 END
@@ -732,9 +739,17 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 		sess.UserID,
 		sess.Username,
 		sess.UserID,
-	).Scan(&canInvite)
+	).Scan(&canInvite, &presetID)
+	
 	if err != nil {
 		return false
+	}
+	
+	if presetID.Valid && presetID.String != "" {
+		preset, _ := h.getJellyfinPresetByID(presetID.String)
+		if preset != nil && preset.CanInvite {
+			return true
+		}
 	}
 
 	return canInvite
@@ -1946,6 +1961,8 @@ func (h *AdminHandler) applyGroupMappingToUser(rec *adminUserRecord, groupName s
 		}
 	}
 
+	_, _ = h.db.Exec(`UPDATE users SET preset_id = ? WHERE jellyfin_id = ?`, mapping.PolicyPresetID, rec.JellyfinID)
+
 	return nil
 }
 
@@ -3072,9 +3089,21 @@ type CreateInvitationRequest struct {
 // CreateInvitation crÃ©e un nouveau lien d'invitation avec un jeton robuste et logiques complexes (JFA-GO).
 func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	
+	var userPreset *config.JellyfinPolicyPreset
+	
 	if !sess.IsAdmin {
 		var canInvite bool
-		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		var presetID sql.NullString
+		_ = h.db.QueryRow(`SELECT can_invite, preset_id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite, &presetID)
+		
+		if presetID.Valid && presetID.String != "" {
+			userPreset, _ = h.getJellyfinPresetByID(presetID.String)
+			if userPreset != nil {
+				canInvite = userPreset.CanInvite
+			}
+		}
+		
 		if !canInvite {
 			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de crÃ©er des invitations"})
 			return
@@ -3097,8 +3126,15 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Les non-admins doivent toujours spécifier une limite d'utilisation
-	if !sess.IsAdmin && req.MaxUses <= 0 {
-		req.MaxUses = 1
+	if !sess.IsAdmin {
+		if req.MaxUses <= 0 {
+			req.MaxUses = 1
+		}
+		if userPreset != nil && userPreset.InviteMaxUses > 0 {
+			if req.MaxUses > userPreset.InviteMaxUses || req.MaxUses == 0 {
+				req.MaxUses = userPreset.InviteMaxUses
+			}
+		}
 	}
 
 	// GÃ©nÃ©rer code alÃ©atoire (ici via crypt/rand classique, 12 caractÃ¨res)
@@ -3145,41 +3181,20 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !sess.IsAdmin {
-		if inviteCfg.InviterQuotaDay > 0 {
-			usedToday, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalDay(now))
-			if countErr != nil {
-				slog.Error("Erreur calcul quota jour", "user", sess.Username, "error", countErr)
-				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de verifier le quota journalier"})
-				return
-			}
-			if usedToday >= inviteCfg.InviterQuotaDay {
-				writeJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: fmt.Sprintf("Quota journalier atteint (%d/%d)", usedToday, inviteCfg.InviterQuotaDay)})
-				return
-			}
+		quotaMonth := inviteCfg.InviterQuotaMonth
+		if userPreset != nil && userPreset.InviteQuota > 0 {
+			quotaMonth = userPreset.InviteQuota
 		}
 
-		if inviteCfg.InviterQuotaWeek > 0 {
-			usedWeek, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalWeek(now))
-			if countErr != nil {
-				slog.Error("Erreur calcul quota semaine", "user", sess.Username, "error", countErr)
-				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de verifier le quota hebdomadaire"})
-				return
-			}
-			if usedWeek >= inviteCfg.InviterQuotaWeek {
-				writeJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: fmt.Sprintf("Quota hebdomadaire atteint (%d/%d)", usedWeek, inviteCfg.InviterQuotaWeek)})
-				return
-			}
-		}
-
-		if inviteCfg.InviterQuotaMonth > 0 {
+		if quotaMonth > 0 {
 			usedMonth, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalMonth(now))
 			if countErr != nil {
 				slog.Error("Erreur calcul quota mois", "user", sess.Username, "error", countErr)
 				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de verifier le quota mensuel"})
 				return
 			}
-			if usedMonth >= inviteCfg.InviterQuotaMonth {
-				writeJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: fmt.Sprintf("Quota mensuel atteint (%d/%d)", usedMonth, inviteCfg.InviterQuotaMonth)})
+			if usedMonth >= quotaMonth {
+				writeJSON(w, http.StatusTooManyRequests, APIResponse{Success: false, Message: fmt.Sprintf("Quota mensuel atteint (%d/%d)", usedMonth, quotaMonth)})
 				return
 			}
 		}
@@ -3278,6 +3293,10 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
 	}
 
+	if !sess.IsAdmin && userPreset != nil && userPreset.TargetPresetID != "" {
+		inviteCfg.PolicyPresetID = userPreset.TargetPresetID
+	}
+
 	if strings.TrimSpace(inviteCfg.PolicyPresetID) != "" {
 		preset, err := h.getJellyfinPresetByID(inviteCfg.PolicyPresetID)
 		if err != nil {
@@ -3285,6 +3304,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 
+		jfProfile.PresetID = preset.ID
 		jfProfile.EnableAllFolders = preset.EnableAllFolders
 		jfProfile.EnabledFolderIDs = preset.EnabledFolderIDs
 		jfProfile.EnableDownload = preset.EnableDownload

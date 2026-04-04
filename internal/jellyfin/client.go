@@ -133,6 +133,7 @@ type InviteProfile struct {
 	ForcedUsername string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
 	TemplateUserID string `json:"template_user_id"` // Si fourni, clonage strict des droits de ce profil
 	CanInvite      bool   `json:"can_invite"`
+	PresetID       string `json:"preset_id"`        // Identifiant du preset (Parrainage)
 }
 
 // ── Opérations CRUD ─────────────────────────────────────────────────────────
@@ -423,6 +424,7 @@ func (c *Client) doRequest(method, path string, body []byte) (*http.Response, er
 
 	// Authentification par clé API
 	req.Header.Set("X-Emby-Token", c.apiKey)
+	req.Header.Set("Authorization", "MediaBrowser Token=\""+c.apiKey+"\"")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
