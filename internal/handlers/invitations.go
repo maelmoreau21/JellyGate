@@ -598,7 +598,7 @@ func (h *InvitationHandler) ensureInviteUsernameAvailable(username string) error
 	if err == nil {
 		return fmt.Errorf("ce nom d'utilisateur est dÃ©jÃ  utilisÃ©")
 	}
-	if err != nil && err != sql.ErrNoRows {
+	if err != sql.ErrNoRows {
 		return fmt.Errorf("impossible de vÃ©rifier la disponibilitÃ© du nom d'utilisateur: %w", err)
 	}
 

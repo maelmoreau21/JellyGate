@@ -71,7 +71,19 @@
         }
 
         const profile = res.data || {};
-        document.getElementById('account-username').textContent = profile.username || '-';
+        const username = profile.username || '-';
+        document.getElementById('account-username').textContent = username;
+        document.getElementById('account-initial').textContent = username.charAt(0).toUpperCase();
+
+        if (profile.jellyfin_id && profile.jellyfin_primary_image_tag && window.JGConfig && window.JGConfig.jellyfinUrl) {
+            const baseUrl = window.JGConfig.jellyfinUrl.replace(/\/$/, '');
+            const avatarUrl = `${baseUrl}/Users/${profile.jellyfin_id}/Images/Primary?tag=${profile.jellyfin_primary_image_tag}&maxWidth=200&quality=90`;
+            const initial = document.getElementById('account-initial');
+            if (initial) {
+                initial.innerHTML = `<img src="${avatarUrl}" class="absolute inset-0 w-full h-full rounded-full object-cover z-10" alt="${JG.esc(username)}">`;
+            }
+        }
+
         document.getElementById('account-role').textContent = profile.is_admin ? (i18n.roleAdmin || 'Admin') : (i18n.roleUser || 'User');
         document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at);
         document.getElementById('account-email-summary').textContent = profile.email || '-';

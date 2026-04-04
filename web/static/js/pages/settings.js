@@ -61,37 +61,51 @@
 
     function buildVariablePicker(area) {
         const toolbar = document.createElement('div');
-        toolbar.className = 'jg-variable-picker mt-3 flex items-center gap-2 flex-wrap';
+        toolbar.className = 'jg-variable-picker mt-3 flex items-center gap-2 max-w-xl group';
+
+        const selectWrapper = document.createElement('div');
+        selectWrapper.className = 'relative flex-1';
 
         const select = document.createElement('select');
-        select.className = 'jg-input max-w-md text-sm';
+        select.className = 'appearance-none jg-input w-full pr-10 text-xs h-9 bg-white/5 border-white/10 hover:border-jg-accent/40 transition-colors focus:ring-1 focus:ring-jg-accent/30';
         select.setAttribute('aria-label', t('settings_email_variable_picker_label', 'Variable to insert'));
 
         const empty = document.createElement('option');
         empty.value = '';
-        empty.textContent = t('settings_email_variable_picker_placeholder', 'Choose a variable');
+        empty.textContent = t('settings_email_variable_picker_placeholder', 'Choisir une variable...');
         select.appendChild(empty);
 
         getEmailVariableOptions().forEach((item) => {
             const option = document.createElement('option');
             option.value = item.value;
-            option.textContent = `${item.value} - ${item.label}`;
+            option.className = 'bg-jg-bg text-jg-text';
+            option.textContent = `${item.value} — ${item.label}`;
             select.appendChild(option);
         });
 
+        const arrow = document.createElement('div');
+        arrow.className = 'absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-jg-text-muted/50';
+        arrow.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>';
+
+        selectWrapper.append(select, arrow);
+
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'jg-btn jg-btn-sm jg-btn-ghost';
-        button.textContent = t('settings_email_variable_insert', 'Insert');
+        button.className = 'jg-btn jg-btn-sm h-9 px-4 bg-jg-accent/10 hover:bg-jg-accent/20 text-jg-accent border border-jg-accent/20 hover:border-jg-accent/40 transition-all font-bold text-[10px] uppercase tracking-wider whitespace-nowrap shadow-sm';
+        button.innerHTML = `<span class="flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> ${t('settings_email_variable_insert', 'Inserer')}</span>`;
+        
         button.addEventListener('click', () => {
             if (!select.value) {
                 return;
             }
             insertTextAtCursor(area, select.value);
+            // Non-destructive flash effect
+            area.classList.add('ring-2', 'ring-jg-accent/30');
+            setTimeout(() => area.classList.remove('ring-2', 'ring-jg-accent/30'), 500);
             select.value = '';
         });
 
-        toolbar.append(select, button);
+        toolbar.append(selectWrapper, button);
         return toolbar;
     }
 

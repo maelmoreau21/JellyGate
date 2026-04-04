@@ -473,6 +473,48 @@ func (db *DB) migrate() error {
 	}
 
 	slog.Info("Migrations terminees", "count", len(migrations), "driver", db.driver)
+	
+	if err := db.seedDefaultTasks(); err != nil {
+		slog.Warn("Insertion des taches par defaut impossible", "error", err)
+	}
+
+	return nil
+}
+
+func (db *DB) seedDefaultTasks() error {
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM scheduled_tasks`).Scan(&count)
+	if err != nil {
+		return err
+	}
+	if count > 0 {
+		return nil
+	}
+
+	tasks := []struct {
+		name     string
+		taskType string
+		hour     int
+		minute   int
+	}{
+		{"Synchro Utilisateurs", "sync_users", 4, 0},
+		{"Nettoyage Jetons", "cleanup_resets", 3, 0},
+		{"Sauvegarde Automatique", "create_backup", 5, 0},
+	}
+
+	now := time.Now().Format("2006-01-02 15:04:05")
+	for _, t := range tasks {
+		_, err := db.Exec(
+			`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
+			 VALUES (?, ?, 1, ?, ?, 'system', ?, ?)`,
+			t.name, t.taskType, t.hour, t.minute, now, now,
+		)
+		if err != nil {
+			slog.Error("Erreur lors de l'insertion d'une tache par defaut", "name", t.name, "error", err)
+		}
+	}
+
+	slog.Info("Taches par defaut inserees avec succes")
 	return nil
 }
 

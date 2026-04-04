@@ -63,8 +63,9 @@ type UserResponse struct {
 	UpdatedAt       string `json:"updated_at"`
 
 	// Statuts temps rÃ©el depuis Jellyfin (enrichissement)
-	JellyfinDisabled bool `json:"jellyfin_disabled"`
-	JellyfinExists   bool `json:"jellyfin_exists"`
+	JellyfinDisabled        bool   `json:"jellyfin_disabled"`
+	JellyfinExists          bool   `json:"jellyfin_exists"`
+	JellyfinPrimaryImageTag string `json:"jellyfin_primary_image_tag,omitempty"`
 }
 
 // APIResponse est l'enveloppe standard pour toutes les rÃ©ponses JSON.
@@ -635,6 +636,8 @@ func (h *AdminHandler) runExpirationCheck() {
 func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
@@ -650,6 +653,8 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
@@ -793,11 +798,17 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		preferredLang = h.db.GetDefaultLang()
 	}
 
+	var jfPrimaryImageTag string
+	if jfUser, err := h.jfClient.GetUser(sess.UserID); err == nil && jfUser != nil {
+		jfPrimaryImageTag = jfUser.PrimaryImageTag
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: map[string]interface{}{
-			"id":                     id,
-			"username":               sess.Username,
+			"id":                          id,
+			"username":                    sess.Username,
+			"jellyfin_primary_image_tag": jfPrimaryImageTag,
 			"email":                  email.String,
 			"pending_email":          pendingEmail.String,
 			"email_verified":         emailVerified,
@@ -1036,6 +1047,8 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
@@ -1049,6 +1062,8 @@ func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
@@ -1063,6 +1078,8 @@ func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 
@@ -1072,7 +1089,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 		inviteCfg = config.DefaultInvitationProfileConfig()
 	}
 
-	links := resolvePortalLinks(h.cfg, h.db)
+	// links has been declared above
 	inviteBaseURL := strings.TrimSpace(links.JellyGateURL)
 	if inviteBaseURL == "" {
 		inviteBaseURL = strings.TrimSpace(h.cfg.BaseURL)
@@ -1112,6 +1129,8 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
@@ -1522,6 +1541,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			if jfUser, ok := jfIndex[users[i].JellyfinID]; ok {
 				users[i].JellyfinExists = true
 				users[i].JellyfinDisabled = jfUser.Policy.IsDisabled
+				users[i].JellyfinPrimaryImageTag = jfUser.PrimaryImageTag
 			}
 		}
 	}

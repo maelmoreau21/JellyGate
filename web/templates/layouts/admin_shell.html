@@ -74,37 +74,39 @@
                 {{ end }}
             </nav>
 
-            <div class="jg-sidebar-footer p-4 space-y-3">
+            <div class="jg-sidebar-footer px-4 py-3 space-y-2.5 border-t border-jg-border/50">
                 {{/* Language Selector (will be moved here by JS) */}}
                 <div id="sidebar-lang-target" class="w-full"></div>
 
                 {{/* Sidebar Collapse Toggle (Desktop only) */}}
-                <button id="sidebar-collapse-toggle" class="hidden lg:flex jg-btn jg-btn-ghost w-full h-10 mb-2 border-dashed border-jg-border-strong opacity-60 hover:opacity-100" title="{{ .T "nav_collapse" }}/{{ .T "nav_expand" }}">
-                    <svg class="w-4 h-4 transition-transform duration-300 collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
-                    <span class="jg-nav-label ml-2 text-[10px] font-bold uppercase tracking-wider">{{ .T "nav_collapse" }}</span>
+                <button id="sidebar-collapse-toggle" class="hidden lg:flex jg-btn jg-btn-ghost w-full h-9 border-dashed border-jg-border-strong opacity-40 hover:opacity-100 transition-opacity" title="{{ .T "nav_collapse" }}/{{ .T "nav_expand" }}">
+                    <svg class="w-3.5 h-3.5 transition-transform duration-300 collapse-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" /></svg>
+                    <span class="jg-nav-label ml-2 text-[9px] font-bold uppercase tracking-widest">{{ .T "nav_collapse" }}</span>
                 </button>
 
                 <div class="flex items-center gap-2">
-                    <button id="theme-toggle-btn" type="button" class="jg-btn jg-btn-ghost flex-1 h-11" title="{{ .T "nav_theme_title" }}">
+                    <button id="theme-toggle-btn" type="button" class="jg-btn jg-btn-ghost flex-1 h-10 px-0" title="{{ .T "nav_theme_title" }}">
                         <span id="theme-toggle-icon">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg class="w-4 h-4 text-jg-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                             </svg>
                         </span>
-                        <span class="jg-nav-label ml-2 text-xs font-semibold">{{ .T "nav_theme" }}</span>
+                        <span class="jg-nav-label ml-2 text-[11px] font-bold text-jg-text-muted truncate">{{ .T "nav_theme" }}</span>
                     </button>
 
-                    <form method="POST" action="/admin/logout" class="flex-1">
-                        <button type="submit" class="jg-btn jg-btn-danger w-full h-11">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <form method="POST" action="/admin/logout" class="flex-shrink-0">
+                        <button type="submit" class="jg-btn jg-btn-danger w-10 h-10 p-0 flex items-center justify-center rounded-xl" title="{{ .T "nav_logout" }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>
                         </button>
                     </form>
                 </div>
                 
-                <div class="jg-version-text text-[9px] text-center text-jg-text-muted/40 font-mono tracking-widest uppercase py-2">
-                    JellyGate <span class="text-jg-accent font-bold">v{{ .AppVersion }}</span>
+                <div class="jg-version-text flex items-center justify-center gap-2 text-[8px] text-jg-text-muted/30 font-mono tracking-widest uppercase pt-1">
+                    <span>JellyGate</span>
+                    <span class="w-1 h-1 rounded-full bg-jg-accent/20"></span>
+                    <span class="text-jg-accent/50 font-bold">v{{ .AppVersion }}</span>
                 </div>
             </div>
         </div>
@@ -115,7 +117,12 @@
 
     {{/* ── Main content ────────────────────────────────────────────────── */}}
     <main class="jg-main-content">
-        {{ block "admin_content" . }}{{ end }}
+    <script nonce="{{ .ScriptNonce }}">
+        window.JGConfig = {
+            jellyfinUrl: '{{ index .Data "JellyfinURL" }}'
+        };
+    </script>
+    {{ block "admin_content" . }}{{ end }}
     </main>
 </div>
 {{ end }}

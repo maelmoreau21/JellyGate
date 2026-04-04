@@ -202,9 +202,17 @@
                 const isSelected = selectedIds.has(user.id);
                 const bgClass = isSelected ? 'bg-jg-accent/10' : 'hover:bg-white/[0.03]';
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
+                
+                let avatarHtml = '<div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold">' + JG.esc(user.username.charAt(0).toUpperCase()) + '</div>';
+                if (user.jellyfin_id && user.jellyfin_primary_image_tag && window.JGConfig && window.JGConfig.jellyfinUrl) {
+                    const baseUrl = window.JGConfig.jellyfinUrl.replace(/\/$/, '');
+                    const avatarUrl = `${baseUrl}/Users/${user.jellyfin_id}/Images/Primary?tag=${user.jellyfin_primary_image_tag}&maxWidth=100&quality=90`;
+                    avatarHtml = '<img src="' + avatarUrl + '" class="w-8 h-8 rounded-full object-cover" alt="' + JG.esc(user.username) + '">';
+                }
+
                 return '<tr class="group ' + bgClass + ' border-b border-white/5">'
                     + '<td class="px-6 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox" data-id="' + user.id + '" ' + checked + '></td>'
-                    + '<td class="px-4 py-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold">' + JG.esc(user.username.charAt(0).toUpperCase()) + '</div><div class="flex flex-col"><span class="font-bold">' + JG.esc(user.username) + '</span><span class="text-xs text-jg-text-muted">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
+                    + '<td class="px-4 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col"><span class="font-bold">' + JG.esc(user.username) + '</span><span class="text-xs text-jg-text-muted">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
                     + '<td class="px-4 py-4">' + userStatusBadge(user) + '</td>'
                     + '<td class="px-4 py-4">' + jellyfinStatusBadge(user) + '</td>'
                     + '<td class="px-4 py-4">' + JG.esc(user.group_name || '\u2014') + '</td>'

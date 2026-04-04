@@ -63,6 +63,7 @@ type User struct {
 	Name                  string                 `json:"Name"`
 	HasPassword           bool                   `json:"HasPassword"`
 	HasConfiguredPassword bool                   `json:"HasConfiguredPassword"`
+	PrimaryImageTag       string                 `json:"PrimaryImageTag,omitempty"`
 	Policy                Policy                 `json:"Policy"`
 	Configuration         map[string]interface{} `json:"Configuration"`
 }
