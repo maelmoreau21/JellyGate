@@ -1,3 +1,0 @@
-time=2026-04-01T23:27:43.721+02:00 level=INFO msg="🚀 Démarrage de JellyGate..."
-time=2026-04-01T23:27:43.735+02:00 level=INFO msg="Configuration chargée" port=8097 base_url=http://192.168.20.251:8097 jellyfin_url=http://192.168.20.251:8096
-time=2026-04-01T23:27:46.082+02:00 level=ERROR msg="Erreur d'initialisation de la base de données" error="impossible de ping la base de donnees: failed to connect to `user=jellygate database=jellygate`: 192.168.20.251:5433 (192.168.20.251): dial error: dial tcp 192.168.20.251:5433: connectex: Aucune connexion n’a pu être établie car l’ordinateur cible l’a expressément refusée."

@@ -10,13 +10,13 @@ services:
     env_file:
       - .env
     environment:
-      # Application
+      # ── Application ──────────────────────────────────────────────────
       - JELLYGATE_PORT=8097
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
       - JELLYGATE_DATA_DIR=/data
       - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
 
-      # Base SQL (PostgreSQL)
+      # ── Base SQL (PostgreSQL) ──────────────────────────────────────
       - DB_TYPE=postgres
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -25,11 +25,11 @@ services:
       - DB_NAME=${POSTGRES_DB:-jellygate}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
 
-      # Jellyfin
+      # ── Jellyfin ─────────────────────────────────────────────────────
       - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL est requis}
       - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:?❌ JELLYFIN_API_KEY est requis}
 
-      # Integrations optionnelles
+      # ── Intégrations portail optionnelles (liens/fallback) ──────────
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
 

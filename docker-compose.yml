@@ -15,17 +15,11 @@ services:
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
       - JELLYGATE_DATA_DIR=/data
       - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
+      - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-fr}
 
-      # ── Base SQL (par défaut SQLite) ────────────────────────────────
+      # ── Base SQL (SQLite par défaut) ────────────────────────────────
       - DB_TYPE=sqlite
-      # Pour basculer vers PostgreSQL, décommentez puis adaptez:
-      # - DB_TYPE=postgres
-      # - DB_HOST=postgres
-      # - DB_PORT=5432
-      # - DB_USER=jellygate
-      # - DB_PASSWORD=jellygate
-      # - DB_NAME=jellygate
-      # - DB_SSLMODE=disable
+      # Note: Pour utiliser PostgreSQL, utilisez le fichier docker-compose.postgres.yml
 
       # ── Jellyfin ─────────────────────────────────────────────────────
       - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL est requis}
@@ -35,9 +29,6 @@ services:
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
 
-
-    depends_on:
-      - postgres
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8097/health"]
       interval: 30s
@@ -45,24 +36,6 @@ services:
       retries: 3
       start_period: 10s
 
-  postgres:
-    image: postgres:18-alpine
-    container_name: jellygate-postgres
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=${POSTGRES_DB:-jellygate}
-      - POSTGRES_USER=${POSTGRES_USER:-jellygate}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-jellygate}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jellygate} -d ${POSTGRES_DB:-jellygate}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   jellygate_data:
-    driver: local
-  postgres_data:
     driver: local

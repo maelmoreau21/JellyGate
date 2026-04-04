@@ -71,6 +71,15 @@ func main() {
 		slog.Info("Base de données PostgreSQL initialisée", "driver", db.Driver())
 	}
 
+	// ── 3c. Optionnel : Appliquer la langue par défaut depuis l'environnement ──
+	if cfg.DefaultLang != "" {
+		if err := db.SetSetting(database.SettingDefaultLang, cfg.DefaultLang); err != nil {
+			slog.Warn("⚠️ Impossible d'appliquer JELLYGATE_DEFAULT_LANG", "error", err)
+		} else {
+			slog.Info("🌐 Langue par défaut forcée via configuration", "lang", cfg.DefaultLang)
+		}
+	}
+
 	// ── 3b. Initialiser les clients de service à partir des settings DB ──
 	jfClient := jellyfin.New(cfg.Jellyfin)
 	slog.Info("Client Jellyfin initialisé")

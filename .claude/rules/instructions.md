@@ -1,6 +1,6 @@
 # CLAUDE — Consignes d'agent et Contexte du projet JellyGate
 
-Dernière mise à jour : 2026-04-01
+Dernière mise à jour : 2026-04-04
 
 Objectif
 - Fournir des directives concises et exploitables pour un assistant Claude travaillant sur ce dépôt, et rassembler le contexte produit/technique dans un seul fichier.
@@ -11,7 +11,7 @@ Règles essentielles
 - Proposer un plan succinct (3–6 étapes) pour toute tâche non triviale et utiliser la TODO/tool de suivi pour garder la trace des étapes.
 - Ne pas modifier la section "Contexte du projet" sans accord explicite : proposer les changements en commentaire ou en PR.
 - Principe "Link, don't embed" : lier la documentation existante plutôt que la dupliquer.
-- Préserver la compatibilité i18n : après toute modification de templates ou labels, vérifier chaque fichier `web/i18n/*.json` et lancer `go run ./cmd/i18ncheck` si pertinent.
+- Préserver la compatibilité i18n : après toute modification de templates ou labels, vérifier chaque fichier `web/i18n/*.json` (10 langues : fr, en, de, es, it, nl, pl, pt-br, ru, zh) et lancer `go run ./cmd/i18ncheck` si pertinent.
 - Tests et validations locales recommandés : exécuter `go build ./...` et `go test ./...` après modifications Go ; pour le CSS, `npm run build:css`.
 - Encodage : sauvegarder les fichiers JSON en UTF-8 sans BOM (important pour `zh.json`).
 - Sécurité : ne jamais committer de secrets en clair dans le dépôt.
@@ -43,8 +43,8 @@ Si vous souhaitez des règles supplémentaires (hooks git, conventions de commit
 
 # JellyGate — Project Context
 
-> Dernière mise à jour : 2026-03-28
-> Version : 1.1.10
+> Dernière mise à jour : 2026-04-04
+> Version : 1.1.14
 > Auteur : Mael Moreau
 
 ## 1. Vision
@@ -76,14 +76,15 @@ Le CSS Tailwind est généré localement via `npm run build:css` et servi depuis
 
 ```text
 cmd/
+	generate_session/        # outil de generation de secret
 	i18ncheck/               # check i18n CI
+	i18ncoverage/            # stats couverture i18n
 	jellygate/               # point d'entrée HTTP
 internal/
 	backup/                  # sauvegarde / restauration
 	config/                  # config runtime et structs métiers
 	database/                # migrations, accès SQL, settings
 	handlers/                # pages et API admin/public
-	i18nreport/              # rapport qualité des traductions
 	integrations/            # provisioning tiers
 	jellyfin/                # client Jellyfin
 	ldap/                    # client LDAP / AD
@@ -93,6 +94,11 @@ internal/
 	render/                  # moteur de rendu + traduction
 	scheduler/               # tâches périodiques
 	session/                 # cookies signés
+scripts/
+	build-css.js             # build Tailwind
+	i18n_inspect.js          # audit manuel i18n
+	run_screenshots.ps1      # outil de screenshots
+	screenshots.js           # moteur screenshots (puppeteer)
 web/
 	i18n/                    # locales JSON
 	static/                  # css, js, favicon
@@ -360,6 +366,12 @@ Remarques:
   - **Standardisation UI** : Application du style `jg-select-premium` (flèche accentuée teal, options dark mode) aux sélecteurs de type de tâche.
   - **Correctif CSP** : Suppression totale des handlers `onclick` dans `automation.html` et `invitations.html`. Migration vers une délégation d'événements dans `automation.js` et `invitations.js` pour l'ouverture/fermeture des modales.
   - **Robustesse Modales** : Mise à jour de `app.js` (`JG.closeModal`) pour garantir l'ajout systématique de la classe `hidden` et du style `display: none`.
+
+- **Version 1.1.13** : Grand Nettoyage et Standardisation Docker (2026-04-04)
+  - **Cleanup Repo** : Suppression massive des fichiers temporaires, logs, binaires et scripts de test obsolètes pour plus de clarté.
+  - **Standardisation Docker** : `docker-compose.yml` désormais optimisé pour SQLite par défaut (plus de conteneur Postgres inutile). Introduction de `docker-compose.postgres.yml` pour les installations PostgreSQL.
+  - **Configuration** : Mise à jour de `.env` avec des commentaires plus clairs et suppression des variables inutilisées.
+  - **Documentation** : Actualisation de l'arborescence projet et des consignes d'agent. L'installation via Docker est désormais la méthode officiellement recommandée et mise en avant.
 
 ### 4.6 Internationalisation (i18n)
 

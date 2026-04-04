@@ -71,6 +71,7 @@ type Config struct {
 	SecretKey string // Clé secrète pour sessions/tokens (min 32 chars)
 	TLSCert   string // Chemin vers le certificat TLS
 	TLSKey    string // Chemin vers la clé privée TLS
+	DefaultLang string // Langue par défaut de l'interface (défaut: fr)
 
 	// Base de donnees (sqlite ou postgres)
 	Database DatabaseConfig
@@ -1031,6 +1032,7 @@ func Load() (*Config, error) {
 		SecretKey: getEnv("JELLYGATE_SECRET_KEY", ""),
 		TLSCert:   getEnv("JELLYGATE_TLS_CERT", ""),
 		TLSKey:    getEnv("JELLYGATE_TLS_KEY", ""),
+		DefaultLang: NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
 
 		Database: DatabaseConfig{
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", "sqlite"))),
@@ -1079,6 +1081,11 @@ func (c *Config) validate() error {
 	}
 	if c.Jellyfin.APIKey == "" {
 		errs = append(errs, "JELLYFIN_API_KEY est requis")
+	}
+
+	// Validation de la langue par défaut si fournie
+	if c.DefaultLang != "" && !IsSupportedLanguage(c.DefaultLang) {
+		errs = append(errs, fmt.Sprintf("JELLYGATE_DEFAULT_LANG '%s' n'est pas une langue supportée", c.DefaultLang))
 	}
 
 	if c.Database.Type == "" {
