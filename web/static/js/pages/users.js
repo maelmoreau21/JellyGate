@@ -186,11 +186,10 @@
             const userCount = document.getElementById('user-count');
             if (userCount) userCount.textContent = (paginationMeta.total || 0) + ' ' + (i18n.totalLabel||'utilisateurs');
             
-            const st = document.getElementById('users-stat-total'); if (st) st.textContent = paginationMeta.total;
-            const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = filteredUsers.length;
-            
-            // Note: counts for stats row might need a separate 'summary' API if we want them to reflect REAL totals not just current page.
-            // For now, these are less accurate unless we fetch them separately.
+            const st = document.getElementById('users-stat-total'); if (st) st.textContent = paginationMeta.total_global || 0;
+            const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = paginationMeta.total || 0;
+            const si = document.getElementById('users-stat-inviters'); if (si) si.textContent = paginationMeta.inviters_count || 0;
+            const se = document.getElementById('users-stat-expiring'); if (se) se.textContent = paginationMeta.expiring_count || 0;
             
             if (users.length === 0) {
                 const help = paginationMeta.total === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;

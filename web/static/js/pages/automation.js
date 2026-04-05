@@ -135,16 +135,24 @@
         }
 
         function presetRow(preset, idx) {
-            return `<tr>
-            <td>${JG.esc(preset.name || '')}</td>
-            <td>${preset.enable_download ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-danger">Non</span>'}</td>
-            <td>${preset.enable_remote_access ? '<span class="badge badge-success">Oui</span>' : '<span class="badge badge-danger">Non</span>'}</td>
-            <td>${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}</td>
-            <td>${Number.isInteger(preset.bitrate_limit) ? preset.bitrate_limit : 0}</td>
-            <td class="text-right">
+            const downloadBadge = preset.enable_download 
+                ? '<span class="badge badge-success px-2 py-0.5">Autorisé</span>' 
+                : '<span class="badge badge-danger px-2 py-0.5">Bloqué</span>';
+            const remoteBadge = preset.enable_remote_access 
+                ? '<span class="badge badge-success px-2 py-0.5">Autorisé</span>' 
+                : '<span class="badge badge-danger px-2 py-0.5">Bloqué</span>';
+
+            return `<tr class="hover:bg-white/[0.02] transition-colors">
+            <td class="px-6 py-4"><code class="text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-jg-text-muted">${JG.esc(preset.id || '')}</code></td>
+            <td class="px-6 py-4 font-medium text-jg-text">${JG.esc(preset.name || '')}</td>
+            <td class="px-6 py-4">${downloadBadge}</td>
+            <td class="px-6 py-4">${remoteBadge}</td>
+            <td class="px-6 py-4"><span class="text-jg-text">${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}</span> <span class="text-[10px] text-jg-text-muted">flux</span></td>
+            <td class="px-6 py-4"><span class="text-jg-text">${Number.isInteger(preset.bitrate_limit) ? preset.bitrate_limit : 0}</span> <span class="text-[10px] text-jg-text-muted">Mbps</span></td>
+            <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="preset-edit" data-index="${idx}">${JG.esc(i18n.edit || 'Éditer')}</button>
-                    <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="preset-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="preset-edit" data-index="${idx}">${JG.esc(i18n.edit || 'Éditer')}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-danger/80 hover:bg-jg-danger transition-colors" data-action="preset-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button>
                 </div>
             </td>
         </tr>`;

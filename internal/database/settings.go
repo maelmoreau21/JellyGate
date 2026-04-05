@@ -64,7 +64,7 @@ func (db *DB) GetSetting(key string) (string, error) {
 		return "", fmt.Errorf("GetSetting(%q): %w", key, err)
 	}
 
-	return value.String, nil
+	return db.decrypt(value.String)
 }
 
 // SetSetting insère ou met à jour un paramètre (UPSERT).
@@ -218,7 +218,11 @@ func (db *DB) SaveLDAPConfig(cfg config.LDAPConfig) error {
 	if err != nil {
 		return fmt.Errorf("SaveLDAPConfig marshal: %w", err)
 	}
-	return db.SetSetting(SettingLDAPConfig, string(data))
+	enc, err := db.encrypt(string(data))
+	if err != nil {
+		return fmt.Errorf("SaveLDAPConfig encrypt: %w", err)
+	}
+	return db.SetSetting(SettingLDAPConfig, enc)
 }
 
 // IsLDAPEnabled vérifie rapidement si l'intégration LDAP est activée.
@@ -263,7 +267,11 @@ func (db *DB) SaveSMTPConfig(cfg config.SMTPConfig) error {
 	if err != nil {
 		return fmt.Errorf("SaveSMTPConfig marshal: %w", err)
 	}
-	return db.SetSetting(SettingSMTPConfig, string(data))
+	enc, err := db.encrypt(string(data))
+	if err != nil {
+		return fmt.Errorf("SaveSMTPConfig encrypt: %w", err)
+	}
+	return db.SetSetting(SettingSMTPConfig, enc)
 }
 
 // ── Backup Config ───────────────────────────────────────────────────────────
@@ -635,5 +643,9 @@ func (db *DB) SaveWebhooksConfig(cfg config.WebhooksConfig) error {
 	if err != nil {
 		return fmt.Errorf("SaveWebhooksConfig marshal: %w", err)
 	}
-	return db.SetSetting(SettingWebhooksConfig, string(data))
+	enc, err := db.encrypt(string(data))
+	if err != nil {
+		return fmt.Errorf("SaveWebhooksConfig encrypt: %w", err)
+	}
+	return db.SetSetting(SettingWebhooksConfig, enc)
 }

@@ -1480,7 +1480,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
 	}
 
-	// 1. Compter le total
+	// 1. Compter le total (filtré)
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM users %s", whereClause)
 	if err := h.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
@@ -1488,6 +1488,15 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture base de donnees"})
 		return
 	}
+
+	// 1b. Statistiques globales pour l'aperçu
+	var totalGlobal, invitersCount, expiringCount int
+	_ = h.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&totalGlobal)
+	_ = h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE can_invite = 1`).Scan(&invitersCount)
+	// Expiring: a une date d'expiration dans le futur (ou très proche)
+	// On utilise une approche compatible SQLite/Postgres via prepareQuery si possible, 
+	// mais ici on va rester simple pour l'instant.
+	_ = h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_active = 1 AND access_expires_at IS NOT NULL AND access_expires_at > datetime('now')`).Scan(&expiringCount)
 
 	// 2. Récupérer les données paginées
 	offset := (page - 1) * limit
@@ -1573,10 +1582,13 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"users": users,
 			"meta": map[string]interface{}{
-				"total":       total,
-				"page":        page,
-				"limit":       limit,
-				"total_pages": totalPages,
+				"total":          total,
+				"total_global":   totalGlobal,
+				"inviters_count": invitersCount,
+				"expiring_count": expiringCount,
+				"page":           page,
+				"limit":          limit,
+				"total_pages":    totalPages,
 			},
 		},
 	})

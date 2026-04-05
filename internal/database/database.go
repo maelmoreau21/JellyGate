@@ -28,10 +28,11 @@ const (
 
 // DB encapsule la connexion SQL et expose les méthodes d'accès aux données.
 type DB struct {
-	conn   *sql.DB
-	path   string
-	driver string
-	cfg    config.DatabaseConfig
+	conn      *sql.DB
+	path      string
+	driver    string
+	cfg       config.DatabaseConfig
+	secretKey string
 }
 
 // Rows encapsule sql.Rows avec un Scan tolerant aux valeurs temporelles.
@@ -51,7 +52,7 @@ type Tx struct {
 }
 
 // New crée une nouvelle instance DB et exécute les migrations.
-func New(dbCfg config.DatabaseConfig, dataDir string) (*DB, error) {
+func New(dbCfg config.DatabaseConfig, dataDir, secretKey string) (*DB, error) {
 	driver := strings.TrimSpace(strings.ToLower(dbCfg.Type))
 	if driver == "" {
 		driver = DialectSQLite
@@ -120,10 +121,11 @@ func New(dbCfg config.DatabaseConfig, dataDir string) (*DB, error) {
 	}
 
 	db := &DB{
-		conn:   conn,
-		path:   path,
-		driver: driver,
-		cfg:    dbCfg,
+		conn:      conn,
+		path:      path,
+		driver:    driver,
+		cfg:       dbCfg,
+		secretKey: secretKey,
 	}
 	if err := db.migrate(); err != nil {
 		_ = conn.Close()

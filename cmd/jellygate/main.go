@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// ── 3. Initialiser la base de données (SQLite/PostgreSQL) ──────────────
-	db, err := database.New(cfg.Database, cfg.DataDir)
+	db, err := database.New(cfg.Database, cfg.DataDir, cfg.SecretKey)
 	if err != nil {
 		slog.Error("Erreur d'initialisation de la base de données", "error", err)
 		os.Exit(1)
@@ -172,7 +172,7 @@ func main() {
 	r := chi.NewRouter()
 
 	// Middlewares globaux
-	r.Use(jgmw.SecurityHeaders())          // Headers de securite HTTP
+	r.Use(jgmw.SecurityHeaders(cfg.BaseURL)) // Headers de securite HTTP
 	r.Use(chimw.RequestID)                 // ID unique par requête
 	r.Use(chimw.RealIP)                    // IP réelle derrière proxy
 	r.Use(chimw.Logger)                    // Log de chaque requête
@@ -220,7 +220,7 @@ func main() {
 
 	// ── Routes admin (authentification requise) ─────────────────────────────
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(jgmw.EnsureCSRFCookie())
+		r.Use(jgmw.EnsureCSRFCookie(cfg.BaseURL))
 		// Routes publiques (login/logout) — pas de middleware auth
 		r.Get("/login", authHandler.LoginPage)
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/login", authHandler.LoginSubmit)

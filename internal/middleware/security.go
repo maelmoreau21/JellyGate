@@ -24,7 +24,7 @@ func ScriptNonceFromContext(ctx context.Context) string {
 }
 
 // SecurityHeaders ajoute un socle de headers de securite pour toutes les reponses.
-func SecurityHeaders() func(http.Handler) http.Handler {
+func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			nonce, _ := generateCSRFToken()
@@ -38,7 +38,7 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 			csp += "; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://flagcdn.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 			w.Header().Set("Content-Security-Policy", csp)
 
-			if requestIsHTTPS(r) {
+			if requestIsHTTPS(r, baseURL) {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 			}
 
@@ -49,7 +49,7 @@ func SecurityHeaders() func(http.Handler) http.Handler {
 }
 
 // EnsureCSRFCookie cree un cookie CSRF si absent.
-func EnsureCSRFCookie() func(http.Handler) http.Handler {
+func EnsureCSRFCookie(baseURL string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if _, err := r.Cookie(csrfCookieName); err != nil {
@@ -61,7 +61,7 @@ func EnsureCSRFCookie() func(http.Handler) http.Handler {
 						Path:     "/",
 						MaxAge:   86400,
 						HttpOnly: false,
-						Secure:   requestIsHTTPS(r),
+						Secure:   requestIsHTTPS(r, baseURL),
 						SameSite: http.SameSiteLaxMode,
 					})
 				}
@@ -102,9 +102,12 @@ func RequireCSRF() func(http.Handler) http.Handler {
 	}
 }
 
-func requestIsHTTPS(r *http.Request) bool {
+func requestIsHTTPS(r *http.Request, baseURL string) bool {
 	if r == nil {
 		return false
+	}
+	if strings.HasPrefix(strings.ToLower(strings.TrimSpace(baseURL)), "https://") {
+		return true
 	}
 	if r.TLS != nil {
 		return true

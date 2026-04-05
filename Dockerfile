@@ -41,7 +41,7 @@ RUN CGO_ENABLED=0 \
 FROM alpine:3.21
 
 # Certificats TLS (nécessaires pour LDAPS et SMTP TLS)
-RUN apk add --no-cache ca-certificates tzdata wget
+RUN apk add --no-cache ca-certificates tzdata wget postgresql-client
 
 # Utilisateur non-root pour la sécurité
 RUN addgroup -S jellygate && adduser -S jellygate -G jellygate
