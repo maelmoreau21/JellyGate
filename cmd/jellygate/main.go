@@ -131,7 +131,7 @@ func main() {
 	settingsHandler := handlers.NewSettingsHandler(db, cfg.Jellyfin.URL)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService)
-	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer)
+	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer, notifier)
 	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService)
 
 	// Callbacks de rechargement à chaud
@@ -267,6 +267,19 @@ func main() {
 			r.Get("/", adminHandler.DashboardPage)
 			r.Get("/my-account", adminHandler.MyAccountPage)
 
+
+			// ── User Self-Service API ──────────────────────────────────────
+			r.Route("/api/users/me", func(r chi.Router) {
+				r.Use(jgmw.RequireCSRF())
+				r.Get("/", adminHandler.GetMyAccount)
+				r.Patch("/", adminHandler.UpdateMyAccount)
+				r.Post("/password", adminHandler.UpdateMyPassword)
+				r.Post("/avatar", adminHandler.UpdateMyAccountAvatar)
+				r.Get("/invitations", adminHandler.GetMyInvitations)
+				r.Post("/invitations", adminHandler.CreateMyInvitation)
+				r.Post("/email-verification/resend", adminHandler.ResendEmailVerification)
+			})
+
 			// ── Routes limitées aux administrateurs purs ────────────────────
 			r.Group(func(r chi.Router) {
 				r.Use(jgmw.RequireAdminAuth())
@@ -276,6 +289,9 @@ func main() {
 				r.Route("/api/users", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)
+					r.Get("/dashboard/stats", adminHandler.DashboardStats)
+					r.Get("/invitations", adminHandler.ListInvitations)
+					r.Get("/{id}/avatar", adminHandler.UserAvatar)
 					r.Get("/{id}/timeline", adminHandler.UserTimeline)
 					r.Post("/bulk", adminHandler.BulkUsersAction)
 					r.Post("/sync", adminHandler.SyncJellyfinUsers)
@@ -283,9 +299,9 @@ func main() {
 					r.Post("/{id}/toggle", adminHandler.ToggleUser)
 					r.Post("/{id}/password-reset/send", adminHandler.SendUserPasswordReset)
 					r.Post("/{id}/invite-toggle", adminHandler.ToggleUserInvite)
-					r.Post("/{id}/ban", handlePlaceholder("Bannir utilisateur"))
+					r.Post("/{id}/ban", adminHandler.BanUser)
 					r.Delete("/{id}", adminHandler.DeleteUser)
-					r.Post("/{id}/extend", handlePlaceholder("Prolonger accès utilisateur"))
+					r.Post("/{id}/extend", adminHandler.ExtendAccess)
 				})
 
 				r.Route("/api/settings", func(r chi.Router) {
@@ -357,13 +373,7 @@ func main() {
 			})
 
 			// ── Route de profil (Changement MDP, par tout le monde) ─────────
-			r.Route("/api/users/me", func(r chi.Router) {
-				r.Use(jgmw.RequireCSRF())
-				r.Get("/", adminHandler.GetMyAccount)
-				r.Patch("/", adminHandler.UpdateMyAccount)
-				r.Post("/password", adminHandler.ChangeMyPassword)
-				r.Post("/email-verification/resend", adminHandler.ResendMyEmailVerification)
-			})
+			// (Supprimé car doublon avec le bloc défini plus haut)
 
 		}) // fin Group RequireAuth
 	})

@@ -20,6 +20,7 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	"github.com/maelmoreau21/JellyGate/internal/notify"
 )
 
 var ErrSQLiteOnly = errors.New("fonction backup disponible uniquement en mode sqlite")
@@ -35,7 +36,14 @@ type Service struct {
 	backupDir  string
 	restoreDir string
 	db         *database.DB
+	notifier   *notify.Notifier
 	mu         sync.Mutex
+}
+
+func (s *Service) SetNotifier(n *notify.Notifier) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.notifier = n
 }
 
 func NewService(dataDir string, db *database.DB) *Service {
@@ -203,7 +211,12 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 		return info, fmt.Errorf("stat archive: %w", err)
 	}
 
-	return BackupInfo{Name: name, SizeBytes: st.Size(), CreatedAt: st.ModTime()}, nil
+	info = BackupInfo{Name: name, SizeBytes: st.Size(), CreatedAt: st.ModTime()}
+	if s.notifier != nil {
+		s.notifier.NotifyBackupCreated(info.Name, info.SizeBytes)
+	}
+
+	return info, nil
 }
 
 func writeZipEntry(zw *zip.Writer, name string, payload []byte) error {

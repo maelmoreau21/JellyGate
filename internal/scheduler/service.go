@@ -12,9 +12,12 @@ import (
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/backup"
+	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
+	"github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
+	"github.com/maelmoreau21/JellyGate/internal/notify"
 )
 
 type TaskRecord struct {
@@ -32,15 +35,16 @@ type TaskRecord struct {
 }
 
 type Service struct {
-	db     *database.DB
-	jf     *jellyfin.Client
-	backup *backup.Service
-	mailer *mail.Mailer
-	mu     sync.Mutex
+	db       *database.DB
+	jf       *jellyfin.Client
+	backup   *backup.Service
+	mailer   *mail.Mailer
+	notifier *notify.Notifier
+	mu       sync.Mutex
 }
 
-func NewService(db *database.DB, jf *jellyfin.Client, backupSvc *backup.Service, mailer *mail.Mailer) *Service {
-	return &Service{db: db, jf: jf, backup: backupSvc, mailer: mailer}
+func NewService(db *database.DB, jf *jellyfin.Client, backupSvc *backup.Service, mailer *mail.Mailer, notifier *notify.Notifier) *Service {
+	return &Service{db: db, jf: jf, backup: backupSvc, mailer: mailer, notifier: notifier}
 }
 
 func (s *Service) SetMailer(m *mail.Mailer) {
@@ -62,6 +66,10 @@ func (s *Service) Start(ctx context.Context) {
 				return
 			case <-ticker.C:
 				s.runDueTasks()
+				// Tâches internes automatiques quotidiennes (vers minuit)
+				if time.Now().Hour() == 0 && time.Now().Minute() == 5 {
+					s.checkExpiringAccounts()
+				}
 			}
 		}
 	}()
@@ -110,7 +118,14 @@ func (s *Service) runDueTasks() {
 
 		if err := s.executeTask(task); err != nil {
 			slog.Error("Scheduler: execution tache echouee", "task", task.Name, "type", task.TaskType, "error", err)
+			if s.notifier != nil {
+				s.notifier.NotifyTaskExecuted(task.Name, false, err)
+			}
 			continue
+		} else {
+			if s.notifier != nil {
+				s.notifier.NotifyTaskExecuted(task.Name, true, nil)
+			}
 		}
 	}
 }
@@ -157,6 +172,84 @@ func (s *Service) executeTask(task TaskRecord) error {
 			}
 		}
 		_ = s.db.LogAction("task.sync_users", "scheduler", task.Name, fmt.Sprintf("%d nouveaux utilisateurs", added))
+
+	case "sync_ldap_users":
+		if s.jf == nil {
+			return fmt.Errorf("client Jellyfin indisponible")
+		}
+		ldapCfg, err := s.db.GetLDAPConfig()
+		if err != nil || !ldapCfg.Enabled {
+			return fmt.Errorf("LDAP non configure ou desactive")
+		}
+		ldapClient := ldap.New(ldapCfg)
+
+		mappings, err := s.db.GetGroupPolicyMappings()
+		if err != nil {
+			return err
+		}
+
+		presets, err := s.db.GetJellyfinPolicyPresets()
+		if err != nil {
+			return err
+		}
+		presetMap := make(map[string]config.JellyfinPolicyPreset)
+		for _, p := range presets {
+			presetMap[strings.ToLower(p.ID)] = p
+		}
+
+		totalCreated := 0
+		totalUpdated := 0
+		for _, m := range mappings {
+			if m.Source != "ldap" || m.LDAPGroupDN == "" {
+				continue
+			}
+
+			members, err := ldapClient.GetGroupMembers(m.LDAPGroupDN)
+			if err != nil {
+				slog.Warn("Scheduler: impossible de lister les membres LDAP", "group", m.LDAPGroupDN, "error", err)
+				continue
+			}
+
+			preset, ok := presetMap[strings.ToLower(m.PolicyPresetID)]
+			if !ok {
+				slog.Warn("Scheduler: preset introuvable pour mapping LDAP", "preset", m.PolicyPresetID)
+				continue
+			}
+
+			for _, member := range members {
+				var dbUser struct {
+					ID       int64
+					JFID     string
+					PresetID string
+					LDAPDN   string
+				}
+				err := s.db.QueryRow(`SELECT id, jellyfin_id, preset_id, ldap_dn FROM users WHERE username = ?`, member.Username).Scan(&dbUser.ID, &dbUser.JFID, &dbUser.PresetID, &dbUser.LDAPDN)
+
+				if err == sql.ErrNoRows {
+					jfUser, err := s.jf.CreateUser(member.Username, "")
+					if err != nil {
+						slog.Error("Scheduler: echec creation Jellyfin pour utilisateur LDAP", "user", member.Username, "error", err)
+						continue
+					}
+					if err := s.applyPresetToJellyfin(jfUser.ID, preset); err != nil {
+						slog.Warn("Scheduler: echec application preset", "user", member.Username, "error", err)
+					}
+					_, _ = s.db.Exec(`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, preset_id, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, jfUser.ID, member.Username, member.Email, member.DN, m.GroupName, preset.ID, !member.IsDisabled)
+					totalCreated++
+				} else if err == nil {
+					if dbUser.PresetID != preset.ID || dbUser.LDAPDN != member.DN {
+						if dbUser.JFID != "" {
+							if err := s.applyPresetToJellyfin(dbUser.JFID, preset); err != nil {
+								slog.Warn("Scheduler: echec mise a jour permissions", "user", member.Username, "error", err)
+							}
+						}
+						_, _ = s.db.Exec(`UPDATE users SET preset_id = ?, ldap_dn = ?, group_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, preset.ID, member.DN, m.GroupName, dbUser.ID)
+						totalUpdated++
+					}
+				}
+			}
+		}
+		_ = s.db.LogAction("task.sync_ldap_users", "scheduler", task.Name, fmt.Sprintf("%d imports, %d mises a jour", totalCreated, totalUpdated))
 
 	case "cleanup_resets":
 		res, err := s.db.Exec(`DELETE FROM password_resets WHERE used = TRUE OR expires_at < (CURRENT_TIMESTAMP - INTERVAL '24 hours')`)
@@ -362,4 +455,59 @@ func (s *Service) loadTask(taskID int64) (TaskRecord, error) {
 		return t, err
 	}
 	return t, nil
+}
+
+func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinPolicyPreset) error {
+	if s.jf == nil {
+		return fmt.Errorf("client Jellyfin nul")
+	}
+
+	user, err := s.jf.GetUser(jfUserID)
+	if err != nil {
+		return err
+	}
+
+	policy := user.Policy
+	policy.EnableAllFolders = preset.EnableAllFolders
+	policy.EnabledFolders = preset.EnabledFolderIDs
+	policy.EnableContentDownloading = preset.EnableDownload
+	policy.EnableRemoteAccess = preset.EnableRemoteAccess
+	policy.MaxActiveSessions = preset.MaxSessions
+	if preset.BitrateLimit > 0 {
+		policy.RemoteClientBitrateLimit = preset.BitrateLimit * 1000000
+	} else {
+		policy.RemoteClientBitrateLimit = 0
+	}
+
+	return s.jf.SetUserPolicy(jfUserID, policy)
+}
+
+func (s *Service) checkExpiringAccounts() {
+	if s.notifier == nil {
+		return
+	}
+
+	// On cherche les utilisateurs qui expirent dans exactement 2 jours (48h)
+	// On utilise une marge d'erreur de 1 heure pour être sûr de capturer le créneau quotidien.
+	rows, err := s.db.Query(`
+		SELECT username, access_expires_at 
+		FROM users 
+		WHERE is_active = 1 
+		  AND access_expires_at IS NOT NULL 
+		  AND date(access_expires_at) = date('now', '+2 days')
+	`)
+	if err != nil {
+		slog.Error("Scheduler: erreur checkExpiringAccounts", "error", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var username, expiryStr string
+		if err := rows.Scan(&username, &expiryStr); err != nil {
+			continue
+		}
+		slog.Info("Scheduler: envoi notification expiration", "user", username, "expiry", expiryStr)
+		s.notifier.NotifyAccessExpiry(username, 2)
+	}
 }

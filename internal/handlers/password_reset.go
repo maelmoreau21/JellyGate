@@ -219,10 +219,10 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 			"to", user.Email,
 			"error", err,
 		)
-		// On ne rÃ©vÃ¨le pas l'erreur Ã  l'utilisateur
 		_ = h.db.LogAction("reset.email.failed", user.Username, "", err.Error())
 	} else {
 		slog.Info("Email de reset envoyÃ©", "to", user.Email)
+		_ = h.db.LogAction("reset.email.sent", user.Username, "", "Email de reinitialisation envoye")
 	}
 
 	_ = h.db.LogAction("reset.requested", user.Username, "", fmt.Sprintf("IP: %s", r.RemoteAddr))

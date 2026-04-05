@@ -14,7 +14,9 @@
     const defaultDisableAfterDays = Number(config.defaultDisableAfterDays || 0);
 
     document.addEventListener('DOMContentLoaded', () => {
-        let allInvitations = [];
+        let currentPage = 1;
+        let itemsPerPage = 25;
+        let totalPages = 1;
         let pendingDeleteInvitationID = 0;
 
         function fmt(template, vars) {
@@ -23,10 +25,6 @@
 
         function createBtnLabel() {
             return `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>${JG.esc(i18n.createLink)}`;
-        }
-
-        function getBaseURL() {
-            return inviteBaseURL;
         }
 
         async function copyLinkToClipboard(link) {
@@ -60,11 +58,11 @@
             
             if (forcedUserHelp) {
                 if (!isAllowed) {
-                    forcedUserHelp.textContent = policyI18n.forced_username_limit_hint || "Le nom reserve n est disponible que pour les liens a usage unique (max = 1).";
+                    forcedUserHelp.textContent = policyI18n.forced_username_limit_hint || "Le nom reservé n'est disponible que pour les liens à usage unique (max = 1).";
                     forcedUserHelp.classList.add('text-amber-500');
                 } else {
                     forcedUserHelp.textContent = i18n.forced_username_help || "";
-                    forcedHelp.classList.remove('text-amber-500');
+                    forcedUserHelp.classList.remove('text-amber-500');
                 }
             }
         }
@@ -85,7 +83,7 @@
 
             if (summary) {
                 const parts = [];
-                parts.push(fmt(i18n.baseLinks, { url: getBaseURL() }));
+                parts.push(fmt(i18n.baseLinks, { url: inviteBaseURL }));
                 if (!isAdmin && inviterMaxUses > 0) parts.push(fmt(i18n.maxUsesPerLink, { n: inviterMaxUses }));
                 if (!isAdmin && inviterMaxLinkHours > 0) parts.push(fmt(i18n.maxTtl, { n: inviterMaxLinkHours }));
                 if (!isAdmin && inviterQuotaDay > 0) parts.push(fmt(i18n.quotaDay, { n: inviterQuotaDay }));
@@ -144,12 +142,43 @@
         }
 
         async function loadInvitations() {
-            const res = await JG.api('/admin/api/invitations');
-            if (res.success) {
-                allInvitations = res.data || [];
-                renderInvitations(allInvitations);
+            const res = await JG.api(`/admin/api/invitations?page=${currentPage}&limit=${itemsPerPage}`);
+            if (res.success && res.data) {
+                const invitations = res.data.invitations || [];
+                const meta = res.data.meta || {};
+                
+                totalPages = meta.total_pages || 1;
+                currentPage = meta.page || 1;
+                
+                renderInvitations(invitations);
+                renderPagination(meta);
             } else {
-                JG.toast(i18n.loadError, 'error');
+                JG.toast(i18n.loadError || "Erreur de chargement", 'error');
+            }
+        }
+
+        function renderPagination(meta) {
+            const info = document.getElementById('pagination-info');
+            if (info) {
+                info.textContent = `Page ${meta.page} / ${meta.total_pages}`;
+            }
+
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            if (prevBtn) prevBtn.disabled = meta.page <= 1;
+            if (nextBtn) nextBtn.disabled = meta.page >= meta.total_pages;
+
+            const pageNumbers = document.getElementById('page-numbers');
+            if (pageNumbers) {
+                let html = '';
+                const start = Math.max(1, meta.page - 2);
+                const end = Math.min(meta.total_pages, meta.page + 2);
+                
+                for (let i = start; i <= end; i++) {
+                    const activeClass = i === meta.page ? 'bg-jg-accent text-white shadow-lg shadow-jg-accent/20' : 'bg-jg-bg-secondary text-jg-text-muted hover:text-jg-text border border-jg-border';
+                    html += `<button class="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs transition-all page-btn" data-page="${i}">${i}</button>`.replace('class="', `class="${activeClass} `);
+                }
+                pageNumbers.innerHTML = html;
             }
         }
 
@@ -164,119 +193,97 @@
             }
 
             const data = res.data;
-            document.getElementById('sponsor-total-links').textContent = String(data.total_links || 0);
-            document.getElementById('sponsor-active-links').textContent = String(data.active_links || 0);
-            document.getElementById('sponsor-closed-links').textContent = String(data.closed_links || 0);
-            document.getElementById('sponsor-conversions').textContent = String(data.conversions || 0);
-            document.getElementById('sponsor-conversion-rate').textContent = `${Number(data.conversion_rate || 0).toFixed(1)}%`;
+            const stats = data.stats || data;
+            
+            const fields = {
+                'sponsor-total-links': stats.total_links,
+                'sponsor-active-links': stats.active_links,
+                'sponsor-closed-links': stats.closed_links,
+                'sponsor-conversions': stats.conversions,
+                'sponsor-conversion-rate': (stats.conversion_rate || 0).toFixed(1) + '%'
+            };
+
+            for (const [id, val] of Object.entries(fields)) {
+                const el = document.getElementById(id);
+                if (el) el.textContent = String(val);
+            }
 
             const generatedAt = document.getElementById('sponsor-stats-generated-at');
-            if (generatedAt) {
-                generatedAt.textContent = data.generated_at ? fmt(i18n.statsUpdatedAt, { at: new Date(data.generated_at).toLocaleString(uiLocale) }) : '--';
+            if (generatedAt && stats.generated_at) {
+                generatedAt.textContent = fmt(i18n.statsUpdatedAt, { at: new Date(stats.generated_at).toLocaleString(uiLocale) });
             }
 
-            const sponsors = Array.isArray(data.by_sponsor) ? data.by_sponsor : [];
-            if (!tbody) {
-                return;
-            }
+            const sponsors = Array.isArray(stats.by_sponsor) ? stats.by_sponsor : [];
+            if (!tbody) return;
+            
             if (sponsors.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-slate-500 py-8">${JG.esc(i18n.noSponsorData)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-jg-text-muted py-8">${JG.esc(i18n.noSponsorData)}</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = sponsors.map((item) => {
-                const rate = Number(item.conversion_rate || 0).toFixed(1);
                 return `<tr>
-                    <td class="font-medium text-slate-200">${JG.esc(item.sponsor || i18n.unknownSponsor)}</td>
-                    <td>${JG.esc(String(item.created_links || 0))}</td>
-                    <td><span class="badge badge-success">${JG.esc(String(item.active_links || 0))}</span></td>
-                    <td><span class="badge badge-danger">${JG.esc(String(item.closed_links || 0))}</span></td>
-                    <td>${JG.esc(String(item.total_uses || 0))}</td>
-                    <td>${JG.esc(String(item.conversions || 0))}</td>
-                    <td>${JG.esc(rate)}%</td>
+                    <td class="px-6 py-4 font-medium text-jg-text">${JG.esc(item.sponsor || i18n.unknownSponsor)}</td>
+                    <td class="px-6 py-4">${JG.esc(String(item.created_links || 0))}</td>
+                    <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">${JG.esc(String(item.active_links || 0))}</span></td>
+                    <td class="px-6 py-4"><span class="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black uppercase">${JG.esc(String(item.closed_links || 0))}</span></td>
+                    <td class="px-6 py-4">${JG.esc(String(item.total_uses || 0))}</td>
+                    <td class="px-6 py-4">${JG.esc(String(item.conversions || 0))}</td>
+                    <td class="px-6 py-4 font-bold text-jg-accent">${JG.esc((item.conversion_rate || 0).toFixed(1))}%</td>
                 </tr>`;
             }).join('');
         }
 
         function renderInvitations(list) {
             const tbody = document.getElementById('invites-tbody');
-            if (!tbody) {
-                return;
-            }
+            if (!tbody) return;
+            
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-12">${JG.esc(i18n.noActiveInvitations)}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-jg-text-muted py-12 font-medium">${JG.esc(i18n.noActiveInvitations)}</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = list.map((invitation) => {
-                const link = `${getBaseURL()}/invite/${invitation.code}`;
+                const link = `${inviteBaseURL}/invite/${invitation.code}`;
                 const expDate = invitation.expires_at ? new Date(invitation.expires_at).toLocaleDateString(uiLocale) : '—';
-
-                const rawProfile = invitation.jellyfin_profile || {};
-                const disableAfter = Number(rawProfile.disable_after_days || rawProfile.user_expiry_days || 0);
-                const absoluteUserExpiry = String(rawProfile.user_expires_at || '').trim();
-                const deleteAfter = Number(rawProfile.delete_after_days || 0);
-                const groupName = String(rawProfile.group_name || '').trim();
-                let absoluteUserExpiryLabel = '';
-                if (absoluteUserExpiry) {
-                    const parsedAbs = new Date(absoluteUserExpiry);
-                    absoluteUserExpiryLabel = Number.isNaN(parsedAbs.getTime()) ? absoluteUserExpiry : parsedAbs.toLocaleString(uiLocale);
-                }
-                const userExpiry = absoluteUserExpiry
-                    ? fmt(i18n.expiresOn, { date: absoluteUserExpiryLabel })
-                    : (disableAfter > 0 ? fmt(i18n.disableAfterDays, { n: disableAfter }) : i18n.unlimited);
-                const deleteLabel = deleteAfter > 0 ? fmt(i18n.deleteAfterDays, { n: deleteAfter }) : i18n.noDeletePlanned;
-                const inviteRole = rawProfile.can_invite ? i18n.roleCanInvite : i18n.roleStandard;
-                const groupLabel = groupName ? fmt(i18n.groupPrefix, { group: groupName }) : i18n.groupDefault;
-                const userExp = `<div>${JG.esc(userExpiry)} · ${JG.esc(inviteRole)}</div><div class="text-xs text-slate-500">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)}</div>`;
-
-                const usesStr = invitation.max_uses > 0 ? `${invitation.used_count} / ${invitation.max_uses}` : `${invitation.used_count} / ${i18n.unlimited}`;
+                const profile = invitation.jellyfin_profile || {};
+                
+                const expiryLabel = profile.user_expires_at 
+                    ? fmt(i18n.expiresOn, { date: new Date(profile.user_expires_at).toLocaleString(uiLocale) })
+                    : (profile.user_expiry_days > 0 ? fmt(i18n.disableAfterDays, { n: profile.user_expiry_days }) : i18n.unlimited);
+                
+                const deleteLabel = profile.delete_after_days > 0 ? fmt(i18n.deleteAfterDays, { n: profile.delete_after_days }) : i18n.noDeletePlanned;
+                const roleLabel = profile.can_invite ? i18n.roleCanInvite : i18n.roleStandard;
+                const groupLabel = profile.group_name ? fmt(i18n.groupPrefix, { group: profile.group_name }) : i18n.groupDefault;
+                
                 const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
-                const overBadge = isOver ? `<span class="ml-2 badge badge-danger">${JG.esc(i18n.badgeExpired)}</span>` : `<span class="ml-2 badge badge-success">${JG.esc(i18n.badgeActive)}</span>`;
+                const badge = isOver 
+                    ? `<span class="ml-2 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeExpired)}</span>` 
+                    : `<span class="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeActive)}</span>`;
 
-                return `<tr class="${isOver ? 'opacity-50 grayscale' : ''}">
-                    <td>
-                        <div class="flex items-center gap-2">
-                            <code class="px-2 py-1 bg-black/40 rounded text-purple-300 select-all">${invitation.code}</code>
-                            <button class="text-slate-400 hover:text-white action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle)}">
+                return `<tr class="${isOver ? 'opacity-40' : 'hover:bg-white/[0.02] transition-colors'}">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <code class="px-2.5 py-1.5 bg-jg-bg-secondary border border-jg-border rounded-lg text-jg-accent font-black text-xs tracking-wider select-all shadow-inner">${invitation.code}</code>
+                            <button class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text transition-all action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle)}">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                             </button>
                         </div>
                     </td>
-                    <td class="font-mono text-sm">${usesStr} ${overBadge}</td>
-                    <td class="text-sm text-slate-400">${expDate}</td>
-                    <td class="text-sm border-l border-white/5 pl-2">${userExp}</td>
-                    <td class="text-sm text-slate-400">${JG.esc(i18n.emailManual)}</td>
-                    <td class="text-right">
-                        <button class="jg-btn jg-btn-sm jg-btn-danger action-delete-invite" data-id="${invitation.id}">
+                    <td class="px-6 py-4 font-black text-jg-text">${invitation.used_count} / ${invitation.max_uses > 0 ? invitation.max_uses : '∞'} ${badge}</td>
+                    <td class="px-6 py-4 text-xs font-bold text-jg-text-muted uppercase tracking-widest">${expDate}</td>
+                    <td class="px-6 py-4 border-l border-jg-border">
+                        <div class="font-bold text-jg-text">${JG.esc(expiryLabel)} · <span class="text-jg-accent">${JG.esc(roleLabel)}</span></div>
+                        <div class="text-[10px] text-jg-text-muted uppercase tracking-wider mt-1">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)}</div>
+                    </td>
+                    <td class="px-6 py-4 text-xs font-bold text-jg-text-muted uppercase tracking-widest">${JG.esc(invitation.created_by || 'System')}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button class="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg shadow-rose-500/10 action-delete-invite" data-id="${invitation.id}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </td>
                 </tr>`;
             }).join('');
-        }
-
-        function confirmDelete(id) {
-            pendingDeleteInvitationID = id;
-            JG.openModal('delete-modal');
-        }
-
-        function closeDeleteModal() {
-            pendingDeleteInvitationID = 0;
-            JG.closeModal('delete-modal');
-        }
-
-        function openCreateModal() {
-            JG.openModal('create-modal');
-            applyInvitationPolicyUI();
-            updateForcedUsernameState();
-        }
-
-        function closeCreateModal() {
-            JG.closeModal('create-modal');
-            document.getElementById('create-form').reset();
-            applyInvitationPolicyUI();
-            updateForcedUsernameState();
         }
 
         async function submitCreate(event) {
@@ -290,146 +297,108 @@
             const userExpiryDays = parseInt(document.getElementById('inv-user-expiry-days').value, 10) || 0;
             const userExpiryAt = (document.getElementById('inv-user-expiry-at').value || '').trim();
             const grantInvite = !!document.getElementById('inv-new-user-can-invite').checked;
-
             const forcedUsername = document.getElementById('inv-forced-user').value;
-
-            if (!isAdmin && inviterMaxUses > 0 && (maxUses <= 0 || maxUses > inviterMaxUses)) {
-                btn.disabled = false;
-                btn.innerHTML = createBtnLabel();
-                JG.toast(fmt(i18n.invalidMaxUses, { n: inviterMaxUses }), 'error');
-                return;
-            }
-
-            if (userExpiryEnabled && !userExpiryAt && userExpiryDays <= 0) {
-                btn.disabled = false;
-                btn.innerHTML = createBtnLabel();
-                JG.toast(i18n.invalidUserExpiry, 'error');
-                return;
-            }
-
-            if (forcedUsername && maxUses !== 1) {
-                btn.disabled = false;
-                btn.innerHTML = createBtnLabel();
-                const errorText = i18n.policy?.forced_username_limit_error || "Le nom reserve necessite un lien a usage unique (max = 1).";
-                JG.toast(errorText, 'error');
-                return;
-            }
 
             const data = {
                 max_uses: maxUses,
-                expires_at: (document.getElementById('inv-link-expiry').value || '').trim(),
+                expires_at: (document.getElementById('inv-expires-link').value || '').trim(),
                 email: (document.getElementById('inv-email').value || '').trim(),
                 forced_username: forcedUsername,
                 jellyfin_profile: {
-                    preset_id: parseInt(document.getElementById('inv-preset').value, 10) || 0,
-                    group_name: (document.getElementById('inv-group').value || '').trim(),
                     can_invite: grantInvite,
-                    user_expiry_days: userExpiryDays,
-                    user_expires_at: userExpiryAt,
-                    delete_after_days: parseInt(document.getElementById('inv-delete-after').value, 10) || 0
+                    user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
+                    user_expires_at: userExpiryEnabled ? userExpiryAt : ''
                 }
             };
 
-            const res = await JG.api('/admin/api/invitations', {
-                method: 'POST',
-                body: JSON.stringify(data)
-            });
+            const res = await JG.api('/admin/api/invitations', { method: 'POST', body: JSON.stringify(data) });
             btn.disabled = false;
             btn.innerHTML = createBtnLabel();
 
             if (res.success) {
-                JG.toast(i18n.invitationCreated, 'success');
-                closeCreateModal();
+                JG.toast(i18n.created || "Invitation créée", 'success');
+                JG.closeModal('create-modal');
+                document.getElementById('create-form').reset();
                 loadInvitations();
                 loadSponsorStats();
             } else {
-                JG.toast(res.error || i18n.unknownError, 'error');
+                JG.toast(res.message || i18n.unknownError, 'error');
             }
         }
 
         async function submitDelete() {
-            if (pendingDeleteInvitationID <= 0) return;
-            const res = await JG.api(`/admin/api/invitations/${pendingDeleteInvitationID}`, {
-                method: 'DELETE'
-            });
+            const res = await JG.api(`/admin/api/invitations/${pendingDeleteInvitationID}`, { method: 'DELETE' });
             if (res.success) {
-                JG.toast(i18n.invitationDeleted, 'success');
-                closeDeleteModal();
+                JG.toast(i18n.deleted || "Supprimé", 'success');
+                JG.closeModal('delete-modal');
                 loadInvitations();
                 loadSponsorStats();
             } else {
-                JG.toast(res.error || i18n.unknownError, 'error');
+                JG.toast(res.message || i18n.unknownError, 'error');
             }
         }
 
-        // --- Listeners (CSP Compliant) ---
+        // --- Event Listeners ---
         document.body.addEventListener('click', (e) => {
-            const btnOpen = e.target.closest('.btn-open-create-modal');
-            if (btnOpen) {
-                openCreateModal();
+            const copyBtn = e.target.closest('.action-copy-link');
+            if (copyBtn) {
+                copyLinkToClipboard(decodeURIComponent(copyBtn.getAttribute('data-link')));
                 return;
             }
 
-            const btnScroll = e.target.closest('.btn-scroll-invitations');
-            if (btnScroll) {
-                const target = document.getElementById('all-invitations-section');
-                if (target) target.scrollIntoView({ behavior: 'smooth' });
+            const deleteBtn = e.target.closest('.action-delete-invite');
+            if (deleteBtn) {
+                pendingDeleteInvitationID = parseInt(deleteBtn.getAttribute('data-id'), 10);
+                JG.openModal('delete-modal');
                 return;
             }
 
-            const btnCloseModal = e.target.closest('[data-modal-close]');
-            if (btnCloseModal) {
-                const modalId = btnCloseModal.getAttribute('data-modal-close');
-                if (modalId === 'create-modal') closeCreateModal();
-                else if (modalId === 'delete-modal') closeDeleteModal();
-                else JG.closeModal(modalId);
-                return;
-            }
-
-            const btnCopy = e.target.closest('.action-copy-link');
-            if (btnCopy) {
-                const link = decodeURIComponent(btnCopy.getAttribute('data-link'));
-                copyLinkToClipboard(link);
-                return;
-            }
-
-            const btnDelete = e.target.closest('.action-delete-invite');
-            if (btnDelete) {
-                const id = parseInt(btnDelete.getAttribute('data-id'), 10);
-                confirmDelete(id);
-                return;
-            }
-
-            const btnConfirmDelete = e.target.closest('#confirm-delete-btn');
-            if (btnConfirmDelete) {
+            if (e.target.id === 'delete-confirm-btn') {
                 submitDelete();
+                return;
+            }
+
+            if (e.target.closest('.btn-open-create-modal')) {
+                applyInvitationPolicyUI();
+                updateForcedUsernameState();
+                JG.openModal('create-modal');
+                return;
+            }
+
+            const pageBtn = e.target.closest('.page-btn');
+            if (pageBtn) {
+                currentPage = parseInt(pageBtn.getAttribute('data-page'), 10);
+                loadInvitations();
+                return;
+            }
+
+            if (e.target.closest('#prev-page') && currentPage > 1) {
+                currentPage--;
+                loadInvitations();
+                return;
+            }
+
+            if (e.target.closest('#next-page') && currentPage < totalPages) {
+                currentPage++;
+                loadInvitations();
                 return;
             }
         });
 
-        const createForm = document.getElementById('create-form');
-        if (createForm) {
-            createForm.addEventListener('submit', submitCreate);
-        }
-
-        const maxUsesInput = document.getElementById('inv-uses');
-        const forcedUserInput = document.getElementById('inv-forced-user');
-
-        if (maxUsesInput) {
-            maxUsesInput.addEventListener('input', updateForcedUsernameState);
-            maxUsesInput.addEventListener('change', updateForcedUsernameState);
-        }
-
-        if (forcedUserInput) {
-            forcedUserInput.addEventListener('input', () => {
-                const maxUses = parseInt(maxUsesInput?.value, 10);
-                if (maxUses !== 1 && forcedUserInput.value.length > 0) {
-                    const errorText = i18n.policy?.forced_username_limit_error || "Le nom reserve necessite un lien a usage unique (max = 1).";
-                    JG.showNotification(errorText, 'error');
-                    forcedUserInput.value = '';
-                }
+        const itemsPerPageSelect = document.getElementById('items-per-page');
+        if (itemsPerPageSelect) {
+            itemsPerPageSelect.addEventListener('change', () => {
+                itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
+                currentPage = 1;
+                loadInvitations();
             });
         }
+
+        const createForm = document.getElementById('create-form');
+        if (createForm) createForm.addEventListener('submit', submitCreate);
+
+        const maxUsesInput = document.getElementById('inv-uses');
+        if (maxUsesInput) maxUsesInput.addEventListener('input', updateForcedUsernameState);
 
         const expiryEnabled = document.getElementById('inv-user-expiry-enabled');
         if (expiryEnabled) {

@@ -23,19 +23,19 @@
 {{/* ── Stats Row ──────────────────────────────────────────────────────── */}}
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
     <div class="jg-card jg-glass p-5 border-l-4 border-l-jg-border-strong flex flex-col justify-center">
-        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">{{ .T "users_overview_total" }}</div>
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_total") "Total" }}</div>
         <div class="text-2xl font-extrabold" id="users-stat-total">0</div>
     </div>
     <div class="jg-card jg-glass p-5 border-l-4 border-l-jg-accent flex flex-col justify-center">
-        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">{{ .T "users_overview_filtered" }}</div>
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_filtered") "Filtrés" }}</div>
         <div class="text-2xl font-extrabold text-jg-accent" id="users-stat-filtered">0</div>
     </div>
     <div class="jg-card jg-glass p-5 border-l-4 border-l-amber-400 flex flex-col justify-center">
-        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">{{ .T "users_overview_inviters" }}</div>
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_inviters") "Parrains" }}</div>
         <div class="text-2xl font-extrabold text-amber-400" id="users-stat-inviters">0</div>
     </div>
     <div class="jg-card jg-glass p-5 border-l-4 border-l-rose-400 flex flex-col justify-center">
-        <div class="text-[10px] text-jg-text-muted font-bold uppercase tracking-wider mb-1">{{ .T "users_overview_expiring" }}</div>
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_expiring") "En expiration" }}</div>
         <div class="text-2xl font-extrabold text-rose-400" id="users-stat-expiring">0</div>
     </div>
 </div>
@@ -64,7 +64,7 @@
         <div id="filter-panel" class="hidden mt-4 pt-4 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "col_status" }}</label>
-                <select id="filter-status" class="jg-input h-11 text-xs jg-select-premium">
+                <select id="filter-status" class="jg-select-premium h-11 text-xs">
                     <option value="all">{{ .T "col_status" }} (Tous)</option>
                     <option value="active">{{ .T "status_active" }}</option>
                     <option value="inactive">{{ .T "status_inactive" }}</option>
@@ -73,7 +73,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">Jellyfin</label>
-                <select id="filter-jellyfin" class="jg-input h-11 text-xs jg-select-premium">
+                <select id="filter-jellyfin" class="jg-select-premium h-11 text-xs">
                     <option value="all">Jellyfin (Tous)</option>
                     <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
                     <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
@@ -82,7 +82,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "users_col_invite" }}</label>
-                <select id="filter-invite" class="jg-input h-11 text-xs jg-select-premium">
+                <select id="filter-invite" class="jg-select-premium h-11 text-xs">
                     <option value="all">{{ .T "users_col_invite" }} (Tous)</option>
                     <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
                     <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
@@ -90,7 +90,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">Filtres Spéciaux</label>
-                <select id="filter-extra" class="jg-input h-11 text-xs jg-select-premium">
+                <select id="filter-extra" class="jg-select-premium h-11 text-xs">
                     <option value="all">Extras (Aucun)</option>
                     <option value="with-email">{{ .T "users_filter_with_email" }}</option>
                     <option value="without-email">{{ .T "users_filter_without_email" }}</option>
@@ -121,7 +121,7 @@
                                 <th class="px-4 py-4">{{ .T "col_username" }}</th>
                                 <th class="px-4 py-4">{{ .T "col_status" }}</th>
                                 <th class="px-4 py-4">{{ .T "col_jellyfin" }}</th>
-                                <th class="px-4 py-4">{{ .T "users_col_group" }}</th>
+                                <th class="px-4 py-4">{{ .T "users_col_preset" }}</th>
                                 <th class="px-4 py-4">{{ .T "users_col_expiry" }}</th>
                                 <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
                             </tr>
@@ -198,7 +198,7 @@
             <div class="jg-drawer-body space-y-8">
                 <div class="space-y-4">
                     <label class="jg-label">{{ .T "users_bulk_step_action" }}</label>
-                    <select id="bulk-action" class="jg-input h-12">
+                    <select id="bulk-action" class="jg-input jg-select-premium h-12">
                         <option value="">{{ .T "users_bulk_action_placeholder" }}</option>
                         <option value="send_email">{{ .T "users_action_send_email" }}</option>
                         <option value="send_password_reset">{{ .T "users_action_send_password_reset" }}</option>
@@ -251,8 +251,14 @@
                 <input type="email" id="edit-email" class="jg-input h-12" placeholder="nom@domaine.tld">
             </div>
             <div>
-                <label class="jg-label">{{ .T "users_col_group" }}</label>
-                <input type="text" id="edit-group-name" class="jg-input h-12" placeholder="Ex: Enfants">
+                <label class="jg-label">{{ .T "users_col_preset" }}</label>
+                <select id="edit-preset-id" class="jg-input jg-select-premium h-12 font-bold">
+                    {{/* Injected via JS */}}
+                </select>
+            </div>
+            <div id="edit-group-wrapper" class="hidden">
+                <label class="jg-label text-xs opacity-50">{{ .T "users_col_group" }} (Lecture seule)</label>
+                <div id="edit-group-name" class="text-sm font-medium text-jg-text-muted mt-1 px-1"></div>
             </div>
             <div>
                 <label class="jg-label">{{ .T "users_col_expiry" }}</label>
@@ -373,6 +379,10 @@
             previous: '{{ .T "common_previous" }}',
             pageOf: '{{ .T "logs_of_label" }}',
             pageLabel: '{{ .T "logs_page_label" }}',
+            totalLabel: '{{ .T "users_overview_total" }}',
+            filteredLabel: '{{ .T "users_overview_filtered" }}',
+            invitersLabel: '{{ .T "users_overview_inviters" }}',
+            expiringLabel: '{{ .T "users_overview_expiring" }}',
         },
         bulkActionMeta: {
             send_email: { label: '{{ .T "users_action_send_email" }}', help: '{{ .T "users_action_send_email_help" }}' },

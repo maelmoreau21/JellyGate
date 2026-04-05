@@ -63,7 +63,7 @@
           <div class="space-y-4">
             <div class="max-w-xs">
               <label class="jg-label" for="default-lang">{{ .T "settings_default_lang" }}</label>
-              <select id="default-lang" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+              <select id="default-lang" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
                 <option value="fr">Français</option>
                 <option value="en">English</option>
                 <option value="de">Deutsch</option>
@@ -128,13 +128,13 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="jg-label" for="invite-profile-preset">{{ .T "settings_invite_profile_preset" }}</label>
-                <select id="invite-profile-preset" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+                <select id="invite-profile-preset" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
                   <option value="">{{ .T "settings_default_none" }}</option>
                 </select>
               </div>
               <div>
                 <label class="jg-label" for="invite-profile-template-user">{{ .T "settings_invite_profile_clone_user" }}</label>
-                <select id="invite-profile-template-user" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+                <select id="invite-profile-template-user" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
                   <option value="">{{ .T "settings_default_none" }}</option>
                 </select>
               </div>
@@ -186,7 +186,7 @@
               </div>
               <div>
                 <label class="jg-label" for="invite-profile-expiry-action">{{ .T "settings_invite_expiry_action" }}</label>
-                <select id="invite-profile-expiry-action" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+                <select id="invite-profile-expiry-action" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
                   <option value="disable">{{ .T "settings_expiry_action_disable" }}</option>
                   <option value="delete">{{ .T "settings_expiry_action_delete" }}</option>
                   <option value="disable_then_delete">{{ .T "settings_expiry_action_disable_then_delete" }}</option>
@@ -322,7 +322,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="jg-label" for="ldap-provision-mode">{{ .T "settings_ldap_provision_mode" }}</label>
-                <select id="ldap-provision-mode" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+                <select id="ldap-provision-mode" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
                   <option value="hybrid">{{ .T "settings_ldap_mode_hybrid" }}</option>
                   <option value="ldap_only">{{ .T "settings_ldap_mode_ldap_only" }}</option>
                 </select>
@@ -337,7 +337,7 @@
               </div>
               <div>
                 <label class="jg-label" for="ldap-username-attribute">{{ .T "settings_ldap_username_attribute" }}</label>
-                <select id="ldap-username-attribute" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+                <select id="ldap-username-attribute" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
                   <option value="auto">{{ .T "settings_ldap_username_attr_auto" }}</option>
                   <option value="sAMAccountName">{{ .T "settings_ldap_username_attr_ad" }}</option>
                   <option value="uid">{{ .T "settings_ldap_username_attr_uid" }}</option>
@@ -855,7 +855,7 @@
 
         <form id="form-backup">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <label class="inline-fleitems-center gap-2 text-sm text-slate-200 md:col-span-3">
+            <label class="inline-flex items-center gap-2 text-sm text-slate-200 md:col-span-3">
               <input type="checkbox" id="backup-enabled" class="form-checkbox">
               {{ .T "settings_backup_enable_auto" }}
             </label>
@@ -868,7 +868,7 @@
               <input id="backup-retention" type="number" min="7" max="7" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="7" readonly>
               
             </div>
-            <div class="fleitems-end">
+            <div class="flex items-end">
               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">x {{ .T "settings_backup_save_schedule" }}</button>
             </div>
           </div>
@@ -883,7 +883,7 @@
           <div class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
             <h3 class="text-sm font-semibold text-white mb-3">{{ .T "settings_backup_import_title" }}</h3>
             
-            <div class="fleflex-col sm:flex-row gap-3">
+            <div class="flex flex-col sm:flex-row gap-3">
               <input id="backup-import-file" type="file" accept=".zip" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
               <button id="backup-import-btn" class="jg-btn jg-btn-ghost" type="button">{{ .T "settings_backup_import_btn" }}</button>
             </div>

@@ -194,6 +194,69 @@ func (c *Client) DeleteUser(userID string) error {
 	return nil
 }
 
+// GetUserImage récupère l'image de profil d'un utilisateur.
+// Retourne les octets de l'image, le type MIME et une erreur.
+func (c *Client) GetUserImage(userID string) ([]byte, string, error) {
+	if userID == "" {
+		return nil, "", fmt.Errorf("jellyfin.GetUserImage: userID vide")
+	}
+
+	path := fmt.Sprintf("/Users/%s/Images/Primary", userID)
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("jellyfin.GetUserImage: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil, "", fmt.Errorf("jellyfin.GetUserImage: image non trouvée (404)")
+		}
+		body, _ := io.ReadAll(resp.Body)
+		return nil, "", fmt.Errorf("jellyfin.GetUserImage: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, "", fmt.Errorf("jellyfin.GetUserImage: erreur lecture flux: %w", err)
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if contentType == "" {
+		contentType = "image/png" // Fallback raisonnable
+	}
+
+	return data, contentType, nil
+}
+
+// SetUserImage met à jour l'image de profil d'un utilisateur.
+func (c *Client) SetUserImage(userID string, contentType string, data []byte) error {
+	if userID == "" {
+		return fmt.Errorf("jellyfin.SetUserImage: userID vide")
+	}
+
+	path := fmt.Sprintf("/Users/%s/Images/Primary", userID)
+	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, bytes.NewReader(data))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("X-Emby-Token", c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("jellyfin.SetUserImage: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("jellyfin.SetUserImage: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // SetUserPolicy met à jour la politique de droits d'un utilisateur.
 //
 // Utilisé pour activer/désactiver un compte ou appliquer des restrictions.
@@ -219,6 +282,32 @@ func (c *Client) SetUserPolicy(userID string, policy Policy) error {
 	}
 
 	slog.Info("Politique Jellyfin mise à jour", "id", userID, "disabled", policy.IsDisabled)
+	return nil
+}
+
+// UpdateUserPassword change le mot de passe d'un utilisateur Jellyfin.
+func (c *Client) UpdateUserPassword(userID, currentPassword, newPassword string) error {
+	if userID == "" {
+		return fmt.Errorf("jellyfin.UpdateUserPassword: userID vide")
+	}
+
+	payload := map[string]string{
+		"CurrentPassword": currentPassword,
+		"NewPassword":     newPassword,
+	}
+	reqBody, _ := json.Marshal(payload)
+
+	resp, err := c.doRequest(http.MethodPost, fmt.Sprintf("/Users/%s/Password", userID), reqBody)
+	if err != nil {
+		return fmt.Errorf("jellyfin.UpdateUserPassword: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("jellyfin.UpdateUserPassword: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
 	return nil
 }
 
@@ -344,6 +433,33 @@ func (c *Client) GetUsers() ([]User, error) {
 	return users, nil
 }
 
+// GetUsersBatch récupère les informations de plusieurs utilisateurs par leurs IDs.
+// Utilise le paramètre "Ids" de l'API Jellyfin (virgule séparée).
+func (c *Client) GetUsersBatch(ids []string) ([]User, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	
+	path := fmt.Sprintf("/Users?Ids=%s", strings.Join(ids, ","))
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("jellyfin.GetUsersBatch: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("jellyfin.GetUsersBatch: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
+	var users []User
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, fmt.Errorf("jellyfin.GetUsersBatch: erreur de décodage: %w", err)
+	}
+
+	return users, nil
+}
+
 // GetLibraries récupère la liste des bibliothèques de médias.
 func (c *Client) GetLibraries() ([]Library, error) {
 	resp, err := c.doRequest(http.MethodGet, "/Library/VirtualFolders", nil)
@@ -363,6 +479,25 @@ func (c *Client) GetLibraries() ([]Library, error) {
 	}
 
 	return libs, nil
+}
+
+// GetPublicSystemInfo récupère les informations publiques du serveur (pour health check).
+func (c *Client) GetPublicSystemInfo() (map[string]interface{}, error) {
+	resp, err := c.doRequest(http.MethodGet, "/System/Info/Public", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	var info map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, err
+	}
+	return info, nil
 }
 
 // ResetPassword réinitialise le mot de passe d'un utilisateur Jellyfin.

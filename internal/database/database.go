@@ -708,6 +708,18 @@ func (db *DB) sqliteMigrations() []migration {
 			sql:  `CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)`,
 		},
 		{
+			name: "index_users_created_at",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)`,
+		},
+		{
+			name: "index_users_username",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
+		},
+		{
+			name: "index_invitations_created_at",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_created_at ON invitations(created_at)`,
+		},
+		{
 			name: "create_user_messages",
 			sql: `CREATE TABLE IF NOT EXISTS user_messages (
 				id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -883,6 +895,18 @@ func (db *DB) postgresMigrations() []migration {
 			sql:  `CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)`,
 		},
 		{
+			name: "index_users_created_at",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at)`,
+		},
+		{
+			name: "index_users_username",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)`,
+		},
+		{
+			name: "index_invitations_created_at",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_created_at ON invitations(created_at)`,
+		},
+		{
 			name: "create_user_messages",
 			sql: `CREATE TABLE IF NOT EXISTS user_messages (
 				id              BIGSERIAL PRIMARY KEY,
@@ -949,4 +973,72 @@ func (db *DB) LogAction(action, actor, target, details string) error {
 		)
 	}
 	return err
+}
+
+// ── Statistiques Dashboard ──────────────────────────────────────────────────
+
+// RegistrationDay représente un point de données pour le graphique d'inscriptions.
+type RegistrationDay struct {
+	Day   string `json:"day"`
+	Count int    `json:"count"`
+}
+
+// InvitationStats représente la répartition des invitations.
+type InvitationStats struct {
+	Total   int `json:"total"`
+	Used    int `json:"used"`
+	Expired int `json:"expired"`
+	Active  int `json:"active"`
+}
+
+// GetRegistrationHistory retourne le nombre d'inscriptions par jour sur les X derniers jours.
+func (db *DB) GetRegistrationHistory(days int) ([]RegistrationDay, error) {
+	since := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
+	
+	// Utilisation de date() qui fonctionne en SQLite et Postgres (via prepareQuery si besoin)
+	// On s'assure d'avoir tous les jours même s'il n'y a pas d'inscriptions ?
+	// Pour l'instant on ne remplit que les jours avec data, le JS pourra compléter si besoin.
+	query := `
+		SELECT date(created_at) as day, count(*) as count 
+		FROM users 
+		WHERE created_at >= ? 
+		GROUP BY day 
+		ORDER BY day ASC`
+		
+	rows, err := db.Query(query, since)
+	if err != nil {
+		return nil, fmt.Errorf("GetRegistrationHistory: %w", err)
+	}
+	defer rows.Close()
+
+	var history []RegistrationDay
+	for rows.Next() {
+		var rd RegistrationDay
+		if err := rows.Scan(&rd.Day, &rd.Count); err != nil {
+			return nil, err
+		}
+		history = append(history, rd)
+	}
+	return history, nil
+}
+
+// GetInvitationStats retourne la répartition des invitations (utilisées, expirées, actives).
+func (db *DB) GetInvitationStats() (InvitationStats, error) {
+	var stats InvitationStats
+	
+	// On calcule les stats en une seule requête SQL
+	query := `
+		SELECT 
+			COUNT(*) as total,
+			SUM(CASE WHEN used_count >= max_uses THEN 1 ELSE 0 END) as used,
+			SUM(CASE WHEN used_count < max_uses AND expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 1 ELSE 0 END) as expired,
+			SUM(CASE WHEN used_count < max_uses AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP) THEN 1 ELSE 0 END) as active
+		FROM invitations`
+		
+	err := db.QueryRow(query).Scan(&stats.Total, &stats.Used, &stats.Expired, &stats.Active)
+	if err != nil {
+		// Gérer le cas où la table est vide (SUM retourne NULL)
+		return stats, nil
+	}
+	return stats, nil
 }

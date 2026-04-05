@@ -41,9 +41,27 @@
     </a>
 </div>
 
-<div class="flex items-center justify-between gap-4 mb-6">
-    <h2 class="text-xl font-bold text-jg-text">{{ .T "dashboard_stats_title" }}</h2>
-    <div class="h-px flex-1 bg-jg-border ml-4"></div>
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-4">
+        <h2 class="text-xl font-bold text-jg-text">{{ .T "dashboard_stats_title" }}</h2>
+        <div class="h-px w-12 bg-jg-border hidden md:block"></div>
+        <div id="health-monitor" class="flex items-center gap-3 bg-jg-bg-secondary px-3 py-1.5 rounded-full border border-jg-border shadow-sm">
+            <div class="flex items-center gap-1.5" title="Base de données">
+                <span id="health-db" class="w-2.5 h-2.5 rounded-full bg-slate-500 shadow-[0_0_8px_rgba(148,163,184,0.5)] transition-all duration-500"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-jg-text-muted">DB</span>
+            </div>
+            <div class="w-px h-3 bg-jg-border"></div>
+            <div class="flex items-center gap-1.5" title="Jellyfin Server">
+                <span id="health-jellyfin" class="w-2.5 h-2.5 rounded-full bg-slate-500 shadow-[0_0_8px_rgba(148,163,184,0.5)] transition-all duration-500"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-jg-text-muted">JF</span>
+            </div>
+            <div class="w-px h-3 bg-jg-border"></div>
+            <div class="flex items-center gap-1.5" title="Annuaire LDAP">
+                <span id="health-ldap" class="w-2.5 h-2.5 rounded-full bg-slate-500 shadow-[0_0_8px_rgba(148,163,184,0.5)] transition-all duration-500"></span>
+                <span class="text-[10px] font-bold uppercase tracking-wider text-jg-text-muted">LDAP</span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="jg-stat-grid mb-12" id="stats-grid">
@@ -62,6 +80,29 @@
     <div class="jg-card jg-stat-card border-b-2 border-b-rose-500">
         <div class="jg-stat-value text-rose-400" id="stat-banned">—</div>
         <div class="jg-stat-label">{{ .T "stat_banned_users" }}</div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+    <!-- Graphique Inscriptions (Line) -->
+    <div class="lg:col-span-2 jg-card p-6 flex flex-col gap-4 bg-jg-bg-secondary/50 border border-jg-border shadow-xl">
+        <h3 class="font-bold text-jg-text text-xs uppercase tracking-widest opacity-60 flex items-center gap-2">
+            <svg class="w-4 h-4 text-cyan-400 font-bold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            {{ .T "stats_registrations_title" }} (30j)
+        </h3>
+        <div class="relative h-64 w-full mt-2">
+            <canvas id="registrationsChart"></canvas>
+        </div>
+    </div>
+    <!-- Graphique Invitations (Donut) -->
+    <div class="jg-card p-6 flex flex-col gap-4 bg-jg-bg-secondary/50 border border-jg-border shadow-xl">
+        <h3 class="font-bold text-jg-text text-xs uppercase tracking-widest opacity-60 flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg>
+            {{ .T "stats_invitations_dist" }}
+        </h3>
+        <div class="relative h-64 w-full flex items-center justify-center mt-2">
+            <canvas id="invitationsChart" class="max-w-[180px] md:max-w-full"></canvas>
+        </div>
     </div>
 </div>
 
@@ -108,8 +149,13 @@
             statusActive: '{{ .T "status_active" }}',
             statusInactive: '{{ .T "status_inactive" }}',
             noUsers: '{{ .T "dashboard_no_users" }}',
+            chartRegistrationsLabel: '{{ .T "chart_registrations_label" }}',
+            inviteUsed: '{{ .T "invite_used" }}',
+            inviteExpired: '{{ .T "invite_expired" }}',
+            inviteActive: '{{ .T "invite_active" }}',
         },
     };
 </script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="/static/js/pages/dashboard.js" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

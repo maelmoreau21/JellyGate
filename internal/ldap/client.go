@@ -613,6 +613,140 @@ func resolveEntryUsername(entry *goldap.Entry, attrs []string) (string, string) 
 	return "", ""
 }
 
+// GetGroupMembers récupère la liste de tous les utilisateurs membres d'un groupe LDAP.
+func (c *Client) GetGroupMembers(groupDN string) ([]UserEntry, error) {
+	if groupDN == "" {
+		return nil, fmt.Errorf("ldap.GetGroupMembers: groupDN vide")
+	}
+
+	conn, err := c.connect()
+	if err != nil {
+		return nil, fmt.Errorf("ldap.GetGroupMembers: %w", err)
+	}
+	defer conn.Close()
+
+	profile := c.detectDirectoryProfile(conn)
+	searchDN := strings.TrimSpace(c.cfg.BaseDN)
+	lookupAttrs := c.lookupAttributes(profile)
+	
+	// Filtre AD optimisé : tous les objets 'user' ayant l'attribut memberOf = groupDN
+	filter := fmt.Sprintf("(&(objectClass=user)(memberOf=%s))", goldap.EscapeFilter(groupDN))
+	if profile != directoryProfileAD {
+		// Filtre plus générique pour les autres types d'annuaires
+		// Note: Certains annuaires utilisent 'member' ou 'uniqueMember' sur l'objet groupe
+		// Plutôt que de chercher les utilisateurs, on peut aussi chercher le groupe 
+		// et extraire ses attributs 'member'.
+		return c.getGroupMembersGeneric(conn, groupDN, profile)
+	}
+
+	requestAttrs := []string{"dn", "displayName", "mail", "userPrincipalName", "userAccountControl"}
+	requestAttrs = append(requestAttrs, lookupAttrs...)
+
+	searchReq := goldap.NewSearchRequest(
+		searchDN,
+		goldap.ScopeWholeSubtree,
+		goldap.NeverDerefAliases,
+		0,   // Pas de limite
+		30,  // Timeout 30 secondes pour les gros groupes
+		false,
+		filter,
+		requestAttrs,
+		nil,
+	)
+
+	result, err := conn.Search(searchReq)
+	if err != nil {
+		return nil, fmt.Errorf("ldap.GetGroupMembers: échec de la recherche pour %q: %w", groupDN, err)
+	}
+
+	users := make([]UserEntry, 0, len(result.Entries))
+	for _, entry := range result.Entries {
+		uac := entry.GetAttributeValue("userAccountControl")
+		resolvedUsername, resolvedAttr := resolveEntryUsername(entry, lookupAttrs)
+		if resolvedUsername == "" {
+			continue
+		}
+
+		users = append(users, UserEntry{
+			DN:                entry.DN,
+			Username:          resolvedUsername,
+			UsernameAttribute: resolvedAttr,
+			DisplayName:       entry.GetAttributeValue("displayName"),
+			Email:             entry.GetAttributeValue("mail"),
+			UPN:               entry.GetAttributeValue("userPrincipalName"),
+			UAC:               uac,
+			IsDisabled:        uac == fmt.Sprintf("%d", UAC_DISABLED_ACCOUNT),
+		})
+	}
+
+	return users, nil
+}
+
+func (c *Client) getGroupMembersGeneric(conn *goldap.Conn, groupDN string, profile string) ([]UserEntry, error) {
+	// 1. Chercher le groupe pour extraire les DNs des membres
+	memberAttr := c.effectiveGroupMemberAttribute(profile)
+	searchReq := goldap.NewSearchRequest(
+		groupDN,
+		goldap.ScopeBaseObject,
+		goldap.NeverDerefAliases,
+		1, 10, false,
+		"(objectClass=*)",
+		[]string{memberAttr},
+		nil,
+	)
+
+	res, err := conn.Search(searchReq)
+	if err != nil || len(res.Entries) == 0 {
+		return nil, fmt.Errorf("impossible de trouver le groupe %q : %w", groupDN, err)
+	}
+
+	memberDNs := res.Entries[0].GetAttributeValues(memberAttr)
+	if len(memberDNs) == 0 {
+		return []UserEntry{}, nil
+	}
+
+	// 2. Pour chaque DN, récupérer les infos utilisateur
+	// Note: Pour être performant, on fait un OR massif si possible ou des recherches individuelles
+	lookupAttrs := c.lookupAttributes(profile)
+	users := make([]UserEntry, 0, len(memberDNs))
+	
+	for _, mdn := range memberDNs {
+		// Recherche par DN exact
+		uSearch := goldap.NewSearchRequest(
+			mdn,
+			goldap.ScopeBaseObject,
+			goldap.NeverDerefAliases,
+			1, 5, false,
+			"(objectClass=*)",
+			append([]string{"dn", "displayName", "mail", "userPrincipalName", "userAccountControl"}, lookupAttrs...),
+			nil,
+		)
+		uRes, err := conn.Search(uSearch)
+		if err != nil || len(uRes.Entries) == 0 {
+			continue
+		}
+
+		entry := uRes.Entries[0]
+		uac := entry.GetAttributeValue("userAccountControl")
+		resolvedUsername, resolvedAttr := resolveEntryUsername(entry, lookupAttrs)
+		if resolvedUsername == "" {
+			continue
+		}
+
+		users = append(users, UserEntry{
+			DN:                entry.DN,
+			Username:          resolvedUsername,
+			UsernameAttribute: resolvedAttr,
+			DisplayName:       entry.GetAttributeValue("displayName"),
+			Email:             entry.GetAttributeValue("mail"),
+			UAC:               uac,
+			IsDisabled:        uac == fmt.Sprintf("%d", UAC_DISABLED_ACCOUNT),
+		})
+	}
+
+	return users, nil
+}
+
 func (c *Client) createObjectClassCandidates(profile string) []string {
 	configured := normalizeLDAPObjectClass(c.cfg.UserObjectClass)
 	if configured != "" && !isAutoLDAPValue(configured) {

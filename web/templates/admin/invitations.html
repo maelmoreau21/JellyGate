@@ -98,6 +98,33 @@
                     </tbody>
                 </table>
             </div>
+
+            {{/* ── Pagination ── */}}
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-white/[0.02] border-t border-jg-border">
+                <div class="flex items-center gap-3 text-xs text-jg-text-muted">
+                    <span class="font-bold uppercase tracking-widest opacity-50">{{ .T "pagination_show" }}</span>
+                    <select id="items-per-page" class="bg-jg-bg-secondary border border-jg-border rounded-lg px-2 py-1 text-jg-text focus:outline-none focus:ring-1 focus:ring-jg-accent transition-all">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2" id="pagination-controls">
+                    <button id="prev-page" class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <div class="flex items-center gap-1" id="page-numbers">
+                        <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-jg-accent text-white font-bold text-xs">1</span>
+                    </div>
+                    <button id="next-page" class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
+                <div class="text-xs text-jg-text-muted font-bold uppercase tracking-widest opacity-50" id="pagination-info">
+                    Page 1 / 1
+                </div>
+            </div>
         </div>
     </div>
 </div>

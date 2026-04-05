@@ -184,7 +184,7 @@
             const tbody = document.getElementById('users-tbody');
             if (!tbody) return;
             const userCount = document.getElementById('user-count');
-            if (userCount) userCount.textContent = (paginationMeta.total || 0) + ' ' + (i18n.totalLabel||'utilisateurs');
+            if (userCount) userCount.textContent = (paginationMeta.total || 0) + ' ' + (i18n.totalLabel || 'utilisateurs');
             
             const st = document.getElementById('users-stat-total'); if (st) st.textContent = paginationMeta.total_global || 0;
             const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = paginationMeta.total || 0;
@@ -202,11 +202,11 @@
                 const bgClass = isSelected ? 'bg-jg-accent/10' : 'hover:bg-white/[0.03]';
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
                 
-                let avatarHtml = '<div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold">' + JG.esc(user.username.charAt(0).toUpperCase()) + '</div>';
-                if (user.jellyfin_id && user.jellyfin_primary_image_tag && window.JGConfig && window.JGConfig.jellyfinUrl) {
-                    const baseUrl = window.JGConfig.jellyfinUrl.replace(/\/$/, '');
-                    const avatarUrl = `${baseUrl}/Users/${user.jellyfin_id}/Images/Primary?tag=${user.jellyfin_primary_image_tag}&maxWidth=100&quality=90`;
-                    avatarHtml = '<img src="' + avatarUrl + '" class="w-8 h-8 rounded-full object-cover" alt="' + JG.esc(user.username) + '">';
+                let avatarHtml = `<div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold text-jg-accent text-xs">${JG.esc(user.username.charAt(0).toUpperCase())}</div>`;
+                if (user.jellyfin_id && user.jellyfin_primary_image_tag) {
+                    const avatarUrl = `/admin/api/users/${user.id}/avatar?tag=${user.jellyfin_primary_image_tag}`;
+                    avatarHtml = `<img src="${avatarUrl}" class="w-8 h-8 rounded-full object-cover border border-white/10" alt="${JG.esc(user.username)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
+                               + `<div class="w-8 h-8 rounded-full bg-jg-accent/20 items-center justify-center font-bold text-jg-accent text-xs hidden">${JG.esc(user.username.charAt(0).toUpperCase())}</div>`;
                 }
 
                 return '<tr class="group ' + bgClass + ' border-b border-white/5">'
@@ -214,7 +214,10 @@
                     + '<td class="px-4 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col"><span class="font-bold">' + JG.esc(user.username) + '</span><span class="text-xs text-jg-text-muted">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
                     + '<td class="px-4 py-4">' + userStatusBadge(user) + '</td>'
                     + '<td class="px-4 py-4">' + jellyfinStatusBadge(user) + '</td>'
-                    + '<td class="px-4 py-4">' + JG.esc(user.group_name || '\u2014') + '</td>'
+                    + '<td class="px-4 py-4">' + (function() {
+                        const p = jellyfinPresets.find(pr => pr.id === user.preset_id);
+                        return JG.esc(p ? p.name : (user.preset_id || '\u2014'));
+                    })() + '</td>'
                     + '<td class="px-4 py-4">' + JG.esc(expiry) + '</td>'
                     + '<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2">'
                     + '<button class="action-timeline jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">\uD83D\uDCCA</button>'
@@ -262,7 +265,11 @@
 
         async function loadPresets() {
             const res = await JG.api('/admin/api/automation/presets');
-            if (res.success) jellyfinPresets = res.data || [];
+            if (res.success) {
+                jellyfinPresets = res.data || [];
+                // Re-render table if users are already loaded (async race)
+                if (allUsers.length > 0) renderUsers(allUsers);
+            }
         }
 
         function updateBulkWizardState() {
@@ -426,7 +433,30 @@
             if (!user) return;
             document.getElementById('edit-user-id').value = uid;
             document.getElementById('edit-email').value = user.email || '';
-            document.getElementById('edit-group-name').value = user.group_name || '';
+            
+            // Populate Presets
+            const presetSel = document.getElementById('edit-preset-id');
+            if (presetSel) {
+                let html = '<option value="">(Aucun preset)</option>';
+                jellyfinPresets.forEach(p => {
+                    html += `<option value="${JG.esc(p.id)}">${JG.esc(p.name || p.id)}</option>`;
+                });
+                presetSel.innerHTML = html;
+                presetSel.value = user.preset_id || '';
+            }
+
+            // Show Read-only Group
+            const groupWrap = document.getElementById('edit-group-wrapper');
+            const groupNameInput = document.getElementById('edit-group-name');
+            if (groupWrap && groupNameInput) {
+                if (user.group_name) {
+                    groupNameInput.textContent = user.group_name;
+                    groupWrap.classList.remove('hidden');
+                } else {
+                    groupWrap.classList.add('hidden');
+                }
+            }
+
             document.getElementById('edit-expiry').value = toDateTimeLocal(user.access_expires_at);
             document.getElementById('edit-clear-expiry').checked = false;
             document.getElementById('edit-can-invite').checked = !!user.can_invite;
@@ -436,7 +466,13 @@
         document.getElementById('edit-save-btn')?.addEventListener('click', async () => {
             const uid = document.getElementById('edit-user-id').value;
             const clr = document.getElementById('edit-clear-expiry').checked;
-            const p = { email: document.getElementById('edit-email').value, group_name: document.getElementById('edit-group-name').value, access_expires_at: clr ? '' : document.getElementById('edit-expiry').value, clear_expiry: clr, can_invite: document.getElementById('edit-can-invite').checked };
+            const p = { 
+                email: document.getElementById('edit-email').value, 
+                preset_id: document.getElementById('edit-preset-id').value, 
+                access_expires_at: clr ? '' : document.getElementById('edit-expiry').value, 
+                clear_expiry: clr, 
+                can_invite: document.getElementById('edit-can-invite').checked 
+            };
             const res = await JG.api('/admin/api/users/' + uid, { method: 'PATCH', body: JSON.stringify(p) });
             if (res.success) { JG.toast(i18n.editUpdated||'OK', 'success'); JG.closeModal('edit-modal'); await loadUsers(); }
             else { JG.toast(res.message||i18n.editUpdateError||'Erreur', 'error'); }
@@ -462,21 +498,56 @@
         // Timeline Modal
         async function openTimeline(uid, user) {
             const sub = document.getElementById('timeline-subtitle');
-            if (sub && user) sub.textContent = (i18n.timelineSubtitleTemplate||'{username}').replace('{username}', user.username);
+            if (sub && user) sub.textContent = (i18n.timelineSubtitleTemplate || '{username}').replace('{username}', user.username);
+
             JG.openModal('timeline-modal');
             const list = document.getElementById('timeline-list');
-            if (list) list.innerHTML = '<div class="text-center py-20 text-jg-text-muted animate-pulse">Chargement...</div>';
-            const res = await JG.api('/admin/api/logs?actor=' + encodeURIComponent(user?.username||'') + '&limit=50');
-            if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-                list.innerHTML = res.data.map(entry => {
-                    const lvl = (entry.level||'info').toLowerCase();
-                    let badge = '<span class="badge badge-muted">' + JG.esc(i18n.timelineInfo||'Info') + '</span>';
-                    if (lvl === 'critical' || lvl === 'error') badge = '<span class="badge badge-danger">' + JG.esc(i18n.timelineCritical||'Critique') + '</span>';
-                    else if (lvl === 'warning') badge = '<span class="badge badge-warning">' + JG.esc(i18n.timelineImportant||'Important') + '</span>';
-                    return '<div class="flex gap-4 p-4 rounded-xl bg-white/5 border border-white/5"><div class="flex-shrink-0 mt-1">' + badge + '</div><div class="flex-1 min-w-0"><div class="font-medium text-sm">' + JG.esc(entry.action||entry.message||'') + '</div><div class="text-xs text-jg-text-muted mt-1">' + fmtDate(entry.created_at||entry.timestamp) + '</div></div></div>';
-                }).join('');
+            if (list) list.innerHTML = '<div class="text-center py-20 text-jg-text-muted animate-pulse">Chargement de l\'historique...</div>';
+
+            const res = await JG.api(`/admin/api/users/${uid}/timeline`);
+            if (res.success && Array.isArray(res.data)) {
+                if (res.data.length === 0) {
+                    list.innerHTML = `<div class="text-center py-20 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-3xl bg-white/5 uppercase text-[10px] items-center justify-center flex flex-col gap-4">
+                        <svg class="w-12 h-12 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        ${JG.esc(i18n.timelineEmpty || 'Aucun email envoye.')}
+                    </div>`;
+                    return;
+                }
+
+                let html = '<div class="space-y-3 pb-4">';
+                res.data.forEach(entry => {
+                    const action = (entry.action || '').toLowerCase();
+                    const isFailed = action.includes('failed') || action.includes('error');
+                    
+                    let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`;
+                    if (action.includes('verify')) icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+                    if (action.includes('reset')) icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>`;
+
+                    html += `
+                    <div class="group p-4 rounded-2xl bg-white/5 border border-jg-border hover:bg-white/10 hover:border-jg-accent/30 transition-all duration-300">
+                        <div class="flex items-start gap-4">
+                            <div class="w-10 h-10 rounded-xl ${isFailed ? 'bg-rose-500/10 text-rose-400' : 'bg-jg-accent/10 text-jg-accent'} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                                ${icon}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center justify-between gap-4 mb-0.5">
+                                    <span class="text-sm font-bold text-jg-text truncate">${JG.esc(entry.message || entry.action)}</span>
+                                    <span class="text-[10px] font-medium text-jg-text-muted uppercase tracking-wider whitespace-nowrap">${fmtDate(entry.at)}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    ${isFailed ? `<span class="flex items-center gap-1 text-[10px] font-bold text-rose-400 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-full"><span class="w-1 h-1 rounded-full bg-rose-400 animate-pulse"></span> ECHEC</span>` : `<span class="flex items-center gap-1 text-[10px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full"><span class="w-1 h-1 rounded-full bg-emerald-400"></span> ENVOYE</span>`}
+                                    ${entry.actor ? `<span class="text-[10px] text-jg-text-muted/60 tracking-wider">PAR : ${JG.esc(entry.actor)}</span>` : ''}
+                                </div>
+                                ${entry.details ? `<div class="mt-2 text-[11px] text-jg-text-muted/80 leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5 select-all font-mono break-all">${JG.esc(entry.details)}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+                list.innerHTML = html;
+
             } else {
-                list.innerHTML = '<div class="text-center py-20 text-jg-text-muted">' + JG.esc(i18n.timelineEmpty||'Aucun evenement.') + '</div>';
+                list.innerHTML = `<div class="text-center py-20 text-rose-400">${JG.esc(i18n.timelineLoadError || 'Erreur lors du chargement.')}</div>`;
             }
         }
         document.getElementById('timeline-close-btn')?.addEventListener('click', () => JG.closeModal('timeline-modal'));

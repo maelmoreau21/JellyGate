@@ -136,19 +136,19 @@
 
         function presetRow(preset, idx) {
             const downloadBadge = preset.enable_download 
-                ? '<span class="badge badge-success px-2 py-0.5">Autorisé</span>' 
-                : '<span class="badge badge-danger px-2 py-0.5">Bloqué</span>';
+                ? '<span class="badge-success text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Autorisé</span>' 
+                : '<span class="badge-danger text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Refusé</span>';
             const remoteBadge = preset.enable_remote_access 
-                ? '<span class="badge badge-success px-2 py-0.5">Autorisé</span>' 
-                : '<span class="badge badge-danger px-2 py-0.5">Bloqué</span>';
+                ? '<span class="badge-success text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Autorisé</span>' 
+                : '<span class="badge-danger text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Refusé</span>';
 
-            return `<tr class="hover:bg-white/[0.02] transition-colors">
-            <td class="px-6 py-4"><code class="text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-jg-text-muted">${JG.esc(preset.id || '')}</code></td>
-            <td class="px-6 py-4 font-medium text-jg-text">${JG.esc(preset.name || '')}</td>
+            return `<tr class="hover:bg-white/[0.02] transition-colors border-b border-jg-border last:border-none">
+            <td class="px-6 py-4"><code class="text-[10px] bg-white/5 px-2 py-1 rounded-md text-jg-text-muted border border-white/5">${JG.esc(preset.id || '')}</code></td>
+            <td class="px-6 py-4 font-bold text-jg-text">${JG.esc(preset.name || '')}</td>
             <td class="px-6 py-4">${downloadBadge}</td>
             <td class="px-6 py-4">${remoteBadge}</td>
-            <td class="px-6 py-4"><span class="text-jg-text">${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}</span> <span class="text-[10px] text-jg-text-muted">flux</span></td>
-            <td class="px-6 py-4"><span class="text-jg-text">${Number.isInteger(preset.bitrate_limit) ? preset.bitrate_limit : 0}</span> <span class="text-[10px] text-jg-text-muted">Mbps</span></td>
+            <td class="px-6 py-4"><span class="text-sm font-medium text-jg-text">${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}</span> <span class="text-[10px] text-jg-text-muted uppercase tracking-tighter ml-1">Flux</span></td>
+            <td class="px-6 py-4"><span class="text-sm font-medium text-jg-text">${Number.isInteger(preset.bitrate_limit) ? preset.bitrate_limit : 0}</span> <span class="text-[10px] text-jg-text-muted uppercase tracking-tighter ml-1">Mbps</span></td>
             <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
                     <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="preset-edit" data-index="${idx}">${JG.esc(i18n.edit || 'Éditer')}</button>
@@ -255,14 +255,14 @@
             return `<tr>
                 <td><input type="text" class="jg-input jg-input-sm" data-field="group_name" value="${JG.esc(mapping.group_name || '')}" placeholder="Nom du groupe"></td>
                 <td>
-                    <select class="jg-input jg-input-sm py-0" data-field="source">
+                    <select class="jg-input jg-input-sm jg-select-premium py-0" data-field="source">
                         <option value="internal" ${mapping.source === 'internal' ? 'selected' : ''}>Interne</option>
                         <option value="ldap" ${mapping.source === 'ldap' ? 'selected' : ''}>LDAP</option>
                     </select>
                 </td>
                 <td><input type="text" class="jg-input jg-input-sm text-xs" data-field="ldap_group_dn" value="${JG.esc(mapping.ldap_group_dn || '')}" placeholder="CN=...,DC=..."></td>
                 <td>
-                    <select class="jg-input jg-input-sm py-0" data-field="policy_preset_id">
+                    <select class="jg-input jg-input-sm jg-select-premium py-0" data-field="policy_preset_id">
                         ${presetOptions}
                     </select>
                 </td>
@@ -314,10 +314,34 @@
             document.getElementById('preset-delete-days').value = preset.delete_after_days || 0;
             
             // Sponsorship / Parrainage
-            document.getElementById('preset-can-invite').checked = !!preset.can_invite;
-            document.getElementById('preset-invite-quota').value = preset.invite_quota || 0;
-            document.getElementById('preset-invite-max-uses').value = preset.invite_max_uses || 1;
-            document.getElementById('preset-invite-max-hours').value = preset.invite_max_link_hours || 48;
+            const canInviteEl = document.getElementById('preset-can-invite');
+            if (canInviteEl) {
+                canInviteEl.checked = !!preset.can_invite;
+                
+                // Sponsorship options toggle
+                const sponsorshipOpts = document.getElementById('preset-sponsorship-options');
+                if (sponsorshipOpts) {
+                    sponsorshipOpts.style.display = preset.can_invite ? 'grid' : 'none';
+                }
+
+                // Add listener if not already present (one-time logic)
+                if (!canInviteEl.dataset.listener) {
+                    canInviteEl.addEventListener('change', (e) => {
+                        const opts = document.getElementById('preset-sponsorship-options');
+                        if (opts) opts.style.display = e.target.checked ? 'grid' : 'none';
+                    });
+                    canInviteEl.dataset.listener = "true";
+                }
+            }
+
+            const quotaEl = document.getElementById('preset-invite-quota');
+            if (quotaEl) quotaEl.value = preset.invite_quota || 0;
+
+            const maxUsesEl = document.getElementById('preset-invite-max-uses');
+            if (maxUsesEl) maxUsesEl.value = preset.invite_max_uses || 1;
+
+            const maxHoursEl = document.getElementById('preset-invite-max-hours');
+            if (maxHoursEl) maxHoursEl.value = preset.invite_max_link_hours || 48;
             
             const targetSelect = document.getElementById('preset-target-preset');
             if (targetSelect) {
@@ -325,18 +349,6 @@
                     presets.filter(p => p.id && p.id !== preset.id).map(p => `<option value="${JG.esc(p.id)}">${JG.esc(p.name || p.id)}</option>`).join('');
                 targetSelect.value = preset.target_preset_id || '';
             }
-            
-            const sponsorshipOpts = document.getElementById('preset-sponsorship-options');
-            if (sponsorshipOpts) {
-                sponsorshipOpts.style.display = preset.can_invite ? 'grid' : 'none';
-            }
-
-            document.getElementById('preset-can-invite')?.addEventListener('change', (e) => {
-                const sponsorshipOpts = document.getElementById('preset-sponsorship-options');
-                if (sponsorshipOpts) {
-                    sponsorshipOpts.style.display = e.target.checked ? 'grid' : 'none';
-                }
-            });
 
             JG.openModal('modal-preset-form');
         }
@@ -361,11 +373,20 @@
             presets[idx].bitrate_limit = parseInt(document.getElementById('preset-bitrate').value, 10) || 0;
             presets[idx].disable_after_days = parseInt(document.getElementById('preset-disable-days').value, 10) || 0;
             presets[idx].delete_after_days = parseInt(document.getElementById('preset-delete-days').value, 10) || 0;
-            presets[idx].can_invite = document.getElementById('preset-can-invite').checked;
-            presets[idx].target_preset_id = document.getElementById('preset-target-preset').value || '';
-            presets[idx].invite_quota = parseInt(document.getElementById('preset-invite-quota').value, 10) || 0;
-            presets[idx].invite_max_uses = parseInt(document.getElementById('preset-invite-max-uses').value, 10) || 1;
-            presets[idx].invite_max_link_hours = parseInt(document.getElementById('preset-invite-max-hours').value, 10) || 48;
+            const canInviteEl = document.getElementById('preset-can-invite');
+            if (canInviteEl) presets[idx].can_invite = canInviteEl.checked;
+            
+            const targetPresetEl = document.getElementById('preset-target-preset');
+            if (targetPresetEl) presets[idx].target_preset_id = targetPresetEl.value || '';
+            
+            const quotaEl = document.getElementById('preset-invite-quota');
+            if (quotaEl) presets[idx].invite_quota = parseInt(quotaEl.value, 10) || 0;
+            
+            const maxUsesEl = document.getElementById('preset-invite-max-uses');
+            if (maxUsesEl) presets[idx].invite_max_uses = parseInt(maxUsesEl.value, 10) || 1;
+            
+            const maxHoursEl = document.getElementById('preset-invite-max-hours');
+            if (maxHoursEl) presets[idx].invite_max_link_hours = parseInt(maxHoursEl.value, 10) || 48;
             
             // Clean payload
             const payload = presets.map(p => {
@@ -413,6 +434,7 @@
             
             JG.toast(i18n.presetsSaved, 'success');
             await loadPresets();
+            await loadMappings(); // Refresh mappings to reflect preset changes
             JG.closeModal('modal-preset-form');
         });
 
@@ -435,6 +457,7 @@
             <td class="text-right">
                 <div class="flex justify-end gap-2">
                     <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-run" data-id="${task.id}">${JG.esc(i18n.runNow)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-edit" data-id="${task.id}">${JG.esc(i18n.edit || 'Éditer')}</button>
                     <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-toggle" data-id="${task.id}">${task.enabled ? JG.esc(i18n.disable) : JG.esc(i18n.enable)}</button>
                     <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="task-delete" data-id="${task.id}">${JG.esc(i18n.deleteLabel)}</button>
                 </div>
@@ -541,8 +564,17 @@
             }
         });
 
+        document.getElementById('btn-open-task-modal')?.addEventListener('click', () => {
+            document.getElementById('task-id').value = '';
+            document.getElementById('task-create-form').reset();
+            document.getElementById('task-enabled').checked = true;
+            updateTaskPreview();
+            JG.openModal('modal-task-form');
+        });
+
         document.getElementById('task-create-form')?.addEventListener('submit', async (event) => {
             event.preventDefault();
+            const id = document.getElementById('task-id').value;
             const payload = {
                 name: document.getElementById('task-name').value.trim(),
                 task_type: document.getElementById('task-type').value,
@@ -552,15 +584,18 @@
                 payload: document.getElementById('task-payload').value.trim(),
             };
 
-            const res = await JG.api('/admin/api/automation/tasks', {
-                method: 'POST',
+            const method = id ? 'PATCH' : 'POST';
+            const url = id ? `/admin/api/automation/tasks/${id}` : '/admin/api/automation/tasks';
+
+            const res = await JG.api(url, {
+                method: method,
                 body: JSON.stringify(payload),
             });
             if (!res.success) {
-                JG.toast(res.message || i18n.taskCreateFailed, 'error');
+                JG.toast(res.message || (id ? i18n.taskUpdateFailed : i18n.taskCreateFailed), 'error');
                 return;
             }
-            JG.toast(i18n.taskCreated, 'success');
+            JG.toast(id ? i18n.taskUpdated || 'Tâche mise à jour' : i18n.taskCreated, 'success');
             event.target.reset();
             document.getElementById('task-enabled').checked = true;
             updateTaskPreview();
@@ -602,6 +637,19 @@
                 }
                 JG.toast(i18n.taskRunSuccess, 'success');
                 await loadTasks();
+                return;
+            }
+
+            if (action === 'task-edit' && task) {
+                document.getElementById('task-id').value = task.id;
+                document.getElementById('task-name').value = task.name || '';
+                document.getElementById('task-type').value = task.task_type || 'sync_users';
+                document.getElementById('task-hour').value = task.hour;
+                document.getElementById('task-minute').value = task.minute;
+                document.getElementById('task-payload').value = task.payload || '';
+                document.getElementById('task-enabled').checked = !!task.enabled;
+                updateTaskPreview();
+                JG.openModal('modal-task-form');
                 return;
             }
 

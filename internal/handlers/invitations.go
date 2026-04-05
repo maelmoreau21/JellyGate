@@ -754,11 +754,12 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 				"JellyfinURL":   links.JellyfinURL,
 				"JellyseerrURL": links.JellyseerrURL,
 			}
-
 			subject := firstNonEmpty(append(subjectCandidates, defaults.WelcomeSubject)...)
 			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, "welcome", combinedTemplate, emailCfg, emailData); err != nil {
 				slog.Error("Erreur envoi email post-inscription", "email", form.Email, "error", err)
 				h.logInviteAction(r, "invite.welcome_email.failed", form.Username, inv.Code, err.Error())
+			} else {
+				h.logInviteAction(r, "invite.welcome_email.sent", form.Username, inv.Code, "Email de bienvenue envoye")
 			}
 		}
 	}
@@ -781,6 +782,19 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		))
 
 	slog.Info("ðŸŽ‰ Inscription terminÃ©e avec succÃ¨s", "username", form.Username, "jellyfin_id", jellyfinID, "ldap_dn", userDN, "invitation", inv.Code)
+
+	if h.notifier != nil {
+		h.notifier.NotifyUserRegistered(notify.UserRegisteredEvent{
+			Username:    form.Username,
+			DisplayName: form.Username,
+			Email:       form.Email,
+			InviteCode:  inv.Code,
+			InvitedBy:   inv.CreatedBy,
+			JellyfinID:  jellyfinID,
+			LdapDN:      userDN,
+			Timestamp:   time.Now(),
+		})
+	}
 
 	return &inviteSignupResult{
 		JellyfinID:   jellyfinID,

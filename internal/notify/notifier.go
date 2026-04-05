@@ -77,6 +77,88 @@ func (n *Notifier) NotifyUserRegistered(event UserRegisteredEvent) {
 	}
 }
 
+// NotifyTaskExecuted envoie une notification sur le statut d'exécution d'une tâche.
+func (n *Notifier) NotifyTaskExecuted(taskName string, success bool, err error) {
+	title := "✅ Tâche terminée"
+	desc := fmt.Sprintf("La tâche **%s** s'est terminée avec succès.", taskName)
+	color := 3066993 // Vert
+	if !success {
+		title = "❌ Échec de la tâche"
+		desc = fmt.Sprintf("La tâche **%s** a échoué.", taskName)
+		color = 15158332 // Rouge
+	}
+
+	// Discord
+	if n.cfg.Discord.URL != "" {
+		go n.sendDiscordGeneric(title, desc, color, map[string]string{
+			"Tâche": taskName,
+			"Status": func() string {
+				if success {
+					return "Succès"
+				}
+				return "Échec"
+			}(),
+			"Erreur": func() string {
+				if err != nil {
+					return err.Error()
+				}
+				return "Aucune"
+			}(),
+		})
+	}
+
+	// Telegram
+	if n.cfg.Telegram.Token != "" && n.cfg.Telegram.ChatID != "" {
+		statusIcon := "✅"
+		if !success {
+			statusIcon = "❌"
+		}
+		text := fmt.Sprintf("%s <b>%s</b>\n\nTâche: <code>%s</code>\n", statusIcon, title, taskName)
+		if err != nil {
+			text += fmt.Sprintf("Erreur: <code>%s</code>\n", err.Error())
+		}
+		go n.sendTelegramGeneric(text)
+	}
+}
+
+// NotifyBackupCreated alerte qu'une nouvelle sauvegarde a été générée.
+func (n *Notifier) NotifyBackupCreated(fileName string, sizeBytes int64) {
+	sizeMB := float64(sizeBytes) / (1024 * 1024)
+	title := "💾 Sauvegarde terminée"
+	desc := fmt.Sprintf("Une nouvelle sauvegarde de la base de données a été générée : **%s**", fileName)
+
+	if n.cfg.Discord.URL != "" {
+		go n.sendDiscordGeneric(title, desc, 3447003, map[string]string{
+			"Version": "SQLite/Postgres",
+			"Taille":  fmt.Sprintf("%.2f MB", sizeMB),
+			"Fichier": fileName,
+		})
+	}
+
+	if n.cfg.Telegram.Token != "" && n.cfg.Telegram.ChatID != "" {
+		text := fmt.Sprintf("💾 <b>%s</b>\n\nFichier: <code>%s</code>\nTaille: %.2f MB", title, fileName, sizeMB)
+		go n.sendTelegramGeneric(text)
+	}
+}
+
+// NotifyAccessExpiry signale à l'admin qu'un utilisateur va bientôt expirer.
+func (n *Notifier) NotifyAccessExpiry(username string, daysLeft int) {
+	title := "⏳ Expiration imminente"
+	desc := fmt.Sprintf("L'accès de l'utilisateur **%s** arrive à expiration dans **%d jours**.", username, daysLeft)
+
+	if n.cfg.Discord.URL != "" {
+		go n.sendDiscordGeneric(title, desc, 15105570, map[string]string{
+			"Utilisateur": username,
+			"Échéance":    fmt.Sprintf("%d jours", daysLeft),
+		})
+	}
+
+	if n.cfg.Telegram.Token != "" && n.cfg.Telegram.ChatID != "" {
+		text := fmt.Sprintf("⏳ <b>%s</b>\n\nUtilisateur: <code>%s</code>\nExpire dans %d jours.", title, username, daysLeft)
+		go n.sendTelegramGeneric(text)
+	}
+}
+
 // ── Discord ─────────────────────────────────────────────────────────────────
 
 // sendDiscord envoie une notification via un webhook Discord.
@@ -265,6 +347,45 @@ func (n *Notifier) sendMatrix(event UserRegisteredEvent) {
 	}
 
 	slog.Info("Matrix: notification envoyée", "username", event.Username, "room", n.cfg.Matrix.RoomID)
+}
+
+// ── Generic Send Helpers ───────────────────────────────────────────────────
+
+func (n *Notifier) sendDiscordGeneric(title, description string, color int, fields map[string]string) {
+	discordFields := make([]map[string]interface{}, 0, len(fields))
+	for k, v := range fields {
+		discordFields = append(discordFields, map[string]interface{}{
+			"name": k, "value": v, "inline": true,
+		})
+	}
+
+	payload := map[string]interface{}{
+		"username": "JellyGate",
+		"embeds": []map[string]interface{}{
+			{
+				"title":       title,
+				"description": description,
+				"color":       color,
+				"fields":      discordFields,
+				"timestamp":   time.Now().Format(time.RFC3339),
+				"footer":      map[string]string{"text": "JellyGate"},
+			},
+		},
+	}
+
+	body, _ := json.Marshal(payload)
+	_, _ = n.client.Post(n.cfg.Discord.URL, "application/json", bytes.NewReader(body))
+}
+
+func (n *Notifier) sendTelegramGeneric(text string) {
+	payload := map[string]interface{}{
+		"chat_id":    n.cfg.Telegram.ChatID,
+		"text":       text,
+		"parse_mode": "HTML",
+	}
+	body, _ := json.Marshal(payload)
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", n.cfg.Telegram.Token)
+	_, _ = n.client.Post(url, "application/json", bytes.NewReader(body))
 }
 
 // ── Utilitaires ─────────────────────────────────────────────────────────────

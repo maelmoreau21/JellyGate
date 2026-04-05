@@ -14,7 +14,7 @@
         <button class="jg-tab-btn active" data-tab="tab-tasks">{{ .T "automation_tasks_title" }}</button>
         <button class="jg-tab-btn" data-tab="tab-presets">{{ .T "automation_presets_title" }}</button>
         {{ if .LDAPEnabled }}
-        <button class="jg-tab-btn" data-tab="tab-mappings">{{ .T "automation_group_mappings_title" }}</button>
+        <button class="jg-tab-btn" data-tab="tab-mappings">{{ .T "automation_mappings_title" }}</button>
         {{ end }}
     </div>
 
@@ -73,17 +73,15 @@
             </div>
 
             <form id="task-create-form" class="space-y-5">
+                <input type="hidden" id="task-id" value="">
                 <div>
                     <label class="jg-label" for="task-name">{{ .T "automation_col_name" }}</label>
                     <input id="task-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_task_name_placeholder" }}'>
                 </div>
                 
-                <div>
-                    <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
-                    <select id="task-type" class="jg-input h-11 bg-black/20 text-sm py-0">
-                        <option value="sync_users">sync_users</option>
-                        <option value="cleanup_resets">cleanup_resets</option>
-                        <option value="create_backup">create_backup</option>
+                        <option value="sync_ldap_users">Sync LDAP Users (LDAP -> JF)</option>
+                        <option value="cleanup_resets">Cleanup Resets</option>
+                        <option value="create_backup">Create Backup</option>
                     </select>
                 </div>
 
@@ -108,8 +106,8 @@
                         <input id="task-enabled" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent" checked>
                         <span class="text-xs font-bold uppercase tracking-widest group-hover:text-jg-accent transition-colors">{{ .T "automation_task_enabled" }}</span>
                     </label>
-                    <button type="submit" class="jg-btn jg-btn-primary h-11 px-6 font-bold uppercase tracking-widest text-[#101010]">
-                        {{ .T "automation_create" }}
+                    <button type="submit" id="task-submit-btn" class="jg-btn jg-btn-primary h-11 px-6 font-bold uppercase tracking-widest text-[#101010]">
+                        {{ .T "btn_save" }}
                     </button>
                 </div>
             </form>
@@ -187,6 +185,38 @@
                     </div>
                 </div>
 
+                {{/* Sponsorship / Parrainage (Hidden by default, shown by JS) */}}
+                <div class="pt-6 border-t border-white/10 space-y-5">
+                    <label class="flex items-center gap-3 cursor-pointer group bg-jg-accent/5 p-4 rounded-2xl border border-jg-accent/10 hover:border-jg-accent/30 transition-all">
+                        <input id="preset-can-invite" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                        <div>
+                            <span class="block text-sm font-bold text-jg-accent uppercase tracking-wider">{{ .T "invitations_new_user_can_invite" }}</span>
+                            <span class="text-[10px] text-jg-text-muted">Permet au compte de générer ses propres liens d'invitation.</span>
+                        </div>
+                    </label>
+
+                    <div id="preset-sponsorship-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in slide-in-from-top-1 duration-200" style="display: none;">
+                        <div>
+                            <label class="jg-label text-[10px]" for="preset-invite-quota">Quota de liens (Total)</label>
+                            <input id="preset-invite-quota" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
+                        </div>
+                        <div>
+                            <label class="jg-label text-[10px]" for="preset-invite-max-uses">Utilisations par lien</label>
+                            <input id="preset-invite-max-uses" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
+                        </div>
+                        <div>
+                            <label class="jg-label text-[10px]" for="preset-invite-max-hours">Durée du lien (Heures)</label>
+                            <input id="preset-invite-max-hours" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
+                        </div>
+                        <div>
+                            <label class="jg-label text-[10px]" for="preset-target-preset">Preset des filleuls</label>
+                            <select id="preset-target-preset" class="jg-input jg-select-premium h-10 bg-black/20 text-xs py-0">
+                                <option value="">(Par défaut)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex flex-col sm:flex-row sm:items-center justify-end gap-4 pt-6">
                     <button type="submit" class="jg-btn w-full sm:w-auto bg-emerald-500 hover:bg-emerald-400 text-black h-11 px-8 font-bold uppercase tracking-widest transition-colors rounded-lg">
                         {{ .T "btn_save" }}
@@ -212,10 +242,10 @@
                         <tr>
                             <th class="px-6 py-4">{{ .T "automation_col_id" }}</th>
                             <th class="px-6 py-4">{{ .T "automation_col_name" }}</th>
-                            <th class="px-6 py-4">{{ .T "automation_col_download" }}</th>
-                            <th class="px-6 py-4">{{ .T "automation_col_remote" }}</th>
-                            <th class="px-6 py-4">{{ .T "automation_col_sessions" }}</th>
-                            <th class="px-6 py-4">{{ .T "automation_col_bitrate" }}</th>
+                            <th class="px-6 py-4">Téléchargement</th>
+                            <th class="px-6 py-4">Accès Distant</th>
+                            <th class="px-6 py-4">Flux Simultanés</th>
+                            <th class="px-6 py-4">Débit Max</th>
                             <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
@@ -231,7 +261,7 @@
     <div id="tab-mappings" class="jg-tab-pane">
         <section id="automation-mappings" class="jg-card p-0 overflow-hidden shadow-2xl">
             <div class="px-6 py-5 border-b border-jg-border flex items-center justify-between bg-white/[0.01]">
-                <h2 class="font-bold text-lg text-jg-text">{{ .T "automation_group_mappings_title" }}</h2>
+                <h2 class="font-bold text-lg text-jg-text">{{ .T "automation_mappings_title" }}</h2>
                 <div class="flex gap-2">
                     <button id="btn-group-map-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
                     <button id="btn-group-map-save" class="jg-btn jg-btn-primary jg-btn-sm">{{ .T "automation_save" }}</button>
@@ -297,6 +327,7 @@
         },
         taskTypeDescriptions: {
             sync_users: '{{ .T "automation_type_sync_users_desc" }}',
+            sync_ldap_users: '{{ .T "automation_type_sync_ldap_users_desc" }}',
             cleanup_resets: '{{ .T "automation_type_cleanup_resets_desc" }}',
             create_backup: '{{ .T "automation_type_create_backup_desc" }}',
         },
