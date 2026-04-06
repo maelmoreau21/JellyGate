@@ -218,10 +218,6 @@
             provision_mode: document.getElementById('ldap-provision-mode').value,
             user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
             domain: document.getElementById('ldap-domain').value,
-            jellyfin_group: document.getElementById('ldap-jellyfin-group').value.trim(),
-            inviter_group: document.getElementById('ldap-inviter-group').value.trim(),
-            administrators_group: document.getElementById('ldap-admin-group').value.trim(),
-            user_group: document.getElementById('ldap-jellyfin-group').value.trim(),
         };
     }
 
@@ -404,9 +400,6 @@
         document.getElementById('ldap-provision-mode').value = data.ldap.provision_mode || 'hybrid';
         document.getElementById('ldap-user-ou').value = data.ldap.user_ou || 'CN=Users';
         document.getElementById('ldap-domain').value = data.ldap.domain || '';
-        document.getElementById('ldap-jellyfin-group').value = data.ldap.jellyfin_group || data.ldap.user_group || 'jellyfin';
-        document.getElementById('ldap-inviter-group').value = data.ldap.inviter_group || 'jellyfin-Parrainage';
-        document.getElementById('ldap-admin-group').value = data.ldap.administrators_group || 'jellyfin-administrateur';
         toggleLDAPFields();
 
         document.getElementById('smtp-host').value = data.smtp.host || '';

@@ -139,6 +139,8 @@ docker compose -f docker-compose.postgres.yml up -d
 
 LDAP, SMTP, webhooks et templates email se configurent ensuite depuis l'admin et sont stockés en base.
 
+Guide LDAP detaille: [docs/ldap-setup.md](docs/ldap-setup.md)
+
 ## Structure du projet
 
 ```text

@@ -340,12 +340,57 @@
                 }));
         }
 
+        function resolvePresetLDAPGroups(preset) {
+            const presetID = String(preset?.id || '').trim().toLowerCase();
+            const result = { users: '', inviter: '' };
+            if (!presetID) {
+                return result;
+            }
+
+            const rows = groupMappings.filter((mapping) => {
+                const source = String(mapping?.source || '').trim().toLowerCase();
+                const mappingPresetID = String(mapping?.policy_preset_id || '').trim().toLowerCase();
+                const groupDN = String(mapping?.ldap_group_dn || '').trim();
+                return source === 'ldap' && mappingPresetID === presetID && groupDN !== '';
+            });
+
+            rows.forEach((mapping) => {
+                const groupDN = String(mapping.ldap_group_dn || '').trim();
+                if (!groupDN) {
+                    return;
+                }
+
+                const name = String(mapping.group_name || '').trim().toLowerCase();
+                if (!result.inviter && (name.includes('parrain') || name.includes('inviter') || name.includes('sponsor'))) {
+                    result.inviter = groupDN;
+                    return;
+                }
+
+                if (!result.users) {
+                    result.users = groupDN;
+                    return;
+                }
+
+                if (!result.inviter) {
+                    result.inviter = groupDN;
+                }
+            });
+
+            return result;
+        }
+
         function openPresetModal(idx) {
             currentPresetIndex = idx;
             const preset = presets[idx] || {};
             document.getElementById('preset-name').value = preset.name || '';
+
+            const ldapGroups = resolvePresetLDAPGroups(preset);
             const ldapInput = document.getElementById('preset-ldap-dn');
-            if (ldapInput) ldapInput.value = preset._ldap_dn || '';
+            if (ldapInput) ldapInput.value = preset._ldap_dn || ldapGroups.users || '';
+
+            const ldapInviterInput = document.getElementById('preset-ldap-dn-inviter');
+            if (ldapInviterInput) ldapInviterInput.value = preset._ldap_dn_inviter || ldapGroups.inviter || '';
+
             document.getElementById('preset-enable-download').checked = !!preset.enable_download;
             document.getElementById('preset-enable-remote').checked = !!preset.enable_remote_access;
             document.getElementById('preset-max-sessions').value = preset.max_sessions || 0;
@@ -413,6 +458,9 @@
             presets[idx].name = name;
             const ldapInput = document.getElementById('preset-ldap-dn');
             presets[idx]._ldap_dn = ldapInput ? ldapInput.value.trim() : '';
+
+            const ldapInviterInput = document.getElementById('preset-ldap-dn-inviter');
+            presets[idx]._ldap_dn_inviter = ldapInviterInput ? ldapInviterInput.value.trim() : '';
             
             presets[idx].enable_download = document.getElementById('preset-enable-download').checked;
             presets[idx].enable_remote_access = document.getElementById('preset-enable-remote').checked;
@@ -446,6 +494,7 @@
             const payload = presets.map(p => {
                 const cleaned = {...p};
                 delete cleaned._ldap_dn;
+                delete cleaned._ldap_dn_inviter;
                 return cleaned;
             });
             
@@ -462,20 +511,32 @@
             // Also generate and save Group Mappings
             const mappingsPayload = [];
             presets.forEach(p => {
+                const presetLabel = String(p.name || p.id || 'Preset').trim();
+
                 // Internal group mapping (implicit)
                 mappingsPayload.push({
-                    group_name: p.name,
+                    group_name: presetLabel,
                     source: 'internal',
                     ldap_group_dn: '',
                     policy_preset_id: p.id
                 });
                 
-                // LDAP group mapping (if defined)
+                // LDAP users group mapping (if defined)
                 if (p._ldap_dn) {
                     mappingsPayload.push({
-                        group_name: p.name,
+                        group_name: `${presetLabel} (LDAP users)`,
                         source: 'ldap',
                         ldap_group_dn: p._ldap_dn,
+                        policy_preset_id: p.id
+                    });
+                }
+
+                // LDAP sponsorship group mapping (if defined)
+                if (p._ldap_dn_inviter) {
+                    mappingsPayload.push({
+                        group_name: `${presetLabel} (LDAP parrainage)`,
+                        source: 'ldap',
+                        ldap_group_dn: p._ldap_dn_inviter,
                         policy_preset_id: p.id
                     });
                 }
@@ -557,6 +618,7 @@
                 invite_link_validity_days: 0,
                 invite_max_link_hours: 0,
                 _ldap_dn: '',
+                _ldap_dn_inviter: '',
             });
             openPresetModal(presets.length - 1);
         });
@@ -578,6 +640,7 @@
                 const payload = presets.map(p => {
                     const cleaned = {...p};
                     delete cleaned._ldap_dn;
+                    delete cleaned._ldap_dn_inviter;
                     return cleaned;
                 });
                 
@@ -595,17 +658,27 @@
                 // Also update mappings by just sending the alive ones
                 const mappingsPayload = [];
                 presets.forEach(p => {
+                    const presetLabel = String(p.name || p.id || 'Preset').trim();
+
                     mappingsPayload.push({
-                        group_name: p.name,
+                        group_name: presetLabel,
                         source: 'internal',
                         ldap_group_dn: '',
                         policy_preset_id: p.id
                     });
                     if (p._ldap_dn) {
                         mappingsPayload.push({
-                            group_name: p.name,
+                            group_name: `${presetLabel} (LDAP users)`,
                             source: 'ldap',
                             ldap_group_dn: p._ldap_dn,
+                            policy_preset_id: p.id
+                        });
+                    }
+                    if (p._ldap_dn_inviter) {
+                        mappingsPayload.push({
+                            group_name: `${presetLabel} (LDAP parrainage)`,
+                            source: 'ldap',
+                            ldap_group_dn: p._ldap_dn_inviter,
                             policy_preset_id: p.id
                         });
                     }

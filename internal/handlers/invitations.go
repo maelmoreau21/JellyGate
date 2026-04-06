@@ -424,22 +424,12 @@ func resolveInviteUsernamePolicy(profile jellyfin.InviteProfile) (int, int) {
 	return minLength, maxLength
 }
 
-func resolveLDAPProvisionRole(profile jellyfin.InviteProfile, ldapCfg config.LDAPConfig) string {
-	groupName := strings.ToLower(strings.TrimSpace(profile.GroupName))
-	if groupName == "" {
-		return jgldap.ProvisionRoleUser
-	}
-
-	adminGroup := strings.ToLower(strings.TrimSpace(ldapCfg.AdministratorsGroup))
-	if adminGroup != "" && groupName == adminGroup {
-		return jgldap.ProvisionRoleAdmin
-	}
-
-	inviterGroup := strings.ToLower(strings.TrimSpace(ldapCfg.InviterGroup))
-	if inviterGroup != "" && groupName == inviterGroup {
+func resolveLDAPProvisionRole(profile jellyfin.InviteProfile) string {
+	if profile.CanInvite {
 		return jgldap.ProvisionRoleInviter
 	}
 
+	groupName := strings.ToLower(strings.TrimSpace(profile.GroupName))
 	switch groupName {
 	case "admin", "admins", "administrator", "administrators":
 		return jgldap.ProvisionRoleAdmin
@@ -610,13 +600,13 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	ldapOnlyMode := h.ldClient != nil && ldapCfg.Enabled && strings.EqualFold(strings.TrimSpace(ldapCfg.ProvisionMode), "ldap_only")
 	createJellyfinUser := !ldapOnlyMode
 
-	ldapProvisionRole := resolveLDAPProvisionRole(profile, ldapCfg)
+	ldapProvisionRole := resolveLDAPProvisionRole(profile)
 	if ldapProvisionRole != jgldap.ProvisionRoleUser {
 		slog.Info("Provisioning LDAP role detecte depuis le profil d'invitation",
 			"role", ldapProvisionRole,
+			"can_invite", profile.CanInvite,
 			"group_name", strings.TrimSpace(profile.GroupName),
-			"inviter_group", strings.TrimSpace(ldapCfg.InviterGroup),
-			"admin_group", strings.TrimSpace(ldapCfg.AdministratorsGroup),
+			"preset_id", strings.TrimSpace(profile.PresetID),
 		)
 	}
 
@@ -665,14 +655,24 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 			h.logInviteAction(r, "invite.profile.failed", form.Username, jfUser.ID, err.Error())
 		}
 
-		if err := h.applyGroupPolicyFromProfile(profile, jfUser.ID, userDN); err != nil {
-			slog.Warn("Erreur application mapping de groupe (non-bloquant)", "group", strings.TrimSpace(profile.GroupName), "jellyfin_id", jfUser.ID, "error", err)
-			h.logInviteAction(r, "invite.group_mapping.failed", form.Username, jfUser.ID, err.Error())
-		}
-
 		slog.Info("âœ… Ã‰tape 3/5 terminÃ©e", "jellyfin_id", jfUser.ID)
 	} else {
 		slog.Info("â­ï¸ Ã‰tape 3/5 ignorÃ©e (mode LDAP-only)", "username", form.Username)
+	}
+
+	if err := h.applyGroupPolicyFromProfile(profile, jellyfinID, userDN); err != nil {
+		target := strings.TrimSpace(jellyfinID)
+		if target == "" {
+			target = strings.TrimSpace(userDN)
+		}
+		slog.Warn(
+			"Erreur application mapping LDAP/preset (non-bloquant)",
+			"group", strings.TrimSpace(profile.GroupName),
+			"preset_id", strings.TrimSpace(profile.PresetID),
+			"jellyfin_id", strings.TrimSpace(jellyfinID),
+			"error", err,
+		)
+		h.logInviteAction(r, "invite.group_mapping.failed", form.Username, target, err.Error())
 	}
 
 	slog.Info("ðŸ’¾ Ã‰tape 4/5 : Enregistrement SQLite", "username", form.Username)
@@ -820,7 +820,7 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	groupName := ""
 	canInviteFromProfile := false
 	var presetID interface{}
-	
+
 	if inv.JellyfinProfile != "" {
 		var pf jellyfin.InviteProfile
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &pf); err == nil {
@@ -906,70 +906,106 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 }
 
 func (h *InvitationHandler) applyGroupPolicyFromProfile(profile jellyfin.InviteProfile, jellyfinID, userDN string) error {
-	groupName := strings.TrimSpace(profile.GroupName)
-	if groupName == "" || strings.TrimSpace(jellyfinID) == "" {
-		return nil
-	}
-
 	mappings, err := h.db.GetGroupPolicyMappings()
 	if err != nil {
 		return err
 	}
 
-	var mapping *config.GroupPolicyMapping
-	for i := range mappings {
-		if strings.EqualFold(strings.TrimSpace(mappings[i].GroupName), groupName) {
-			mapping = &mappings[i]
-			break
+	groupName := strings.TrimSpace(profile.GroupName)
+	presetID := strings.TrimSpace(strings.ToLower(profile.PresetID))
+
+	if presetID == "" && groupName != "" {
+		for i := range mappings {
+			if strings.EqualFold(strings.TrimSpace(mappings[i].GroupName), groupName) {
+				presetID = strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
+				if presetID != "" {
+					break
+				}
+			}
 		}
 	}
-	if mapping == nil {
-		return nil
-	}
 
-	presetID := strings.TrimSpace(strings.ToLower(mapping.PolicyPresetID))
-	if presetID == "" {
-		return nil
-	}
+	if presetID != "" && strings.TrimSpace(jellyfinID) != "" {
+		presets, err := h.db.GetJellyfinPolicyPresets()
+		if err != nil {
+			return err
+		}
 
-	presets, err := h.db.GetJellyfinPolicyPresets()
-	if err != nil {
-		return err
-	}
+		var preset *config.JellyfinPolicyPreset
+		for i := range presets {
+			if strings.TrimSpace(strings.ToLower(presets[i].ID)) == presetID {
+				preset = &presets[i]
+				break
+			}
+		}
+		if preset == nil {
+			return fmt.Errorf("preset %q introuvable pour profil d'invitation", presetID)
+		}
 
-	var preset *config.JellyfinPolicyPreset
-	for i := range presets {
-		if strings.TrimSpace(strings.ToLower(presets[i].ID)) == presetID {
-			preset = &presets[i]
-			break
+		user, err := h.jfClient.GetUser(jellyfinID)
+		if err != nil {
+			return fmt.Errorf("lecture utilisateur jellyfin: %w", err)
+		}
+
+		policy := user.Policy
+		policy.EnableAllFolders = preset.EnableAllFolders
+		policy.EnabledFolders = preset.EnabledFolderIDs
+		policy.EnableContentDownloading = preset.EnableDownload
+		policy.EnableRemoteAccess = preset.EnableRemoteAccess
+		policy.MaxActiveSessions = preset.MaxSessions
+		policy.RemoteClientBitrateLimit = preset.BitrateLimit
+
+		if err := h.jfClient.SetUserPolicy(jellyfinID, policy); err != nil {
+			return fmt.Errorf("application policy jellyfin: %w", err)
 		}
 	}
-	if preset == nil {
-		return fmt.Errorf("preset %q introuvable pour groupe %q", presetID, groupName)
-	}
 
-	user, err := h.jfClient.GetUser(jellyfinID)
-	if err != nil {
-		return fmt.Errorf("lecture utilisateur jellyfin: %w", err)
-	}
-
-	policy := user.Policy
-	policy.EnableAllFolders = preset.EnableAllFolders
-	policy.EnabledFolders = preset.EnabledFolderIDs
-	policy.EnableContentDownloading = preset.EnableDownload
-	policy.EnableRemoteAccess = preset.EnableRemoteAccess
-	policy.MaxActiveSessions = preset.MaxSessions
-	policy.RemoteClientBitrateLimit = preset.BitrateLimit
-
-	if err := h.jfClient.SetUserPolicy(jellyfinID, policy); err != nil {
-		return fmt.Errorf("application policy jellyfin: %w", err)
-	}
-
-	if mapping.Source == "ldap" && h.ldClient != nil && strings.TrimSpace(userDN) != "" && strings.TrimSpace(mapping.LDAPGroupDN) != "" {
-		if err := h.ldClient.AddUserToGroup(userDN, mapping.LDAPGroupDN); err != nil {
-			return fmt.Errorf("assignation groupe ldap: %w", err)
+	ldapGroups := resolveLDAPGroupsFromMappings(mappings, presetID, groupName)
+	if h.ldClient != nil && strings.TrimSpace(userDN) != "" {
+		for _, groupRef := range ldapGroups {
+			if err := h.ldClient.AddUserToGroup(userDN, groupRef); err != nil {
+				return fmt.Errorf("assignation groupe ldap (%s): %w", groupRef, err)
+			}
 		}
 	}
 
 	return nil
+}
+
+func resolveLDAPGroupsFromMappings(mappings []config.GroupPolicyMapping, presetID, groupName string) []string {
+	result := make([]string, 0, 2)
+	seen := map[string]struct{}{}
+
+	appendUnique := func(groupRef string) {
+		trimmed := strings.TrimSpace(groupRef)
+		if trimmed == "" {
+			return
+		}
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		result = append(result, trimmed)
+	}
+
+	for i := range mappings {
+		if strings.TrimSpace(strings.ToLower(mappings[i].Source)) != "ldap" {
+			continue
+		}
+
+		mappingPresetID := strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
+		mappingGroupName := strings.TrimSpace(mappings[i].GroupName)
+
+		if presetID != "" && mappingPresetID == presetID {
+			appendUnique(mappings[i].LDAPGroupDN)
+			continue
+		}
+
+		if groupName != "" && strings.EqualFold(mappingGroupName, groupName) {
+			appendUnique(mappings[i].LDAPGroupDN)
+		}
+	}
+
+	return result
 }

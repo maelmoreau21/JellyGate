@@ -144,11 +144,15 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {{ if .LDAPEnabled }}
                     <div>
-                        <label class="jg-label" for="preset-ldap-dn">{{ .T "automation_col_ldap_dn_optional" }}</label>
-                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=Groupe,DC=...'>
+                        <label class="jg-label" for="preset-ldap-dn">Groupe LDAP utilisateurs (optionnel)</label>
+                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=jellyfin,OU=Groups,DC=...'>
+                    </div>
+                    <div>
+                        <label class="jg-label" for="preset-ldap-dn-inviter">Groupe LDAP parrainage (optionnel)</label>
+                        <input id="preset-ldap-dn-inviter" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=jellyfin-Parrainage,OU=Groups,DC=...'>
                     </div>
                     {{ end }}
-                    <div>
+                    <div class="md:col-span-2">
                         <label class="jg-label" for="preset-name">{{ .T "automation_col_name" }}</label>
                         <input id="preset-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='Ex: Standard'>
                     </div>
