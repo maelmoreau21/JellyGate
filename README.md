@@ -181,6 +181,10 @@ Le workflow `.github/workflows/i18n-quality.yml` exécute `i18ncheck` et `i18nco
 Le seuil de blocage est piloté par la variable de dépôt `I18N_MAX_SAME_AS_BASE`.
 Par défaut, le workflow utilise le plafond de non-régression actuel (`195`) et il faut le baisser progressivement jusqu'à `0` à mesure que les locales sont nettoyées.
 
+## Consignes pour les agents et contributeurs
+
+- Ne pas committer ni pousser de modifications sur le dépôt, sauf demande explicite de l'utilisateur. Les agents et contributeurs doivent préparer un patch/PR pour revue et attendre une instruction explicite avant d'exécuter des commits, pushes ou la création de tags.
+
 ## Licence
 
 MIT
