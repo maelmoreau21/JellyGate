@@ -1,6 +1,6 @@
 # CLAUDE — Consignes d'agent et Contexte du projet JellyGate
 
-Dernière mise à jour : 2026-04-04
+Dernière mise à jour : 2026-04-06
 
 Objectif
 - Fournir des directives concises et exploitables pour un assistant Claude travaillant sur ce dépôt, et rassembler le contexte produit/technique dans un seul fichier.
@@ -15,6 +15,8 @@ Règles essentielles
 - Tests et validations locales recommandés : exécuter `go build ./...` et `go test ./...` après modifications Go ; pour le CSS, `npm run build:css`.
 - Encodage : sauvegarder les fichiers JSON en UTF-8 sans BOM (important pour `zh.json`).
 - Sécurité : ne jamais committer de secrets en clair dans le dépôt.
+
+- Ne pas committer ni pousser de modifications sur le dépôt, sauf demande explicite de l'utilisateur. Cela inclut les commits, pushes et la création de tags : n'agissez pas sur le dépôt sans instruction claire.
 
 Commandes rapides utiles
 - `npm run build:css`
@@ -43,7 +45,7 @@ Si vous souhaitez des règles supplémentaires (hooks git, conventions de commit
 
 # JellyGate — Project Context
 
-> Dernière mise à jour : 2026-04-04
+> Dernière mise à jour : 2026-04-06
 > Version : 1.1.14
 > Auteur : Mael Moreau
 

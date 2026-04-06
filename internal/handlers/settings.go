@@ -817,14 +817,6 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !h.db.IsSQLite() {
-		writeJSON(w, http.StatusBadRequest, APIResponse{
-			Success: false,
-			Message: "Planification backup locale indisponible en mode PostgreSQL (utiliser pg_dump/pg_restore)",
-		})
-		return
-	}
-
 	var input config.BackupConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{

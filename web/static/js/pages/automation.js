@@ -79,6 +79,7 @@
         let presets = [];
         let groupMappings = [];
         let tasks = [];
+        let templateUsers = [];
 
         function updateTaskPreview() {
             const name = (document.getElementById('task-name')?.value || '').trim();
@@ -308,18 +309,95 @@
             return (text || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
         }
 
+        function populateTemplateUserSelect(selectedValue) {
+            const select = document.getElementById('preset-template-user');
+            if (!select) return;
+
+            const options = ['<option value="">Aucun profil clone</option>'];
+            templateUsers.forEach((user) => {
+                options.push(`<option value="${JG.esc(user.value)}">${JG.esc(user.label)}</option>`);
+            });
+            select.innerHTML = options.join('');
+            select.value = selectedValue || '';
+        }
+
+        async function loadTemplateUsers() {
+            const res = await JG.api('/admin/api/users?limit=500&include_jellyfin=0');
+            const usersList = Array.isArray(res?.data)
+                ? res.data
+                : (Array.isArray(res?.data?.users) ? res.data.users : []);
+
+            if (!res?.success || !usersList.length) {
+                templateUsers = [];
+                return;
+            }
+
+            templateUsers = usersList
+                .filter((user) => user && user.jellyfin_id)
+                .map((user) => ({
+                    value: user.jellyfin_id,
+                    label: user.username || user.jellyfin_id,
+                }));
+        }
+
+        function resolvePresetLDAPGroups(preset) {
+            const presetID = String(preset?.id || '').trim().toLowerCase();
+            const result = { users: '', inviter: '' };
+            if (!presetID) {
+                return result;
+            }
+
+            const rows = groupMappings.filter((mapping) => {
+                const source = String(mapping?.source || '').trim().toLowerCase();
+                const mappingPresetID = String(mapping?.policy_preset_id || '').trim().toLowerCase();
+                const groupDN = String(mapping?.ldap_group_dn || '').trim();
+                return source === 'ldap' && mappingPresetID === presetID && groupDN !== '';
+            });
+
+            rows.forEach((mapping) => {
+                const groupDN = String(mapping.ldap_group_dn || '').trim();
+                if (!groupDN) {
+                    return;
+                }
+
+                const name = String(mapping.group_name || '').trim().toLowerCase();
+                if (!result.inviter && (name.includes('parrain') || name.includes('inviter') || name.includes('sponsor'))) {
+                    result.inviter = groupDN;
+                    return;
+                }
+
+                if (!result.users) {
+                    result.users = groupDN;
+                    return;
+                }
+
+                if (!result.inviter) {
+                    result.inviter = groupDN;
+                }
+            });
+
+            return result;
+        }
+
         function openPresetModal(idx) {
             currentPresetIndex = idx;
             const preset = presets[idx] || {};
             document.getElementById('preset-name').value = preset.name || '';
+
+            const ldapGroups = resolvePresetLDAPGroups(preset);
             const ldapInput = document.getElementById('preset-ldap-dn');
-            if (ldapInput) ldapInput.value = preset._ldap_dn || '';
+            if (ldapInput) ldapInput.value = preset._ldap_dn || ldapGroups.users || '';
+
+            const ldapInviterInput = document.getElementById('preset-ldap-dn-inviter');
+            if (ldapInviterInput) ldapInviterInput.value = preset._ldap_dn_inviter || ldapGroups.inviter || '';
+
             document.getElementById('preset-enable-download').checked = !!preset.enable_download;
             document.getElementById('preset-enable-remote').checked = !!preset.enable_remote_access;
             document.getElementById('preset-max-sessions').value = preset.max_sessions || 0;
             document.getElementById('preset-bitrate').value = preset.bitrate_limit || 0;
             document.getElementById('preset-disable-days').value = preset.disable_after_days || 0;
             document.getElementById('preset-delete-days').value = preset.delete_after_days || 0;
+            populateTemplateUserSelect(preset.template_user_id || '');
             
             // Sponsorship / Parrainage
             const canInviteEl = document.getElementById('preset-can-invite');
@@ -342,14 +420,20 @@
                 }
             }
 
-            const quotaEl = document.getElementById('preset-invite-quota');
-            if (quotaEl) quotaEl.value = preset.invite_quota || 0;
+            const quotaDayEl = document.getElementById('preset-invite-quota-day');
+            if (quotaDayEl) quotaDayEl.value = preset.invite_quota_day || 0;
+
+            const quotaMonthEl = document.getElementById('preset-invite-quota-month');
+            if (quotaMonthEl) quotaMonthEl.value = preset.invite_quota_month || preset.invite_quota || 0;
 
             const maxUsesEl = document.getElementById('preset-invite-max-uses');
             if (maxUsesEl) maxUsesEl.value = preset.invite_max_uses || 1;
 
-            const maxHoursEl = document.getElementById('preset-invite-max-hours');
-            if (maxHoursEl) maxHoursEl.value = preset.invite_max_link_hours || 48;
+            const linkDaysEl = document.getElementById('preset-invite-link-days');
+            if (linkDaysEl) {
+                const linkDays = preset.invite_link_validity_days || (preset.invite_max_link_hours ? Math.max(1, Math.ceil(preset.invite_max_link_hours / 24)) : 0);
+                linkDaysEl.value = linkDays;
+            }
             
             const targetSelect = document.getElementById('preset-target-preset');
             if (targetSelect) {
@@ -374,6 +458,9 @@
             presets[idx].name = name;
             const ldapInput = document.getElementById('preset-ldap-dn');
             presets[idx]._ldap_dn = ldapInput ? ldapInput.value.trim() : '';
+
+            const ldapInviterInput = document.getElementById('preset-ldap-dn-inviter');
+            presets[idx]._ldap_dn_inviter = ldapInviterInput ? ldapInviterInput.value.trim() : '';
             
             presets[idx].enable_download = document.getElementById('preset-enable-download').checked;
             presets[idx].enable_remote_access = document.getElementById('preset-enable-remote').checked;
@@ -381,25 +468,33 @@
             presets[idx].bitrate_limit = parseInt(document.getElementById('preset-bitrate').value, 10) || 0;
             presets[idx].disable_after_days = parseInt(document.getElementById('preset-disable-days').value, 10) || 0;
             presets[idx].delete_after_days = parseInt(document.getElementById('preset-delete-days').value, 10) || 0;
+            presets[idx].template_user_id = (document.getElementById('preset-template-user')?.value || '').trim();
             const canInviteEl = document.getElementById('preset-can-invite');
             if (canInviteEl) presets[idx].can_invite = canInviteEl.checked;
             
             const targetPresetEl = document.getElementById('preset-target-preset');
             if (targetPresetEl) presets[idx].target_preset_id = targetPresetEl.value || '';
             
-            const quotaEl = document.getElementById('preset-invite-quota');
-            if (quotaEl) presets[idx].invite_quota = parseInt(quotaEl.value, 10) || 0;
+            const quotaDayEl = document.getElementById('preset-invite-quota-day');
+            presets[idx].invite_quota_day = quotaDayEl ? (parseInt(quotaDayEl.value, 10) || 0) : 0;
+
+            const quotaMonthEl = document.getElementById('preset-invite-quota-month');
+            presets[idx].invite_quota_month = quotaMonthEl ? (parseInt(quotaMonthEl.value, 10) || 0) : 0;
+            presets[idx].invite_quota = presets[idx].invite_quota_month;
             
             const maxUsesEl = document.getElementById('preset-invite-max-uses');
             if (maxUsesEl) presets[idx].invite_max_uses = parseInt(maxUsesEl.value, 10) || 1;
             
-            const maxHoursEl = document.getElementById('preset-invite-max-hours');
-            if (maxHoursEl) presets[idx].invite_max_link_hours = parseInt(maxHoursEl.value, 10) || 48;
+            const linkDaysEl = document.getElementById('preset-invite-link-days');
+            const linkDays = linkDaysEl ? (parseInt(linkDaysEl.value, 10) || 0) : 0;
+            presets[idx].invite_link_validity_days = linkDays;
+            presets[idx].invite_max_link_hours = linkDays > 0 ? linkDays * 24 : 0;
             
             // Clean payload
             const payload = presets.map(p => {
                 const cleaned = {...p};
                 delete cleaned._ldap_dn;
+                delete cleaned._ldap_dn_inviter;
                 return cleaned;
             });
             
@@ -416,20 +511,32 @@
             // Also generate and save Group Mappings
             const mappingsPayload = [];
             presets.forEach(p => {
+                const presetLabel = String(p.name || p.id || 'Preset').trim();
+
                 // Internal group mapping (implicit)
                 mappingsPayload.push({
-                    group_name: p.name,
+                    group_name: presetLabel,
                     source: 'internal',
                     ldap_group_dn: '',
                     policy_preset_id: p.id
                 });
                 
-                // LDAP group mapping (if defined)
+                // LDAP users group mapping (if defined)
                 if (p._ldap_dn) {
                     mappingsPayload.push({
-                        group_name: p.name,
+                        group_name: `${presetLabel} (LDAP users)`,
                         source: 'ldap',
                         ldap_group_dn: p._ldap_dn,
+                        policy_preset_id: p.id
+                    });
+                }
+
+                // LDAP sponsorship group mapping (if defined)
+                if (p._ldap_dn_inviter) {
+                    mappingsPayload.push({
+                        group_name: `${presetLabel} (LDAP parrainage)`,
+                        source: 'ldap',
+                        ldap_group_dn: p._ldap_dn_inviter,
                         policy_preset_id: p.id
                     });
                 }
@@ -503,10 +610,15 @@
                 delete_after_days: 0,
                 can_invite: false,
                 target_preset_id: '',
+                template_user_id: '',
+                invite_quota_day: 0,
+                invite_quota_month: 0,
                 invite_quota: 0,
                 invite_max_uses: 1,
-                invite_max_link_hours: 48,
+                invite_link_validity_days: 0,
+                invite_max_link_hours: 0,
                 _ldap_dn: '',
+                _ldap_dn_inviter: '',
             });
             openPresetModal(presets.length - 1);
         });
@@ -528,6 +640,7 @@
                 const payload = presets.map(p => {
                     const cleaned = {...p};
                     delete cleaned._ldap_dn;
+                    delete cleaned._ldap_dn_inviter;
                     return cleaned;
                 });
                 
@@ -545,17 +658,27 @@
                 // Also update mappings by just sending the alive ones
                 const mappingsPayload = [];
                 presets.forEach(p => {
+                    const presetLabel = String(p.name || p.id || 'Preset').trim();
+
                     mappingsPayload.push({
-                        group_name: p.name,
+                        group_name: presetLabel,
                         source: 'internal',
                         ldap_group_dn: '',
                         policy_preset_id: p.id
                     });
                     if (p._ldap_dn) {
                         mappingsPayload.push({
-                            group_name: p.name,
+                            group_name: `${presetLabel} (LDAP users)`,
                             source: 'ldap',
                             ldap_group_dn: p._ldap_dn,
+                            policy_preset_id: p.id
+                        });
+                    }
+                    if (p._ldap_dn_inviter) {
+                        mappingsPayload.push({
+                            group_name: `${presetLabel} (LDAP parrainage)`,
+                            source: 'ldap',
+                            ldap_group_dn: p._ldap_dn_inviter,
                             policy_preset_id: p.id
                         });
                     }
@@ -702,6 +825,7 @@
         (async () => {
             updateTaskPreview();
             await loadPresets();
+            await loadTemplateUsers();
             await loadMappings();
             await loadTasks();
         })();

@@ -144,13 +144,24 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {{ if .LDAPEnabled }}
                     <div>
-                        <label class="jg-label" for="preset-ldap-dn">{{ .T "automation_col_ldap_dn_optional" }}</label>
-                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=Groupe,DC=...'>
+                        <label class="jg-label" for="preset-ldap-dn">Groupe LDAP utilisateurs (optionnel)</label>
+                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=jellyfin,OU=Groups,DC=...'>
+                    </div>
+                    <div>
+                        <label class="jg-label" for="preset-ldap-dn-inviter">Groupe LDAP parrainage (optionnel)</label>
+                        <input id="preset-ldap-dn-inviter" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=jellyfin-Parrainage,OU=Groups,DC=...'>
                     </div>
                     {{ end }}
-                    <div>
+                    <div class="md:col-span-2">
                         <label class="jg-label" for="preset-name">{{ .T "automation_col_name" }}</label>
                         <input id="preset-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='Ex: Standard'>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="jg-label" for="preset-template-user">Cloner un profil Jellyfin (bibliotheques + accueil)</label>
+                        <select id="preset-template-user" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
+                            <option value="">Aucun profil clone</option>
+                        </select>
+                        <p class="text-xs text-jg-text-muted mt-2">Copie uniquement l'agencement accueil et les bibliotheques autorisees du compte modele.</p>
                     </div>
                 </div>
 
@@ -199,16 +210,20 @@
 
                     <div id="preset-sponsorship-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in slide-in-from-top-1 duration-200" style="display: none;">
                         <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-quota">Quota de liens (Total)</label>
-                            <input id="preset-invite-quota" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
+                            <label class="jg-label text-[10px]" for="preset-invite-quota-day">Quota d'invitations / jour</label>
+                            <input id="preset-invite-quota-day" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
+                        </div>
+                        <div>
+                            <label class="jg-label text-[10px]" for="preset-invite-quota-month">Quota d'invitations / mois</label>
+                            <input id="preset-invite-quota-month" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
                         </div>
                         <div>
                             <label class="jg-label text-[10px]" for="preset-invite-max-uses">Utilisations par lien</label>
                             <input id="preset-invite-max-uses" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
                         </div>
                         <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-max-hours">Durée du lien (Heures)</label>
-                            <input id="preset-invite-max-hours" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
+                            <label class="jg-label text-[10px]" for="preset-invite-link-days">Validité du lien (jours)</label>
+                            <input id="preset-invite-link-days" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
                         </div>
                         <div>
                             <label class="jg-label text-[10px]" for="preset-target-preset">Preset des filleuls</label>

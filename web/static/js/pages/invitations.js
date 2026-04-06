@@ -6,11 +6,14 @@
     const isAdmin = !!config.isAdmin;
     const allowInviterGrant = !!config.allowInviterGrant;
     const allowInviterUserExpiry = !!config.allowInviterUserExpiry;
+    const allowIgnoreLimits = !!config.allowIgnoreLimits;
     const inviterMaxUses = Number(config.inviterMaxUses || 0);
+    const limitLinkValidityDays = Number(config.limitLinkValidityDays || 0) || Math.max(0, Math.ceil(Number(config.inviterMaxLinkHours || 0) / 24));
     const inviterMaxLinkHours = Number(config.inviterMaxLinkHours || 0);
     const inviterQuotaDay = Number(config.inviterQuotaDay || 0);
     const inviterQuotaWeek = Number(config.inviterQuotaWeek || 0);
     const inviterQuotaMonth = Number(config.inviterQuotaMonth || 0);
+    const limitUserExpiryDays = Number(config.limitUserExpiryDays || 0);
     const defaultDisableAfterDays = Number(config.defaultDisableAfterDays || 0);
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -58,7 +61,7 @@
             
             if (forcedUserHelp) {
                 if (!isAllowed) {
-                    forcedUserHelp.textContent = policyI18n.forced_username_limit_hint || "Le nom reservé n'est disponible que pour les liens à usage unique (max = 1).";
+                    forcedUserHelp.textContent = policyI18n.forced_username_limit_hint || "Le nom reserve n'est disponible que pour les liens a usage unique (max = 1).";
                     forcedUserHelp.classList.add('text-amber-500');
                 } else {
                     forcedUserHelp.textContent = i18n.forced_username_help || "";
@@ -71,26 +74,35 @@
             const summary = document.getElementById('invite-policy-summary');
             const usesHelp = document.getElementById('inv-uses-help');
             const linkHelp = document.getElementById('inv-link-expiry-help');
+            const linkDaysInput = document.getElementById('inv-expiry-days');
+            const ignoreLinkWrap = document.getElementById('inv-ignore-link-limit-wrap');
+            const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
+
             const canInviteWrap = document.getElementById('inv-can-invite-wrap');
             const canInviteHelp = document.getElementById('inv-can-invite-help');
             const canInviteCheckbox = document.getElementById('inv-new-user-can-invite');
+
             const expiryEnabled = document.getElementById('inv-user-expiry-enabled');
             const expiryDays = document.getElementById('inv-user-expiry-days');
-            const expiryAt = document.getElementById('inv-user-expiry-at');
+            const ignoreUserWrap = document.getElementById('inv-ignore-user-expiry-limit-wrap');
+            const ignoreUserInput = document.getElementById('inv-ignore-user-expiry-limit');
+
+            const effectiveUserExpiryDays = limitUserExpiryDays > 0
+                ? limitUserExpiryDays
+                : (defaultDisableAfterDays > 0 ? defaultDisableAfterDays : 0);
 
             const canGrantInvite = isAdmin || allowInviterGrant;
             const canSetUserExpiry = isAdmin || allowInviterUserExpiry;
 
             if (summary) {
                 const parts = [];
-                parts.push(fmt(i18n.baseLinks, { url: inviteBaseURL }));
-                if (!isAdmin && inviterMaxUses > 0) parts.push(fmt(i18n.maxUsesPerLink, { n: inviterMaxUses }));
-                if (!isAdmin && inviterMaxLinkHours > 0) parts.push(fmt(i18n.maxTtl, { n: inviterMaxLinkHours }));
-                if (!isAdmin && inviterQuotaDay > 0) parts.push(fmt(i18n.quotaDay, { n: inviterQuotaDay }));
-                if (!isAdmin && inviterQuotaWeek > 0) parts.push(fmt(i18n.quotaWeek, { n: inviterQuotaWeek }));
-                if (!isAdmin && inviterQuotaMonth > 0) parts.push(fmt(i18n.quotaMonth, { n: inviterQuotaMonth }));
-                if (!isAdmin && !allowInviterGrant) parts.push(i18n.grantLocked);
-                if (!isAdmin && !allowInviterUserExpiry) parts.push(i18n.expiryLocked);
+                parts.push(`Base: ${inviteBaseURL}`);
+                if (!isAdmin && inviterMaxUses > 0) parts.push(`Max usages/lien: ${inviterMaxUses}`);
+                if (!isAdmin && limitLinkValidityDays > 0) parts.push(`Validite lien: ${limitLinkValidityDays} jour(s)`);
+                if (!isAdmin && inviterQuotaDay > 0) parts.push(`Quota jour: ${inviterQuotaDay}`);
+                if (!isAdmin && inviterQuotaMonth > 0) parts.push(`Quota mois: ${inviterQuotaMonth}`);
+                if (!isAdmin && !allowInviterGrant) parts.push('Delegation invitation verrouillee');
+                if (!isAdmin && !allowInviterUserExpiry) parts.push('Expiration utilisateur verrouillee');
                 summary.textContent = parts.join(' • ');
             }
 
@@ -101,9 +113,33 @@
             }
 
             if (linkHelp) {
-                linkHelp.textContent = (!isAdmin && inviterMaxLinkHours > 0)
-                    ? fmt(i18n.linkHelpLimited, { n: inviterMaxLinkHours })
-                    : i18n.linkHelpDefault;
+                if (!isAdmin && limitLinkValidityDays > 0) {
+                    linkHelp.textContent = `Ce lien est limite a ${limitLinkValidityDays} jour(s).`;
+                } else {
+                    linkHelp.textContent = '0 = lien sans date limite.';
+                }
+            }
+
+            if (linkDaysInput) {
+                if (!isAdmin && limitLinkValidityDays > 0) {
+                    linkDaysInput.value = String(limitLinkValidityDays);
+                } else {
+                    linkDaysInput.value = '0';
+                }
+            }
+
+            if (ignoreLinkWrap && ignoreLinkInput) {
+                if (limitLinkValidityDays > 0) {
+                    ignoreLinkWrap.classList.remove('hidden');
+                    ignoreLinkWrap.classList.add('flex');
+                    ignoreLinkInput.checked = false;
+                    ignoreLinkInput.disabled = !allowIgnoreLimits;
+                    ignoreLinkWrap.classList.toggle('opacity-60', !allowIgnoreLimits);
+                } else {
+                    ignoreLinkWrap.classList.remove('flex');
+                    ignoreLinkWrap.classList.add('hidden');
+                    ignoreLinkInput.checked = false;
+                }
             }
 
             if (canInviteCheckbox) {
@@ -120,25 +156,36 @@
                 canInviteHelp.textContent = canGrantInvite ? i18n.inviteEnabledHelp : i18n.invitePolicyLimited;
             }
 
-            if (expiryEnabled && expiryDays) {
-                expiryEnabled.disabled = !canSetUserExpiry;
-                if (!canSetUserExpiry) {
-                    expiryEnabled.checked = defaultDisableAfterDays > 0;
-                    expiryDays.disabled = true;
-                    expiryDays.value = defaultDisableAfterDays > 0 ? defaultDisableAfterDays : 30;
-                    if (expiryAt) {
-                        expiryAt.disabled = true;
-                        expiryAt.value = '';
-                    }
+            if (ignoreUserWrap && ignoreUserInput) {
+                if (effectiveUserExpiryDays > 0) {
+                    ignoreUserWrap.classList.remove('hidden');
+                    ignoreUserWrap.classList.add('flex');
+                    ignoreUserInput.checked = false;
+                    ignoreUserInput.disabled = !allowIgnoreLimits;
+                    ignoreUserWrap.classList.toggle('opacity-60', !allowIgnoreLimits);
                 } else {
-                    expiryEnabled.checked = defaultDisableAfterDays > 0;
-                    expiryDays.value = defaultDisableAfterDays > 0 ? defaultDisableAfterDays : 30;
-                    expiryDays.disabled = !expiryEnabled.checked;
-                    if (expiryAt) {
-                        expiryAt.disabled = !expiryEnabled.checked;
-                    }
+                    ignoreUserWrap.classList.remove('flex');
+                    ignoreUserWrap.classList.add('hidden');
+                    ignoreUserInput.checked = false;
                 }
             }
+
+            if (expiryEnabled && expiryDays) {
+                const fallbackDays = effectiveUserExpiryDays > 0 ? effectiveUserExpiryDays : 30;
+                expiryDays.value = String(fallbackDays);
+
+                if (!canSetUserExpiry) {
+                    expiryEnabled.checked = effectiveUserExpiryDays > 0;
+                    expiryEnabled.disabled = true;
+                    expiryDays.disabled = true;
+                } else {
+                    expiryEnabled.disabled = false;
+                    expiryEnabled.checked = effectiveUserExpiryDays > 0;
+                    expiryDays.disabled = !expiryEnabled.checked;
+                }
+            }
+
+            updateForcedUsernameState();
         }
 
         async function loadInvitations() {
@@ -292,23 +339,73 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>';
 
-            const maxUses = parseInt(document.getElementById('inv-uses').value, 10) || 0;
-            const userExpiryEnabled = !!document.getElementById('inv-user-expiry-enabled').checked;
-            const userExpiryDays = parseInt(document.getElementById('inv-user-expiry-days').value, 10) || 0;
-            const userExpiryAt = (document.getElementById('inv-user-expiry-at').value || '').trim();
-            const grantInvite = !!document.getElementById('inv-new-user-can-invite').checked;
-            const forcedUsername = document.getElementById('inv-forced-user').value;
+            const maxUsesInput = document.getElementById('inv-uses');
+            const expiryDaysInput = document.getElementById('inv-expiry-days');
+            const userExpiryEnabledInput = document.getElementById('inv-user-expiry-enabled');
+            const userExpiryDaysInput = document.getElementById('inv-user-expiry-days');
+            const canInviteInput = document.getElementById('inv-new-user-can-invite');
+            const forcedUserInput = document.getElementById('inv-forced-user');
+            const emailInput = document.getElementById('inv-email');
+            const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
+            const ignoreUserInput = document.getElementById('inv-ignore-user-expiry-limit');
+
+            const maxUses = parseInt(maxUsesInput?.value || '0', 10) || 0;
+            let expiresInDays = parseInt(expiryDaysInput?.value || '0', 10) || 0;
+            const userExpiryEnabled = !!userExpiryEnabledInput?.checked;
+            let userExpiryDays = parseInt(userExpiryDaysInput?.value || '0', 10) || 0;
+            const grantInvite = !!canInviteInput?.checked;
+            const forcedUsername = (forcedUserInput?.value || '').trim();
+            const ignorePresetLinkExpiry = !!(ignoreLinkInput && !ignoreLinkInput.disabled && ignoreLinkInput.checked);
+            const ignorePresetUserExpiry = !!(ignoreUserInput && !ignoreUserInput.disabled && ignoreUserInput.checked);
+
+            if (!isAdmin && maxUses <= 0) {
+                btn.disabled = false;
+                btn.innerHTML = createBtnLabel();
+                JG.toast(i18n.invalidMaxUses || 'Le nombre d\'utilisations est invalide.', 'error');
+                return;
+            }
+
+            if (!ignorePresetLinkExpiry && limitLinkValidityDays > 0) {
+                if (expiresInDays <= 0) {
+                    expiresInDays = limitLinkValidityDays;
+                }
+                if (!isAdmin && expiresInDays > limitLinkValidityDays) {
+                    btn.disabled = false;
+                    btn.innerHTML = createBtnLabel();
+                    JG.toast(`Validite limitee a ${limitLinkValidityDays} jour(s).`, 'error');
+                    return;
+                }
+            }
+
+            if (userExpiryEnabled && userExpiryDays <= 0) {
+                btn.disabled = false;
+                btn.innerHTML = createBtnLabel();
+                JG.toast(i18n.invalidUserExpiry || 'Expiration utilisateur invalide.', 'error');
+                return;
+            }
+
+            if (!ignorePresetUserExpiry && limitUserExpiryDays > 0) {
+                if (!userExpiryEnabled) {
+                    userExpiryDays = limitUserExpiryDays;
+                }
+                if (!isAdmin && userExpiryDays > limitUserExpiryDays) {
+                    btn.disabled = false;
+                    btn.innerHTML = createBtnLabel();
+                    JG.toast(`Expiration utilisateur limitee a ${limitUserExpiryDays} jour(s).`, 'error');
+                    return;
+                }
+            }
 
             const data = {
                 max_uses: maxUses,
-                expires_at: (document.getElementById('inv-expires-link').value || '').trim(),
-                email: (document.getElementById('inv-email').value || '').trim(),
+                expires_in_days: expiresInDays,
+                ignore_preset_link_expiry: ignorePresetLinkExpiry,
+                apply_user_expiry: userExpiryEnabled,
+                user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
+                ignore_preset_user_expiry: ignorePresetUserExpiry,
+                new_user_can_invite: grantInvite,
                 forced_username: forcedUsername,
-                jellyfin_profile: {
-                    can_invite: grantInvite,
-                    user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
-                    user_expires_at: userExpiryEnabled ? userExpiryAt : ''
-                }
+                send_to_email: (emailInput?.value || '').trim(),
             };
 
             const res = await JG.api('/admin/api/invitations', { method: 'POST', body: JSON.stringify(data) });
@@ -318,7 +415,7 @@
             if (res.success) {
                 JG.toast(i18n.created || "Invitation créée", 'success');
                 JG.closeModal('create-modal');
-                document.getElementById('create-form').reset();
+                document.getElementById('create-form')?.reset();
                 loadInvitations();
                 loadSponsorStats();
             } else {
@@ -340,6 +437,15 @@
 
         // --- Event Listeners ---
         document.body.addEventListener('click', (e) => {
+            const closeTrigger = e.target.closest('[data-modal-close]');
+            if (closeTrigger) {
+                const modalId = closeTrigger.getAttribute('data-modal-close');
+                if (modalId) {
+                    JG.closeModal(modalId);
+                }
+                return;
+            }
+
             const copyBtn = e.target.closest('.action-copy-link');
             if (copyBtn) {
                 copyLinkToClipboard(decodeURIComponent(copyBtn.getAttribute('data-link')));
@@ -359,8 +465,8 @@
             }
 
             if (e.target.closest('.btn-open-create-modal')) {
+                document.getElementById('create-form')?.reset();
                 applyInvitationPolicyUI();
-                updateForcedUsernameState();
                 JG.openModal('create-modal');
                 return;
             }
@@ -400,13 +506,22 @@
         const maxUsesInput = document.getElementById('inv-uses');
         if (maxUsesInput) maxUsesInput.addEventListener('input', updateForcedUsernameState);
 
+        const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
+        if (ignoreLinkInput) {
+            ignoreLinkInput.addEventListener('change', () => {
+                const linkDaysInput = document.getElementById('inv-expiry-days');
+                if (!linkDaysInput) return;
+                if (!ignoreLinkInput.checked && limitLinkValidityDays > 0 && (!isAdmin || !allowIgnoreLimits)) {
+                    linkDaysInput.value = String(limitLinkValidityDays);
+                }
+            });
+        }
+
         const expiryEnabled = document.getElementById('inv-user-expiry-enabled');
         if (expiryEnabled) {
             expiryEnabled.addEventListener('change', () => {
                 const days = document.getElementById('inv-user-expiry-days');
-                const at = document.getElementById('inv-user-expiry-at');
                 if (days) days.disabled = !expiryEnabled.checked;
-                if (at) at.disabled = !expiryEnabled.checked;
             });
         }
 

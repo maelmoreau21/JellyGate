@@ -14,6 +14,8 @@
         const selectedIds = new Set();
         let pendingDeleteUser = null;
         let searchTimeout = null;
+        let loadUsersAbortController = null;
+        let loadUsersSeq = 0;
 
         function fmtDate(value) {
             if (!value) return '\u2014';
@@ -62,12 +64,18 @@
             }
             const checkAll = document.getElementById('check-all');
             if (checkAll) {
-                const selectable = filteredUsers.map((u) => u.id);
+                const selectable = filteredUsers.map((u) => String(u.id));
                 const selectedVisible = selectable.filter((id) => selectedIds.has(id)).length;
                 checkAll.checked = selectable.length > 0 && selectedVisible === selectable.length;
                 checkAll.indeterminate = selectedVisible > 0 && selectedVisible < selectable.length;
             }
             updateBulkWizardState();
+        }
+
+        function renderLoadingUsers() {
+            const tbody = document.getElementById('users-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16"><div class="flex flex-col items-center gap-3"><span class="spinner w-7 h-7 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span><span class="text-jg-text-muted text-xs uppercase tracking-widest font-bold">Chargement...</span></div></td></tr>';
         }
 
         function openBulkDrawer() {
@@ -137,9 +145,11 @@
             }
 
             let html = '';
+            const previousLabel = JG.esc(i18n.previous || 'Precedent');
+            const nextLabel = JG.esc(i18n.next || 'Suivant');
             // Previous
-            html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 flex items-center justify-center rounded-xl ${paginationMeta.page <= 1 ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page - 1}" ${paginationMeta.page <= 1 ? 'disabled' : ''}>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            html += `<button class="jg-btn jg-btn-ghost h-10 px-3 flex items-center justify-center rounded-xl text-xs font-semibold ${paginationMeta.page <= 1 ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page - 1}" ${paginationMeta.page <= 1 ? 'disabled' : ''}>
+                ${previousLabel}
             </button>`;
 
             // Simple pagination: 1 ... current-1 current current+1 ... total
@@ -162,8 +172,8 @@
             }
 
             // Next
-            html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 flex items-center justify-center rounded-xl ${paginationMeta.page >= paginationMeta.total_pages ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page + 1}" ${paginationMeta.page >= paginationMeta.total_pages ? 'disabled' : ''}>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            html += `<button class="jg-btn jg-btn-ghost h-10 px-3 flex items-center justify-center rounded-xl text-xs font-semibold ${paginationMeta.page >= paginationMeta.total_pages ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page + 1}" ${paginationMeta.page >= paginationMeta.total_pages ? 'disabled' : ''}>
+                ${nextLabel}
             </button>`;
 
             container.innerHTML = html;
@@ -193,12 +203,13 @@
             
             if (users.length === 0) {
                 const help = paginationMeta.total === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
-                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-slate-500 py-24">' + JG.esc(help) + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-24">' + JG.esc(help) + '</td></tr>';
                 updateSelectionUI(); return;
             }
             tbody.innerHTML = users.map((user) => {
-                const checked = selectedIds.has(user.id) ? 'checked' : '';
-                const isSelected = selectedIds.has(user.id);
+                const userID = String(user.id);
+                const checked = selectedIds.has(userID) ? 'checked' : '';
+                const isSelected = selectedIds.has(userID);
                 const bgClass = isSelected ? 'bg-jg-accent/10' : 'hover:bg-white/[0.03]';
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
                 
@@ -238,11 +249,19 @@
         }
 
         async function loadUsers() {
+            const requestId = ++loadUsersSeq;
+            if (loadUsersAbortController) {
+                loadUsersAbortController.abort();
+            }
+            loadUsersAbortController = new AbortController();
+
             const query = document.getElementById('search-users')?.value || '';
             const status = document.getElementById('filter-status')?.value || 'all';
             const jellyfin = document.getElementById('filter-jellyfin')?.value || 'all';
             const invite = document.getElementById('filter-invite')?.value || 'all';
             const extra = document.getElementById('filter-extra')?.value || 'all';
+
+            renderLoadingUsers();
 
             const params = new URLSearchParams({
                 page: paginationMeta.page,
@@ -251,11 +270,18 @@
                 status: status,
                 jellyfin: jellyfin, // currently limited impact in backend
                 invite: invite,
-                extra: extra
+                extra: extra,
+                include_jellyfin: '1'
             });
 
-            const res = await JG.api('/admin/api/users?' + params.toString());
-            if (res.success && res.data) { 
+            const res = await JG.api('/admin/api/users?' + params.toString(), {
+                signal: loadUsersAbortController.signal,
+            });
+            if (requestId !== loadUsersSeq || res.aborted) {
+                return;
+            }
+
+            if (res.success && res.data) {
                 allUsers = res.data.users || [];
                 paginationMeta = res.data.meta || paginationMeta;
                 renderUsers(allUsers);
@@ -313,7 +339,13 @@
         async function executeBulkAction() {
             const action = document.getElementById('bulk-action')?.value || '';
             if (!action || selectedIds.size === 0) return;
-            const ids = Array.from(selectedIds);
+            const ids = Array.from(selectedIds)
+                .map((id) => parseInt(id, 10))
+                .filter((id) => Number.isFinite(id));
+            if (ids.length === 0) {
+                JG.toast(i18n.selectionEmpty || 'Selectionnez des utilisateurs', 'info');
+                return;
+            }
             const m = bulkActionMeta[action];
             if (!confirm((m?m.label:action) + ' ' + (i18n.bulkActionOn||'sur') + ' ' + ids.length + ' ' + (i18n.bulkReadySuffix||'utilisateur(s)') + ' ?')) return;
             let payload = { action: action, user_ids: ids };
@@ -371,7 +403,11 @@
         // Select All
         document.getElementById('check-all')?.addEventListener('change', (e) => {
             const chk = e.target.checked;
-            filteredUsers.forEach((u) => { if (chk) selectedIds.add(u.id); else selectedIds.delete(u.id); });
+            filteredUsers.forEach((u) => {
+                const id = String(u.id);
+                if (chk) selectedIds.add(id);
+                else selectedIds.delete(id);
+            });
             document.querySelectorAll('.row-check').forEach((cb) => { cb.checked = chk; });
             updateSelectionUI();
         });
@@ -380,8 +416,10 @@
         document.getElementById('users-tbody')?.addEventListener('change', (e) => {
             const cb = e.target.closest('.row-check');
             if (!cb) return;
-            if (cb.checked) selectedIds.add(cb.dataset.id);
-            else selectedIds.delete(cb.dataset.id);
+            const rowID = String(cb.dataset.id || '');
+            if (!rowID) return;
+            if (cb.checked) selectedIds.add(rowID);
+            else selectedIds.delete(rowID);
             updateSelectionUI();
         });
 
@@ -490,7 +528,7 @@
         document.getElementById('delete-confirm-btn')?.addEventListener('click', async () => {
             if (!pendingDeleteUser) return;
             const res = await JG.api('/admin/api/users/' + pendingDeleteUser, { method: 'DELETE' });
-            if (res.success) { JG.toast(i18n.deleteSuccess||'OK', 'success'); selectedIds.delete(pendingDeleteUser); pendingDeleteUser = null; JG.closeModal('delete-modal'); await loadUsers(); }
+            if (res.success) { JG.toast(i18n.deleteSuccess||'OK', 'success'); selectedIds.delete(String(pendingDeleteUser)); pendingDeleteUser = null; JG.closeModal('delete-modal'); await loadUsers(); }
             else { JG.toast(res.message||i18n.deleteError||'Erreur', 'error'); }
         });
         document.getElementById('delete-modal')?.addEventListener('click', (e) => { if (e.target.id === 'delete-modal' || e.target.closest('[aria-hidden="true"]')) { pendingDeleteUser = null; JG.closeModal('delete-modal'); } });
@@ -554,7 +592,7 @@
         document.getElementById('timeline-modal')?.addEventListener('click', (e) => { if (e.target.id === 'timeline-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('timeline-modal'); });
 
         // Initial load
-        (async () => { await loadUsers(); await loadPresets(); })();
+        (async () => { await Promise.allSettled([loadUsers(), loadPresets()]); })();
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }

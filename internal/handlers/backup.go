@@ -122,6 +122,24 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if h.db.IsPostgres() {
+		if err := h.service.RestorePostgresBackup(name); err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+			return
+		}
+
+		_ = h.db.LogAction("backup.restore.applied", sess.Username, name, time.Now().Format(time.RFC3339))
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: "Restauration PostgreSQL appliquée.",
+			Data: map[string]interface{}{
+				"restart_required": false,
+				"backup":           name,
+			},
+		})
+		return
+	}
+
 	if err := h.service.PrepareRestore(name); err != nil {
 		if errors.Is(err, backup.ErrSQLiteOnly) {
 			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
@@ -134,7 +152,7 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 	_ = h.db.LogAction("backup.restore.prepared", sess.Username, name, time.Now().Format(time.RFC3339))
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Restauration prÃ©parÃ©e. RedÃ©marre JellyGate pour appliquer la sauvegarde.",
+		Message: "Restauration préparée. Redémarre JellyGate pour appliquer la sauvegarde.",
 		Data: map[string]interface{}{
 			"restart_required": true,
 			"backup":           name,

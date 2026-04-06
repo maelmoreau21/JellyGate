@@ -57,6 +57,11 @@ const (
 	ProvisionRoleInviter = "inviter"
 	ProvisionRoleAdmin   = "admin"
 
+	// Groupes LDAP par defaut appliques lors du provisioning.
+	defaultLDAPUsersGroup   = "jellyfin"
+	defaultLDAPInviterGroup = "jellyfin-Parrainage"
+	defaultLDAPAdminGroup   = "jellyfin-administrateur"
+
 	// defaultUsernameAttribute est l'attribut AD historique utilise pour le login.
 	defaultUsernameAttribute = "sAMAccountName"
 
@@ -628,13 +633,13 @@ func (c *Client) GetGroupMembers(groupDN string) ([]UserEntry, error) {
 	profile := c.detectDirectoryProfile(conn)
 	searchDN := strings.TrimSpace(c.cfg.BaseDN)
 	lookupAttrs := c.lookupAttributes(profile)
-	
+
 	// Filtre AD optimisé : tous les objets 'user' ayant l'attribut memberOf = groupDN
 	filter := fmt.Sprintf("(&(objectClass=user)(memberOf=%s))", goldap.EscapeFilter(groupDN))
 	if profile != directoryProfileAD {
 		// Filtre plus générique pour les autres types d'annuaires
 		// Note: Certains annuaires utilisent 'member' ou 'uniqueMember' sur l'objet groupe
-		// Plutôt que de chercher les utilisateurs, on peut aussi chercher le groupe 
+		// Plutôt que de chercher les utilisateurs, on peut aussi chercher le groupe
 		// et extraire ses attributs 'member'.
 		return c.getGroupMembersGeneric(conn, groupDN, profile)
 	}
@@ -646,8 +651,8 @@ func (c *Client) GetGroupMembers(groupDN string) ([]UserEntry, error) {
 		searchDN,
 		goldap.ScopeWholeSubtree,
 		goldap.NeverDerefAliases,
-		0,   // Pas de limite
-		30,  // Timeout 30 secondes pour les gros groupes
+		0,  // Pas de limite
+		30, // Timeout 30 secondes pour les gros groupes
 		false,
 		filter,
 		requestAttrs,
@@ -709,7 +714,7 @@ func (c *Client) getGroupMembersGeneric(conn *goldap.Conn, groupDN string, profi
 	// Note: Pour être performant, on fait un OR massif si possible ou des recherches individuelles
 	lookupAttrs := c.lookupAttributes(profile)
 	users := make([]UserEntry, 0, len(memberDNs))
-	
+
 	for _, mdn := range memberDNs {
 		// Recherche par DN exact
 		uSearch := goldap.NewSearchRequest(
@@ -818,29 +823,51 @@ func isObjectClassFallbackError(err error) bool {
 // user -> jellyfin, inviter -> jellyfin-Parrainage, admin -> jellyfin-administrateur.
 func (c *Client) assignUserToDefaultGroup(conn *goldap.Conn, userDN, role string) error {
 	normalizedRole := strings.ToLower(strings.TrimSpace(role))
-	groupRef := strings.TrimSpace(c.cfg.JellyfinGroup)
+	groups := make([]string, 0, 2)
+
+	baseGroup := strings.TrimSpace(c.cfg.JellyfinGroup)
+	if baseGroup == "" {
+		baseGroup = strings.TrimSpace(c.cfg.UserGroup)
+	}
+	if baseGroup == "" {
+		baseGroup = defaultLDAPUsersGroup
+	}
+	groups = append(groups, baseGroup)
 
 	switch normalizedRole {
 	case ProvisionRoleAdmin:
-		groupRef = strings.TrimSpace(c.cfg.AdministratorsGroup)
-		if groupRef == "" {
-			groupRef = strings.TrimSpace(c.cfg.JellyfinGroup)
+		adminGroup := strings.TrimSpace(c.cfg.AdministratorsGroup)
+		if adminGroup == "" {
+			adminGroup = defaultLDAPAdminGroup
 		}
+		groups = append(groups, adminGroup)
 	case ProvisionRoleInviter:
-		groupRef = strings.TrimSpace(c.cfg.InviterGroup)
-		if groupRef == "" {
-			groupRef = strings.TrimSpace(c.cfg.JellyfinGroup)
+		inviterGroup := strings.TrimSpace(c.cfg.InviterGroup)
+		if inviterGroup == "" {
+			inviterGroup = defaultLDAPInviterGroup
+		}
+		groups = append(groups, inviterGroup)
+	}
+
+	seen := make(map[string]struct{}, len(groups))
+	for _, groupRef := range groups {
+		trimmed := strings.TrimSpace(groupRef)
+		if trimmed == "" {
+			continue
+		}
+
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+
+		if err := c.addToGroupByRef(conn, userDN, trimmed); err != nil {
+			return err
 		}
 	}
 
-	if groupRef == "" {
-		groupRef = strings.TrimSpace(c.cfg.UserGroup)
-	}
-	if groupRef == "" {
-		return nil
-	}
-
-	return c.addToGroupByRef(conn, userDN, groupRef)
+	return nil
 }
 
 // addToGroupByRef ajoute un utilisateur a un groupe AD (DN complet ou nom simple).
@@ -863,11 +890,35 @@ func (c *Client) addToGroupByRef(conn *goldap.Conn, userDN, groupRef string) err
 	modReq.Add(memberAttr, []string{memberValue})
 
 	if err := conn.Modify(modReq); err != nil {
+		if isGroupMemberAlreadyPresentError(err) {
+			slog.Debug("Utilisateur deja present dans le groupe LDAP", "member_attr", memberAttr, "member_value", memberValue, "group_dn", groupDN)
+			return nil
+		}
 		return fmt.Errorf("échec de l'ajout de %q au groupe %q via %q: %w", memberValue, groupDN, memberAttr, err)
 	}
 
 	slog.Info("Utilisateur ajoute au groupe LDAP", "member_attr", memberAttr, "member_value", memberValue, "group_dn", groupDN)
 	return nil
+}
+
+func isGroupMemberAlreadyPresentError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var ldapErr *goldap.Error
+	if errors.As(err, &ldapErr) {
+		if ldapErr.ResultCode == goldap.LDAPResultAttributeOrValueExists {
+			return true
+		}
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	if strings.Contains(errMsg, "attribute or value exists") || strings.Contains(errMsg, "type or value exists") {
+		return true
+	}
+
+	return false
 }
 
 func resolveGroupMemberValue(memberAttr, userDN string) string {
