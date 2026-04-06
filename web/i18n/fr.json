@@ -788,7 +788,7 @@
     "users_timeline_critical": "Critique",
     "users_timeline_empty": "Aucun email envoye pour cet utilisateur.",
     "users_timeline_load_error": "Impossible de charger l'historique des emails.",
-    "users_timeline_subtitle": "Emails envoyes a {username}",
+    "users_timeline_subtitle": "Emails envoyés à {username} ({email})",
     "users_timeline_important": "Important",
     "users_timeline_info": "Info",
     "users_timeline_title": "Historique des emails",
@@ -826,5 +826,8 @@
     "backup_restore_confirm_suffix": "Un redemarrage est necessaire ensuite.",
     "backup_restore_error": "Echec de la restauration",
     "backup_restore_ready": "Restauration preparee. Redemarrez JellyGate pour l'appliquer.",
-    "backup_select_zip": "Veuillez selectionner un fichier .zip valide"
+    "backup_select_zip": "Veuillez selectionner un fichier .zip valide",
+    "dashboard_no_invites": "No recent invitations",
+    "automation_group_mappings_title": "Group mappings",
+    "invitations_title": "Invitations Management"
 }

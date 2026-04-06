@@ -58,7 +58,7 @@
     "field_new_password": "New password",
     "field_identifier": "Email or username",
     "field_identifier_placeholder": "E.g. john_doe or john@example.com",
-    "dashboard_panel_users_desc": "Manage Jellyfin \u0026 LDAP access",
+    "dashboard_panel_users_desc": "Manage Jellyfin & LDAP access",
     "dashboard_panel_invites_desc": "Create and track signup links",
     "dashboard_panel_settings_desc": "System configuration and integrations",
     "password_match": "Passwords match",
@@ -825,5 +825,6 @@
     "users_bulk_title": "Bulk assistant",
     "users_bulk_desc": "Select users, choose an action, then validate the required parameters before execution.",
     "users_table_title": "Accounts list",
-    "users_table_desc": "Inspect each local account, then edit, reset, trace, enable, or delete in one click."
+    "users_table_desc": "Inspect each local account, then edit, reset, trace, enable, or delete in one click.",
+    "filters": "Filters"
 }
