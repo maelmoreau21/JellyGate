@@ -78,7 +78,9 @@
                     <label class="jg-label" for="task-name">{{ .T "automation_col_name" }}</label>
                     <input id="task-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_task_name_placeholder" }}'>
                 </div>
-                
+                <div class="mt-4">
+                    <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
+                    <select id="task-type" class="jg-input h-11 bg-black/20 text-sm">
                         <option value="sync_ldap_users">Sync LDAP Users (LDAP -> JF)</option>
                         <option value="cleanup_resets">Cleanup Resets</option>
                         <option value="create_backup">Create Backup</option>
@@ -333,6 +335,6 @@
         },
     };
 </script>
-<script src="/static/js/pages/automation.js" nonce="{{ .ScriptNonce }}"></script>
+<script src="/static/js/pages/automation.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}
 

@@ -17,54 +17,61 @@
 </div>
 
 <div class="space-y-6">
-    {{/* ── Horizontal Filter Bar ───────────────────────────────────── */}}
-    <section class="jg-card shadow-lg p-4 bg-white/[0.02]">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
-            <div class="lg:col-span-1">
-                <label class="jg-label text-[10px] mb-1.5">{{ .T "logs_search_placeholder" }}</label>
-                <div class="relative">
-                    <input type="text" id="search-input" placeholder="..." class="jg-input h-10 pl-9 text-sm">
-                    <svg class="w-3.5 h-3.5 text-jg-text-muted absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+    <section class="jg-card p-4 shadow-lg bg-white/[0.02] mb-6">
+        <div class="flex flex-col md:flex-row items-center gap-4">
+            {{/* Main Search */}}
+            <div class="relative flex-1 group">
+                <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}' class="jg-input h-12 px-4 text-sm rounded-xl w-full focus:border-jg-accent/30 transition-all">
+            </div>
+
+            {{/* Actions */}}
+            <div class="flex items-center gap-2">
+                <button id="btn-toggle-filters" class="jg-btn jg-btn-ghost h-12 px-5 flex items-center gap-2 font-bold border border-white/10 rounded-xl hover:bg-white/10 transition-all">
+                    <svg class="w-4 h-4 transition-transform duration-300" id="filter-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    <span>{{ .T "filters" }}</span>
+                    <span id="active-filter-count" class="hidden px-2 py-0.5 rounded-full bg-jg-accent text-black text-[10px] font-black">0</span>
+                </button>
+            </div>
+        </div>
+
+        {{/* Advanced Filters Panel */}}
+        <div id="filter-panel" class="hidden mt-4 pt-6 border-t border-white/5 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+                <div class="jg-filter-group">
+                    <label class="jg-filter-label">{{ .T "logs_col_action" }}</label>
+                    <input id="filter-action" type="text" placeholder="ex: login" class="jg-input h-11 px-4 text-xs focus:border-jg-accent/30" />
                 </div>
-            </div>
 
-            <div>
-                <label class="jg-label text-[10px] mb-1.5">{{ .T "logs_col_action" }}</label>
-                <input id="filter-action" type="text" placeholder="ex: login" class="jg-input h-10 text-sm" />
-            </div>
-
-            <div>
-                <label class="jg-label text-[10px] mb-1.5">{{ .T "logs_col_actor" }}</label>
-                <input id="filter-actor" type="text" placeholder="Utilisateur" class="jg-input h-10 text-sm" />
-            </div>
-
-            <div>
-                <label class="jg-label text-[10px] mb-1.5">Résultat</label>
-                <select id="filter-result" class="jg-input h-10 text-sm">
-                    <option value="">{{ .T "view_all" }}</option>
-                    <option value="success">{{ .T "success" }}</option>
-                    <option value="failure">{{ .T "failure" }}</option>
-                </select>
-            </div>
-
-            <div class="lg:col-span-1">
-                <label class="jg-label text-[10px] mb-1.5">Période</label>
-                <div class="flex gap-2">
-                    <input id="filter-from" type="date" class="jg-input h-10 text-[10px] px-2" />
-                    <input id="filter-to" type="date" class="jg-input h-10 text-[10px] px-2" />
+                <div class="jg-filter-group">
+                    <label class="jg-filter-label">{{ .T "logs_col_actor" }}</label>
+                    <input id="filter-actor" type="text" placeholder="Utilisateur" class="jg-input h-11 px-4 text-xs focus:border-jg-accent/30" />
                 </div>
-            </div>
 
-            <div class="flex gap-2">
-                <select id="limit-select" class="jg-input h-10 text-sm flex-1">
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="200">200</option>
-                </select>
-                <div class="hidden md:flex gap-1">
-                    <button id="export-csv" class="jg-btn jg-btn-ghost jg-btn-sm h-10" title="CSV">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                    </button>
+                <div class="jg-filter-group">
+                    <label class="jg-filter-label">Résultat</label>
+                    <select id="filter-result" class="jg-input jg-select-premium h-11 px-4 text-xs">
+                        <option value="">{{ .T "view_all" }}</option>
+                        <option value="success">{{ .T "success" }}</option>
+                        <option value="failure">{{ .T "failure" }}</option>
+                    </select>
+                </div>
+
+                <div class="jg-filter-group lg:col-span-1">
+                    <label class="jg-filter-label">Période (Du / Au)</label>
+                    <div class="flex gap-2">
+                        <input id="filter-from" type="date" class="jg-input jg-date-input h-11 px-4 text-xs w-full" />
+                        <input id="filter-to" type="date" class="jg-input jg-date-input h-11 px-4 text-xs w-full" />
+                    </div>
+                </div>
+
+                <div class="jg-filter-group">
+                    <label class="jg-filter-label">Afficher</label>
+                    <select id="limit-select" class="jg-input jg-select-premium h-11 px-4 text-xs">
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
+                    </select>
                 </div>
             </div>
         </div>
@@ -115,12 +122,13 @@
                                 <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="target">▼</span>
                             </div>
                         </th>
+                        <th class="px-6 py-4">ID Requête</th>
                         <th class="px-6 py-4">{{ .T "logs_col_details" }}</th>
                     </tr>
                 </thead>
                 <tbody id="logs-tbody" class="divide-y divide-jg-border">
                     <tr>
-                        <td colspan="5" class="py-20 text-center">
+                        <td colspan="6" class="py-20 text-center">
                             <div class="flex flex-col items-center gap-3">
                                 <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
                                 <span class="text-jg-text-muted animate-pulse">{{ .T "logs_loading" }}...</span>
@@ -151,5 +159,5 @@
         },
     };
 </script>
-<script src="/static/js/pages/logs.js" nonce="{{ .ScriptNonce }}"></script>
+<script src="/static/js/pages/logs.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

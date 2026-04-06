@@ -227,7 +227,7 @@ func (h *AutomationHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.db.Exec(
 		`UPDATE scheduled_tasks
-		 SET name = ?, task_type = ?, enabled = ?, hour = ?, minute = ?, payload = ?, updated_at = datetime('now')
+		 SET name = ?, task_type = ?, enabled = ?, hour = ?, minute = ?, payload = ?, updated_at = CURRENT_TIMESTAMP
 		 WHERE id = ?`,
 		strings.TrimSpace(input.Name),
 		strings.TrimSpace(input.TaskType),

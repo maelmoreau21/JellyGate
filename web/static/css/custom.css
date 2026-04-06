@@ -394,27 +394,58 @@ select.jg-input, .jg-select-premium {
     -webkit-backdrop-filter: blur(8px);
     transition: var(--jg-transition) !important;
     border-radius: var(--jg-radius-sm);
-    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--jg-border-strong) !important;
+    color: var(--jg-text) !important;
+    background-color: var(--jg-bg-card) !important;
+    color-scheme: light;
 }
 
 html:not(.dark) select.jg-input, html:not(.dark) .jg-select-premium {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
-    background-color: #fff;
+    color-scheme: light;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
+        linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+    background-repeat: no-repeat, no-repeat !important;
+    background-position: right 1rem center, center !important;
+    background-size: 1rem, 100% 100% !important;
+    background-color: transparent !important;
+}
+
+html.dark select.jg-input, html.dark .jg-select-premium {
+    color-scheme: dark;
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
+        linear-gradient(135deg, rgba(13, 21, 38, 0.98), rgba(24, 34, 54, 0.95)) !important;
+    background-repeat: no-repeat, no-repeat !important;
+    background-position: right 1rem center, center !important;
+    background-size: 1rem, 100% 100% !important;
+    background-color: transparent !important;
 }
 
 select.jg-input:hover, .jg-select-premium:hover {
     border-color: var(--jg-accent);
-    background-color: rgba(255, 255, 255, 0.08);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    filter: brightness(1.03);
 }
 
 html.dark select.jg-input:hover, html.dark .jg-select-premium:hover {
-    background-color: rgba(34, 211, 238, 0.05);
+    filter: brightness(1.08);
+}
+
+select.jg-input:focus, .jg-select-premium:focus {
+    border-color: var(--jg-accent-hover) !important;
+    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+html.dark select.jg-input:focus, html.dark .jg-select-premium:focus {
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"),
+        linear-gradient(135deg, rgba(10, 17, 31, 0.98), rgba(15, 118, 110, 0.08)) !important;
 }
 
 select.jg-input option, .jg-select-premium option {
-    background: #18181b !important;
-    color: #efeff1 !important;
+    background: var(--jg-bg-secondary) !important;
+    color: var(--jg-text) !important;
     padding: 12px !important;
     font-size: 14px;
 }
@@ -424,9 +455,72 @@ html:not(.dark) select.jg-input option, html:not(.dark) .jg-select-premium optio
     color: #1e293b !important;
 }
 
+html.dark select.jg-input option, html.dark .jg-select-premium option {
+    background: #0f172a !important;
+    color: #e2e8f0 !important;
+}
+
+html.dark select.jg-input option:checked, html.dark .jg-select-premium option:checked {
+    background: #123047 !important;
+    color: #7dd3fc !important;
+}
+
 select.jg-input optgroup {
     color: var(--jg-text-muted);
     background: var(--jg-bg-primary);
+}
+
+.jg-date-input,
+input[type="date"].jg-input {
+    color: var(--jg-text);
+    min-height: 2.75rem;
+    color-scheme: light;
+    background-color: var(--jg-bg-card) !important;
+    accent-color: var(--jg-accent);
+}
+
+html.dark .jg-date-input,
+html.dark input[type="date"].jg-input {
+    color-scheme: dark;
+    background: linear-gradient(135deg, rgba(13, 21, 38, 0.98), rgba(24, 34, 54, 0.95)) !important;
+}
+
+html.dark .jg-date-input:focus,
+html.dark input[type="date"].jg-input:focus {
+    background: linear-gradient(135deg, rgba(10, 17, 31, 0.98), rgba(15, 118, 110, 0.08)) !important;
+}
+
+.jg-date-input::-webkit-calendar-picker-indicator,
+input[type="date"].jg-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    width: 1.1rem;
+    height: 1.1rem;
+    padding: 0.2rem;
+    border-radius: 999px;
+    background: rgba(14, 116, 144, 0.14);
+    opacity: 0.9;
+    transition: opacity 0.2s ease;
+}
+
+.jg-date-input:hover::-webkit-calendar-picker-indicator,
+input[type="date"].jg-input:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+}
+
+.jg-date-input::-webkit-datetime-edit,
+input[type="date"].jg-input::-webkit-datetime-edit {
+    color: var(--jg-text);
+}
+
+.jg-date-input::-webkit-datetime-edit-text,
+input[type="date"].jg-input::-webkit-datetime-edit-text {
+    color: var(--jg-text-muted);
+}
+
+html.dark .jg-date-input::-webkit-calendar-picker-indicator,
+html.dark input[type="date"].jg-input::-webkit-calendar-picker-indicator {
+    background: rgba(34, 211, 238, 0.16);
+    filter: invert(0.9) sepia(0.15) saturate(3) hue-rotate(145deg);
 }
 
 html.dark select.jg-input optgroup {
@@ -2375,6 +2469,18 @@ html.dark .jg-shortcut-name {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+}
+
+.jg-filter-group .jg-input,
+.jg-filter-group .jg-select-premium {
+    background-color: var(--jg-bg-card) !important;
+    border-color: var(--jg-border-strong) !important;
+    color: var(--jg-text) !important;
+}
+
+html.dark .jg-filter-group .jg-input,
+html.dark .jg-filter-group .jg-select-premium {
+    background-color: rgba(12, 18, 30, 0.92) !important;
 }
 
 .jg-filter-label {

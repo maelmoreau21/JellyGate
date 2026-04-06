@@ -157,7 +157,7 @@
                     <td class="px-4 py-3 text-sm">${actorHtml}</td>
                     <td class="px-4 py-3 text-sm text-slate-300">${escapeHtml(log.target || '-')}</td>
                     <td class="px-4 py-3 text-xs text-cyan-300 font-mono">${escapeHtml(log.request_id || '-')}</td>
-                    <td class="px-4 py-3 text-xs text-slate-500 truncate max-w-xs font-mono" title="${escapeHtml(log.details)}">${escapeHtml(log.details || '-')}</td>
+                    <td class="px-4 py-3 text-xs text-slate-500 max-w-md break-all font-mono" title="${escapeHtml(log.details)}">${escapeHtml(log.details || '-')}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -170,7 +170,36 @@
         }
     }
 
+    function updateActiveFilterCount() {
+        const filters = ['filter-action', 'filter-actor', 'filter-result', 'filter-from', 'filter-to'];
+        let count = 0;
+        filters.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.value.trim() !== '') count++;
+        });
+
+        const badge = document.getElementById('active-filter-count');
+        if (badge) {
+            badge.textContent = count;
+            badge.classList.toggle('hidden', count === 0);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
+        // --- Filter Toggle Logic ---
+        const btnToggleFilters = document.getElementById('btn-toggle-filters');
+        const filterPanel = document.getElementById('filter-panel');
+        const toggleIcon = document.getElementById('filter-toggle-icon');
+
+        if (btnToggleFilters && filterPanel && toggleIcon) {
+            btnToggleFilters.addEventListener('click', () => {
+                const isHidden = filterPanel.classList.toggle('hidden');
+                toggleIcon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+                btnToggleFilters.classList.toggle('bg-white/10', !isHidden);
+            });
+        }
+
+        // --- Event Listeners for Filters ---
         document.querySelectorAll('[data-sort-col]').forEach((el) => {
             el.addEventListener('click', () => toggleSort(el.dataset.sortCol || 'created_at'));
         });
@@ -200,25 +229,26 @@
             });
         }
 
-        ['filter-action', 'filter-actor', 'filter-target', 'filter-request-id', 'filter-result', 'filter-from', 'filter-to'].forEach((id) => {
+        ['filter-action', 'filter-actor', 'filter-result', 'filter-from', 'filter-to'].forEach((id) => {
             const el = document.getElementById(id);
-            if (!el) {
-                return;
-            }
-            el.addEventListener('input', () => {
+            if (!el) return;
+
+            const handleInput = () => {
                 state.action = document.getElementById('filter-action')?.value.trim() || '';
                 state.actor = document.getElementById('filter-actor')?.value.trim() || '';
-                state.target = document.getElementById('filter-target')?.value.trim() || '';
-                state.request_id = document.getElementById('filter-request-id')?.value.trim() || '';
                 state.result = document.getElementById('filter-result')?.value || '';
                 state.from = document.getElementById('filter-from')?.value || '';
                 state.to = document.getElementById('filter-to')?.value || '';
                 state.page = 1;
+                updateActiveFilterCount();
                 fetchLogs();
-            });
-            el.addEventListener('change', () => el.dispatchEvent(new Event('input')));
+            };
+
+            el.addEventListener('input', handleInput);
+            el.addEventListener('change', handleInput);
         });
 
+        // --- Export Listeners ---
         document.getElementById('export-json')?.addEventListener('click', () => triggerExport('json'));
         document.getElementById('export-csv')?.addEventListener('click', () => triggerExport('csv'));
 

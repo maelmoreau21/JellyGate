@@ -276,6 +276,14 @@
             const tbody = document.getElementById('group-mappings-body');
             if (!tbody) return;
             updateOverview();
+            
+            // Wait for presets if they are not loaded yet
+            if (!presets || presets.length === 0) {
+                // If we are currently loading presets, they will trigger a re-render
+                // Otherwise, it might be that there are really no presets
+                console.log("renderMappings called but presets are empty");
+            }
+
             if (!groupMappings.length) {
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center text-slate-500 py-8">${JG.esc(i18n.noGroupMappings)}</td></tr>`;
                 return;
@@ -652,7 +660,6 @@
                 JG.openModal('modal-task-form');
                 return;
             }
-
             if (action === 'task-toggle' && task) {
                 const res = await JG.api(`/admin/api/automation/tasks/${id}`, {
                     method: 'PATCH',
@@ -674,6 +681,8 @@
         });
 
         const toggle = document.getElementById('sidebar-toggle');
+
+        // Sidebar toggle
         if (toggle) {
             toggle.addEventListener('click', () => {
                 const sidebar = document.getElementById('sidebar');

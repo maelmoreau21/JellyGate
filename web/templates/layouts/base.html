@@ -106,7 +106,7 @@
     </div>
 
     {{/* App JS */}}
-    <script src="/static/js/app.js" nonce="{{ .ScriptNonce }}"></script>
+    <script src="/static/js/app.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
     {{ block "scripts" . }}{{ end }}
 </body>
 

@@ -157,7 +157,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 		cmd := exec.Command("pg_dump", "-h", cfg.Host, "-p", strconv.Itoa(cfg.Port), "-U", cfg.User, "-d", cfg.Name, "-F", "p", "-f", dbFileToZip)
 		cmdOutput, err := cmd.CombinedOutput()
 		if err != nil {
-			return info, fmt.Errorf("dump postgresql echoue: %w (output: %s)", err, string(cmdOutput))
+			return info, fmt.Errorf("dump postgresql echoue: %w. Verifiez que 'pg_dump' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
 		}
 		defer os.Remove(dbFileToZip)
 	}
