@@ -45,16 +45,6 @@
 
                     <div class="flex items-center gap-4">
                         <div class="w-10 h-10 rounded-xl bg-jg-bg-secondary flex items-center justify-center text-jg-text-muted">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-bold text-jg-text-muted uppercase tracking-widest">{{ .T "my_account_label_preferred_lang" }}</p>
-                            <p id="account-language" class="text-sm font-medium text-jg-text">-</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-4">
-                        <div class="w-10 h-10 rounded-xl bg-jg-bg-secondary flex items-center justify-center text-jg-text-muted">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                         </div>
                         <div class="flex-1">
@@ -97,26 +87,10 @@
             </div>
 
             <form id="my-account-form" class="space-y-8 mt-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 gap-6">
                     <div class="space-y-2">
                         <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
                         <input type="email" id="my-email" class="jg-input h-12 bg-black/20" placeholder="nom@domaine.tld">
-                    </div>
-                    <div class="space-y-2">
-                        <label class="jg-label" for="my-lang">{{ .T "my_account_label_preferred_lang" }}</label>
-                        <select id="my-lang" class="jg-input h-12 text-sm bg-black/20 text-white">
-                            <option value="">{{ .T "my_account_default_server_lang" }}</option>
-                            <option value="fr">Français</option>
-                            <option value="en">English</option>
-                            <option value="de">Deutsch</option>
-                            <option value="es">Español</option>
-                            <option value="it">Italiano</option>
-                            <option value="nl">Nederlands</option>
-                            <option value="pl">Polski</option>
-                            <option value="pt-br">Português (Brasil)</option>
-                            <option value="ru">Русский</option>
-                            <option value="zh">中文 (简体)</option>
-                        </select>
                     </div>
                 </div>
 
@@ -260,19 +234,6 @@
 <script nonce="{{ .ScriptNonce }}">
     window.JGPageMyAccount = {
         uiLocale: '{{ .Lang }}' || undefined,
-        languageLabels: {
-            '': '{{ .T "my_account_default_server_lang" }}',
-            'fr': 'Francais',
-            'en': 'English',
-            'de': 'Deutsch',
-            'es': 'Espanol',
-            'it': 'Italiano',
-            'nl': 'Nederlands',
-            'pl': 'Polski',
-            'pt-br': 'Portugues (Brasil)',
-            'ru': 'Russkii',
-            'zh': 'Zhongwen',
-        },
         i18n: {
             noExpiry: '{{ .T "my_account_no_expiry" }}',
             loadError: '{{ .T "my_account_load_error" }}',

@@ -74,6 +74,9 @@ JG.api = async function (url, opts = {}) {
             };
         }
     } catch (err) {
+        if (err && err.name === 'AbortError') {
+            return { success: false, aborted: true, message: 'Requete annulee' };
+        }
         console.error('[JG.api]', url, err);
         return { success: false, message: 'Erreur réseau' };
     }

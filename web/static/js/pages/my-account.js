@@ -1,7 +1,6 @@
 (() => {
     const config = window.JGPageMyAccount || {};
     const uiLocale = config.uiLocale || undefined;
-    const languageLabels = config.languageLabels || {};
     const i18n = config.i18n || {};
 
     function updateEmailVerification(profile) {
@@ -15,7 +14,7 @@
 
         const email = String(profile.email || '').trim();
         const pending = String(profile.pending_email || '').trim();
-        const verified = !!profile.email_verified && !pending;
+        const hasConfirmedAddress = !!email && !pending;
 
         if (!email && !pending) {
             statusEl.textContent = i18n.emailStatusMissing || 'Missing';
@@ -27,9 +26,9 @@
             return;
         }
 
-        resendBtn.disabled = verified;
-        resendBtn.classList.toggle('opacity-50', verified);
-        resendBtn.classList.toggle('cursor-not-allowed', verified);
+        resendBtn.disabled = hasConfirmedAddress;
+        resendBtn.classList.toggle('opacity-50', hasConfirmedAddress);
+        resendBtn.classList.toggle('cursor-not-allowed', hasConfirmedAddress);
 
         if (pending) {
             statusEl.textContent = i18n.emailStatusPending || 'Pending';
@@ -42,14 +41,11 @@
         pendingEl.classList.add('hidden');
         pendingEl.textContent = '';
 
-        if (verified) {
+        if (hasConfirmedAddress) {
             statusEl.textContent = i18n.emailStatusVerified || 'Verified';
             helpEl.textContent = i18n.emailVerificationOk || '';
             return;
         }
-
-        statusEl.textContent = i18n.emailStatusUnverified || 'Unverified';
-        helpEl.textContent = i18n.emailVerificationHelp || '';
     }
 
     function formatDateTime(value, createdAt) {
@@ -144,20 +140,25 @@
         document.getElementById('account-role').textContent = profile.is_admin ? (i18n.roleAdmin || 'Admin') : (i18n.roleUser || 'User');
         document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at, profile.created_at);
         document.getElementById('account-email-summary').textContent = profile.email || '-';
-        document.getElementById('account-language').textContent = languageLabels[String(profile.preferred_lang || '').toLowerCase()] || languageLabels[''] || '';
 
         document.getElementById('my-email').value = profile.email || '';
         document.getElementById('my-discord').value = profile.contact_discord || '';
         document.getElementById('my-telegram').value = profile.contact_telegram || '';
-        document.getElementById('my-lang').value = profile.preferred_lang || '';
-        document.getElementById('my-notify-expiry').checked = profile.notify_expiry_reminder !== false;
-        document.getElementById('my-notify-events').checked = profile.notify_account_events !== false;
-        document.getElementById('my-opt-email').checked = profile.opt_in_email !== false;
-        document.getElementById('my-opt-discord').checked = !!profile.opt_in_discord;
-        document.getElementById('my-notify-events').checked = profile.notify_account_events !== false;
-        
+
+        const notifyExpiry = document.getElementById('my-notify-expiry');
+        if (notifyExpiry) notifyExpiry.checked = profile.notify_expiry_reminder !== false;
+
+        const notifyEvents = document.getElementById('my-notify-events');
+        if (notifyEvents) notifyEvents.checked = profile.notify_account_events !== false;
+
         const optEmail = document.getElementById('my-opt-email');
         if (optEmail) optEmail.checked = profile.opt_in_email !== false;
+
+        const optDiscord = document.getElementById('my-opt-discord');
+        if (optDiscord) optDiscord.checked = !!profile.opt_in_discord;
+
+        const optTelegram = document.getElementById('my-opt-telegram');
+        if (optTelegram) optTelegram.checked = !!profile.opt_in_telegram;
 
         updateEmailVerification(profile);
         loadSponsorships();
@@ -271,17 +272,22 @@
 
     async function saveMyAccount(event) {
         event.preventDefault();
+
+        const optEmail = document.getElementById('my-opt-email');
+        const optDiscord = document.getElementById('my-opt-discord');
+        const optTelegram = document.getElementById('my-opt-telegram');
+
         const payload = {
             email: document.getElementById('my-email').value.trim(),
             contact_discord: document.getElementById('my-discord').value.trim(),
             contact_telegram: document.getElementById('my-telegram').value.trim(),
-            preferred_lang: document.getElementById('my-lang').value,
             notify_expiry_reminder: document.getElementById('my-notify-expiry').checked,
             notify_account_events: document.getElementById('my-notify-events').checked,
-            opt_in_email: document.getElementById('my-opt-email').checked,
-            opt_in_discord: document.getElementById('my-opt-discord').checked,
-            opt_in_telegram: document.getElementById('my-opt-telegram').checked,
         };
+
+        if (optEmail) payload.opt_in_email = optEmail.checked;
+        if (optDiscord) payload.opt_in_discord = optDiscord.checked;
+        if (optTelegram) payload.opt_in_telegram = optTelegram.checked;
 
         const res = await JG.api('/admin/api/users/me', {
             method: 'PATCH',
@@ -290,13 +296,7 @@
 
         if (res.success) {
             JG.toast(res.message || i18n.saved || 'Saved', 'success');
-            const preferred = String(payload.preferred_lang || '').trim().toLowerCase();
-            if (preferred) {
-                document.cookie = `lang=${preferred};path=/;max-age=31536000;SameSite=Lax`;
-            } else {
-                document.cookie = 'lang=;path=/;max-age=0;SameSite=Lax';
-            }
-            window.location.reload();
+            await loadMyAccount();
             return;
         }
         JG.toast(res.message || i18n.saveError || 'Save failed', 'error');
@@ -378,6 +378,7 @@
             });
         }
 
+        document.getElementById('my-account-form')?.addEventListener('submit', saveMyAccount);
         document.getElementById('my-password-form')?.addEventListener('submit', updateMyPassword);
         document.getElementById('email-verification-resend')?.addEventListener('click', resendEmailVerification);
         document.getElementById('create-sponsor-link-btn')?.addEventListener('click', createSponsorship);

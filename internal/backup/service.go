@@ -66,11 +66,7 @@ func (s *Service) requireSQLiteArchive(action string) error {
 	if s == nil || s.db == nil {
 		return fmt.Errorf("%w: %s impossible (service indisponible)", ErrSQLiteOnly, action)
 	}
-	// For backups, we will now allow postgres
-	if action == "creation de sauvegarde" {
-		return nil
-	}
-	return fmt.Errorf("%w: %s non supporte avec %q (utiliser pg_dump/pg_restore)", ErrSQLiteOnly, action, s.db.Driver())
+	return fmt.Errorf("%w: %s non supporte avec %q", ErrSQLiteOnly, action, s.db.Driver())
 }
 
 func (s *Service) ensureDirs() error {
@@ -120,6 +116,9 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 	defer s.mu.Unlock()
 
 	var info BackupInfo
+	if s == nil || s.db == nil {
+		return info, fmt.Errorf("service backup indisponible")
+	}
 	if err := s.ensureDirs(); err != nil {
 		return info, fmt.Errorf("création des dossiers backup: %w", err)
 	}
@@ -128,38 +127,52 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 	stamp := now.Format("20060102-150405")
 	name := fmt.Sprintf("jellygate-%s-%s.zip", sanitizeReason(reason), stamp)
 	path := filepath.Join(s.backupDir, name)
-	snapshotPath := filepath.Join(s.restoreDir, fmt.Sprintf("snapshot-%s.db", stamp))
-	defer os.Remove(snapshotPath)
 
-	if err := s.requireSQLiteArchive("creation de sauvegarde"); err != nil {
-		return info, err
-	}
-
-	var dbFileToZip string
+	var dumpPath string
 	var zipFileName string
 
 	if s.db.IsSQLite() {
-		quotedSnapshot := strings.ReplaceAll(snapshotPath, "'", "''")
+		dumpPath = filepath.Join(s.restoreDir, fmt.Sprintf("snapshot-%s.db", stamp))
+		defer os.Remove(dumpPath)
+
+		quotedSnapshot := strings.ReplaceAll(dumpPath, "'", "''")
 		if _, err := s.db.Exec("VACUUM INTO '" + quotedSnapshot + "'"); err != nil {
 			return info, fmt.Errorf("snapshot sqlite (VACUUM INTO): %w", err)
 		}
-		dbFileToZip = snapshotPath
 		zipFileName = "jellygate.db"
-	} else {
-		// PostgreSQL logic using pg_dump
+	} else if s.db.IsPostgres() {
+		dumpPath = filepath.Join(s.restoreDir, fmt.Sprintf("snapshot-%s.sql", stamp))
+		defer os.Remove(dumpPath)
+
 		cfg := s.db.GetConfig()
-		dbFileToZip = filepath.Join(s.restoreDir, fmt.Sprintf("snapshot-%s.sql", stamp))
-		zipFileName = "jellygate.sql"
-		
+		port := cfg.Port
+		if port <= 0 {
+			port = 5432
+		}
+
 		_ = os.Setenv("PGPASSWORD", cfg.Password)
 		defer os.Unsetenv("PGPASSWORD")
-		
-		cmd := exec.Command("pg_dump", "-h", cfg.Host, "-p", strconv.Itoa(cfg.Port), "-U", cfg.User, "-d", cfg.Name, "-F", "p", "-f", dbFileToZip)
+
+		cmd := exec.Command(
+			"pg_dump",
+			"-h", cfg.Host,
+			"-p", strconv.Itoa(port),
+			"-U", cfg.User,
+			"-d", cfg.Name,
+			"--clean",
+			"--if-exists",
+			"--no-owner",
+			"--no-privileges",
+			"-F", "p",
+			"-f", dumpPath,
+		)
 		cmdOutput, err := cmd.CombinedOutput()
 		if err != nil {
 			return info, fmt.Errorf("dump postgresql echoue: %w. Verifiez que 'pg_dump' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
 		}
-		defer os.Remove(dbFileToZip)
+		zipFileName = "jellygate.sql"
+	} else {
+		return info, fmt.Errorf("driver de base non supporte pour backup: %q", s.db.Driver())
 	}
 
 	f, err := os.Create(path)
@@ -170,7 +183,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 
 	zw := zip.NewWriter(f)
 
-	dbBytes, err := os.ReadFile(dbFileToZip)
+	dbBytes, err := os.ReadFile(dumpPath)
 	if err != nil {
 		_ = zw.Close()
 		return info, fmt.Errorf("lecture base de versement: %w", err)
@@ -192,9 +205,11 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 	}
 
 	meta := map[string]string{
-		"created_at": now.Format(time.RFC3339),
-		"reason":     sanitizeReason(reason),
-		"version":    config.AppVersion,
+		"created_at":      now.Format(time.RFC3339),
+		"reason":          sanitizeReason(reason),
+		"version":         config.AppVersion,
+		"database_driver": s.db.Driver(),
+		"archive_entry":   zipFileName,
 	}
 	metaJSON, _ := json.MarshalIndent(meta, "", "  ")
 	if err := writeZipEntry(zw, "metadata.json", metaJSON); err != nil {
@@ -226,6 +241,95 @@ func writeZipEntry(zw *zip.Writer, name string, payload []byte) error {
 	}
 	_, err = io.Copy(w, bytes.NewReader(payload))
 	return err
+}
+
+func extractBackupEntry(archivePath, entryName, outputPath string) error {
+	zr, err := zip.OpenReader(archivePath)
+	if err != nil {
+		return fmt.Errorf("ouverture archive: %w", err)
+	}
+	defer zr.Close()
+
+	for _, file := range zr.File {
+		if !strings.EqualFold(filepath.Base(file.Name), entryName) {
+			continue
+		}
+
+		rc, err := file.Open()
+		if err != nil {
+			return fmt.Errorf("lecture %s depuis archive: %w", entryName, err)
+		}
+		defer rc.Close()
+
+		out, err := os.Create(outputPath)
+		if err != nil {
+			return fmt.Errorf("création %s: %w", outputPath, err)
+		}
+		if _, err := io.Copy(out, rc); err != nil {
+			out.Close()
+			return fmt.Errorf("copie %s: %w", entryName, err)
+		}
+		if err := out.Close(); err != nil {
+			return fmt.Errorf("fermeture %s: %w", outputPath, err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("archive invalide: fichier %s manquant", entryName)
+}
+
+func (s *Service) RestorePostgresBackup(name string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s == nil || s.db == nil {
+		return fmt.Errorf("service backup indisponible")
+	}
+	if !s.db.IsPostgres() {
+		return fmt.Errorf("restauration postgresql non supportee avec %q", s.db.Driver())
+	}
+
+	if err := s.ensureDirs(); err != nil {
+		return err
+	}
+
+	archivePath, err := s.BackupPath(name)
+	if err != nil {
+		return err
+	}
+
+	stamp := time.Now().Format("20060102-150405")
+	dumpPath := filepath.Join(s.restoreDir, fmt.Sprintf("restore-%s.sql", stamp))
+	defer os.Remove(dumpPath)
+
+	if err := extractBackupEntry(archivePath, "jellygate.sql", dumpPath); err != nil {
+		return err
+	}
+
+	cfg := s.db.GetConfig()
+	port := cfg.Port
+	if port <= 0 {
+		port = 5432
+	}
+
+	_ = os.Setenv("PGPASSWORD", cfg.Password)
+	defer os.Unsetenv("PGPASSWORD")
+
+	cmd := exec.Command(
+		"psql",
+		"-h", cfg.Host,
+		"-p", strconv.Itoa(port),
+		"-U", cfg.User,
+		"-d", cfg.Name,
+		"-v", "ON_ERROR_STOP=1",
+		"-f", dumpPath,
+	)
+	cmdOutput, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("restauration postgresql echouee: %w. Verifiez que 'psql' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
+	}
+
+	return nil
 }
 
 func (s *Service) ListBackups() ([]BackupInfo, error) {
@@ -290,9 +394,6 @@ func (s *Service) ImportBackup(filename string, r io.Reader) (BackupInfo, error)
 	defer s.mu.Unlock()
 
 	var info BackupInfo
-	if err := s.requireSQLiteArchive("import de sauvegarde"); err != nil {
-		return info, err
-	}
 	if err := s.ensureDirs(); err != nil {
 		return info, err
 	}
@@ -324,6 +425,20 @@ func (s *Service) ImportBackup(filename string, r io.Reader) (BackupInfo, error)
 		return info, err
 	}
 
+	requiredEntry := "jellygate.db"
+	if s.db != nil && s.db.IsPostgres() {
+		requiredEntry = "jellygate.sql"
+	}
+	hasRequiredEntry, err := backupArchiveContains(path, requiredEntry)
+	if err != nil {
+		_ = os.Remove(path)
+		return info, err
+	}
+	if !hasRequiredEntry {
+		_ = os.Remove(path)
+		return info, fmt.Errorf("archive incompatible avec %q: fichier %s manquant", s.db.Driver(), requiredEntry)
+	}
+
 	st, err := os.Stat(path)
 	if err != nil {
 		_ = os.Remove(path)
@@ -340,17 +455,37 @@ func validateBackupArchive(path string) error {
 	}
 	defer zr.Close()
 
-	hasDB := false
+	hasSQLiteDump := false
+	hasPostgresDump := false
 	for _, f := range zr.File {
-		if strings.EqualFold(filepath.Base(f.Name), "jellygate.db") {
-			hasDB = true
-			break
+		base := strings.ToLower(filepath.Base(f.Name))
+		if base == "jellygate.db" {
+			hasSQLiteDump = true
+		}
+		if base == "jellygate.sql" {
+			hasPostgresDump = true
 		}
 	}
-	if !hasDB {
-		return fmt.Errorf("archive invalide: fichier jellygate.db manquant")
+	if !hasSQLiteDump && !hasPostgresDump {
+		return fmt.Errorf("archive invalide: fichier jellygate.db ou jellygate.sql manquant")
 	}
 	return nil
+}
+
+func backupArchiveContains(path, entryName string) (bool, error) {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return false, fmt.Errorf("archive invalide: %w", err)
+	}
+	defer zr.Close()
+
+	for _, f := range zr.File {
+		if strings.EqualFold(filepath.Base(f.Name), entryName) {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func (s *Service) PrepareRestore(name string) error {
@@ -370,44 +505,13 @@ func (s *Service) PrepareRestore(name string) error {
 		return err
 	}
 
-	zr, err := zip.OpenReader(archivePath)
-	if err != nil {
-		return fmt.Errorf("ouverture archive: %w", err)
-	}
-	defer zr.Close()
-
 	pendingDB := filepath.Join(s.restoreDir, "jellygate.db.pending")
 	pendingMeta := filepath.Join(s.restoreDir, "restore.pending")
 	_ = os.Remove(pendingDB)
 	_ = os.Remove(pendingMeta)
 
-	found := false
-	for _, file := range zr.File {
-		if !strings.EqualFold(filepath.Base(file.Name), "jellygate.db") {
-			continue
-		}
-		rc, err := file.Open()
-		if err != nil {
-			return fmt.Errorf("lecture jellygate.db depuis archive: %w", err)
-		}
-		out, err := os.Create(pendingDB)
-		if err != nil {
-			rc.Close()
-			return fmt.Errorf("création pending db: %w", err)
-		}
-		if _, err := io.Copy(out, rc); err != nil {
-			out.Close()
-			rc.Close()
-			return fmt.Errorf("copie pending db: %w", err)
-		}
-		out.Close()
-		rc.Close()
-		found = true
-		break
-	}
-
-	if !found {
-		return fmt.Errorf("archive invalide: fichier jellygate.db manquant")
+	if err := extractBackupEntry(archivePath, "jellygate.db", pendingDB); err != nil {
+		return err
 	}
 
 	marker := map[string]string{
@@ -515,7 +619,7 @@ func (s *Service) StartScheduler(ctx context.Context) {
 }
 
 func (s *Service) runScheduledTick() {
-	if !s.SupportsSQLiteArchive() && s.db.Driver() != "postgres" {
+	if !s.SupportsSQLiteArchive() && s.db.Driver() != database.DialectPostgres {
 		return
 	}
 

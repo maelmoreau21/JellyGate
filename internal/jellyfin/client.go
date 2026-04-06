@@ -133,7 +133,7 @@ type InviteProfile struct {
 	ForcedUsername string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
 	TemplateUserID string `json:"template_user_id"` // Si fourni, clonage strict des droits de ce profil
 	CanInvite      bool   `json:"can_invite"`
-	PresetID       string `json:"preset_id"`        // Identifiant du preset (Parrainage)
+	PresetID       string `json:"preset_id"` // Identifiant du preset (Parrainage)
 }
 
 // ── Opérations CRUD ─────────────────────────────────────────────────────────
@@ -363,22 +363,31 @@ func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error 
 	policy.EnableAudioPlaybackTranscoding = true
 	policy.EnableVideoPlaybackTranscoding = true
 
-	// Si un profil modèle est défini (Flux JFA-Go avancé), écraser avec la politique du modèle
+	// Si un profil modèle est défini, ne copier que les bibliothèques autorisées
+	// et quelques préférences de layout d'accueil (pas l'état du compte).
 	if profile.TemplateUserID != "" {
-		slog.Debug("Clonage de la politique et configuration depuis le modèle Jellyfin", "template", profile.TemplateUserID, "target", userID)
+		slog.Debug("Clonage partiel depuis le modèle Jellyfin", "template", profile.TemplateUserID, "target", userID)
 		templateUser, err := c.GetUser(profile.TemplateUserID)
 		if err == nil {
-			policy = templateUser.Policy
-			policy.IsAdministrator = false // Interdire formellement qu'un modèle leak des droits d'admin
+			// Bibliothèques autorisées du profil modèle.
+			policy.EnableAllFolders = templateUser.Policy.EnableAllFolders
+			policy.EnabledFolders = templateUser.Policy.EnabledFolders
 
-			// Le clonage de 'Configuration' complète du modèle peut se faire ici
-			// Ex: AudioLanguagePreference, SubtitleMode, etc.
-			reqBody, configErr := json.Marshal(templateUser.Configuration)
-			if configErr == nil {
-				_, _ = c.doRequest(http.MethodPost, fmt.Sprintf("/Users/%s/Configuration", userID), reqBody)
+			layoutConfig := map[string]interface{}{}
+			for _, key := range []string{"MyMediaExcludes", "LatestItemsExcludes", "OrderedViews", "HomeSections"} {
+				if value, ok := templateUser.Configuration[key]; ok {
+					layoutConfig[key] = value
+				}
+			}
+
+			if len(layoutConfig) > 0 {
+				reqBody, configErr := json.Marshal(layoutConfig)
+				if configErr == nil {
+					_, _ = c.doRequest(http.MethodPost, fmt.Sprintf("/Users/%s/Configuration", userID), reqBody)
+				}
 			}
 		} else {
-			slog.Warn("Echec du chargement du profil modèle Jellyfin, application des droits restreints standards", "template", profile.TemplateUserID)
+			slog.Warn("Echec du chargement du profil modèle Jellyfin, application des droits standards", "template", profile.TemplateUserID)
 		}
 	}
 
@@ -439,7 +448,7 @@ func (c *Client) GetUsersBatch(ids []string) ([]User, error) {
 	if len(ids) == 0 {
 		return nil, nil
 	}
-	
+
 	path := fmt.Sprintf("/Users?Ids=%s", strings.Join(ids, ","))
 	resp, err := c.doRequest(http.MethodGet, path, nil)
 	if err != nil {

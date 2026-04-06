@@ -373,6 +373,61 @@ func (db *DB) SaveEmailTemplatesConfig(cfg config.EmailTemplatesConfig) error {
 
 // ── Jellyfin Presets Config ───────────────────────────────────────────────
 
+func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.JellyfinPolicyPreset {
+	if preset.MaxSessions < 0 {
+		preset.MaxSessions = 0
+	}
+	if preset.BitrateLimit < 0 {
+		preset.BitrateLimit = 0
+	}
+	if preset.PasswordMinLength < 0 {
+		preset.PasswordMinLength = 0
+	}
+	if preset.DisableAfterDays < 0 {
+		preset.DisableAfterDays = 0
+	}
+	if preset.DeleteAfterDays < 0 {
+		preset.DeleteAfterDays = 0
+	}
+
+	if preset.InviteQuota < 0 {
+		preset.InviteQuota = 0
+	}
+	if preset.InviteQuotaDay < 0 {
+		preset.InviteQuotaDay = 0
+	}
+	if preset.InviteQuotaMonth < 0 {
+		preset.InviteQuotaMonth = 0
+	}
+	if preset.InviteMaxUses < 0 {
+		preset.InviteMaxUses = 0
+	}
+	if preset.InviteMaxLinkHours < 0 {
+		preset.InviteMaxLinkHours = 0
+	}
+	if preset.InviteLinkValidityDays < 0 {
+		preset.InviteLinkValidityDays = 0
+	}
+
+	// Legacy compatibility: invite_quota historically represented a monthly quota.
+	if preset.InviteQuotaMonth <= 0 && preset.InviteQuota > 0 {
+		preset.InviteQuotaMonth = preset.InviteQuota
+	}
+	if preset.InviteQuota == 0 && preset.InviteQuotaMonth > 0 {
+		preset.InviteQuota = preset.InviteQuotaMonth
+	}
+
+	// Legacy compatibility: invite_max_link_hours historically represented link validity.
+	if preset.InviteLinkValidityDays <= 0 && preset.InviteMaxLinkHours > 0 {
+		preset.InviteLinkValidityDays = (preset.InviteMaxLinkHours + 23) / 24
+	}
+	if preset.InviteMaxLinkHours <= 0 && preset.InviteLinkValidityDays > 0 {
+		preset.InviteMaxLinkHours = preset.InviteLinkValidityDays * 24
+	}
+
+	return preset
+}
+
 // GetJellyfinPolicyPresets récupère les presets de politique Jellyfin.
 func (db *DB) GetJellyfinPolicyPresets() ([]config.JellyfinPolicyPreset, error) {
 	defaults := config.DefaultJellyfinPolicyPresets()
@@ -399,6 +454,7 @@ func (db *DB) GetJellyfinPolicyPresets() ([]config.JellyfinPolicyPreset, error) 
 		if presets[i].ID == "" {
 			presets[i].ID = fmt.Sprintf("preset-%d", i+1)
 		}
+		presets[i] = normalizeJellyfinPolicyPreset(presets[i])
 	}
 
 	return presets, nil
@@ -414,21 +470,7 @@ func (db *DB) SaveJellyfinPolicyPresets(presets []config.JellyfinPolicyPreset) e
 		if presets[i].ID == "" {
 			presets[i].ID = fmt.Sprintf("preset-%d", i+1)
 		}
-		if presets[i].MaxSessions < 0 {
-			presets[i].MaxSessions = 0
-		}
-		if presets[i].BitrateLimit < 0 {
-			presets[i].BitrateLimit = 0
-		}
-		if presets[i].PasswordMinLength < 0 {
-			presets[i].PasswordMinLength = 0
-		}
-		if presets[i].DisableAfterDays < 0 {
-			presets[i].DisableAfterDays = 0
-		}
-		if presets[i].DeleteAfterDays < 0 {
-			presets[i].DeleteAfterDays = 0
-		}
+		presets[i] = normalizeJellyfinPolicyPreset(presets[i])
 	}
 
 	data, err := json.Marshal(presets)

@@ -93,7 +93,7 @@
               </div>
               <div>
                 <label class="jg-label" for="general-jellyseerr-url">{{ .T "settings_public_jellyseerr_url" }}</label>
-                <input type="url" id="general-jellyseerr-url" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="https://jellyseerr.example.com">
+                <input type="url" id="general-jellyseerr-url" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="https://seerr.example.com">
                 
               </div>
               <div>
@@ -126,76 +126,6 @@
 
           <form id="form-invitation-profile">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="jg-label" for="invite-profile-preset">{{ .T "settings_invite_profile_preset" }}</label>
-                <select id="invite-profile-preset" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
-                  <option value="">{{ .T "settings_default_none" }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-template-user">{{ .T "settings_invite_profile_clone_user" }}</label>
-                <select id="invite-profile-template-user" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
-                  <option value="">{{ .T "settings_default_none" }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-disable-after">{{ .T "settings_invite_disable_after_days" }}</label>
-                <input type="number" id="invite-profile-disable-after" min="0" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="0">
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-delete-after">{{ .T "settings_invite_delete_after_days" }}</label>
-                <input type="number" id="invite-profile-delete-after" min="0" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="0">
-              </div>
-            </div>
-
-            <label class="mt-4 inline-flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300">
-              <input type="checkbox" id="invite-profile-auto-delete-closed-links" class="form-checkbox">
-              <span>
-                <span class="block text-slate-800 dark:text-slate-100">Supprimer automatiquement les liens d'invitation fermés</span>
-                <span class="mt-1 block text-xs text-slate-500">Les liens expirés ou qui ont atteint leur quota sont purgés automatiquement pour ne pas laisser de fauliens encore visibles.</span>
-              </span>
-            </label>
-
-            <details class="settings-collapsible mt-4">
-              <summary>Options avancees invitation et mot de passe</summary>
-              <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="jg-label" for="invite-profile-inviter-max-uses">{{ .T "settings_invite_inviter_max_uses" }}</label>
-                <input type="number" id="invite-profile-inviter-max-uses" min="0" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="0">
-                
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-inviter-max-link-hours">{{ .T "settings_invite_inviter_max_link_hours" }}</label>
-                <input type="number" id="invite-profile-inviter-max-link-hours" min="0" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="0">
-                
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-inviter-quota-day">{{ .T "settings_invite_inviter_quota_day" }}</label>
-                <input type="number" id="invite-profile-inviter-quota-day" min="0" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="0">
-                
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-inviter-quota-week">{{ .T "settings_invite_inviter_quota_week" }}</label>
-                <input type="number" id="invite-profile-inviter-quota-week" min="0" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="0">
-                
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-inviter-quota-month">{{ .T "settings_invite_inviter_quota_month" }}</label>
-                <input type="number" id="invite-profile-inviter-quota-month" min="0" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="0">
-                
-              </div>
-              <div>
-                <label class="jg-label" for="invite-profile-expiry-action">{{ .T "settings_invite_expiry_action" }}</label>
-                <select id="invite-profile-expiry-action" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
-                  <option value="disable">{{ .T "settings_expiry_action_disable" }}</option>
-                  <option value="delete">{{ .T "settings_expiry_action_delete" }}</option>
-                  <option value="disable_then_delete">{{ .T "settings_expiry_action_disable_then_delete" }}</option>
-                </select>
-              </div>
-              <div class="flex items-center gap-3 pt-6">
-                <input type="checkbox" id="invite-profile-enable-downloads" class="form-checkbox" checked>
-                <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-enable-downloads">{{ .T "settings_invite_enable_downloads" }}</label>
-              </div>
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-require-email" class="form-checkbox" checked>
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-require-email">{{ .T "settings_invite_require_email" }}</label>
@@ -203,15 +133,6 @@
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-require-email-verification" class="form-checkbox" checked>
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-require-email-verification">{{ .T "settings_invite_require_email_verification" }}</label>
-              </div>
-              <div class="flex items-center gap-3 pt-6">
-                <input type="checkbox" id="invite-profile-allow-inviter-grant" class="form-checkbox">
-                <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-allow-inviter-grant">{{ .T "settings_invite_allow_inviter_grant" }}</label>
-              </div>
-              
-              <div class="flex items-center gap-3 pt-6">
-                <input type="checkbox" id="invite-profile-allow-inviter-user-expiry" class="form-checkbox" checked>
-                <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-allow-inviter-user-expiry">{{ .T "settings_invite_allow_inviter_user_expiry" }}</label>
               </div>
 
               <div>
@@ -247,8 +168,7 @@
                 <input type="checkbox" id="invite-profile-pw-special" class="form-checkbox">
                 {{ .T "settings_password_special_required" }}
               </label>
-              </div>
-            </details>
+            </div>
 
             <div class="mt-6 flex justify-end">
                  <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "settings_save_invite_profile" }}</button>
@@ -869,7 +789,7 @@
               
             </div>
             <div class="flex items-end">
-              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">x {{ .T "settings_backup_save_schedule" }}</button>
+              <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">{{ .T "settings_backup_save_schedule" }}</button>
             </div>
           </div>
         </form>

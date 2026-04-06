@@ -4,6 +4,7 @@
     let backupDatabaseType = 'sqlite';
     let loadedEmailTemplates = {};
     let emailBaseDefaults = { header: '', footer: '' };
+    let currentInvitationProfile = {};
     let basePreviewTimer = null;
     let basePreviewRequestId = 0;
 
@@ -297,7 +298,7 @@
     async function loadInvitationProfileLookups() {
         const [presetsRes, usersRes] = await Promise.all([
             JG.api('/admin/api/automation/presets'),
-            JG.api('/admin/api/users'),
+            JG.api('/admin/api/users?limit=500&include_jellyfin=0'),
         ]);
 
         if (presetsRes && presetsRes.success && Array.isArray(presetsRes.data)) {
@@ -308,8 +309,12 @@
             setSelectOptions('invite-profile-preset', presetOptions);
         }
 
-        if (usersRes && usersRes.success && Array.isArray(usersRes.data)) {
-            const userOptions = usersRes.data
+        const usersList = Array.isArray(usersRes?.data)
+            ? usersRes.data
+            : (Array.isArray(usersRes?.data?.users) ? usersRes.data.users : []);
+
+        if (usersRes && usersRes.success && usersList.length > 0) {
+            const userOptions = usersList
                 .filter((user) => user && user.jellyfin_id)
                 .map((user) => ({
                     value: user.jellyfin_id,
@@ -321,22 +326,9 @@
 
     function applyInvitationProfileConfig(cfg) {
         const profile = cfg || {};
-        document.getElementById('invite-profile-preset').value = profile.policy_preset_id || '';
-        document.getElementById('invite-profile-template-user').value = profile.template_user_id || '';
-        document.getElementById('invite-profile-enable-downloads').checked = profile.enable_downloads !== false;
+        currentInvitationProfile = { ...profile };
         document.getElementById('invite-profile-require-email').checked = profile.require_email !== false;
         document.getElementById('invite-profile-require-email-verification').checked = profile.require_email_verification !== false;
-        document.getElementById('invite-profile-auto-delete-closed-links').checked = !!profile.auto_delete_closed_links;
-        document.getElementById('invite-profile-allow-inviter-grant').checked = !!profile.allow_inviter_grant_invite;
-        document.getElementById('invite-profile-allow-inviter-user-expiry').checked = profile.allow_inviter_user_expiry !== false;
-        document.getElementById('invite-profile-disable-after').value = Number.isInteger(profile.disable_after_days) ? profile.disable_after_days : 0;
-        document.getElementById('invite-profile-delete-after').value = Number.isInteger(profile.delete_after_days) ? profile.delete_after_days : 0;
-        document.getElementById('invite-profile-inviter-max-uses').value = Number.isInteger(profile.inviter_max_uses) ? profile.inviter_max_uses : 0;
-        document.getElementById('invite-profile-inviter-max-link-hours').value = Number.isInteger(profile.inviter_max_link_hours) ? profile.inviter_max_link_hours : 0;
-        document.getElementById('invite-profile-inviter-quota-day').value = Number.isInteger(profile.inviter_quota_day) ? profile.inviter_quota_day : 0;
-        document.getElementById('invite-profile-inviter-quota-week').value = Number.isInteger(profile.inviter_quota_week) ? profile.inviter_quota_week : 0;
-        document.getElementById('invite-profile-inviter-quota-month').value = Number.isInteger(profile.inviter_quota_month) ? profile.inviter_quota_month : 0;
-        document.getElementById('invite-profile-expiry-action').value = profile.expiry_action || 'disable';
         document.getElementById('invite-profile-user-min').value = Number.isInteger(profile.username_min_length) ? profile.username_min_length : 3;
         document.getElementById('invite-profile-user-max').value = Number.isInteger(profile.username_max_length) ? profile.username_max_length : 32;
         document.getElementById('invite-profile-pw-min').value = Number.isInteger(profile.password_min_length) ? profile.password_min_length : 8;
@@ -365,9 +357,6 @@
         const isSQLite = normalized === 'sqlite';
 
         const note = document.getElementById('backup-db-note');
-        const actionsGrid = document.getElementById('backup-actions-grid');
-        const listSection = document.getElementById('backup-list-section');
-        const form = document.getElementById('form-backup');
 
         if (note) {
             if (isSQLite) {
@@ -376,19 +365,10 @@
                 note.classList.remove('hidden');
                 note.innerHTML = [
                     `<div class="font-semibold mb-1">${JG.esc(t('backup_pg_mode_title', 'PostgreSQL mode detected'))}</div>`,
-                    `<div>${JG.esc(t('backup_pg_mode_desc_1', 'Native JellyGate ZIP backups (SQLite) are disabled.'))}</div>`,
-                    `<div class="mt-2">${JG.esc(t('backup_pg_mode_desc_2', 'Use pg_dump and pg_restore for PostgreSQL.'))}</div>`,
+                    `<div>${JG.esc(t('backup_pg_mode_desc_1', 'Backups and restore are available in PostgreSQL mode.'))}</div>`,
+                    `<div class="mt-2">${JG.esc(t('backup_pg_mode_desc_2', 'Ensure pg_dump and psql are installed on the server.'))}</div>`,
                 ].join('');
             }
-        }
-
-        actionsGrid?.classList.toggle('hidden', !isSQLite);
-        listSection?.classList.toggle('hidden', !isSQLite);
-
-        if (form) {
-            form.querySelectorAll('input, select, button').forEach((el) => {
-                el.disabled = !isSQLite;
-            });
         }
     }
 
@@ -502,11 +482,6 @@
     async function saveSettings(section, event) {
         event.preventDefault();
 
-        if (section === 'backup' && backupDatabaseType !== 'sqlite') {
-            JG.toast(t('backup_pg_plan_unavailable', 'Local backup scheduler unavailable in PostgreSQL mode'), 'error');
-            return;
-        }
-
         let body = {};
         const endpoint = `/admin/api/settings/${section}`;
 
@@ -520,22 +495,9 @@
             };
         } else if (section === 'invitation-profile') {
             body = {
-                policy_preset_id: (document.getElementById('invite-profile-preset').value || '').trim(),
-                template_user_id: (document.getElementById('invite-profile-template-user').value || '').trim(),
-                enable_downloads: document.getElementById('invite-profile-enable-downloads').checked,
+                ...currentInvitationProfile,
                 require_email: document.getElementById('invite-profile-require-email').checked,
                 require_email_verification: document.getElementById('invite-profile-require-email-verification').checked,
-                auto_delete_closed_links: document.getElementById('invite-profile-auto-delete-closed-links').checked,
-                allow_inviter_grant_invite: document.getElementById('invite-profile-allow-inviter-grant').checked,
-                allow_inviter_user_expiry: document.getElementById('invite-profile-allow-inviter-user-expiry').checked,
-                disable_after_days: parseInt(document.getElementById('invite-profile-disable-after').value, 10) || 0,
-                delete_after_days: parseInt(document.getElementById('invite-profile-delete-after').value, 10) || 0,
-                inviter_max_uses: parseInt(document.getElementById('invite-profile-inviter-max-uses').value, 10) || 0,
-                inviter_max_link_hours: parseInt(document.getElementById('invite-profile-inviter-max-link-hours').value, 10) || 0,
-                inviter_quota_day: parseInt(document.getElementById('invite-profile-inviter-quota-day').value, 10) || 0,
-                inviter_quota_week: parseInt(document.getElementById('invite-profile-inviter-quota-week').value, 10) || 0,
-                inviter_quota_month: parseInt(document.getElementById('invite-profile-inviter-quota-month').value, 10) || 0,
-                expiry_action: (document.getElementById('invite-profile-expiry-action').value || 'disable').trim(),
                 username_min_length: parseInt(document.getElementById('invite-profile-user-min').value, 10) || 3,
                 username_max_length: parseInt(document.getElementById('invite-profile-user-max').value, 10) || 32,
                 password_min_length: parseInt(document.getElementById('invite-profile-pw-min').value, 10) || 8,
@@ -640,6 +602,9 @@
 
         if (res && res.success) {
             JG.toast(res.message || t('settings_saved', 'Settings saved'), 'success');
+            if (section === 'invitation-profile') {
+                currentInvitationProfile = { ...body };
+            }
             if (section === 'general') {
                 refreshPortalShortcuts(body);
                 const lang = (body.default_lang || '').trim().toLowerCase();
@@ -803,10 +768,6 @@
         if (!tbody) {
             return;
         }
-        if (backupDatabaseType !== 'sqlite') {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-amber-200 py-8">${JG.esc(t('backup_list_pg_unavailable', 'PostgreSQL mode: SQLite archives are unavailable.'))}</td></tr>`;
-            return;
-        }
 
         const res = await JG.api('/admin/api/backups');
         if (!res || !res.success) {
@@ -837,11 +798,6 @@
     }
 
     async function createBackupNow() {
-        if (backupDatabaseType !== 'sqlite') {
-            JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
-            return;
-        }
-
         const res = await JG.api('/admin/api/backups/create', { method: 'POST' });
         if (res && res.success) {
             JG.toast(res.message || t('backup_created', 'Backup created'), 'success');
@@ -852,11 +808,6 @@
     }
 
     async function importBackup() {
-        if (backupDatabaseType !== 'sqlite') {
-            JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
-            return;
-        }
-
         const input = document.getElementById('backup-import-file');
         const file = input.files && input.files[0];
         if (!file) {
@@ -877,34 +828,26 @@
     }
 
     function downloadBackup(name) {
-        if (backupDatabaseType !== 'sqlite') {
-            JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
-            return;
-        }
         window.location.href = `/admin/api/backups/${encodeURIComponent(name)}/download`;
     }
 
     async function restoreBackup(name) {
-        if (backupDatabaseType !== 'sqlite') {
-            JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
-            return;
-        }
-        if (!confirm(`${t('backup_restore_confirm_prefix', 'Prepare restoration for')} ${name}? ${t('backup_restore_confirm_suffix', 'A restart is required.')}`)) {
+        const confirmSuffix = backupDatabaseType === 'sqlite'
+            ? t('backup_restore_confirm_suffix', 'A restart is required.')
+            : t('backup_restore_confirm_suffix_pg', 'The restore will be applied immediately.');
+
+        if (!confirm(`${t('backup_restore_confirm_prefix', 'Prepare restoration for')} ${name}? ${confirmSuffix}`)) {
             return;
         }
         const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' });
         if (res && res.success) {
-            JG.toast(t('backup_restore_ready', 'Restoration prepared. Restart JellyGate.'), 'success');
+            JG.toast(res.message || t('backup_restore_ready', 'Restoration prepared. Restart JellyGate.'), 'success');
             return;
         }
         JG.toast((res && res.message) || t('backup_restore_error', 'Restore failed'), 'error');
     }
 
     async function deleteBackup(name) {
-        if (backupDatabaseType !== 'sqlite') {
-            JG.toast(t('backup_pg_not_supported', 'Action is not supported in PostgreSQL mode'), 'error');
-            return;
-        }
         if (!confirm(`${t('backup_delete_confirm_prefix', 'Delete permanently')} ${name}?`)) {
             return;
         }
@@ -948,7 +891,6 @@
             });
         }
 
-        await loadInvitationProfileLookups();
         await loadSettings();
         attachTemplatePreviewButtons();
         await loadBackups();
