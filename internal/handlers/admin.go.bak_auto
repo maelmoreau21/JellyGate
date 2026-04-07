@@ -1,15 +1,15 @@
-// Package handlers Ã¢â‚¬â€� admin.go
+// Package handlers â€” admin.go
 //
-// GÃƒÂ¨re les endpoints JSON du tableau de bord administrateur.
-// Toutes les routes sont protÃƒÂ©gÃƒÂ©es par le middleware RequireAuth.
+// GÃ¨re les endpoints JSON du tableau de bord administrateur.
+// Toutes les routes sont protÃ©gÃ©es par le middleware RequireAuth.
 //
 // Endpoints :
-//   - GET    /admin/api/users         Ã¢â€ â€™ Liste des utilisateurs (fusion SQLite + Jellyfin)
-//   - POST   /admin/api/users/{id}/toggle Ã¢â€ â€™ Active/dÃƒÂ©sactive un compte (AD + Jellyfin)
-//   - DELETE /admin/api/users/{id}    Ã¢â€ â€™ Suppression totale (AD + Jellyfin + SQLite)
+//   - GET    /admin/api/users         â†’ Liste des utilisateurs (fusion SQLite + Jellyfin)
+//   - POST   /admin/api/users/{id}/toggle â†’ Active/dÃ©sactive un compte (AD + Jellyfin)
+//   - DELETE /admin/api/users/{id}    â†’ Suppression totale (AD + Jellyfin + SQLite)
 //
-// Les erreurs partielles sont loggÃƒÂ©es mais ne bloquent pas les opÃƒÂ©rations
-// restantes (ex: si l'utilisateur est dÃƒÂ©jÃƒÂ  supprimÃƒÂ© de l'AD, on continue
+// Les erreurs partielles sont loggÃ©es mais ne bloquent pas les opÃ©rations
+// restantes (ex: si l'utilisateur est dÃ©jÃ  supprimÃ© de l'AD, on continue
 // avec Jellyfin et SQLite).
 package handlers
 
@@ -41,9 +41,9 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Structures de rÃƒÂ©ponse JSON Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ Structures de rÃ©ponse JSON â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// UserResponse est la reprÃƒÂ©sentation JSON d'un utilisateur pour l'API admin.
+// UserResponse est la reprÃ©sentation JSON d'un utilisateur pour l'API admin.
 type UserResponse struct {
 	ID              int64  `json:"id"`
 	JellyfinID      string `json:"jellyfin_id"`
@@ -64,13 +64,13 @@ type UserResponse struct {
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at"`
 
-	// Statuts temps rÃƒÂ©el depuis Jellyfin (enrichissement)
+	// Statuts temps rÃ©el depuis Jellyfin (enrichissement)
 	JellyfinDisabled        bool   `json:"jellyfin_disabled"`
 	JellyfinExists          bool   `json:"jellyfin_exists"`
 	JellyfinPrimaryImageTag string `json:"jellyfin_primary_image_tag,omitempty"`
 }
 
-// APIResponse est l'enveloppe standard pour toutes les rÃƒÂ©ponses JSON.
+// APIResponse est l'enveloppe standard pour toutes les rÃ©ponses JSON.
 type APIResponse struct {
 	Success bool        `json:"success"`
 	Message string      `json:"message,omitempty"`
@@ -78,7 +78,7 @@ type APIResponse struct {
 	Errors  []string    `json:"errors,omitempty"`
 }
 
-// DashboardStatsResponse regroupe les donnÃ©es pour les graphiques et le moniteur de santÃ©.
+// DashboardStatsResponse regroupe les données pour les graphiques et le moniteur de santé.
 type DashboardStatsResponse struct {
 	Registrations []database.RegistrationDay `json:"registrations"`
 	Invitations   database.InvitationStats   `json:"invitations"`
@@ -162,9 +162,9 @@ type BulkUsersActionRequest struct {
 	JellyfinPolicy  *BulkJellyfinPolicyPatch `json:"jellyfin_policy"`
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Admin Handler Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ Admin Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// AdminHandler gÃƒÂ¨re les endpoints d'administration.
+// AdminHandler gÃ¨re les endpoints d'administration.
 type AdminHandler struct {
 	cfg      *config.Config
 	db       *database.DB
@@ -174,7 +174,7 @@ type AdminHandler struct {
 	renderer *render.Engine
 }
 
-// NewAdminHandler crÃƒÂ©e un nouveau handler d'administration.
+// NewAdminHandler crÃ©e un nouveau handler d'administration.
 func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
 	return &AdminHandler{
 		cfg:      cfg,
@@ -186,10 +186,10 @@ func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, l
 	}
 }
 
-// SetLDAPClient remplace le client LDAP (rechargement ÃƒÂ  chaud).
+// SetLDAPClient remplace le client LDAP (rechargement Ã  chaud).
 func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 
-// SetMailer remplace le Mailer SMTP (rechargement ÃƒÂ  chaud).
+// SetMailer remplace le Mailer SMTP (rechargement Ã  chaud).
 func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
 func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templateKey, templateBody string, emailCfg config.EmailTemplatesConfig, extra map[string]string) error {
@@ -413,14 +413,14 @@ func (h *AdminHandler) syncUserContactToLDAP(userID int64) error {
 	)
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Background Jobs Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ Background Jobs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// StartExpirationJob lance une routine en arriÃƒÂ¨re-plan qui vÃƒÂ©rifie pÃƒÂ©riodiquement
-// si des comptes utilisateurs ont expirÃƒÂ©, afin de les dÃƒÂ©sactiver automatiquement.
+// StartExpirationJob lance une routine en arriÃ¨re-plan qui vÃ©rifie pÃ©riodiquement
+// si des comptes utilisateurs ont expirÃ©, afin de les dÃ©sactiver automatiquement.
 func (h *AdminHandler) StartExpirationJob(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Hour)
 	go func() {
-		// Faire une premiÃƒÂ¨re vÃƒÂ©rification au dÃƒÂ©marrage court
+		// Faire une premiÃ¨re vÃ©rification au dÃ©marrage court
 		time.Sleep(5 * time.Second)
 		h.runExpirationCheck()
 
@@ -565,7 +565,7 @@ func (h *AdminHandler) runExpirationCheck() {
 		deleteRows.Close()
 	}
 
-	// Rechercher les utilisateurs actifs dont access_expires_at est dÃƒÂ©passÃƒÂ©.
+	// Rechercher les utilisateurs actifs dont access_expires_at est dÃ©passÃ©.
 	rows, err := h.db.Query(`
 		SELECT id, username, email, jellyfin_id, ldap_dn, access_expires_at, expiry_action, expiry_delete_after_days
 		FROM users
@@ -661,7 +661,7 @@ func (h *AdminHandler) runExpirationCheck() {
 		}
 	}
 
-	// Politique disable_then_delete: suppression differÃƒÂ©e apres la desactivation.
+	// Politique disable_then_delete: suppression differÃ©e apres la desactivation.
 	deletionRows, err := h.db.Query(`
 		SELECT id, username, expired_at, expiry_delete_after_days
 		FROM users
@@ -711,7 +711,7 @@ func (h *AdminHandler) runExpirationCheck() {
 	}
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Pages HTML Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ Pages HTML â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // DashboardPage affiche la page principale du tableau de bord.
 func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
@@ -730,7 +730,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// DashboardStats retourne les donnÃ©es pour les graphiques du dashboard (AJAX).
+// DashboardStats retourne les données pour les graphiques du dashboard (AJAX).
 func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 	// 1. Historique des inscriptions (30 jours)
 	history, err := h.db.GetRegistrationHistory(30)
@@ -744,21 +744,21 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur GetInvitationStats", "error", err)
 	}
 
-	// 3. SantÃ© des services
+	// 3. Santé des services
 	health := map[string]bool{
 		"database": true,
 		"jellyfin": false,
 		"ldap":     false,
 	}
 
-	// Test Jellyfin (lÃ©ger)
+	// Test Jellyfin (léger)
 	if h.jfClient != nil {
 		if _, err := h.jfClient.GetPublicSystemInfo(); err == nil {
 			health["jellyfin"] = true
 		}
 	}
 
-	// Test LDAP (si activÃ©)
+	// Test LDAP (si activé)
 	ldapCfg, _ := h.db.GetLDAPConfig()
 	if ldapCfg.Enabled {
 		client := jgldap.New(ldapCfg)
@@ -766,7 +766,7 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 			health["ldap"] = true
 		}
 	} else {
-		// Pas d'erreur si dÃ©sactivÃ©, on peut mettre true ou le retirer.
+		// Pas d'erreur si désactivé, on peut mettre true ou le retirer.
 		health["ldap"] = true
 	}
 
@@ -780,7 +780,7 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// MyAccountPage affiche la page "Mon compte" pour l'utilisateur connectÃƒÂ©.
+// MyAccountPage affiche la page "Mon compte" pour l'utilisateur connectÃ©.
 func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
@@ -886,11 +886,11 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 	return canInvite
 }
 
-// GetMyAccount retourne les informations ÃƒÂ©ditables de l'utilisateur connectÃƒÂ©.
+// GetMyAccount retourne les informations Ã©ditables de l'utilisateur connectÃ©.
 func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if err := h.ensureUserRowForSession(sess); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de prÃƒÂ©parer le profil utilisateur"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de prÃ©parer le profil utilisateur"})
 		return
 	}
 
@@ -974,11 +974,11 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// UpdateMyAccount met ÃƒÂ  jour les prÃƒÂ©fÃƒÂ©rences et l'email de l'utilisateur connectÃƒÂ©.
+// UpdateMyAccount met Ã  jour les prÃ©fÃ©rences et l'email de l'utilisateur connectÃ©.
 func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if err := h.ensureUserRowForSession(sess); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de prÃƒÂ©parer le profil utilisateur"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de prÃ©parer le profil utilisateur"})
 		return
 	}
 
@@ -1023,7 +1023,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		&optInTelegram,
 	)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture des prÃƒÂ©fÃƒÂ©rences"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture des prÃ©fÃ©rences"})
 		return
 	}
 
@@ -1120,17 +1120,17 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		sess.UserID,
 	)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise ÃƒÂ  jour des prÃƒÂ©fÃƒÂ©rences"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise Ã  jour des prÃ©fÃ©rences"})
 		return
 	}
 
-	message := "Profil mis ÃƒÂ  jour"
+	message := "Profil mis Ã  jour"
 	if shouldSendVerification {
 		if err := sendEmailVerification(h.cfg, h.db, h.mailer, userID, true); err != nil {
 			slog.Error("Erreur envoi verification email apres mise a jour profil", "user_id", userID, "error", err)
-			message = "Profil mis ÃƒÂ  jour, mais l'email de vÃƒÂ©rification n'a pas pu ÃƒÂªtre envoyÃƒÂ©"
+			message = "Profil mis Ã  jour, mais l'email de vÃ©rification n'a pas pu Ãªtre envoyÃ©"
 		} else {
-			message = "Profil mis ÃƒÂ  jour, email de vÃƒÂ©rification envoyÃƒÂ©"
+			message = "Profil mis Ã  jour, email de vÃ©rification envoyÃ©"
 		}
 	}
 
@@ -1196,7 +1196,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetMyInvitations retourne les invitations crÃ©Ã©es par l'utilisateur connectÃ©.
+// GetMyInvitations retourne les invitations créées par l'utilisateur connecté.
 func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 
@@ -1207,7 +1207,7 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 		ORDER BY created_at DESC`, sess.Username)
 	if err != nil {
 		slog.Error("Erreur lecture mes invitations", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de donnÃ©es"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de données"})
 		return
 	}
 	defer rows.Close()
@@ -1227,17 +1227,17 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: invs})
 }
 
-// CreateMyInvitation gÃ©nÃ¨re une invitation automatique (parrainage) basÃ©e sur le preset de l'utilisateur.
+// CreateMyInvitation génère une invitation automatique (parrainage) basée sur le preset de l'utilisateur.
 func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 
-	// 1. VÃ©rifier si l'utilisateur a le droit
+	// 1. Vérifier si l'utilisateur a le droit
 	if !h.resolveCanInviteForSession(sess) {
 		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de parrainer"})
 		return
 	}
 
-	// 2. RÃ©cupÃ©rer le preset de l'utilisateur pour appliquer les mÃªmes droits aux filleuls
+	// 2. Récupérer le preset de l'utilisateur pour appliquer les mêmes droits aux filleuls
 	var presetID sql.NullString
 	_ = h.db.QueryRow(`SELECT preset_id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&presetID)
 
@@ -1246,7 +1246,7 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		presetIDStr = presetID.String
 	}
 
-	// 3. Charger le preset par dÃ©faut s'il n'en a pas
+	// 3. Charger le preset par défaut s'il n'en a pas
 	if presetIDStr == "" {
 		inviteCfg, _ := h.db.GetInvitationProfileConfig()
 		presetIDStr = inviteCfg.PolicyPresetID
@@ -1254,7 +1254,7 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 
 	// Si toujours vide, erreur
 	if presetIDStr == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun profil de parrainage configurÃ© sur le serveur"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun profil de parrainage configuré sur le serveur"})
 		return
 	}
 
@@ -1264,10 +1264,10 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// 4. GÃ©nÃ©rer le code
+	// 4. Générer le code
 	code, _ := generateSecureToken(12)
 
-	// Expiration par dÃ©faut (30 jours pour un lien de parrainage)
+	// Expiration par défaut (30 jours pour un lien de parrainage)
 	expiresAt := time.Now().AddDate(0, 0, 30)
 
 	// Profil JSON
@@ -1278,7 +1278,7 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		EnabledFolderIDs:   preset.EnabledFolderIDs,
 		EnableDownload:     preset.EnableDownload,
 		EnableRemoteAccess: preset.EnableRemoteAccess,
-		CanInvite:          false, // Un filleul ne parraine pas par dÃ©faut
+		CanInvite:          false, // Un filleul ne parraine pas par défaut
 	}
 	profileJSON, _ := json.Marshal(profile)
 
@@ -1289,16 +1289,16 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 
 	if err != nil {
 		slog.Error("Erreur creation invitation parrainage", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de donnÃ©es"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de données"})
 		return
 	}
 
 	_ = h.db.LogAction("invite.created.sponsor", sess.Username, code, "Lien de parrainage auto")
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Lien de parrainage crÃ©Ã©", Data: code})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Lien de parrainage créé", Data: code})
 }
 
-// UpdateMyAccountAvatar change la photo de profil Jellyfin de l'utilisateur connectÃ©.
+// UpdateMyAccountAvatar change la photo de profil Jellyfin de l'utilisateur connecté.
 func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if h.jfClient == nil {
@@ -1334,7 +1334,7 @@ func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Requ
 
 	_ = h.db.LogAction("user.avatar.updated", sess.Username, sess.Username, "Changement de photo de profil")
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Photo de profil mise Ã  jour"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Photo de profil mise à jour"})
 }
 
 // UpdateMyPassword change le mot de passe de l'utilisateur sur Jellyfin.
@@ -1360,21 +1360,21 @@ func (h *AdminHandler) UpdateMyPassword(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := h.jfClient.UpdateUserPassword(sess.UserID, req.CurrentPassword, req.NewPassword); err != nil {
-		slog.Warn("Ã‰chec changement mot de passe", "username", sess.Username, "error", err)
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Ã‰chec : " + err.Error()})
+		slog.Warn("Échec changement mot de passe", "username", sess.Username, "error", err)
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Échec : " + err.Error()})
 		return
 	}
 
 	_ = h.db.LogAction("user.password.updated", sess.Username, sess.Username, "Changement de mot de passe")
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Mot de passe mis Ã  jour avec succÃ¨s"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Mot de passe mis à jour avec succès"})
 }
 
-// ResendEmailVerification renvoie un code de vÃ©rification Ã  l'utilisateur connectÃ©.
+// ResendEmailVerification renvoie un code de vérification à l'utilisateur connecté.
 func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if h.mailer == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: "Service mail non configurÃ©"})
+		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: "Service mail non configuré"})
 		return
 	}
 
@@ -1388,7 +1388,7 @@ func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Re
 	}
 
 	if emailVerified && pendingEmail == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Votre email est dÃ©jÃ  vÃ©rifiÃ©"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Votre email est déjà vérifié"})
 		return
 	}
 
@@ -1400,7 +1400,7 @@ func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Re
 	}
 
 	if targetEmail == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucune adresse email configurÃ©e"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucune adresse email configurée"})
 		return
 	}
 
@@ -1410,7 +1410,7 @@ func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Email de vÃ©rification envoyÃ©"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Email de vérification envoyé"})
 }
 
 func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
@@ -1505,7 +1505,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 		td.CanInvite = limits.CanInvite
 
 		if !td.CanInvite {
-			http.Error(w, "AccÃƒÂ¨s interdit au programme de parrainage", http.StatusForbidden)
+			http.Error(w, "AccÃ¨s interdit au programme de parrainage", http.StatusForbidden)
 			return
 		}
 	}
@@ -1532,9 +1532,9 @@ func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /admin/api/logs Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ GET /admin/api/logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// AuditLogResponse reprÃƒÂ©sente une ligne formatÃƒÂ©e du journal d'audit JSON.
+// AuditLogResponse reprÃ©sente une ligne formatÃ©e du journal d'audit JSON.
 type AuditLogResponse struct {
 	ID        int64  `json:"id"`
 	Action    string `json:"action"`
@@ -1545,7 +1545,7 @@ type AuditLogResponse struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /admin/api/logs Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ GET /admin/api/logs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // LogsAPI retourne le journal d'audit en JSON avec filtres avances et export CSV/JSON.
 func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
@@ -1748,13 +1748,13 @@ func extractRequestIDFromDetails(details string) string {
 	return strings.TrimSpace(rest[:end])
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/users/sync Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ POST /admin/api/users/sync â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // SyncJellyfinUsers synchronise manuellement les utilisateurs Jellyfin vers SQLite
 func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request) {
 	jfUsers, err := h.jfClient.GetUsers()
 	if err != nil {
-		slog.Error("Erreur lors de la rÃƒÂ©cupÃƒÂ©ration des utilisateurs Jellyfin pour la sync", "error", err)
+		slog.Error("Erreur lors de la rÃ©cupÃ©ration des utilisateurs Jellyfin pour la sync", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
 			Message: "Erreur de communication avec Jellyfin",
@@ -1777,17 +1777,17 @@ func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	slog.Info("Synchronisation manuelle Jellyfin terminÃƒÂ©e", "users_added", addedCount)
+	slog.Info("Synchronisation manuelle Jellyfin terminÃ©e", "users_added", addedCount)
 	h.db.LogAction("users.sync", session.FromContext(r.Context()).Username, "all",
-		fmt.Sprintf("Synchronisation manuelle dÃƒÂ©clenchÃƒÂ©e: %d nouveaux utilisateurs importÃƒÂ©s", addedCount))
+		fmt.Sprintf("Synchronisation manuelle dÃ©clenchÃ©e: %d nouveaux utilisateurs importÃ©s", addedCount))
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: fmt.Sprintf("Synchronisation terminÃƒÂ©e: %d nouveaux utilisateurs trouvÃƒÂ©s.", addedCount),
+		Message: fmt.Sprintf("Synchronisation terminÃ©e: %d nouveaux utilisateurs trouvÃ©s.", addedCount),
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /admin/api/users Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ GET /admin/api/users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // ListUsers retourne la liste des utilisateurs avec pagination et recherche.
 func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
@@ -1860,7 +1860,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		whereClause = "WHERE " + strings.Join(whereParts, " AND ")
 	}
 
-	// 1. Compter le total (filtrÃ©)
+	// 1. Compter le total (filtré)
 	var total int
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM users %s", whereClause)
 	if err := h.db.QueryRow(countQuery, args...).Scan(&total); err != nil {
@@ -1869,16 +1869,16 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1b. Statistiques globales pour l'aperÃ§u
+	// 1b. Statistiques globales pour l'aperçu
 	var totalGlobal, invitersCount, expiringCount int
 	_ = h.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&totalGlobal)
 	_ = h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE can_invite = 1`).Scan(&invitersCount)
-	// Expiring: a une date d'expiration dans le futur (ou trÃ¨s proche)
+	// Expiring: a une date d'expiration dans le futur (ou très proche)
 	// On utilise une approche compatible SQLite/Postgres via prepareQuery si possible,
 	// mais ici on va rester simple pour l'instant.
 	_ = h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_active = 1 AND access_expires_at IS NOT NULL AND access_expires_at > CURRENT_TIMESTAMP`).Scan(&expiringCount)
 
-	// 2. RÃ©cupÃ©rer les donnÃ©es paginÃ©es
+	// 2. Récupérer les données paginées
 	offset := (page - 1) * limit
 	query := fmt.Sprintf(`SELECT id, jellyfin_id, username, email, ldap_dn, invited_by,
 		        group_name, preset_id, is_active, is_banned, can_invite, access_expires_at, delete_at,
@@ -1892,7 +1892,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur lecture des utilisateurs", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur de lecture de la base de donnÃ©es",
+			Message: "Erreur de lecture de la base de données",
 		})
 		return
 	}
@@ -1994,14 +1994,14 @@ func (h *AdminHandler) UserAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. RÃ©cupÃ©rer le JellyfinID depuis la base
+	// 1. Récupérer le JellyfinID depuis la base
 	var jfID string
 	err = h.db.QueryRow(`SELECT jellyfin_id FROM users WHERE id = ?`, userID).Scan(&jfID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Utilisateur introuvable", http.StatusNotFound)
 		} else {
-			http.Error(w, "Base de donnÃ©es inaccessible", http.StatusInternalServerError)
+			http.Error(w, "Base de données inaccessible", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -2011,10 +2011,10 @@ func (h *AdminHandler) UserAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. RÃ©cupÃ©rer l'image via le client Jellyfin
+	// 2. Récupérer l'image via le client Jellyfin
 	data, contentType, err := h.jfClient.GetUserImage(jfID)
 	if err != nil {
-		slog.Warn("Avatar: erreur rÃ©cupÃ©ration Jellyfin", "user_id", userID, "jf_id", jfID, "error", err)
+		slog.Warn("Avatar: erreur récupération Jellyfin", "user_id", userID, "jf_id", jfID, "error", err)
 		http.Error(w, "Image non disponible", http.StatusNotFound)
 		return
 	}
@@ -2080,7 +2080,7 @@ func (h *AdminHandler) UserTimeline(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Filtrer uniquement pour les Ã©vÃ©nements liÃ©s aux emails
+		// Filtrer uniquement pour les événements liés aux emails
 		act := strings.ToLower(action.String)
 		isEmailEvent := strings.Contains(act, "email") || strings.HasPrefix(act, "reset.") || act == "invite.used" || act == "user.email_verified"
 		if !isEmailEvent {
@@ -2288,19 +2288,19 @@ func (h *AdminHandler) applyJellyfinPolicyPatch(jellyfinID string, patch *BulkJe
 	}
 	if patch.MaxActiveSession != nil {
 		if *patch.MaxActiveSession < 0 {
-			return fmt.Errorf("max_active_sessions doit ÃƒÂªtre >= 0")
+			return fmt.Errorf("max_active_sessions doit Ãªtre >= 0")
 		}
 		policy.MaxActiveSessions = *patch.MaxActiveSession
 	}
 	if patch.BitrateLimit != nil {
 		if *patch.BitrateLimit < 0 {
-			return fmt.Errorf("remote_bitrate_limit doit ÃƒÂªtre >= 0")
+			return fmt.Errorf("remote_bitrate_limit doit Ãªtre >= 0")
 		}
 		policy.RemoteClientBitrateLimit = *patch.BitrateLimit
 	}
 
 	if err := h.jfClient.SetUserPolicy(jellyfinID, policy); err != nil {
-		return fmt.Errorf("mise ÃƒÂ  jour de la politique Jellyfin: %w", err)
+		return fmt.Errorf("mise Ã  jour de la politique Jellyfin: %w", err)
 	}
 
 	return nil
@@ -2326,7 +2326,7 @@ func (h *AdminHandler) getJellyfinPresetByID(presetID string) (*config.JellyfinP
 	return nil, fmt.Errorf("preset introuvable")
 }
 
-// applyPresetToUser rÃ©cupÃ¨re les rÃ©glages d'un preset et les applique Ã  Jellyfin pour l'utilisateur.
+// applyPresetToUser récupère les réglages d'un preset et les applique à Jellyfin pour l'utilisateur.
 func (h *AdminHandler) applyPresetToUser(rec *adminUserRecord, presetID string) error {
 	if rec == nil {
 		return nil
@@ -2388,12 +2388,12 @@ func (h *AdminHandler) applyGroupMappingToUser(rec *adminUserRecord, groupName s
 		return nil
 	}
 
-	// Application du preset associÃ© au groupe
+	// Application du preset associé au groupe
 	if err := h.applyPresetToUser(rec, mapping.PolicyPresetID); err != nil {
 		return fmt.Errorf("applyPresetToUser via mapping: %w", err)
 	}
 
-	// Si c'est un groupe LDAP et que LDAP est activÃ©, on ajoute l'utilisateur au groupe LDAP s'il en manque
+	// Si c'est un groupe LDAP et que LDAP est activé, on ajoute l'utilisateur au groupe LDAP s'il en manque
 	if mapping.Source == "ldap" && h.ldClient != nil && strings.TrimSpace(rec.LDAPDN) != "" && strings.TrimSpace(mapping.LDAPGroupDN) != "" {
 		if err := h.ldClient.AddUserToGroup(rec.LDAPDN, mapping.LDAPGroupDN); err != nil {
 			return fmt.Errorf("assignation groupe ldap: %w", err)
@@ -2492,7 +2492,7 @@ func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]s
 
 func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor string) error {
 	if h.mailer == nil {
-		return fmt.Errorf("SMTP non configurÃƒÂ©")
+		return fmt.Errorf("SMTP non configurÃ©")
 	}
 	if strings.TrimSpace(rec.Email) == "" {
 		return fmt.Errorf("utilisateur sans email")
@@ -2500,7 +2500,7 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 
 	token, err := generateSecureToken(resetTokenLength)
 	if err != nil {
-		return fmt.Errorf("gÃƒÂ©nÃƒÂ©ration du token: %w", err)
+		return fmt.Errorf("gÃ©nÃ©ration du token: %w", err)
 	}
 
 	expiresAt := time.Now().Add(resetTokenExpiry)
@@ -2519,7 +2519,7 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	mailCfg, _ := h.db.GetEmailTemplatesConfig()
 	tpl := mailCfg.PasswordReset
 	if tpl == "" {
-		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de rÃƒÂ©initialisation de mot de passe : {{.ResetLink}}"
+		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de rÃ©initialisation de mot de passe : {{.ResetLink}}"
 	}
 	subject := firstNonEmpty(mailCfg.PasswordResetSubject, config.DefaultEmailTemplates().PasswordResetSubject)
 
@@ -2542,7 +2542,7 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	return nil
 }
 
-// UpdateUser met ÃƒÂ  jour les informations ÃƒÂ©ditables d'un utilisateur (email, parrainage, expiration).
+// UpdateUser met Ã  jour les informations Ã©ditables d'un utilisateur (email, parrainage, expiration).
 func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -2628,15 +2628,15 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		userID,
 	)
 	if err != nil {
-		slog.Error("Erreur mise Ã  jour utilisateur", "id", userID, "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise Ã  jour"})
+		slog.Error("Erreur mise à jour utilisateur", "id", userID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise à jour"})
 		return
 	}
 
 	_ = h.db.LogAction("user.updated", sess.Username, rec.Username,
 		fmt.Sprintf(`{"user_id":%d,"email":"%s","group_name":"%s","preset_id":"%s","can_invite":%t}`, userID, email, groupName, presetID, canInvite))
 
-	// Application du preset si modifiÃ© (ou si le groupe est modifiÃ© via mapping)
+	// Application du preset si modifié (ou si le groupe est modifié via mapping)
 	if req.PresetID != nil && presetID != "" {
 		if err := h.applyPresetToUser(rec, presetID); err != nil {
 			slog.Warn("Application preset echouee", "user", rec.Username, "preset", presetID, "error", err)
@@ -2662,7 +2662,7 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Utilisateur mis Ã  jour",
+		Message: "Utilisateur mis à jour",
 		Data: map[string]interface{}{
 			"id":                userID,
 			"email":             email,
@@ -2673,7 +2673,7 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// BanUser banni dÃ©finitvement un utilisateur (dÃ©sactivation + flag banni).
+// BanUser banni définitvement un utilisateur (désactivation + flag banni).
 func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -2691,7 +2691,7 @@ func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
 	_, err = h.db.Exec(`UPDATE users SET is_active = 0, is_banned = 1, updated_at = datetime('now') WHERE id = ?`, userID)
 	if err != nil {
 		slog.Error("Erreur bannissement utilisateur", "id", userID, "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise Ã  jour"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise à jour"})
 		return
 	}
 
@@ -2700,7 +2700,7 @@ func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: fmt.Sprintf("Utilisateur %s banni", rec.Username)})
 }
 
-// ExtendAccess ajoute une durÃ©e d'accÃ¨s par dÃ©faut (30 jours) Ã  l'utilisateur.
+// ExtendAccess ajoute une durée d'accès par défaut (30 jours) à l'utilisateur.
 func (h *AdminHandler) ExtendAccess(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -2730,7 +2730,7 @@ func (h *AdminHandler) ExtendAccess(w http.ResponseWriter, r *http.Request) {
 	_, err = h.db.Exec(`UPDATE users SET access_expires_at = ?, updated_at = datetime('now') WHERE id = ?`, newExpiryStr, userID)
 	if err != nil {
 		slog.Error("Erreur prolongation utilisateur", "id", userID, "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise Ã  jour"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise à jour"})
 		return
 	}
 
@@ -2738,7 +2738,7 @@ func (h *AdminHandler) ExtendAccess(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: fmt.Sprintf("AccÃ¨s prolongÃ© pour %s jusqu'au %s", rec.Username, newExpiry.Format("02/01/2006")),
+		Message: fmt.Sprintf("Accès prolongé pour %s jusqu'au %s", rec.Username, newExpiry.Format("02/01/2006")),
 		Data: map[string]interface{}{
 			"id":                userID,
 			"access_expires_at": newExpiryStr,
@@ -2746,7 +2746,7 @@ func (h *AdminHandler) ExtendAccess(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// SendUserPasswordReset crÃƒÂ©e et envoie un lien de rÃƒÂ©initialisation ÃƒÂ  l'utilisateur ciblÃƒÂ©.
+// SendUserPasswordReset crÃ©e et envoie un lien de rÃ©initialisation Ã  l'utilisateur ciblÃ©.
 func (h *AdminHandler) SendUserPasswordReset(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -2770,10 +2770,10 @@ func (h *AdminHandler) SendUserPasswordReset(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Email de rÃƒÂ©initialisation envoyÃƒÂ©"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Email de rÃ©initialisation envoyÃ©"})
 }
 
-// BulkUsersAction applique une action de masse sur les utilisateurs sÃƒÂ©lectionnÃƒÂ©s.
+// BulkUsersAction applique une action de masse sur les utilisateurs sÃ©lectionnÃ©s.
 func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 
@@ -2784,7 +2784,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(req.UserIDs) == 0 {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun utilisateur sÃƒÂ©lectionnÃƒÂ©"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun utilisateur sÃ©lectionnÃ©"})
 		return
 	}
 
@@ -2817,7 +2817,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 		case "send_email":
 			if h.mailer == nil {
 				entry["success"] = false
-				entry["message"] = "SMTP non configurÃƒÂ©"
+				entry["message"] = "SMTP non configurÃ©"
 				break
 			}
 			subject := strings.TrimSpace(req.EmailSubject)
@@ -2846,7 +2846,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			_ = h.db.LogAction("user.bulk.email", sess.Username, rec.Username, subject)
 			entry["success"] = true
-			entry["message"] = "Email envoyÃƒÂ©"
+			entry["message"] = "Email envoyÃ©"
 
 		case "jellyfin_policy":
 			err := h.applyJellyfinPolicyPatch(rec.JellyfinID, req.JellyfinPolicy)
@@ -2858,7 +2858,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			_ = h.db.LogAction("user.bulk.jellyfin_policy", sess.Username, rec.Username, fmt.Sprintf(`{"user_id":%d}`, rec.ID))
 			entry["success"] = true
-			entry["message"] = "ParamÃƒÂ¨tres Jellyfin mis ÃƒÂ  jour"
+			entry["message"] = "ParamÃ¨tres Jellyfin mis Ã  jour"
 
 		case "apply_preset":
 			preset, err := h.getJellyfinPresetByID(req.PolicyPresetID)
@@ -2884,7 +2884,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			_ = h.db.LogAction("user.bulk.apply_preset", sess.Username, rec.Username, preset.ID)
 			entry["success"] = true
-			entry["message"] = "Preset Jellyfin appliquÃƒÂ©"
+			entry["message"] = "Preset Jellyfin appliquÃ©"
 
 		case "set_parrainage":
 			if req.CanInvite == nil {
@@ -2902,7 +2902,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			_ = h.db.LogAction("user.bulk.can_invite", sess.Username, rec.Username, fmt.Sprintf(`{"can_invite":%t}`, *req.CanInvite))
 			entry["success"] = true
-			entry["message"] = "Parrainage mis ÃƒÂ  jour"
+			entry["message"] = "Parrainage mis Ã  jour"
 
 		case "set_expiry":
 			var expiry interface{}
@@ -2935,12 +2935,12 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 				if err := h.sendUserTemplateByKey(rec, "expiry_adjusted", map[string]string{"ExpiryDate": strings.TrimSpace(*req.AccessExpiresAt)}); err != nil {
 					slog.Error("Erreur envoi email bulk expiry_adjusted", "user", rec.Username, "error", err)
 					entry["success"] = true
-					entry["message"] = "Expiration mise ÃƒÂ  jour (email non envoyÃƒÂ©)"
+					entry["message"] = "Expiration mise Ã  jour (email non envoyÃ©)"
 					break
 				}
 			}
 			entry["success"] = true
-			entry["message"] = "Expiration mise ÃƒÂ  jour"
+			entry["message"] = "Expiration mise Ã  jour"
 
 		case "activate", "deactivate":
 			newState := action == "activate"
@@ -2953,11 +2953,11 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			entry["success"] = true
 			if len(partials) > 0 {
-				entry["message"] = "Action appliquÃƒÂ©e avec erreurs partielles: " + strings.Join(partials, " | ")
+				entry["message"] = "Action appliquÃ©e avec erreurs partielles: " + strings.Join(partials, " | ")
 			} else if newState {
-				entry["message"] = "Utilisateur activÃƒÂ©"
+				entry["message"] = "Utilisateur activÃ©"
 			} else {
-				entry["message"] = "Utilisateur dÃƒÂ©sactivÃƒÂ©"
+				entry["message"] = "Utilisateur dÃ©sactivÃ©"
 			}
 
 		case "send_password_reset":
@@ -2969,7 +2969,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			}
 
 			entry["success"] = true
-			entry["message"] = "Lien de rÃƒÂ©initialisation envoyÃƒÂ©"
+			entry["message"] = "Lien de rÃ©initialisation envoyÃ©"
 
 		case "delete":
 			partials, err := h.deleteUserRecord(rec, sess.Username)
@@ -2981,13 +2981,13 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			entry["success"] = true
 			if len(partials) > 0 {
-				entry["message"] = "SupprimÃƒÂ© avec erreurs partielles: " + strings.Join(partials, " | ")
+				entry["message"] = "SupprimÃ© avec erreurs partielles: " + strings.Join(partials, " | ")
 			} else {
-				entry["message"] = "Utilisateur supprimÃƒÂ©"
+				entry["message"] = "Utilisateur supprimÃ©"
 			}
 
 		default:
-			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Action de masse non supportÃƒÂ©e"})
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Action de masse non supportÃ©e"})
 			return
 		}
 
@@ -2999,7 +2999,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: fmt.Sprintf("Action de masse terminÃƒÂ©e: %d/%d succÃƒÂ¨s", successCount, len(req.UserIDs)),
+		Message: fmt.Sprintf("Action de masse terminÃ©e: %d/%d succÃ¨s", successCount, len(req.UserIDs)),
 		Data: map[string]interface{}{
 			"total":   len(req.UserIDs),
 			"success": successCount,
@@ -3008,10 +3008,10 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/users/{id}/toggle Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ POST /admin/api/users/{id}/toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ToggleUser active ou dÃƒÂ©sactive un utilisateur simultanÃƒÂ©ment dans l'AD
-// et dans Jellyfin, puis met ÃƒÂ  jour le statut SQLite.
+// ToggleUser active ou dÃ©sactive un utilisateur simultanÃ©ment dans l'AD
+// et dans Jellyfin, puis met Ã  jour le statut SQLite.
 func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -3035,7 +3035,7 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur lecture utilisateur pour toggle", "id", userID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur de lecture de la base de donnÃƒÂ©es",
+			Message: "Erreur de lecture de la base de donnÃ©es",
 		})
 		return
 	}
@@ -3045,7 +3045,7 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur lors de la mise ÃƒÂ  jour du statut utilisateur",
+			Message: "Erreur lors de la mise Ã  jour du statut utilisateur",
 			Errors:  partialErrors,
 			Data: map[string]interface{}{
 				"id":        rec.ID,
@@ -3056,9 +3056,9 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	action := "activÃƒÂ©"
+	action := "activÃ©"
 	if !newActive {
-		action = "dÃƒÂ©sactivÃƒÂ©"
+		action = "dÃ©sactivÃ©"
 	}
 	if len(partialErrors) > 0 {
 		writeJSON(w, http.StatusOK, APIResponse{
@@ -3076,7 +3076,7 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: fmt.Sprintf("Utilisateur %q %s avec succÃƒÂ¨s", rec.Username, action),
+		Message: fmt.Sprintf("Utilisateur %q %s avec succÃ¨s", rec.Username, action),
 		Data: map[string]interface{}{
 			"id":        rec.ID,
 			"username":  rec.Username,
@@ -3085,9 +3085,9 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/users/{id}/invite-toggle Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ POST /admin/api/users/{id}/invite-toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ToggleUserInvite active ou dÃƒÂ©sactive le droit de crÃƒÂ©er des invitations pour un utilisateur.
+// ToggleUserInvite active ou dÃ©sactive le droit de crÃ©er des invitations pour un utilisateur.
 func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -3113,9 +3113,9 @@ func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	actionTxt := "activÃƒÂ©"
+	actionTxt := "activÃ©"
 	if !newStatus {
-		actionTxt = "dÃƒÂ©sactivÃƒÂ©"
+		actionTxt = "dÃ©sactivÃ©"
 	}
 	_ = h.db.LogAction("user.can_invite.toggle", sess.Username, username, fmt.Sprintf("Droit d'invitation %s", actionTxt))
 
@@ -3129,9 +3129,9 @@ func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/users/me/password Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ POST /admin/api/users/me/password â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// ChangeMyPassword permet ÃƒÂ  l'utilisateur connectÃƒÂ© de modifier son propre mot de passe.
+// ChangeMyPassword permet Ã  l'utilisateur connectÃ© de modifier son propre mot de passe.
 func (h *AdminHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 
@@ -3145,16 +3145,16 @@ func (h *AdminHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if len(req.NewPassword) < 8 {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Le nouveau mot de passe doit faire au moins 8 caractÃƒÂ¨res"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Le nouveau mot de passe doit faire au moins 8 caractÃ¨res"})
 		return
 	}
 
-	// RÃƒÂ©cupÃƒÂ©rer le DN LDAP depuis SQLite
+	// RÃ©cupÃ©rer le DN LDAP depuis SQLite
 	var ldapDN sql.NullString
 	err := h.db.QueryRow(`SELECT ldap_dn FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&ldapDN)
 	if err != nil && err != sql.ErrNoRows {
 		slog.Error("Erreur lecture ldap_dn pour changement MDP", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de donnÃƒÂ©es"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de donnÃ©es"})
 		return
 	}
 
@@ -3164,14 +3164,14 @@ func (h *AdminHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request) 
 	// Pour simplifier dans l'exemple, on force le changement via le LDClient si dispo, puis le JfClient auth en tant qu'admin
 	var partialErrors []string
 
-	// 1. LDAP (Si activÃƒÂ©)
+	// 1. LDAP (Si activÃ©)
 	if h.ldClient != nil && ldapDN.String != "" {
 		if err := h.ldClient.ResetPassword(ldapDN.String, req.NewPassword); err != nil {
 			partialErrors = append(partialErrors, fmt.Sprintf("LDAP: %v", err))
 		}
 	}
 
-	// 2. Jellyfin (en passant par le token de l'APi admin configurÃƒÂ©e)
+	// 2. Jellyfin (en passant par le token de l'APi admin configurÃ©e)
 	if err := h.jfClient.ResetPassword(sess.UserID, req.NewPassword); err != nil {
 		partialErrors = append(partialErrors, fmt.Sprintf("Jellyfin: %v", err))
 	}
@@ -3185,19 +3185,19 @@ func (h *AdminHandler) ChangeMyPassword(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	_ = h.db.LogAction("user.password.change", sess.Username, sess.Username, "L'utilisateur a changÃƒÂ© son mot de passe depuis le tableau de bord")
+	_ = h.db.LogAction("user.password.change", sess.Username, sess.Username, "L'utilisateur a changÃ© son mot de passe depuis le tableau de bord")
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Mot de passe modifiÃƒÂ© avec succÃƒÂ¨s",
+		Message: "Mot de passe modifiÃ© avec succÃ¨s",
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ DELETE /admin/api/users/{id} Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ DELETE /admin/api/users/{id} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // DeleteUser supprime un utilisateur de l'AD, de Jellyfin, puis de SQLite.
-// Les erreurs partielles (ex: utilisateur dÃƒÂ©jÃƒÂ  supprimÃƒÂ© de l'AD) ne bloquent
-// pas les suppressions restantes Ã¢â‚¬â€� tout est loggÃƒÂ©.
+// Les erreurs partielles (ex: utilisateur dÃ©jÃ  supprimÃ© de l'AD) ne bloquent
+// pas les suppressions restantes â€” tout est loggÃ©.
 func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
@@ -3221,7 +3221,7 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur lecture utilisateur pour suppression", "id", userID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur de lecture de la base de donnÃƒÂ©es",
+			Message: "Erreur de lecture de la base de donnÃ©es",
 		})
 		return
 	}
@@ -3241,9 +3241,9 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	msg := fmt.Sprintf("Utilisateur %q supprimÃƒÂ© avec succÃƒÂ¨s", rec.Username)
+	msg := fmt.Sprintf("Utilisateur %q supprimÃ© avec succÃ¨s", rec.Username)
 	if len(partialErrors) > 0 {
-		msg = fmt.Sprintf("Utilisateur %q supprimÃƒÂ© avec %d erreur(s) partielle(s)", rec.Username, len(partialErrors))
+		msg = fmt.Sprintf("Utilisateur %q supprimÃ© avec %d erreur(s) partielle(s)", rec.Username, len(partialErrors))
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -3258,9 +3258,9 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /admin/api/invitations Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ GET /admin/api/invitations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// InvitationResponse reprÃƒÂ©sente une invitation formatÃƒÂ©e pour l'API JSON.
+// InvitationResponse reprÃ©sente une invitation formatÃ©e pour l'API JSON.
 type InvitationResponse struct {
 	ID              int64                  `json:"id"`
 	Code            string                 `json:"code"`
@@ -3542,7 +3542,7 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 2. RÃ©cupÃ©rer les donnÃ©es paginÃ©es
+	// 2. Récupérer les données paginées
 	offset := (page - 1) * limit
 	query := fmt.Sprintf(`SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_at FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
 
@@ -3756,13 +3756,13 @@ func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/invitations Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ POST /admin/api/invitations â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// CreateInvitationRequest payload pour la crÃƒÂ©ation d'invitation
+// CreateInvitationRequest payload pour la crÃ©ation d'invitation
 type CreateInvitationRequest struct {
 	Label                  string   `json:"label"`
-	MaxUses                int      `json:"max_uses"`   // 0 = illimitÃƒÂ©
-	ExpiresAt              string   `json:"expires_at"` // Legacy: date prÃƒÂ©cise, exemple "2026-10-05T12:00"
+	MaxUses                int      `json:"max_uses"`   // 0 = illimitÃ©
+	ExpiresAt              string   `json:"expires_at"` // Legacy: date prÃ©cise, exemple "2026-10-05T12:00"
 	ExpiresInDays          int      `json:"expires_in_days"`
 	IgnorePresetLinkExpiry bool     `json:"ignore_preset_link_expiry"`
 	ApplyUserExpiry        *bool    `json:"apply_user_expiry"`
@@ -3771,10 +3771,10 @@ type CreateInvitationRequest struct {
 	IgnorePresetUserExpiry bool     `json:"ignore_preset_user_expiry"`
 	DisableAfterDays       int      `json:"disable_after_days"`
 	NewUserCanInvite       bool     `json:"new_user_can_invite"`
-	SendToEmail            string   `json:"send_to_email"` // Si renseignÃƒÂ©, un e-mail partira par SMTP
+	SendToEmail            string   `json:"send_to_email"` // Si renseignÃ©, un e-mail partira par SMTP
 	Email                  string   `json:"email"`         // Legacy frontend key
 	EmailMessage           string   `json:"email_message"`
-	Libraries              []string `json:"libraries"` // ID des bibliothÃƒÂ¨ques Jellyfin
+	Libraries              []string `json:"libraries"` // ID des bibliothÃ¨ques Jellyfin
 	EnableDownloads        bool     `json:"enable_downloads"`
 	PolicyPresetID         string   `json:"policy_preset_id"`
 	GroupName              string   `json:"group_name"`
@@ -3792,7 +3792,7 @@ type CreateInvitationRequest struct {
 	DeleteAfterDays        *int     `json:"delete_after_days"`
 }
 
-// CreateInvitation crÃƒÂ©e un nouveau lien d'invitation avec un jeton robuste et logiques complexes (JFA-GO).
+// CreateInvitation crÃ©e un nouveau lien d'invitation avec un jeton robuste et logiques complexes (JFA-GO).
 func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 
@@ -3830,7 +3830,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if !sess.IsAdmin && !limits.CanInvite {
-		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de crÃƒÂ©er des invitations"})
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de crÃ©er des invitations"})
 		return
 	}
 
@@ -3855,7 +3855,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if strings.TrimSpace(req.ForcedUsername) != "" && req.MaxUses != 1 {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Un nom d'utilisateur reservÃ© nÃ©cessite un lien Ã  usage unique (max_uses = 1)"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Un nom d'utilisateur reservé nécessite un lien à usage unique (max_uses = 1)"})
 		return
 	}
 
@@ -4004,14 +4004,14 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		effectiveUserExpiresAtRaw = effectiveUserExpiresAt.Format(time.RFC3339)
 	}
 
-	// GÃƒÂ©nÃƒÂ©rer code alÃƒÂ©atoire (ici via crypt/rand classique, 12 caractÃƒÂ¨res)
+	// GÃ©nÃ©rer code alÃ©atoire (ici via crypt/rand classique, 12 caractÃ¨res)
 	code, err := generateSecureToken(12)
 	if err != nil {
-		slog.Error("Erreur gÃƒÂ©nÃƒÂ©ration token d'invitation", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de gÃƒÂ©nÃƒÂ©rer un code d'invitation"})
+		slog.Error("Erreur gÃ©nÃ©ration token d'invitation", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de gÃ©nÃ©rer un code d'invitation"})
 		return
 	}
-	// Construire profil Jellyfin depuis la configuration admin (paramÃƒÂ¨tres globaux).
+	// Construire profil Jellyfin depuis la configuration admin (paramÃ¨tres globaux).
 	jfProfile := jellyfin.InviteProfile{
 		EnableAllFolders:         len(req.Libraries) == 0,
 		EnabledFolderIDs:         req.Libraries,
@@ -4071,7 +4071,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		jfProfile.DeleteAfterDays = preset.DeleteAfterDays
 	}
 
-	// Les options exposees dans "Profil utilisateur" sont forcees par les paramÃƒÂ¨tres admin.
+	// Les options exposees dans "Profil utilisateur" sont forcees par les paramÃ¨tres admin.
 	jfProfile.EnableDownload = inviteCfg.EnableDownloads
 	jfProfile.RequireEmail = inviteCfg.RequireEmail
 	jfProfile.RequireEmailVerification = inviteCfg.RequireEmailVerification
@@ -4130,14 +4130,14 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	)
 
 	if err != nil {
-		slog.Error("Erreur crÃƒÂ©ation invitation DB", "error", err)
+		slog.Error("Erreur crÃ©ation invitation DB", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur d'insertion BD"})
 		return
 	}
 
 	h.db.LogAction("invite.created", sess.Username, req.Label, fmt.Sprintf("Code: %s", code))
 
-	// Envoi SMTP si demandÃƒÂ©
+	// Envoi SMTP si demandÃ©
 	links := resolvePortalLinks(h.cfg, h.db)
 	baseURL := strings.TrimSpace(links.JellyGateURL)
 	if baseURL == "" {
@@ -4156,7 +4156,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			customMessage := strings.TrimSpace(req.EmailMessage)
 			inviteeName := strings.TrimSpace(req.ForcedUsername)
 			if inviteeName == "" {
-				inviteeName = "invitÃƒÂ©"
+				inviteeName = "invitÃ©"
 			}
 
 			go func(recipient, username, expiryDate, customBody string) {
@@ -4175,7 +4175,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				}
 
 				if combinedTemplate == "" {
-					combinedTemplate = "Bonjour,\n\nVous ÃƒÂªtes invitÃƒÂ© ÃƒÂ  rejoindre notre serveur. Cliquez sur ce lien pour crÃƒÂ©er votre compte : {{.InviteLink}}"
+					combinedTemplate = "Bonjour,\n\nVous Ãªtes invitÃ© Ã  rejoindre notre serveur. Cliquez sur ce lien pour crÃ©er votre compte : {{.InviteLink}}"
 				}
 
 				emailData := map[string]string{
@@ -4203,13 +4203,13 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				}
 			}(sendToEmail, inviteeName, inviteExpiryDate, customMessage)
 		} else {
-			slog.Warn("Option e-mail cochÃƒÂ©e pour l'invitation, mais le serveur SMTP n'est pas configurÃƒÂ©.")
+			slog.Warn("Option e-mail cochÃ©e pour l'invitation, mais le serveur SMTP n'est pas configurÃ©.")
 		}
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Invitation gÃƒÂ©nÃƒÂ©rÃƒÂ©e avec succÃƒÂ¨s",
+		Message: "Invitation gÃ©nÃ©rÃ©e avec succÃ¨s",
 		Data: map[string]interface{}{
 			"code": code,
 			"url":  inviteURL,
@@ -4217,7 +4217,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ DELETE /admin/api/invitations/{id} Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// â”€â”€ DELETE /admin/api/invitations/{id} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // DeleteInvitation supprime brutalement l'invitation SQLite
 func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) {
@@ -4254,11 +4254,11 @@ func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) 
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Lien d'invitation dÃƒÂ©truit",
+		Message: "Lien d'invitation dÃ©truit",
 	})
 }
 
-// writeJSON ÃƒÂ©crit une rÃƒÂ©ponse JSON avec le code HTTP donnÃƒÂ©.
+// writeJSON Ã©crit une rÃ©ponse JSON avec le code HTTP donnÃ©.
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)

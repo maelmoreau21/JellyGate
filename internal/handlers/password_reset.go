@@ -1,18 +1,18 @@
-// Package handlers â€” password_reset.go
+// Package handlers Ã¢â‚¬â€� password_reset.go
 //
-// GÃ¨re le flux complet de rÃ©initialisation de mot de passe :
+// GÃƒÂ¨re le flux complet de rÃƒÂ©initialisation de mot de passe :
 //
 //  1. Demande (POST /reset/request) :
 //     - Recherche l'utilisateur par email ou username dans SQLite
-//     - GÃ©nÃ¨re un token sÃ©curisÃ© (crypto/rand, 32 bytes, hex)
-//     - InsÃ¨re dans la table password_resets (expiration 15 min)
-//     - Envoie l'email avec le lien de rÃ©initialisation
+//     - GÃƒÂ©nÃƒÂ¨re un token sÃƒÂ©curisÃƒÂ© (crypto/rand, 32 bytes, hex)
+//     - InsÃƒÂ¨re dans la table password_resets (expiration 15 min)
+//     - Envoie l'email avec le lien de rÃƒÂ©initialisation
 //
-//  2. ExÃ©cution (POST /reset/{code}) :
-//     - VÃ©rifie le token (existence, expiration, non-utilisÃ©)
-//     - Applique le nouveau mot de passe simultanÃ©ment :
-//     â€¢ ldap.ResetPassword() â€” Active Directory
-//     â€¢ jellyfin.ResetPassword() â€” Jellyfin
+//  2. ExÃƒÂ©cution (POST /reset/{code}) :
+//     - VÃƒÂ©rifie le token (existence, expiration, non-utilisÃƒÂ©)
+//     - Applique le nouveau mot de passe simultanÃƒÂ©ment :
+//     Ã¢â‚¬Â¢ ldap.ResetPassword() Ã¢â‚¬â€� Active Directory
+//     Ã¢â‚¬Â¢ jellyfin.ResetPassword() Ã¢â‚¬â€� Jellyfin
 //     - Marque le token comme used = true
 package handlers
 
@@ -37,17 +37,17 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/render"
 )
 
-// â”€â”€ Constantes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ Constantes Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 const (
 	// resetTokenLength est la taille du token en bytes (32 bytes = 64 hex chars).
 	resetTokenLength = 32
 
-	// resetTokenExpiry est la durÃ©e de validitÃ© d'un token de rÃ©initialisation.
+	// resetTokenExpiry est la durÃƒÂ©e de validitÃƒÂ© d'un token de rÃƒÂ©initialisation.
 	resetTokenExpiry = 15 * time.Minute
 )
 
-// â”€â”€ Structures internes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ Structures internes Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 // passwordResetRecord est une ligne de la table password_resets.
 type passwordResetRecord struct {
@@ -59,7 +59,7 @@ type passwordResetRecord struct {
 	CreatedAt time.Time
 }
 
-// userRecord contient les champs nÃ©cessaires pour le reset.
+// userRecord contient les champs nÃƒÂ©cessaires pour le reset.
 type userRecord struct {
 	ID         int64
 	Username   string
@@ -68,9 +68,9 @@ type userRecord struct {
 	LdapDN     string
 }
 
-// â”€â”€ Password Reset Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ Password Reset Handler Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
-// PasswordResetHandler gÃ¨re les routes de rÃ©initialisation de mot de passe.
+// PasswordResetHandler gÃƒÂ¨re les routes de rÃƒÂ©initialisation de mot de passe.
 type PasswordResetHandler struct {
 	cfg      *config.Config
 	db       *database.DB
@@ -80,7 +80,7 @@ type PasswordResetHandler struct {
 	renderer *render.Engine
 }
 
-// NewPasswordResetHandler crÃ©e un nouveau handler de rÃ©initialisation.
+// NewPasswordResetHandler crÃƒÂ©e un nouveau handler de rÃƒÂ©initialisation.
 func NewPasswordResetHandler(
 	cfg *config.Config,
 	db *database.DB,
@@ -99,13 +99,13 @@ func NewPasswordResetHandler(
 	}
 }
 
-// SetLDAPClient remplace le client LDAP (rechargement Ã  chaud).
+// SetLDAPClient remplace le client LDAP (rechargement ÃƒÂ  chaud).
 func (h *PasswordResetHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 
-// SetMailer remplace le mailer (rechargement Ã  chaud).
+// SetMailer remplace le mailer (rechargement ÃƒÂ  chaud).
 func (h *PasswordResetHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
-// â”€â”€ GET /reset/ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /reset/ Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 func (h *PasswordResetHandler) RequestPage(w http.ResponseWriter, r *http.Request) {
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
@@ -120,21 +120,21 @@ func (h *PasswordResetHandler) RequestPage(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// â”€â”€ POST /reset/request â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /reset/request Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
-// SubmitRequest traite la demande de rÃ©initialisation.
+// SubmitRequest traite la demande de rÃƒÂ©initialisation.
 //
 // Flux :
 //  1. Rechercher l'utilisateur par email ou username dans SQLite
-//  2. GÃ©nÃ©rer un token sÃ©curisÃ© (crypto/rand)
-//  3. InsÃ©rer dans la table password_resets (expiration 15 min)
+//  2. GÃƒÂ©nÃƒÂ©rer un token sÃƒÂ©curisÃƒÂ© (crypto/rand)
+//  3. InsÃƒÂ©rer dans la table password_resets (expiration 15 min)
 //  4. Envoyer l'email avec le lien
 //
-// IMPORTANT : Pour Ã©viter l'Ã©numÃ©ration d'utilisateurs, on retourne
-// toujours le mÃªme message de succÃ¨s, que l'utilisateur existe ou non.
+// IMPORTANT : Pour ÃƒÂ©viter l'ÃƒÂ©numÃƒÂ©ration d'utilisateurs, on retourne
+// toujours le mÃƒÂªme message de succÃƒÂ¨s, que l'utilisateur existe ou non.
 func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "RequÃªte invalide", http.StatusBadRequest)
+		http.Error(w, "RequÃƒÂªte invalide", http.StatusBadRequest)
 		return
 	}
 
@@ -144,24 +144,24 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	slog.Info("Demande de rÃ©initialisation MDP", "identifier", identifier, "remote", r.RemoteAddr)
+	slog.Info("Demande de rÃƒÂ©initialisation MDP", "identifier", identifier, "remote", r.RemoteAddr)
 
-	// Message gÃ©nÃ©rique (anti-Ã©numÃ©ration)
-	successMsg := "Si un compte correspondant existe, un email de rÃ©initialisation a Ã©tÃ© envoyÃ©."
+	// Message gÃƒÂ©nÃƒÂ©rique (anti-ÃƒÂ©numÃƒÂ©ration)
+	successMsg := "Si un compte correspondant existe, un email de rÃƒÂ©initialisation a ÃƒÂ©tÃƒÂ© envoyÃƒÂ©."
 
-	// â”€â”€ 1. Rechercher l'utilisateur â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 1. Rechercher l'utilisateur Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	user, err := h.findUserByIdentifier(identifier)
 	if err != nil {
 		slog.Warn("Utilisateur introuvable pour reset (pas d'erreur visible)",
 			"identifier", identifier,
 			"error", err,
 		)
-		// On affiche quand mÃªme le message de succÃ¨s (anti-Ã©numÃ©ration)
+		// On affiche quand mÃƒÂªme le message de succÃƒÂ¨s (anti-ÃƒÂ©numÃƒÂ©ration)
 		h.renderSuccessPage(w, r, successMsg)
 		return
 	}
 
-	// VÃ©rifier que l'utilisateur a un email
+	// VÃƒÂ©rifier que l'utilisateur a un email
 	if user.Email == "" {
 		slog.Warn("Utilisateur sans email, impossible d'envoyer le reset",
 			"username", user.Username,
@@ -170,15 +170,15 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// â”€â”€ 2. GÃ©nÃ©rer un token sÃ©curisÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 2. GÃƒÂ©nÃƒÂ©rer un token sÃƒÂ©curisÃƒÂ© Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	token, err := generateSecureToken(resetTokenLength)
 	if err != nil {
-		slog.Error("Erreur de gÃ©nÃ©ration du token", "error", err)
+		slog.Error("Erreur de gÃƒÂ©nÃƒÂ©ration du token", "error", err)
 		http.Error(w, "Erreur interne", http.StatusInternalServerError)
 		return
 	}
 
-	// â”€â”€ 3. InsÃ©rer dans SQLite â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 3. InsÃƒÂ©rer dans SQLite Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	expiresAt := time.Now().Add(resetTokenExpiry)
 	_, err = h.db.Exec(
 		`INSERT INTO password_resets (user_id, code, used, expires_at)
@@ -191,9 +191,9 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	slog.Info("Token de reset crÃ©Ã©", "user_id", user.ID, "expires_at", expiresAt.Format(time.RFC3339))
+	slog.Info("Token de reset crÃƒÂ©ÃƒÂ©", "user_id", user.ID, "expires_at", expiresAt.Format(time.RFC3339))
 
-	// â”€â”€ 4. Envoyer l'email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 4. Envoyer l'email Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	resetURL := fmt.Sprintf("%s/reset/%s", strings.TrimRight(h.cfg.BaseURL, "/"), token)
 	links := resolvePortalLinks(h.cfg, h.db)
 
@@ -210,7 +210,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	emailCfg, _ := h.db.GetEmailTemplatesConfig()
 	tpl := emailCfg.PasswordReset
 	if tpl == "" {
-		tpl = "Bonjour {{.Username}},\n\nVoici le lien pour rÃ©initialiser votre mot de passe : {{.ResetURL}}"
+		tpl = "Bonjour {{.Username}},\n\nVoici le lien pour rÃƒÂ©initialiser votre mot de passe : {{.ResetURL}}"
 	}
 	subject := firstNonEmpty(emailCfg.PasswordResetSubject, config.DefaultEmailTemplates().PasswordResetSubject)
 
@@ -221,7 +221,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		)
 		_ = h.db.LogAction("reset.email.failed", user.Username, "", err.Error())
 	} else {
-		slog.Info("Email de reset envoyÃ©", "to", user.Email)
+		slog.Info("Email de reset envoyÃƒÂ©", "to", user.Email)
 		_ = h.db.LogAction("reset.email.sent", user.Username, "", "Email de reinitialisation envoye")
 	}
 
@@ -230,18 +230,18 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	h.renderSuccessPage(w, r, successMsg)
 }
 
-// â”€â”€ GET /reset/{code} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /reset/{code} Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.Section = "login"
 
-	// VÃ©rifier que le token est valide avant d'afficher le formulaire
+	// VÃƒÂ©rifier que le token est valide avant d'afficher le formulaire
 	_, _, err := h.getValidResetToken(code)
 	if err != nil {
-		slog.Warn("Token de reset invalide consultÃ©", "code", code, "error", err)
-		http.Error(w, "Lien de rÃ©initialisation invalide ou expirÃ©", http.StatusNotFound)
+		slog.Warn("Token de reset invalide consultÃƒÂ©", "code", code, "error", err)
+		http.Error(w, "Lien de rÃƒÂ©initialisation invalide ou expirÃƒÂ©", http.StatusNotFound)
 		return
 	}
 
@@ -257,43 +257,43 @@ func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// â”€â”€ POST /reset/{code} â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /reset/{code} Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 // SubmitReset traite la soumission du nouveau mot de passe.
 //
 // Flux :
-//  1. Valider le token (existence, expiration, non-utilisÃ©)
+//  1. Valider le token (existence, expiration, non-utilisÃƒÂ©)
 //  2. Valider le nouveau mot de passe
-//  3. Appliquer le reset simultanÃ©ment :
-//     â€¢ ldap.ResetPassword() â€” Active Directory
-//     â€¢ jellyfin.ResetPassword() â€” Jellyfin
+//  3. Appliquer le reset simultanÃƒÂ©ment :
+//     Ã¢â‚¬Â¢ ldap.ResetPassword() Ã¢â‚¬â€� Active Directory
+//     Ã¢â‚¬Â¢ jellyfin.ResetPassword() Ã¢â‚¬â€� Jellyfin
 //  4. Marquer le token comme used = true
 func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "RequÃªte invalide", http.StatusBadRequest)
+		http.Error(w, "RequÃƒÂªte invalide", http.StatusBadRequest)
 		return
 	}
 
 	password := r.FormValue("password")
 	passwordConfirm := r.FormValue("password_confirm")
 
-	// â”€â”€ 1. Valider le token â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 1. Valider le token Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	resetRecord, user, err := h.getValidResetToken(code)
 	if err != nil {
 		slog.Warn("Token de reset invalide", "code", code, "error", err)
-		http.Error(w, "Lien de rÃ©initialisation invalide ou expirÃ©", http.StatusForbidden)
+		http.Error(w, "Lien de rÃƒÂ©initialisation invalide ou expirÃƒÂ©", http.StatusForbidden)
 		return
 	}
 
-	// â”€â”€ 2. Valider le mot de passe â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 2. Valider le mot de passe Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	if password == "" {
 		http.Error(w, "Le mot de passe est requis", http.StatusBadRequest)
 		return
 	}
 	if len(password) < 8 {
-		http.Error(w, "Le mot de passe doit faire au minimum 8 caractÃ¨res", http.StatusBadRequest)
+		http.Error(w, "Le mot de passe doit faire au minimum 8 caractÃƒÂ¨res", http.StatusBadRequest)
 		return
 	}
 	if password != passwordConfirm {
@@ -301,13 +301,13 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	slog.Info("RÃ©initialisation MDP en cours",
+	slog.Info("RÃƒÂ©initialisation MDP en cours",
 		"username", user.Username,
 		"user_id", user.ID,
 		"remote", r.RemoteAddr,
 	)
 
-	// â”€â”€ 3. Appliquer le reset (LDAP + Jellyfin) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 3. Appliquer le reset (LDAP + Jellyfin) Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	var errors []string
 
 	// Reset LDAP (Active Directory)
@@ -319,7 +319,7 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 			)
 			errors = append(errors, fmt.Sprintf("AD: %s", err.Error()))
 		} else {
-			slog.Info("Reset LDAP rÃ©ussi", "dn", user.LdapDN)
+			slog.Info("Reset LDAP rÃƒÂ©ussi", "dn", user.LdapDN)
 		}
 	}
 
@@ -332,32 +332,32 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 			)
 			errors = append(errors, fmt.Sprintf("Jellyfin: %s", err.Error()))
 		} else {
-			slog.Info("Reset Jellyfin rÃ©ussi", "id", user.JellyfinID)
+			slog.Info("Reset Jellyfin rÃƒÂ©ussi", "id", user.JellyfinID)
 		}
 	}
 
-	// Si les DEUX ont Ã©chouÃ©, c'est une erreur critique
+	// Si les DEUX ont ÃƒÂ©chouÃƒÂ©, c'est une erreur critique
 	if user.LdapDN != "" && user.JellyfinID != "" && len(errors) == 2 {
-		slog.Error("Reset MDP Ã©chouÃ© sur TOUS les services",
+		slog.Error("Reset MDP ÃƒÂ©chouÃƒÂ© sur TOUS les services",
 			"username", user.Username,
 			"errors", errors,
 		)
 		_ = h.db.LogAction("reset.failed.total", user.Username, "", fmt.Sprintf("%v", errors))
-		http.Error(w, "Erreur lors de la rÃ©initialisation. Veuillez rÃ©essayer ou contacter l'administrateur.", http.StatusInternalServerError)
+		http.Error(w, "Erreur lors de la rÃƒÂ©initialisation. Veuillez rÃƒÂ©essayer ou contacter l'administrateur.", http.StatusInternalServerError)
 		return
 	}
 
-	// â”€â”€ 4. Marquer le token comme utilisÃ© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 4. Marquer le token comme utilisÃƒÂ© Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	_, err = h.db.Exec(
 		`UPDATE password_resets SET used = TRUE WHERE id = ?`,
 		resetRecord.ID,
 	)
 	if err != nil {
-		slog.Error("Erreur de mise Ã  jour du token de reset", "id", resetRecord.ID, "error", err)
-		// Non-bloquant : le reset a dÃ©jÃ  Ã©tÃ© appliquÃ©
+		slog.Error("Erreur de mise ÃƒÂ  jour du token de reset", "id", resetRecord.ID, "error", err)
+		// Non-bloquant : le reset a dÃƒÂ©jÃƒÂ  ÃƒÂ©tÃƒÂ© appliquÃƒÂ©
 	}
 
-	// â”€â”€ 5. Audit log â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 5. Audit log Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	status := "success"
 	if len(errors) > 0 {
 		status = "partial"
@@ -370,22 +370,22 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 			user.ID, user.JellyfinID, user.LdapDN, len(errors)),
 	)
 
-	slog.Info("RÃ©initialisation MDP terminÃ©e",
+	slog.Info("RÃƒÂ©initialisation MDP terminÃƒÂ©e",
 		"username", user.Username,
 		"status", status,
 		"partial_errors", len(errors),
 	)
 
-	// â”€â”€ RÃ©ponse â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-	msg := "Votre mot de passe a Ã©tÃ© rÃ©initialisÃ© avec succÃ¨s."
+	// Ã¢â€�â‚¬Ã¢â€�â‚¬ RÃƒÂ©ponse Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+	msg := "Votre mot de passe a ÃƒÂ©tÃƒÂ© rÃƒÂ©initialisÃƒÂ© avec succÃƒÂ¨s."
 	if len(errors) > 0 {
-		msg = "Votre mot de passe a Ã©tÃ© partiellement rÃ©initialisÃ©. Contactez l'administrateur si le problÃ¨me persiste."
+		msg = "Votre mot de passe a ÃƒÂ©tÃƒÂ© partiellement rÃƒÂ©initialisÃƒÂ©. Contactez l'administrateur si le problÃƒÂ¨me persiste."
 	}
 
 	h.renderSuccessPage(w, r, msg)
 }
 
-// â”€â”€ MÃ©thodes internes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€�â‚¬Ã¢â€�â‚¬ MÃƒÂ©thodes internes Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 // findUserByIdentifier recherche un utilisateur par email ou username dans SQLite.
 func (h *PasswordResetHandler) findUserByIdentifier(identifier string) (*userRecord, error) {
@@ -401,7 +401,7 @@ func (h *PasswordResetHandler) findUserByIdentifier(identifier string) (*userRec
 	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("aucun utilisateur trouvÃ© pour %q", identifier)
+		return nil, fmt.Errorf("aucun utilisateur trouvÃƒÂ© pour %q", identifier)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("erreur de recherche: %w", err)
@@ -414,15 +414,15 @@ func (h *PasswordResetHandler) findUserByIdentifier(identifier string) (*userRec
 	return &user, nil
 }
 
-// getValidResetToken rÃ©cupÃ¨re et valide un token de rÃ©initialisation.
-// VÃ©rifie : existence, expiration (15 min), non-utilisÃ©.
-// Retourne le token ET l'utilisateur associÃ©.
+// getValidResetToken rÃƒÂ©cupÃƒÂ¨re et valide un token de rÃƒÂ©initialisation.
+// VÃƒÂ©rifie : existence, expiration (15 min), non-utilisÃƒÂ©.
+// Retourne le token ET l'utilisateur associÃƒÂ©.
 func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRecord, *userRecord, error) {
 	if code == "" {
 		return nil, nil, fmt.Errorf("code de reset vide")
 	}
 
-	// RÃ©cupÃ©rer le token
+	// RÃƒÂ©cupÃƒÂ©rer le token
 	var rec passwordResetRecord
 	var expiresAtStr string
 
@@ -444,18 +444,18 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 		return nil, nil, fmt.Errorf("format d'expiration invalide: %w", err)
 	}
 
-	// VÃ©rifier non-utilisÃ©
+	// VÃƒÂ©rifier non-utilisÃƒÂ©
 	if rec.Used {
-		return nil, nil, fmt.Errorf("token %q dÃ©jÃ  utilisÃ©", code)
+		return nil, nil, fmt.Errorf("token %q dÃƒÂ©jÃƒÂ  utilisÃƒÂ©", code)
 	}
 
-	// VÃ©rifier expiration
+	// VÃƒÂ©rifier expiration
 	if time.Now().After(rec.ExpiresAt) {
-		return nil, nil, fmt.Errorf("token %q expirÃ© depuis %s",
+		return nil, nil, fmt.Errorf("token %q expirÃƒÂ© depuis %s",
 			code, rec.ExpiresAt.Format("02/01/2006 15:04"))
 	}
 
-	// RÃ©cupÃ©rer l'utilisateur associÃ©
+	// RÃƒÂ©cupÃƒÂ©rer l'utilisateur associÃƒÂ©
 	var user userRecord
 	var jellyfinID, email, ldapDN sql.NullString
 
@@ -465,7 +465,7 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("utilisateur associÃ© au token introuvable: %w", err)
+		return nil, nil, fmt.Errorf("utilisateur associÃƒÂ© au token introuvable: %w", err)
 	}
 
 	user.Email = email.String
@@ -475,13 +475,13 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 	return &rec, &user, nil
 }
 
-// generateSecureToken gÃ©nÃ¨re un token cryptographiquement sÃ»r.
+// generateSecureToken gÃƒÂ©nÃƒÂ¨re un token cryptographiquement sÃƒÂ»r.
 // Utilise crypto/rand pour une entropie maximale.
-// Retourne une chaÃ®ne hexadÃ©cimale de 2*length caractÃ¨res.
+// Retourne une chaÃƒÂ®ne hexadÃƒÂ©cimale de 2*length caractÃƒÂ¨res.
 func generateSecureToken(length int) (string, error) {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {
-		return "", fmt.Errorf("erreur de gÃ©nÃ©ration du token: %w", err)
+		return "", fmt.Errorf("erreur de gÃƒÂ©nÃƒÂ©ration du token: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
 }
