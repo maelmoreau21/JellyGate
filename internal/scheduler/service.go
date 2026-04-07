@@ -182,6 +182,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 			return fmt.Errorf("LDAP non configure ou desactive")
 		}
 		ldapClient := ldap.New(ldapCfg)
+		ldapBaseGroup := resolveLDAPBaseGroup(ldapCfg)
 
 		mappings, err := s.db.GetGroupPolicyMappings()
 		if err != nil {
@@ -217,6 +218,12 @@ func (s *Service) executeTask(task TaskRecord) error {
 			}
 
 			for _, member := range members {
+				if strings.TrimSpace(member.DN) != "" {
+					if err := ldapClient.AddUserToGroup(member.DN, ldapBaseGroup); err != nil {
+						slog.Warn("Scheduler: impossible d'assurer l'appartenance au groupe LDAP de base", "user", member.Username, "group", ldapBaseGroup, "error", err)
+					}
+				}
+
 				var dbUser struct {
 					ID       int64
 					JFID     string
@@ -462,24 +469,41 @@ func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinP
 		return fmt.Errorf("client Jellyfin nul")
 	}
 
-	user, err := s.jf.GetUser(jfUserID)
-	if err != nil {
-		return err
+	profile := jellyfin.InviteProfile{
+		PresetID:               strings.TrimSpace(strings.ToLower(preset.ID)),
+		TemplateUserID:         strings.TrimSpace(preset.TemplateUserID),
+		EnableAllFolders:       preset.EnableAllFolders,
+		EnabledFolderIDs:       append([]string(nil), preset.EnabledFolderIDs...),
+		EnableDownload:         preset.EnableDownload,
+		EnableRemoteAccess:     preset.EnableRemoteAccess,
+		MaxSessions:            preset.MaxSessions,
+		BitrateLimit:           preset.BitrateLimit,
+		UsernameMinLength:      preset.UsernameMinLength,
+		UsernameMaxLength:      preset.UsernameMaxLength,
+		PasswordMinLength:      preset.PasswordMinLength,
+		PasswordMaxLength:      preset.PasswordMaxLength,
+		PasswordRequireUpper:   preset.RequireUpper,
+		PasswordRequireLower:   preset.RequireLower,
+		PasswordRequireDigit:   preset.RequireDigit,
+		PasswordRequireSpecial: preset.RequireSpecial,
+		DisableAfterDays:       preset.DisableAfterDays,
+		UserExpiryDays:         preset.DisableAfterDays,
+		DeleteAfterDays:        preset.DeleteAfterDays,
+		CanInvite:              preset.CanInvite,
 	}
 
-	policy := user.Policy
-	policy.EnableAllFolders = preset.EnableAllFolders
-	policy.EnabledFolders = preset.EnabledFolderIDs
-	policy.EnableContentDownloading = preset.EnableDownload
-	policy.EnableRemoteAccess = preset.EnableRemoteAccess
-	policy.MaxActiveSessions = preset.MaxSessions
-	if preset.BitrateLimit > 0 {
-		policy.RemoteClientBitrateLimit = preset.BitrateLimit * 1000000
-	} else {
-		policy.RemoteClientBitrateLimit = 0
-	}
+	return s.jf.ApplyInviteProfile(jfUserID, profile)
+}
 
-	return s.jf.SetUserPolicy(jfUserID, policy)
+func resolveLDAPBaseGroup(cfg config.LDAPConfig) string {
+	baseGroup := strings.TrimSpace(cfg.JellyfinGroup)
+	if baseGroup == "" {
+		baseGroup = strings.TrimSpace(cfg.UserGroup)
+	}
+	if baseGroup == "" {
+		baseGroup = "jellyfin"
+	}
+	return baseGroup
 }
 
 func (s *Service) checkExpiringAccounts() {

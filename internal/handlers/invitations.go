@@ -64,6 +64,12 @@ type inviteSignupResult struct {
 	LDAPOnlyMode bool
 }
 
+type inviteProvisionPlan struct {
+	EffectiveProfile jellyfin.InviteProfile
+	MappingPresetID  string
+	LDAPGroups       []string
+}
+
 // â”€â”€ Invitation Handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // InvitationHandler gÃ¨re les routes liÃ©es aux invitations.
@@ -600,6 +606,25 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	ldapOnlyMode := h.ldClient != nil && ldapCfg.Enabled && strings.EqualFold(strings.TrimSpace(ldapCfg.ProvisionMode), "ldap_only")
 	createJellyfinUser := !ldapOnlyMode
 
+	provisionPlan := inviteProvisionPlan{EffectiveProfile: profile}
+	if resolvedPlan, err := h.resolveInviteProvisionPlan(profile); err != nil {
+		slog.Warn(
+			"Impossible de resoudre le mapping LDAP -> preset pour l'invitation (fallback sur profil invitation)",
+			"group", strings.TrimSpace(profile.GroupName),
+			"preset_id", strings.TrimSpace(profile.PresetID),
+			"error", err,
+		)
+	} else {
+		provisionPlan = resolvedPlan
+		if strings.TrimSpace(provisionPlan.MappingPresetID) != "" {
+			slog.Info(
+				"Mapping LDAP -> preset resolu pour l'invitation",
+				"group", strings.TrimSpace(profile.GroupName),
+				"mapping_preset_id", provisionPlan.MappingPresetID,
+			)
+		}
+	}
+
 	ldapProvisionRole := resolveLDAPProvisionRole(profile)
 	if ldapProvisionRole != jgldap.ProvisionRoleUser {
 		slog.Info("Provisioning LDAP role detecte depuis le profil d'invitation",
@@ -627,6 +652,22 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		slog.Info("â­ï¸ Ã‰tape 2/5 ignorÃ©e (LDAP dÃ©sactivÃ©)")
 	}
 
+	if h.ldClient != nil && strings.TrimSpace(userDN) != "" {
+		targetGroups := resolveLDAPProvisionGroups(ldapCfg, provisionPlan.LDAPGroups)
+		for _, groupRef := range targetGroups {
+			if err := h.ldClient.AddUserToGroup(userDN, groupRef); err != nil {
+				slog.Warn(
+					"Assignation groupe LDAP echouee pendant provisioning invitation",
+					"username", form.Username,
+					"dn", userDN,
+					"group_ref", groupRef,
+					"error", err,
+				)
+				h.logInviteAction(r, "invite.group_mapping.failed", form.Username, userDN, fmt.Sprintf("%s: %v", groupRef, err))
+			}
+		}
+	}
+
 	var jellyfinID string
 	if createJellyfinUser {
 		slog.Info("ðŸŽ¬ Ã‰tape 3/5 : CrÃ©ation du compte Jellyfin", "username", form.Username)
@@ -650,7 +691,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 		jellyfinID = jfUser.ID
 
-		if err := h.jfClient.ApplyInviteProfile(jfUser.ID, profile); err != nil {
+		if err := h.jfClient.ApplyInviteProfile(jfUser.ID, provisionPlan.EffectiveProfile); err != nil {
 			slog.Warn("Erreur lors de l'application du profil Jellyfin (non-bloquant)", "jellyfin_id", jfUser.ID, "error", err)
 			h.logInviteAction(r, "invite.profile.failed", form.Username, jfUser.ID, err.Error())
 		}
@@ -660,23 +701,8 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		slog.Info("â­ï¸ Ã‰tape 3/5 ignorÃ©e (mode LDAP-only)", "username", form.Username)
 	}
 
-	if err := h.applyGroupPolicyFromProfile(profile, jellyfinID, userDN); err != nil {
-		target := strings.TrimSpace(jellyfinID)
-		if target == "" {
-			target = strings.TrimSpace(userDN)
-		}
-		slog.Warn(
-			"Erreur application mapping LDAP/preset (non-bloquant)",
-			"group", strings.TrimSpace(profile.GroupName),
-			"preset_id", strings.TrimSpace(profile.PresetID),
-			"jellyfin_id", strings.TrimSpace(jellyfinID),
-			"error", err,
-		)
-		h.logInviteAction(r, "invite.group_mapping.failed", form.Username, target, err.Error())
-	}
-
 	slog.Info("ðŸ’¾ Ã‰tape 4/5 : Enregistrement SQLite", "username", form.Username)
-	if err := h.registerUser(form, inv, jellyfinID, userDN, ldapProvisionRole, emailVerified); err != nil {
+	if err := h.registerUser(form, inv, provisionPlan.EffectiveProfile, jellyfinID, userDN, ldapProvisionRole, emailVerified); err != nil {
 		slog.Error("âŒ Ã‰tape 4/5 Ã©chouÃ©e : enregistrement SQLite", "username", form.Username, "error", err)
 		slog.Warn("ðŸ”„ Rollback : suppression Jellyfin + LDAP")
 
@@ -805,44 +831,35 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 // registerUser insÃ¨re l'utilisateur dans SQLite et incrÃ©mente le compteur
 // d'utilisation de l'invitation. Les deux opÃ©rations sont dans une transaction.
-func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, jellyfinID, ldapDN, ldapRole string, emailVerified bool) error {
+func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, profile jellyfin.InviteProfile, jellyfinID, ldapDN, ldapRole string, emailVerified bool) error {
 	tx, err := h.db.Begin()
 	if err != nil {
 		return fmt.Errorf("impossible de dÃ©marrer la transaction: %w", err)
 	}
 	defer tx.Rollback() // No-op si Commit() a Ã©tÃ© appelÃ©
 
-	// Parsing du profil JSON pour rÃ©cupÃ©rer les politiques d'expiration et groupe.
-	var disableAfterDays int
+	disableAfterDays := profile.DisableAfterDays
+	if disableAfterDays <= 0 {
+		disableAfterDays = profile.UserExpiryDays
+	}
+
 	var absoluteUserExpiryAt time.Time
-	expiryAction := "disable"
+	expiryAction := normalizeExpiryAction(profile.ExpiryAction)
 	deleteAfterDays := 0
-	groupName := ""
-	canInviteFromProfile := false
+	groupName := strings.TrimSpace(profile.GroupName)
+	canInviteFromProfile := profile.CanInvite
 	var presetID interface{}
 
-	if inv.JellyfinProfile != "" {
-		var pf jellyfin.InviteProfile
-		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &pf); err == nil {
-			disableAfterDays = pf.DisableAfterDays
-			if disableAfterDays <= 0 {
-				disableAfterDays = pf.UserExpiryDays
-			}
-			expiryAction = normalizeExpiryAction(pf.ExpiryAction)
-			if pf.DeleteAfterDays > 0 {
-				deleteAfterDays = pf.DeleteAfterDays
-			}
-			if strings.TrimSpace(pf.UserExpiresAt) != "" {
-				if parsed, err := parseAccessExpiry(pf.UserExpiresAt); err == nil {
-					absoluteUserExpiryAt = parsed
-				}
-			}
-			groupName = strings.TrimSpace(pf.GroupName)
-			canInviteFromProfile = pf.CanInvite
-			if strings.TrimSpace(pf.PresetID) != "" {
-				presetID = strings.TrimSpace(pf.PresetID)
-			}
+	if profile.DeleteAfterDays > 0 {
+		deleteAfterDays = profile.DeleteAfterDays
+	}
+	if strings.TrimSpace(profile.UserExpiresAt) != "" {
+		if parsed, err := parseAccessExpiry(profile.UserExpiresAt); err == nil {
+			absoluteUserExpiryAt = parsed
 		}
+	}
+	if strings.TrimSpace(profile.PresetID) != "" {
+		presetID = strings.TrimSpace(strings.ToLower(profile.PresetID))
 	}
 
 	var accessExpiresAt interface{}
@@ -905,10 +922,12 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	return nil
 }
 
-func (h *InvitationHandler) applyGroupPolicyFromProfile(profile jellyfin.InviteProfile, jellyfinID, userDN string) error {
+func (h *InvitationHandler) resolveInviteProvisionPlan(profile jellyfin.InviteProfile) (inviteProvisionPlan, error) {
+	plan := inviteProvisionPlan{EffectiveProfile: profile}
+
 	mappings, err := h.db.GetGroupPolicyMappings()
 	if err != nil {
-		return err
+		return plan, err
 	}
 
 	groupName := strings.TrimSpace(profile.GroupName)
@@ -925,51 +944,96 @@ func (h *InvitationHandler) applyGroupPolicyFromProfile(profile jellyfin.InviteP
 		}
 	}
 
-	if presetID != "" && strings.TrimSpace(jellyfinID) != "" {
-		presets, err := h.db.GetJellyfinPolicyPresets()
+	if presetID != "" {
+		preset, err := h.getInvitePolicyPresetByID(presetID)
 		if err != nil {
-			return err
+			return plan, err
 		}
+		plan.MappingPresetID = strings.TrimSpace(preset.ID)
+		plan.EffectiveProfile = mergeInviteProfileWithPreset(profile, *preset)
+	}
 
-		var preset *config.JellyfinPolicyPreset
-		for i := range presets {
-			if strings.TrimSpace(strings.ToLower(presets[i].ID)) == presetID {
-				preset = &presets[i]
-				break
-			}
-		}
-		if preset == nil {
-			return fmt.Errorf("preset %q introuvable pour profil d'invitation", presetID)
-		}
+	plan.LDAPGroups = resolveLDAPGroupsFromMappings(mappings, presetID, groupName)
+	return plan, nil
+}
 
-		user, err := h.jfClient.GetUser(jellyfinID)
-		if err != nil {
-			return fmt.Errorf("lecture utilisateur jellyfin: %w", err)
-		}
+func (h *InvitationHandler) getInvitePolicyPresetByID(presetID string) (*config.JellyfinPolicyPreset, error) {
+	presetID = strings.TrimSpace(strings.ToLower(presetID))
+	if presetID == "" {
+		return nil, fmt.Errorf("preset vide")
+	}
 
-		policy := user.Policy
-		policy.EnableAllFolders = preset.EnableAllFolders
-		policy.EnabledFolders = preset.EnabledFolderIDs
-		policy.EnableContentDownloading = preset.EnableDownload
-		policy.EnableRemoteAccess = preset.EnableRemoteAccess
-		policy.MaxActiveSessions = preset.MaxSessions
-		policy.RemoteClientBitrateLimit = preset.BitrateLimit
+	presets, err := h.db.GetJellyfinPolicyPresets()
+	if err != nil {
+		return nil, err
+	}
 
-		if err := h.jfClient.SetUserPolicy(jellyfinID, policy); err != nil {
-			return fmt.Errorf("application policy jellyfin: %w", err)
+	for i := range presets {
+		if strings.TrimSpace(strings.ToLower(presets[i].ID)) == presetID {
+			return &presets[i], nil
 		}
 	}
 
-	ldapGroups := resolveLDAPGroupsFromMappings(mappings, presetID, groupName)
-	if h.ldClient != nil && strings.TrimSpace(userDN) != "" {
-		for _, groupRef := range ldapGroups {
-			if err := h.ldClient.AddUserToGroup(userDN, groupRef); err != nil {
-				return fmt.Errorf("assignation groupe ldap (%s): %w", groupRef, err)
-			}
+	return nil, fmt.Errorf("preset %q introuvable pour profil d'invitation", presetID)
+}
+
+func mergeInviteProfileWithPreset(base jellyfin.InviteProfile, preset config.JellyfinPolicyPreset) jellyfin.InviteProfile {
+	merged := base
+	merged.PresetID = strings.TrimSpace(strings.ToLower(preset.ID))
+	merged.TemplateUserID = strings.TrimSpace(preset.TemplateUserID)
+	merged.EnableAllFolders = preset.EnableAllFolders
+	merged.EnabledFolderIDs = append([]string(nil), preset.EnabledFolderIDs...)
+	merged.EnableDownload = preset.EnableDownload
+	merged.EnableRemoteAccess = preset.EnableRemoteAccess
+	merged.MaxSessions = preset.MaxSessions
+	merged.BitrateLimit = preset.BitrateLimit
+	merged.UsernameMinLength = preset.UsernameMinLength
+	merged.UsernameMaxLength = preset.UsernameMaxLength
+	merged.PasswordMinLength = preset.PasswordMinLength
+	merged.PasswordMaxLength = preset.PasswordMaxLength
+	merged.PasswordRequireUpper = preset.RequireUpper
+	merged.PasswordRequireLower = preset.RequireLower
+	merged.PasswordRequireDigit = preset.RequireDigit
+	merged.PasswordRequireSpecial = preset.RequireSpecial
+	merged.DisableAfterDays = preset.DisableAfterDays
+	merged.UserExpiryDays = preset.DisableAfterDays
+	merged.ExpiryAction = normalizeExpiryAction(preset.ExpiryAction)
+	merged.DeleteAfterDays = preset.DeleteAfterDays
+	merged.CanInvite = preset.CanInvite || merged.CanInvite
+	return merged
+}
+
+func resolveLDAPProvisionGroups(ldapCfg config.LDAPConfig, mappedGroups []string) []string {
+	groups := make([]string, 0, len(mappedGroups)+1)
+	seen := map[string]struct{}{}
+
+	appendUnique := func(groupRef string) {
+		trimmed := strings.TrimSpace(groupRef)
+		if trimmed == "" {
+			return
 		}
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		groups = append(groups, trimmed)
 	}
 
-	return nil
+	baseGroup := strings.TrimSpace(ldapCfg.JellyfinGroup)
+	if baseGroup == "" {
+		baseGroup = strings.TrimSpace(ldapCfg.UserGroup)
+	}
+	if baseGroup == "" {
+		baseGroup = "jellyfin"
+	}
+
+	appendUnique(baseGroup)
+	for _, groupRef := range mappedGroups {
+		appendUnique(groupRef)
+	}
+
+	return groups
 }
 
 func resolveLDAPGroupsFromMappings(mappings []config.GroupPolicyMapping, presetID, groupName string) []string {
