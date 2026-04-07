@@ -343,6 +343,76 @@ func normalizeExpiryAction(raw string) string {
 	}
 }
 
+func normalizePhoneForLDAP(raw string) string {
+	candidate := strings.TrimSpace(raw)
+	if candidate == "" {
+		return ""
+	}
+
+	replacer := strings.NewReplacer(" ", "", "-", "", ".", "", "(", "", ")", "")
+	normalized := replacer.Replace(candidate)
+	if strings.HasPrefix(normalized, "00") {
+		normalized = "+" + normalized[2:]
+	}
+
+	if strings.HasPrefix(normalized, "+") {
+		if len(normalized) < 7 || len(normalized) > 21 {
+			return ""
+		}
+		for _, r := range normalized[1:] {
+			if r < '0' || r > '9' {
+				return ""
+			}
+		}
+		return normalized
+	}
+
+	if len(normalized) < 6 || len(normalized) > 20 {
+		return ""
+	}
+	for _, r := range normalized {
+		if r < '0' || r > '9' {
+			return ""
+		}
+	}
+
+	return normalized
+}
+
+func (h *AdminHandler) syncUserContactToLDAP(userID int64) error {
+	if userID <= 0 || h.ldClient == nil {
+		return nil
+	}
+
+	var (
+		ldapDN          sql.NullString
+		email           sql.NullString
+		contactTelegram sql.NullString
+	)
+
+	err := h.db.QueryRow(
+		`SELECT ldap_dn, email, contact_telegram FROM users WHERE id = ?`,
+		userID,
+	).Scan(&ldapDN, &email, &contactTelegram)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("lecture contact utilisateur: %w", err)
+	}
+
+	userDN := strings.TrimSpace(ldapDN.String)
+	if userDN == "" {
+		return nil
+	}
+
+	return h.ldClient.UpdateUserContact(
+		userDN,
+		strings.TrimSpace(email.String),
+		normalizePhoneForLDAP(contactTelegram.String),
+	)
+}
+
 // â”€â”€ Background Jobs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // StartExpirationJob lance une routine en arriÃ¨re-plan qui vÃ©rifie pÃ©riodiquement
@@ -1062,6 +1132,11 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		} else {
 			message = "Profil mis Ã  jour, email de vÃ©rification envoyÃ©"
 		}
+	}
+
+	if err := h.syncUserContactToLDAP(userID); err != nil {
+		slog.Warn("Synchronisation LDAP du profil partielle", "user_id", userID, "error", err)
+		message += " (synchronisation LDAP en attente)"
 	}
 
 	if req.PreferredLang != nil {

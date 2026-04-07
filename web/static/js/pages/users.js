@@ -233,7 +233,7 @@
                     + '<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2">'
                     + '<button class="action-timeline jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">\uD83D\uDCCA</button>'
                     + '<button class="action-edit jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">\u270F\uFE0F</button>'
-                    + '<button class="action-toggle jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">' + (user.is_active ? '\uD83D\uDD12' : '\uD83D\uDD13') + '</button>'
+                    + '<button class="action-toggle jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">' + (user.is_active ? '\uD83D\uDD13' : '\uD83D\uDD12') + '</button>'
                     + '<button class="action-delete jg-btn jg-btn-sm jg-btn-danger" data-id="' + user.id + '">\uD83D\uDDD1\uFE0F</button>'
                     + '</div></td></tr>';
             }).join('');

@@ -336,6 +336,98 @@ func (c *Client) setUserAccountControl(userDN string, uac int) error {
 	return nil
 }
 
+// UpdateUserContact met a jour les attributs de contact LDAP pour un utilisateur.
+// Les attributs cibles sont:
+//   - mail
+//   - telephoneNumber/mobile (si un numero est fourni)
+func (c *Client) UpdateUserContact(userDN, email, phone string) error {
+	userDN = strings.TrimSpace(userDN)
+	if userDN == "" {
+		return fmt.Errorf("ldap.UpdateUserContact: DN vide")
+	}
+
+	conn, err := c.connect()
+	if err != nil {
+		return fmt.Errorf("ldap.UpdateUserContact: %w", err)
+	}
+	defer conn.Close()
+
+	if err := c.replaceUserAttribute(conn, userDN, "mail", strings.TrimSpace(email)); err != nil {
+		return fmt.Errorf("ldap.UpdateUserContact: echec mise a jour mail: %w", err)
+	}
+
+	phone = strings.TrimSpace(phone)
+	if phone == "" {
+		_ = c.replaceUserAttribute(conn, userDN, "telephoneNumber", "")
+		_ = c.replaceUserAttribute(conn, userDN, "mobile", "")
+		return nil
+	}
+
+	phoneAttrs := []string{"telephoneNumber", "mobile"}
+	phoneUpdated := false
+	var lastPhoneErr error
+	for _, attr := range phoneAttrs {
+		if err := c.replaceUserAttribute(conn, userDN, attr, phone); err != nil {
+			lastPhoneErr = err
+			slog.Debug("Attribut telephone LDAP non applicable", "dn", userDN, "attr", attr, "error", err)
+			continue
+		}
+		phoneUpdated = true
+	}
+
+	if !phoneUpdated && lastPhoneErr != nil {
+		return fmt.Errorf("ldap.UpdateUserContact: echec mise a jour telephone: %w", lastPhoneErr)
+	}
+
+	return nil
+}
+
+func (c *Client) replaceUserAttribute(conn *goldap.Conn, userDN, attribute, value string) error {
+	if conn == nil {
+		return fmt.Errorf("ldap.replaceUserAttribute: connexion LDAP nil")
+	}
+
+	attr := strings.TrimSpace(attribute)
+	if attr == "" {
+		return fmt.Errorf("ldap.replaceUserAttribute: attribut vide")
+	}
+
+	modReq := goldap.NewModifyRequest(userDN, nil)
+	cleanValue := strings.TrimSpace(value)
+	if cleanValue == "" {
+		modReq.Delete(attr, nil)
+	} else {
+		modReq.Replace(attr, []string{cleanValue})
+	}
+
+	if err := conn.Modify(modReq); err != nil {
+		if cleanValue == "" && isIgnorableLDAPDeleteError(err) {
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
+func isIgnorableLDAPDeleteError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	var ldapErr *goldap.Error
+	if errors.As(err, &ldapErr) {
+		switch ldapErr.ResultCode {
+		case goldap.LDAPResultNoSuchAttribute,
+			goldap.LDAPResultUndefinedAttributeType:
+			return true
+		}
+	}
+
+	errMsg := strings.ToLower(err.Error())
+	return strings.Contains(errMsg, "no such attribute") || strings.Contains(errMsg, "undefined attribute")
+}
+
 // ── Modification du mot de passe ────────────────────────────────────────────
 
 // ResetPassword réinitialise le mot de passe d'un utilisateur dans l'AD.
