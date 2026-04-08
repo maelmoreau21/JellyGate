@@ -38,7 +38,7 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 			csp += "; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://flagcdn.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 			w.Header().Set("Content-Security-Policy", csp)
 
-			if requestIsHTTPS(r, baseURL) {
+			if RequestIsHTTPS(r, baseURL) {
 				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 			}
 
@@ -61,7 +61,7 @@ func EnsureCSRFCookie(baseURL string) func(http.Handler) http.Handler {
 						Path:     "/",
 						MaxAge:   86400,
 						HttpOnly: false,
-						Secure:   requestIsHTTPS(r, baseURL),
+						Secure:   RequestIsHTTPS(r, baseURL),
 						SameSite: http.SameSiteLaxMode,
 					})
 				}
@@ -102,7 +102,12 @@ func RequireCSRF() func(http.Handler) http.Handler {
 	}
 }
 
-func requestIsHTTPS(r *http.Request, baseURL string) bool {
+// RequestIsHTTPS determines whether the incoming request should be
+// considered HTTPS. It returns true if any of the following are true:
+// - the configured baseURL starts with https://
+// - the request has TLS information (r.TLS != nil)
+// - the X-Forwarded-Proto header is set to "https"
+func RequestIsHTTPS(r *http.Request, baseURL string) bool {
 	if r == nil {
 		return false
 	}

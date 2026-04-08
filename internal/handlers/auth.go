@@ -150,9 +150,9 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		Value:    cookieValue,
 		Path:     "/",
 		MaxAge:   int(session.Duration.Seconds()),
-		HttpOnly: true,                 // Pas accessible en JavaScript
-		Secure:   r.TLS != nil,         // Secure si HTTPS
-		SameSite: http.SameSiteLaxMode, // Plus compatible que Strict pour le dev/local
+		HttpOnly: true,                                  // Pas accessible en JavaScript
+		Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL), // Secure si HTTPS
+		SameSite: http.SameSiteLaxMode,                  // Plus compatible que Strict pour le dev/local
 	})
 
 	if preferredLang := h.resolvePreferredLang(authResp.User.ID, authResp.User.Name); preferredLang != "" {
@@ -162,7 +162,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 			Path:     "/",
 			MaxAge:   31536000,
 			HttpOnly: false,
-			Secure:   r.TLS != nil,
+			Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL),
 			SameSite: http.SameSiteLaxMode,
 		})
 	}
@@ -203,7 +203,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   -1,
 		HttpOnly: true,
-		Secure:   r.TLS != nil,
+		Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL),
 		SameSite: http.SameSiteStrictMode,
 	})
 

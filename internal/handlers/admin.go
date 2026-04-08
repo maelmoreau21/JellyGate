@@ -1147,7 +1147,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 				Path:     "/",
 				MaxAge:   -1,
 				HttpOnly: false,
-				Secure:   r.TLS != nil,
+				Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL),
 				SameSite: http.SameSiteLaxMode,
 			})
 		} else {
@@ -1157,7 +1157,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 				Path:     "/",
 				MaxAge:   31536000,
 				HttpOnly: false,
-				Secure:   r.TLS != nil,
+				Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL),
 				SameSite: http.SameSiteLaxMode,
 			})
 		}
@@ -3296,7 +3296,7 @@ func requestBaseURL(r *http.Request) string {
 	scheme := "http"
 	if xfProto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); xfProto != "" {
 		scheme = strings.TrimSpace(strings.Split(xfProto, ",")[0])
-	} else if r.TLS != nil {
+	} else if jgmw.RequestIsHTTPS(r, "") {
 		scheme = "https"
 	}
 
