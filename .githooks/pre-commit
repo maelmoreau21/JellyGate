@@ -1,0 +1,11 @@
+#!/bin/sh
+# Pre-commit hook: run Node secret scanner (if node is available)
+if command -v node >/dev/null 2>&1; then
+  node scripts/prevent_secrets_commit.js
+  rc=$?
+  if [ $rc -ne 0 ]; then
+    echo "Commit blocked by pre-commit hook: secrets found."
+    exit $rc
+  fi
+fi
+exit 0

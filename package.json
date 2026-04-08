@@ -3,6 +3,9 @@
   "private": true,
   "scripts": {
     "build:css": "node ./scripts/build-css.js",
+    "i18n:validate": "node ./scripts/i18n_validate.js",
+    "secrets:check": "node ./scripts/prevent_secrets_commit.js",
+    "hooks:install": "git config core.hooksPath .githooks",
     "screenshots": "node ./scripts/screenshots.js"
   },
   "devDependencies": {
