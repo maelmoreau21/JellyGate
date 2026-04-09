@@ -150,17 +150,27 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if entry == nil {
-			slog.Info("Acces refuse par le filtre de recherche LDAP",
+			// If the user is not found in LDAP but is an administrator in Jellyfin,
+			// allow the login and keep a warning. Otherwise deny access.
+			if !isAdmin {
+				slog.Info("Acces refuse par le filtre de recherche LDAP",
+					"username", lookupUsername,
+					"remote", r.RemoteAddr,
+				)
+				_ = h.db.LogAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, filtre LDAP: acces refuse", r.RemoteAddr))
+				h.redirectLoginError(w, r, "invalid", lookupUsername)
+				return
+			}
+
+			slog.Warn("Utilisateur introuvable en LDAP mais administrateur Jellyfin : accès accordé (mode fallback)",
 				"username", lookupUsername,
 				"remote", r.RemoteAddr,
 			)
-			_ = h.db.LogAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, filtre LDAP: acces refuse", r.RemoteAddr))
-			h.redirectLoginError(w, r, "invalid", lookupUsername)
-			return
 		}
 
-		// Quand LDAP est actif, le role admin depend uniquement du filtre admin LDAP.
-		isAdmin = ldapIsAdmin
+		// When LDAP is active, consider the user an admin if they are either
+		// an admin in Jellyfin or match the LDAP admin filter.
+		isAdmin = isAdmin || ldapIsAdmin
 	}
 
 	if !isAdmin {
