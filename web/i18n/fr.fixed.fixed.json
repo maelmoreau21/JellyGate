@@ -95,6 +95,7 @@
     "common_next": "Suivant",
     "common_previous": "Pr�c�dent",
     "common_server_error": "Erreur serveur",
+    "common_bad_request": "Requête incorrecte",
     "dashboard_heading": "Tableau de bord",
     "dashboard_intro_title": "Gestionnaire d'Acc�s Jellyfin",
     "dashboard_my_account_title": "Mon compte",
