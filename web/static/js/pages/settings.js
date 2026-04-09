@@ -5,6 +5,7 @@
     let loadedEmailTemplates = {};
     let emailBaseDefaults = { header: '', footer: '' };
     let currentInvitationProfile = {};
+    let currentLDAPConfig = {};
     let basePreviewTimer = null;
     let basePreviewRequestId = 0;
 
@@ -203,7 +204,8 @@
     }
 
     function collectLDAPPayload() {
-        return {
+        const payload = {
+            ...currentLDAPConfig,
             enabled: document.getElementById('ldap-enabled').checked,
             host: document.getElementById('ldap-host').value,
             port: parseInt(document.getElementById('ldap-port').value, 10) || 636,
@@ -212,13 +214,20 @@
             bind_dn: document.getElementById('ldap-bind-dn').value,
             bind_password: document.getElementById('ldap-bind-password').value,
             base_dn: document.getElementById('ldap-base-dn').value,
-            username_attribute: document.getElementById('ldap-username-attribute').value,
-            user_object_class: document.getElementById('ldap-user-object-class').value.trim(),
-            group_member_attr: document.getElementById('ldap-group-member-attr').value.trim(),
-            provision_mode: document.getElementById('ldap-provision-mode').value,
-            user_ou: document.getElementById('ldap-user-ou').value || 'CN=Users',
-            domain: document.getElementById('ldap-domain').value,
+            search_filter: document.getElementById('ldap-search-filter').value.trim(),
+            search_attributes: document.getElementById('ldap-search-attributes').value.trim(),
+            uid_attribute: document.getElementById('ldap-uid-attribute').value.trim(),
+            username_attribute: document.getElementById('ldap-username-attribute').value.trim(),
+            admin_filter: document.getElementById('ldap-admin-filter').value.trim(),
+            admin_filter_memberuid: !!document.getElementById('ldap-admin-filter-memberuid')?.checked,
         };
+
+        if (!payload.provision_mode) payload.provision_mode = 'hybrid';
+        if (!payload.user_ou) payload.user_ou = 'CN=Users';
+        if (!payload.user_object_class) payload.user_object_class = 'auto';
+        if (!payload.group_member_attr) payload.group_member_attr = 'auto';
+
+        return payload;
     }
 
     function showLDAPTestResult(message, type = 'info') {
@@ -386,6 +395,7 @@
 
         applyInvitationProfileConfig(data.invitation_profile || {});
 
+        currentLDAPConfig = { ...(data.ldap || {}) };
         document.getElementById('ldap-enabled').checked = data.ldap.enabled || false;
         document.getElementById('ldap-host').value = data.ldap.host || '';
         document.getElementById('ldap-port').value = data.ldap.port || 636;
@@ -394,12 +404,12 @@
         document.getElementById('ldap-bind-dn').value = data.ldap.bind_dn || '';
         document.getElementById('ldap-bind-password').value = data.ldap.bind_password || '';
         document.getElementById('ldap-base-dn').value = data.ldap.base_dn || '';
+        document.getElementById('ldap-search-filter').value = data.ldap.search_filter || '';
+        document.getElementById('ldap-search-attributes').value = data.ldap.search_attributes || 'uid,sAMAccountName,cn,userPrincipalName,mail';
+        document.getElementById('ldap-uid-attribute').value = data.ldap.uid_attribute || 'uid';
         document.getElementById('ldap-username-attribute').value = data.ldap.username_attribute || 'auto';
-        document.getElementById('ldap-user-object-class').value = data.ldap.user_object_class || 'auto';
-        document.getElementById('ldap-group-member-attr').value = data.ldap.group_member_attr || 'auto';
-        document.getElementById('ldap-provision-mode').value = data.ldap.provision_mode || 'hybrid';
-        document.getElementById('ldap-user-ou').value = data.ldap.user_ou || 'CN=Users';
-        document.getElementById('ldap-domain').value = data.ldap.domain || '';
+        document.getElementById('ldap-admin-filter').value = data.ldap.admin_filter || '';
+        document.getElementById('ldap-admin-filter-memberuid').checked = !!data.ldap.admin_filter_memberuid;
         toggleLDAPFields();
 
         document.getElementById('smtp-host').value = data.smtp.host || '';

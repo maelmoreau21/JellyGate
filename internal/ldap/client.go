@@ -72,6 +72,7 @@ const (
 )
 
 var ldapAttrNamePattern = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9-]*$`)
+var ldapUsernameTokenPattern = regexp.MustCompile(`(?i)\{username\}`)
 
 // ── Client ──────────────────────────────────────────────────────────────────
 
@@ -471,6 +472,7 @@ func (c *Client) ResetPassword(userDN, newPassword string) error {
 type UserEntry struct {
 	DN                string
 	Username          string // Attribut identifiant resolu (sAMAccountName/uid/...)
+	UID               string
 	UsernameAttribute string
 	DisplayName       string
 	Email             string
@@ -480,9 +482,14 @@ type UserEntry struct {
 }
 
 // FindUser recherche un utilisateur LDAP via les attributs login compatibles
-// (attribut configure, puis fallback sur uid/sAMAccountName/cn/upn/mail).
+// en appliquant le filtre de recherche LDAP configure.
 // Retourne nil si l'utilisateur n'est pas trouvé (pas d'erreur).
 func (c *Client) FindUser(username string) (*UserEntry, error) {
+	username = strings.TrimSpace(username)
+	if username == "" {
+		return nil, nil
+	}
+
 	conn, err := c.connect()
 	if err != nil {
 		return nil, fmt.Errorf("ldap.FindUser: %w", err)
@@ -491,27 +498,15 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 
 	searchDN := strings.TrimSpace(c.cfg.BaseDN)
 	profile := c.detectDirectoryProfile(conn)
-	lookupAttrs := c.lookupAttributes(profile)
-	escapedUsername := goldap.EscapeFilter(username)
-
-	attrFilters := make([]string, 0, len(lookupAttrs))
-	for _, attr := range lookupAttrs {
-		attrFilters = append(attrFilters, fmt.Sprintf("(%s=%s)", attr, escapedUsername))
-	}
-
-	filter := ""
-	userObjectClass := c.effectiveUserObjectClass(profile)
-	if userObjectClass != "" {
-		filter = fmt.Sprintf("(&(objectClass=%s)(|%s))", goldap.EscapeFilter(userObjectClass), strings.Join(attrFilters, ""))
-	} else {
-		filter = fmt.Sprintf(
-			"(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|%s))",
-			strings.Join(attrFilters, ""),
-		)
-	}
+	lookupAttrs := c.configuredSearchAttributes(profile)
+	filter := c.buildUserLookupFilter(username, profile, lookupAttrs)
 
 	requestAttrs := []string{"dn", "displayName", "mail", "userPrincipalName", "userAccountControl"}
 	requestAttrs = append(requestAttrs, lookupAttrs...)
+	uidAttr := c.effectiveUIDAttribute()
+	if uidAttr != "" {
+		requestAttrs = append(requestAttrs, uidAttr)
+	}
 
 	searchReq := goldap.NewSearchRequest(
 		searchDN,
@@ -537,10 +532,15 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 	entry := result.Entries[0]
 	uac := entry.GetAttributeValue("userAccountControl")
 	resolvedUsername, resolvedAttr := resolveEntryUsername(entry, lookupAttrs)
+	uidValue := strings.TrimSpace(entry.GetAttributeValue(uidAttr))
+	if uidValue == "" {
+		uidValue = resolvedUsername
+	}
 
 	return &UserEntry{
 		DN:                entry.DN,
 		Username:          resolvedUsername,
+		UID:               uidValue,
 		UsernameAttribute: resolvedAttr,
 		DisplayName:       entry.GetAttributeValue("displayName"),
 		Email:             entry.GetAttributeValue("mail"),
@@ -548,6 +548,69 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 		UAC:               uac,
 		IsDisabled:        uac == fmt.Sprintf("%d", UAC_DISABLED_ACCOUNT),
 	}, nil
+}
+
+// ResolveUserAccess applique le filtre de recherche LDAP et retourne aussi
+// si l'utilisateur est administrateur via le filtre administrateur LDAP.
+func (c *Client) ResolveUserAccess(username string) (*UserEntry, bool, error) {
+	entry, err := c.FindUser(username)
+	if err != nil || entry == nil {
+		return entry, false, err
+	}
+
+	isAdmin, err := c.IsUserAdmin(username, entry)
+	if err != nil {
+		return entry, false, err
+	}
+
+	return entry, isAdmin, nil
+}
+
+// IsUserAdmin valide l'acces administrateur via LDAP Admin Filter.
+// Si aucun filtre admin n'est configure, retourne false sans erreur.
+func (c *Client) IsUserAdmin(username string, user *UserEntry) (bool, error) {
+	adminFilter := normalizeLDAPFilter(c.cfg.AdminFilter)
+	if adminFilter == "" {
+		return false, nil
+	}
+
+	conn, err := c.connect()
+	if err != nil {
+		return false, fmt.Errorf("ldap.IsUserAdmin: %w", err)
+	}
+	defer conn.Close()
+
+	searchDN := strings.TrimSpace(c.cfg.BaseDN)
+	profile := c.detectDirectoryProfile(conn)
+	escapedUsername := goldap.EscapeFilter(strings.TrimSpace(username))
+	replacedAdminFilter, _ := replaceUsernameToken(adminFilter, escapedUsername)
+
+	if c.cfg.AdminFilterMemberUID {
+		uidCandidates := resolveUIDCandidates(username, user)
+		return c.matchAdminFilterWithMemberUID(conn, searchDN, replacedAdminFilter, uidCandidates)
+	}
+
+	identityFilter := c.buildIdentityFilter(profile, escapedUsername, user)
+	combinedFilter := fmt.Sprintf("(&%s%s)", replacedAdminFilter, identityFilter)
+
+	searchReq := goldap.NewSearchRequest(
+		searchDN,
+		goldap.ScopeWholeSubtree,
+		goldap.NeverDerefAliases,
+		1,
+		10,
+		false,
+		combinedFilter,
+		[]string{"dn"},
+		nil,
+	)
+
+	result, err := conn.Search(searchReq)
+	if err != nil {
+		return false, fmt.Errorf("ldap.IsUserAdmin: échec de la recherche admin pour %q: %w", username, err)
+	}
+
+	return len(result.Entries) > 0, nil
 }
 
 func normalizeLDAPAttrName(name string) string {
@@ -568,6 +631,192 @@ func normalizeLDAPObjectClass(name string) string {
 func isAutoLDAPValue(value string) bool {
 	v := strings.ToLower(strings.TrimSpace(value))
 	return v == "" || v == "auto"
+}
+
+func normalizeLDAPFilter(filter string) string {
+	trimmed := strings.TrimSpace(filter)
+	if trimmed == "" {
+		return ""
+	}
+	if strings.HasPrefix(trimmed, "(") {
+		return trimmed
+	}
+	return "(" + trimmed + ")"
+}
+
+func replaceUsernameToken(filter, escapedUsername string) (string, bool) {
+	if strings.TrimSpace(filter) == "" {
+		return "", false
+	}
+	hasToken := ldapUsernameTokenPattern.MatchString(filter)
+	return ldapUsernameTokenPattern.ReplaceAllString(filter, escapedUsername), hasToken
+}
+
+func parseLDAPAttributesCSV(raw string) []string {
+	normalized := strings.ReplaceAll(strings.TrimSpace(raw), ";", ",")
+	if normalized == "" {
+		return nil
+	}
+
+	parts := strings.Split(normalized, ",")
+	attrs := make([]string, 0, len(parts))
+	for _, part := range parts {
+		attr := normalizeLDAPAttrName(part)
+		if attr == "" {
+			continue
+		}
+		attrs = append(attrs, attr)
+	}
+
+	return attrs
+}
+
+func (c *Client) configuredSearchAttributes(profile string) []string {
+	configured := parseLDAPAttributesCSV(c.cfg.SearchAttributes)
+	if len(configured) == 0 {
+		return c.lookupAttributes(profile)
+	}
+
+	seen := map[string]struct{}{}
+	attrs := make([]string, 0, len(configured)+3)
+
+	add := func(attr string) {
+		normalized := normalizeLDAPAttrName(attr)
+		if normalized == "" {
+			return
+		}
+		key := strings.ToLower(normalized)
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		attrs = append(attrs, normalized)
+	}
+
+	for _, attr := range configured {
+		add(attr)
+	}
+	add(c.effectiveUsernameAttribute(profile))
+	add(c.effectiveUIDAttribute())
+	add("mail")
+
+	if len(attrs) == 0 {
+		return c.lookupAttributes(profile)
+	}
+
+	return attrs
+}
+
+func (c *Client) buildUsernameLookupClause(lookupAttrs []string, escapedUsername string) string {
+	filters := make([]string, 0, len(lookupAttrs))
+	for _, attr := range lookupAttrs {
+		normalized := normalizeLDAPAttrName(attr)
+		if normalized == "" {
+			continue
+		}
+		filters = append(filters, fmt.Sprintf("(%s=%s)", normalized, escapedUsername))
+	}
+
+	if len(filters) == 0 {
+		filters = append(filters, fmt.Sprintf("(%s=%s)", defaultUsernameAttribute, escapedUsername))
+	}
+
+	if len(filters) == 1 {
+		return filters[0]
+	}
+
+	return fmt.Sprintf("(|%s)", strings.Join(filters, ""))
+}
+
+func (c *Client) buildUserLookupFilter(username, profile string, lookupAttrs []string) string {
+	escapedUsername := goldap.EscapeFilter(strings.TrimSpace(username))
+	usernameClause := c.buildUsernameLookupClause(lookupAttrs, escapedUsername)
+
+	configuredFilter := normalizeLDAPFilter(c.cfg.SearchFilter)
+	if configuredFilter != "" {
+		replacedFilter, hasToken := replaceUsernameToken(configuredFilter, escapedUsername)
+		if hasToken {
+			return replacedFilter
+		}
+		return fmt.Sprintf("(&%s%s)", replacedFilter, usernameClause)
+	}
+
+	userObjectClass := c.effectiveUserObjectClass(profile)
+	if userObjectClass != "" {
+		return fmt.Sprintf("(&(objectClass=%s)%s)", goldap.EscapeFilter(userObjectClass), usernameClause)
+	}
+
+	return fmt.Sprintf(
+		"(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))%s)",
+		usernameClause,
+	)
+}
+
+func resolveUIDCandidates(username string, user *UserEntry) []string {
+	seen := map[string]struct{}{}
+	values := make([]string, 0, 4)
+
+	add := func(value string) {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return
+		}
+		key := strings.ToLower(trimmed)
+		if _, exists := seen[key]; exists {
+			return
+		}
+		seen[key] = struct{}{}
+		values = append(values, trimmed)
+	}
+
+	add(username)
+	if user != nil {
+		add(user.UID)
+		add(user.Username)
+		if at := strings.Index(strings.TrimSpace(user.UPN), "@"); at > 0 {
+			add(user.UPN[:at])
+		}
+	}
+
+	return values
+}
+
+func (c *Client) matchAdminFilterWithMemberUID(conn *goldap.Conn, searchDN, adminFilter string, uidCandidates []string) (bool, error) {
+	if strings.TrimSpace(adminFilter) == "" || len(uidCandidates) == 0 {
+		return false, nil
+	}
+
+	candidateSet := map[string]struct{}{}
+	for _, candidate := range uidCandidates {
+		candidateSet[strings.ToLower(strings.TrimSpace(candidate))] = struct{}{}
+	}
+
+	searchReq := goldap.NewSearchRequest(
+		searchDN,
+		goldap.ScopeWholeSubtree,
+		goldap.NeverDerefAliases,
+		0,
+		10,
+		false,
+		adminFilter,
+		[]string{"memberUid"},
+		nil,
+	)
+
+	result, err := conn.Search(searchReq)
+	if err != nil {
+		return false, fmt.Errorf("ldap.matchAdminFilterWithMemberUID: %w", err)
+	}
+
+	for _, entry := range result.Entries {
+		for _, memberUID := range entry.GetAttributeValues("memberUid") {
+			if _, ok := candidateSet[strings.ToLower(strings.TrimSpace(memberUID))]; ok {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 func (c *Client) lookupAttributes(profile string) []string {
@@ -601,6 +850,14 @@ func (c *Client) lookupAttributes(profile string) []string {
 	return attrs
 }
 
+func (c *Client) effectiveUIDAttribute() string {
+	configured := normalizeLDAPAttrName(c.cfg.UIDAttribute)
+	if configured != "" && !isAutoLDAPValue(configured) {
+		return configured
+	}
+	return "uid"
+}
+
 func (c *Client) effectiveUsernameAttribute(profile string) string {
 	configured := normalizeLDAPAttrName(c.cfg.UsernameAttribute)
 	if configured != "" && !isAutoLDAPValue(configured) {
@@ -615,6 +872,56 @@ func (c *Client) effectiveUsernameAttribute(profile string) string {
 	default:
 		return defaultUsernameAttribute
 	}
+}
+
+func (c *Client) buildIdentityFilter(profile, escapedUsername string, user *UserEntry) string {
+	parts := make([]string, 0, 8)
+	seen := map[string]struct{}{}
+
+	add := func(filter string) {
+		trimmed := strings.TrimSpace(filter)
+		if trimmed == "" {
+			return
+		}
+		if _, exists := seen[trimmed]; exists {
+			return
+		}
+		seen[trimmed] = struct{}{}
+		parts = append(parts, trimmed)
+	}
+
+	for _, attr := range c.configuredSearchAttributes(profile) {
+		normalized := normalizeLDAPAttrName(attr)
+		if normalized == "" {
+			continue
+		}
+		add(fmt.Sprintf("(%s=%s)", normalized, escapedUsername))
+	}
+
+	if user != nil {
+		uidAttr := c.effectiveUIDAttribute()
+		if uidAttr != "" && strings.TrimSpace(user.UID) != "" {
+			add(fmt.Sprintf("(%s=%s)", uidAttr, goldap.EscapeFilter(strings.TrimSpace(user.UID))))
+		}
+
+		usernameAttr := c.effectiveUsernameAttribute(profile)
+		if usernameAttr != "" && strings.TrimSpace(user.Username) != "" {
+			add(fmt.Sprintf("(%s=%s)", usernameAttr, goldap.EscapeFilter(strings.TrimSpace(user.Username))))
+		}
+
+		if strings.TrimSpace(user.DN) != "" {
+			add(fmt.Sprintf("(distinguishedName=%s)", goldap.EscapeFilter(strings.TrimSpace(user.DN))))
+		}
+	}
+
+	if len(parts) == 0 {
+		return "(objectClass=*)"
+	}
+	if len(parts) == 1 {
+		return parts[0]
+	}
+
+	return fmt.Sprintf("(|%s)", strings.Join(parts, ""))
 }
 
 func (c *Client) effectiveUserObjectClass(profile string) string {

@@ -147,17 +147,22 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 // Retourne une config par défaut (Enabled=false) si non configurée.
 func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	cfg := config.LDAPConfig{
-		Enabled:             false,
-		Port:                636,
-		UseTLS:              true,
-		UsernameAttribute:   "auto",
-		UserObjectClass:     "auto",
-		GroupMemberAttr:     "auto",
-		UserOU:              "CN=Users",
-		ProvisionMode:       "hybrid",
-		JellyfinGroup:       "jellyfin",
-		InviterGroup:        "jellyfin-Parrainage",
-		AdministratorsGroup: "jellyfin-administrateur",
+		Enabled:              false,
+		Port:                 636,
+		UseTLS:               true,
+		SearchFilter:         "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))",
+		SearchAttributes:     "uid,sAMAccountName,cn,userPrincipalName,mail",
+		UIDAttribute:         "uid",
+		UsernameAttribute:    "auto",
+		AdminFilter:          "",
+		AdminFilterMemberUID: false,
+		UserObjectClass:      "auto",
+		GroupMemberAttr:      "auto",
+		UserOU:               "CN=Users",
+		ProvisionMode:        "hybrid",
+		JellyfinGroup:        "jellyfin",
+		InviterGroup:         "jellyfin-Parrainage",
+		AdministratorsGroup:  "jellyfin-administrateur",
 	}
 
 	raw, err := db.GetSetting(SettingLDAPConfig)
@@ -185,6 +190,23 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	if cfg.UsernameAttribute == "" {
 		cfg.UsernameAttribute = "auto"
 	}
+
+	cfg.SearchFilter = strings.TrimSpace(cfg.SearchFilter)
+	if cfg.SearchFilter == "" {
+		cfg.SearchFilter = "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))"
+	}
+
+	cfg.SearchAttributes = strings.TrimSpace(cfg.SearchAttributes)
+	if cfg.SearchAttributes == "" {
+		cfg.SearchAttributes = "uid,sAMAccountName,cn,userPrincipalName,mail"
+	}
+
+	cfg.UIDAttribute = strings.TrimSpace(cfg.UIDAttribute)
+	if cfg.UIDAttribute == "" {
+		cfg.UIDAttribute = "uid"
+	}
+
+	cfg.AdminFilter = strings.TrimSpace(cfg.AdminFilter)
 
 	cfg.UserObjectClass = strings.TrimSpace(cfg.UserObjectClass)
 	if cfg.UserObjectClass == "" {

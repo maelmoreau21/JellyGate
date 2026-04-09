@@ -18,6 +18,7 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
@@ -123,6 +124,45 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 3. Le statut d'administrateur dÃƒÂ©termine les permissions Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	isAdmin := authResp.User.Policy.IsAdministrator
+
+	ldapCfg, ldapErr := h.db.GetLDAPConfig()
+	if ldapErr != nil {
+		slog.Warn("Impossible de charger la configuration LDAP pendant le login", "error", ldapErr)
+	}
+
+	if ldapErr == nil && ldapCfg.Enabled {
+		lookupUsername := strings.TrimSpace(username)
+		if lookupUsername == "" {
+			lookupUsername = strings.TrimSpace(authResp.User.Name)
+		}
+
+		ldapClient := jgldap.New(ldapCfg)
+		entry, ldapIsAdmin, accessErr := ldapClient.ResolveUserAccess(lookupUsername)
+		if accessErr != nil {
+			slog.Warn("Verification LDAP refusee pendant le login",
+				"username", lookupUsername,
+				"remote", r.RemoteAddr,
+				"error", accessErr,
+			)
+			_ = h.db.LogAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, controle LDAP impossible: %v", r.RemoteAddr, accessErr))
+			h.redirectLoginError(w, r, "invalid", lookupUsername)
+			return
+		}
+
+		if entry == nil {
+			slog.Info("Acces refuse par le filtre de recherche LDAP",
+				"username", lookupUsername,
+				"remote", r.RemoteAddr,
+			)
+			_ = h.db.LogAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, filtre LDAP: acces refuse", r.RemoteAddr))
+			h.redirectLoginError(w, r, "invalid", lookupUsername)
+			return
+		}
+
+		// Quand LDAP est actif, le role admin depend uniquement du filtre admin LDAP.
+		isAdmin = ldapIsAdmin
+	}
+
 	if !isAdmin {
 		slog.Info("Utilisateur standard connectÃƒÂ©",
 			"username", username,

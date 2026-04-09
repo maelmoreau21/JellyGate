@@ -241,40 +241,28 @@
               <div class="mt-4 space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="ldap-provision-mode">{{ .T "settings_ldap_provision_mode" }}</label>
-                <select id="ldap-provision-mode" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
-                  <option value="hybrid">{{ .T "settings_ldap_mode_hybrid" }}</option>
-                  <option value="ldap_only">{{ .T "settings_ldap_mode_ldap_only" }}</option>
-                </select>
+                <label class="jg-label" for="ldap-search-filter">{{ .T "settings_ldap_user_object_class" }}</label>
+                <input type="text" id="ldap-search-filter" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="(&(objectClass=person)(uid={username}))">
               </div>
               <div>
-                <label class="jg-label" for="ldap-user-ou">{{ .T "settings_ldap_user_ou" }}</label>
-                <input type="text" id="ldap-user-ou" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="CN=Users">
+                <label class="jg-label" for="ldap-search-attributes">{{ .T "settings_ldap_group_member_attr" }}</label>
+                <input type="text" id="ldap-search-attributes" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="uid,sAMAccountName,cn,userPrincipalName,mail">
               </div>
               <div>
-                <label class="jg-label" for="ldap-domain">{{ .T "settings_ldap_domain" }}</label>
-                <input type="text" id="ldap-domain" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="example.com">
+                <label class="jg-label" for="ldap-uid-attribute">{{ .T "settings_ldap_user_ou" }}</label>
+                <input type="text" id="ldap-uid-attribute" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="uid">
               </div>
               <div>
                 <label class="jg-label" for="ldap-username-attribute">{{ .T "settings_ldap_username_attribute" }}</label>
-                <select id="ldap-username-attribute" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
-                  <option value="auto">{{ .T "settings_ldap_username_attr_auto" }}</option>
-                  <option value="sAMAccountName">{{ .T "settings_ldap_username_attr_ad" }}</option>
-                  <option value="uid">{{ .T "settings_ldap_username_attr_uid" }}</option>
-                  <option value="userPrincipalName">{{ .T "settings_ldap_username_attr_upn" }}</option>
-                  <option value="cn">{{ .T "settings_ldap_username_attr_cn" }}</option>
-                </select>
-                
+                <input type="text" id="ldap-username-attribute" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="uid">
               </div>
-              <div>
-                <label class="jg-label" for="ldap-user-object-class">{{ .T "settings_ldap_user_object_class" }}</label>
-                <input type="text" id="ldap-user-object-class" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="auto / user / person / posixAccount">
-                
+              <div class="md:col-span-2">
+                <label class="jg-label" for="ldap-admin-filter">{{ .T "settings_ldap_group_admin" }}</label>
+                <input type="text" id="ldap-admin-filter" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="(&(objectClass=groupOfNames)(cn=administrators))">
               </div>
-              <div>
-                <label class="jg-label" for="ldap-group-member-attr">{{ .T "settings_ldap_group_member_attr" }}</label>
-                <input type="text" id="ldap-group-member-attr" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="auto / member / memberUid">
-                
+              <div class="md:col-span-2 flex items-center gap-3 rounded-lg border border-white/10 bg-black/20 px-3 py-3">
+                <input type="checkbox" id="ldap-admin-filter-memberuid" class="form-checkbox">
+                <label for="ldap-admin-filter-memberuid" class="text-sm text-slate-200">{{ .T "settings_ldap_group_member_attr_help" }}</label>
               </div>
             </div>
 

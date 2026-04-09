@@ -76,6 +76,18 @@ func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
 	if input.Port == 0 {
 		input.Port = 636
 	}
+	input.SearchFilter = strings.TrimSpace(input.SearchFilter)
+	if input.SearchFilter == "" {
+		input.SearchFilter = "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))"
+	}
+	input.SearchAttributes = strings.TrimSpace(input.SearchAttributes)
+	if input.SearchAttributes == "" {
+		input.SearchAttributes = "uid,sAMAccountName,cn,userPrincipalName,mail"
+	}
+	input.UIDAttribute = strings.TrimSpace(input.UIDAttribute)
+	if input.UIDAttribute == "" {
+		input.UIDAttribute = "uid"
+	}
 	if strings.TrimSpace(input.UserOU) == "" {
 		input.UserOU = "CN=Users"
 	}
@@ -83,6 +95,7 @@ func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
 	if input.UsernameAttribute == "" {
 		input.UsernameAttribute = "auto"
 	}
+	input.AdminFilter = strings.TrimSpace(input.AdminFilter)
 	input.UserObjectClass = strings.TrimSpace(input.UserObjectClass)
 	if input.UserObjectClass == "" {
 		input.UserObjectClass = "auto"
@@ -181,7 +194,7 @@ func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Requ
 	}
 
 	client := jgldap.New(input.LDAPConfig)
-	entry, err := client.FindUser(username)
+	entry, isAdmin, err := client.ResolveUserAccess(username)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Echec recherche LDAP: " + err.Error()})
 		return
@@ -193,15 +206,19 @@ func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Requ
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Utilisateur LDAP trouve",
+		Message: "Utilisateur LDAP trouve (filtre d'acces applique)",
 		Data: map[string]interface{}{
 			"dn":            entry.DN,
 			"username":      entry.Username,
+			"uid":           entry.UID,
 			"username_attr": entry.UsernameAttribute,
 			"display_name":  entry.DisplayName,
 			"email":         entry.Email,
 			"upn":           entry.UPN,
 			"is_disabled":   entry.IsDisabled,
+			"is_admin":      isAdmin,
+			"search_filter": input.SearchFilter,
+			"admin_filter":  input.AdminFilter,
 		},
 	})
 }
@@ -635,30 +652,7 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Si le mot de passe est masquÃƒÂ© (pas changÃƒÂ©), conserver l'ancien
-	if input.BindPassword == "Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢" || input.BindPassword == "" {
-		existing, _ := h.db.GetLDAPConfig()
-		input.BindPassword = existing.BindPassword
-	}
-
-	// Valeurs par dÃƒÂ©faut
-	if input.Port == 0 {
-		input.Port = 636
-	}
-	if input.UserOU == "" {
-		input.UserOU = "CN=Users"
-	}
-	input.UsernameAttribute = strings.TrimSpace(input.UsernameAttribute)
-	if input.UsernameAttribute == "" {
-		input.UsernameAttribute = "auto"
-	}
-	input.UserObjectClass = strings.TrimSpace(input.UserObjectClass)
-	if input.UserObjectClass == "" {
-		input.UserObjectClass = "auto"
-	}
-	input.GroupMemberAttr = strings.TrimSpace(input.GroupMemberAttr)
-	if input.GroupMemberAttr == "" {
-		input.GroupMemberAttr = "auto"
-	}
+	h.normalizeLDAPInput(&input)
 
 	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
 	if input.ProvisionMode == "" {
@@ -670,19 +664,6 @@ func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
 			Message: "Mode LDAP invalide: hybrid ou ldap_only",
 		})
 		return
-	}
-
-	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
-	input.InviterGroup = strings.TrimSpace(input.InviterGroup)
-	input.AdministratorsGroup = strings.TrimSpace(input.AdministratorsGroup)
-	if input.JellyfinGroup == "" {
-		input.JellyfinGroup = "jellyfin"
-	}
-	if input.InviterGroup == "" {
-		input.InviterGroup = "jellyfin-Parrainage"
-	}
-	if input.AdministratorsGroup == "" {
-		input.AdministratorsGroup = "jellyfin-administrateur"
 	}
 
 	// Compatibilite: user_group reste renseigne pour les anciennes versions/exports.
