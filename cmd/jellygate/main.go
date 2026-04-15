@@ -173,25 +173,25 @@ func main() {
 
 	// Middlewares globaux
 	r.Use(jgmw.SecurityHeaders(cfg.BaseURL)) // Headers de securite HTTP
-	r.Use(chimw.RequestID)                 // ID unique par requête
-	r.Use(chimw.RealIP)                    // IP réelle derrière proxy
-	r.Use(chimw.Logger)                    // Log de chaque requête
-	r.Use(jgmw.LogPanics())                // Dev: log panics with stack trace
-	r.Use(chimw.Recoverer)                 // Récupération des panics
-	r.Use(chimw.Timeout(30 * time.Second)) // Timeout global 30s
-	r.Use(chimw.Compress(5))               // Compression gzip
-	r.Use(jgmw.DetectLanguage(db))         // Détection de langue (cookie → Accept-Language → DB default_lang)
+	r.Use(chimw.RequestID)                   // ID unique par requête
+	r.Use(chimw.RealIP)                      // IP réelle derrière proxy
+	r.Use(chimw.Logger)                      // Log de chaque requête
+	r.Use(jgmw.LogPanics())                  // Dev: log panics with stack trace
+	r.Use(chimw.Recoverer)                   // Récupération des panics
+	r.Use(chimw.Timeout(30 * time.Second))   // Timeout global 30s
+	r.Use(chimw.Compress(5))                 // Compression gzip
+	r.Use(jgmw.DetectLanguage(db))           // Détection de langue (cookie → Accept-Language → DB default_lang)
 
 	// ── Routes publiques ────────────────────────────────────────────────────
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/login", http.StatusFound)
 	})
+	// Répondre aux requêtes HEAD sur la racine pour satisfaire les healthchecks
+	r.Head("/", handleHealthCheck)
 
-	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok"}`))
-	})
+	// Endpoint de santé
+	r.Get("/health", handleHealthCheck)
+	r.Head("/health", handleHealthCheck)
 
 	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "web/static/favicon.svg")
@@ -266,7 +266,6 @@ func main() {
 			// Le tableau de bord est commun
 			r.Get("/", adminHandler.DashboardPage)
 			r.Get("/my-account", adminHandler.MyAccountPage)
-
 
 			// ── User Self-Service API ──────────────────────────────────────
 			r.Route("/api/users/me", func(r chi.Router) {
