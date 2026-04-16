@@ -86,12 +86,14 @@ type DashboardStatsResponse struct {
 }
 
 type UserTimelineEvent struct {
-	At      string `json:"at"`
-	Action  string `json:"action"`
-	Actor   string `json:"actor,omitempty"`
-	Target  string `json:"target,omitempty"`
-	Details string `json:"details,omitempty"`
-	Message string `json:"message"`
+	At       string `json:"at"`
+	Action   string `json:"action"`
+	Category string `json:"category"`
+	Severity string `json:"severity"`
+	Actor    string `json:"actor,omitempty"`
+	Target   string `json:"target,omitempty"`
+	Details  string `json:"details,omitempty"`
+	Message  string `json:"message"`
 }
 
 type adminUserRecord struct {
@@ -131,6 +133,17 @@ type UpdateUserRequest struct {
 	ClearExpiry     bool    `json:"clear_expiry"`
 }
 
+type CreateAdminUserRequest struct {
+	Username         string `json:"username"`
+	Email            string `json:"email"`
+	Password         string `json:"password"`
+	PolicyPresetID   string `json:"policy_preset_id"`
+	DisableAfterDays int    `json:"disable_after_days"`
+	AccessExpiresAt  string `json:"access_expires_at"`
+	CanInvite        bool   `json:"can_invite"`
+	SendWelcomeEmail bool   `json:"send_welcome_email"`
+}
+
 type UpdateMyAccountRequest struct {
 	Email                *string `json:"email"`
 	ContactDiscord       *string `json:"contact_discord"`
@@ -153,6 +166,7 @@ type BulkJellyfinPolicyPatch struct {
 type BulkUsersActionRequest struct {
 	UserIDs         []int64                  `json:"user_ids"`
 	Action          string                   `json:"action"`
+	Preview         bool                     `json:"preview"`
 	PolicyPresetID  string                   `json:"policy_preset_id"`
 	EmailSubject    string                   `json:"email_subject"`
 	EmailBody       string                   `json:"email_body"`
@@ -1199,6 +1213,18 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 // GetMyInvitations retourne les invitations crÃ©Ã©es par l'utilisateur connectÃ©.
 func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	now := time.Now()
+
+	inviteCfg, err := h.db.GetInvitationProfileConfig()
+	if err != nil {
+		inviteCfg = config.DefaultInvitationProfileConfig()
+	}
+	limits, err := h.resolveInvitationCreatorLimits(sess, inviteCfg)
+	if err != nil {
+		slog.Error("Erreur calcul limites de parrainage", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de donnees"})
+		return
+	}
 
 	rows, err := h.db.Query(`
 		SELECT id, code, max_uses, used_count, expires_at, created_at 
@@ -1213,6 +1239,7 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 	defer rows.Close()
 
 	var invs []InvitationResponse
+	activeLinks := 0
 	for rows.Next() {
 		var i InvitationResponse
 		var rawExpiresAt, rawCreatedAt interface{}
@@ -1221,71 +1248,166 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 		}
 		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedAt = anyToDateString(rawCreatedAt)
+		isExpired := false
+		if strings.TrimSpace(i.ExpiresAt) != "" {
+			if exp, parseErr := parseAccessExpiry(i.ExpiresAt); parseErr == nil {
+				isExpired = !exp.After(now)
+			}
+		}
+		if !isExpired && (i.MaxUses <= 0 || i.UsedCount < i.MaxUses) {
+			activeLinks++
+		}
 		invs = append(invs, i)
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: invs})
+	todayCount, _ := h.countInvitationsCreatedSince(sess.Username, startOfLocalDay(now))
+	monthCount, _ := h.countInvitationsCreatedSince(sess.Username, startOfLocalMonth(now))
+
+	conversions := 0
+	_ = h.db.QueryRow(`
+		SELECT COUNT(u.id)
+		FROM invitations i
+		LEFT JOIN users u ON u.invited_by = i.code
+		WHERE i.created_by = ?`, sess.Username,
+	).Scan(&conversions)
+
+	targetPresetName := ""
+	if strings.TrimSpace(limits.TargetPresetID) != "" {
+		if targetPreset, presetErr := h.getJellyfinPresetByID(strings.TrimSpace(limits.TargetPresetID)); presetErr == nil && targetPreset != nil {
+			targetPresetName = strings.TrimSpace(targetPreset.Name)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
+		"links": invs,
+		"limits": map[string]interface{}{
+			"can_invite":         limits.CanInvite,
+			"max_uses":           limits.MaxUses,
+			"link_validity_days": limits.LinkValidityDays,
+			"quota_day":          limits.QuotaDay,
+			"quota_month":        limits.QuotaMonth,
+			"target_preset_id":   strings.TrimSpace(limits.TargetPresetID),
+			"target_preset_name": targetPresetName,
+		},
+		"usage": map[string]interface{}{
+			"today": todayCount,
+			"month": monthCount,
+		},
+		"stats": map[string]interface{}{
+			"total_links":  len(invs),
+			"active_links": activeLinks,
+			"conversions":  conversions,
+		},
+	}})
 }
 
 // CreateMyInvitation gÃ©nÃ¨re une invitation automatique (parrainage) basÃ©e sur le preset de l'utilisateur.
 func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	now := time.Now()
 
-	// 1. VÃ©rifier si l'utilisateur a le droit
-	if !h.resolveCanInviteForSession(sess) {
+	inviteCfg, err := h.db.GetInvitationProfileConfig()
+	if err != nil {
+		inviteCfg = config.DefaultInvitationProfileConfig()
+	}
+
+	limits, err := h.resolveInvitationCreatorLimits(sess, inviteCfg)
+	if err != nil {
+		slog.Error("Erreur calcul limites invitation utilisateur", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de lecture des limites"})
+		return
+	}
+
+	if !limits.CanInvite {
 		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de parrainer"})
 		return
 	}
 
-	// 2. RÃ©cupÃ©rer le preset de l'utilisateur pour appliquer les mÃªmes droits aux filleuls
-	var presetID sql.NullString
-	_ = h.db.QueryRow(`SELECT preset_id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&presetID)
+	if !limits.AllowIgnoreLimits {
+		if limits.QuotaDay > 0 {
+			todayCount, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalDay(now))
+			if countErr != nil {
+				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur verification quota journalier"})
+				return
+			}
+			if todayCount >= limits.QuotaDay {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Quota journalier atteint (%d/%d)", todayCount, limits.QuotaDay)})
+				return
+			}
+		}
 
-	presetIDStr := ""
-	if presetID.Valid {
-		presetIDStr = presetID.String
+		if limits.QuotaMonth > 0 {
+			monthCount, countErr := h.countInvitationsCreatedSince(sess.Username, startOfLocalMonth(now))
+			if countErr != nil {
+				writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur verification quota mensuel"})
+				return
+			}
+			if monthCount >= limits.QuotaMonth {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Quota mensuel atteint (%d/%d)", monthCount, limits.QuotaMonth)})
+				return
+			}
+		}
 	}
 
-	// 3. Charger le preset par dÃ©faut s'il n'en a pas
-	if presetIDStr == "" {
-		inviteCfg, _ := h.db.GetInvitationProfileConfig()
-		presetIDStr = inviteCfg.PolicyPresetID
+	targetPresetID := strings.TrimSpace(limits.TargetPresetID)
+	if targetPresetID == "" && limits.SourcePreset != nil {
+		targetPresetID = strings.TrimSpace(limits.SourcePreset.ID)
 	}
-
-	// Si toujours vide, erreur
-	if presetIDStr == "" {
+	if targetPresetID == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun profil de parrainage configurÃ© sur le serveur"})
 		return
 	}
 
-	preset, err := h.getJellyfinPresetByID(presetIDStr)
-	if err != nil {
+	targetPreset, err := h.getJellyfinPresetByID(targetPresetID)
+	if err != nil || targetPreset == nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture profil de droit"})
 		return
 	}
 
-	// 4. GÃ©nÃ©rer le code
-	code, _ := generateSecureToken(12)
+	code, err := generateSecureToken(12)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de generer un code d'invitation"})
+		return
+	}
 
-	// Expiration par dÃ©faut (30 jours pour un lien de parrainage)
-	expiresAt := time.Now().AddDate(0, 0, 30)
+	maxUses := limits.MaxUses
+	if maxUses <= 0 {
+		maxUses = targetPreset.InviteMaxUses
+	}
+	if maxUses <= 0 {
+		maxUses = 1
+	}
 
-	// Profil JSON
+	validityDays := limits.LinkValidityDays
+	if validityDays <= 0 {
+		validityDays = presetInviteLinkValidityDays(targetPreset)
+	}
+	if validityDays <= 0 {
+		validityDays = 30
+	}
+
+	expiresAt := now.AddDate(0, 0, validityDays)
+
 	profile := jellyfin.InviteProfile{
-		PresetID:           preset.ID,
-		UserExpiryDays:     preset.DisableAfterDays,
-		EnableAllFolders:   preset.EnableAllFolders,
-		EnabledFolderIDs:   preset.EnabledFolderIDs,
-		EnableDownload:     preset.EnableDownload,
-		EnableRemoteAccess: preset.EnableRemoteAccess,
-		CanInvite:          false, // Un filleul ne parraine pas par dÃ©faut
+		PresetID:                 targetPreset.ID,
+		UserExpiryDays:           targetPreset.DisableAfterDays,
+		EnableAllFolders:         targetPreset.EnableAllFolders,
+		EnabledFolderIDs:         targetPreset.EnabledFolderIDs,
+		EnableDownload:           targetPreset.EnableDownload,
+		EnableRemoteAccess:       targetPreset.EnableRemoteAccess,
+		CanInvite:                false,
+		RequireEmail:             inviteCfg.RequireEmail,
+		RequireEmailVerification: resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, false, maxUses),
+		DisableAfterDays:         targetPreset.DisableAfterDays,
+		ExpiryAction:             normalizeExpiryAction(inviteCfg.ExpiryAction),
+		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
 	}
 	profileJSON, _ := json.Marshal(profile)
 
 	_, err = h.db.Exec(`
 		INSERT INTO invitations (code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by)
 		VALUES (?, ?, ?, 0, ?, ?, ?)`,
-		code, "Parrainage de "+sess.Username, preset.InviteMaxUses, string(profileJSON), expiresAt, sess.Username)
+		code, "Parrainage de "+sess.Username, maxUses, string(profileJSON), expiresAt, sess.Username)
 
 	if err != nil {
 		slog.Error("Erreur creation invitation parrainage", "error", err)
@@ -1293,9 +1415,17 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	_ = h.db.LogAction("invite.created.sponsor", sess.Username, code, "Lien de parrainage auto")
+	_ = h.db.LogAction("invite.created.sponsor", sess.Username, code, fmt.Sprintf(`{"target_preset":"%s","max_uses":%d,"validity_days":%d}`, targetPreset.ID, maxUses, validityDays))
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Lien de parrainage crÃ©Ã©", Data: code})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Lien de parrainage crÃ©Ã©", Data: map[string]interface{}{
+		"code":               code,
+		"max_uses":           maxUses,
+		"expires_at":         expiresAt.Format(time.RFC3339),
+		"target_preset_id":   targetPreset.ID,
+		"target_preset_name": targetPreset.Name,
+		"link_validity_days": validityDays,
+		"invite_url":         strings.TrimRight(requestBaseURL(r), "/") + "/invite/" + code,
+	}})
 }
 
 // UpdateMyAccountAvatar change la photo de profil Jellyfin de l'utilisateur connectÃ©.
@@ -2080,20 +2210,15 @@ func (h *AdminHandler) UserTimeline(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Filtrer uniquement pour les Ã©vÃ©nements liÃ©s aux emails
-		act := strings.ToLower(action.String)
-		isEmailEvent := strings.Contains(act, "email") || strings.HasPrefix(act, "reset.") || act == "invite.used" || act == "user.email_verified"
-		if !isEmailEvent {
-			continue
-		}
-
 		events = append(events, UserTimelineEvent{
-			At:      normalizeTimelineAt(createdAt.String),
-			Action:  action.String,
-			Actor:   actor.String,
-			Target:  target.String,
-			Details: details.String,
-			Message: describeTimelineAction(action.String, actor.String, target.String, details.String),
+			At:       normalizeTimelineAt(createdAt.String),
+			Action:   action.String,
+			Category: timelineCategory(action.String),
+			Severity: timelineSeverity(action.String, details.String),
+			Actor:    actor.String,
+			Target:   target.String,
+			Details:  details.String,
+			Message:  describeTimelineAction(action.String, actor.String, target.String, details.String),
 		})
 	}
 
@@ -2200,6 +2325,24 @@ func isUserTimelineAction(action, actor, target, username, jellyfinID, idTarget 
 
 func describeTimelineAction(action, actor, target, details string) string {
 	switch action {
+	case "user.created":
+		return "Compte cree"
+	case "user.deleted", "user.bulk.delete":
+		return "Compte supprime"
+	case "user.toggled":
+		return "Statut du compte modifie"
+	case "user.access_extended", "user.bulk.expiry":
+		return "Expiration du compte mise a jour"
+	case "user.profile.updated":
+		return "Profil utilisateur mis a jour"
+	case "user.password.updated":
+		return "Mot de passe modifie"
+	case "user.avatar.updated":
+		return "Photo de profil modifiee"
+	case "invite.created", "invite.created.sponsor":
+		return "Lien d'invitation cree"
+	case "invite.deleted":
+		return "Lien d'invitation supprime"
 	case "invite.welcome_email.sent":
 		return "Email de bienvenue envoye"
 	case "invite.welcome_email.failed":
@@ -2234,6 +2377,40 @@ func describeTimelineAction(action, actor, target, details string) string {
 	}
 
 	return text
+}
+
+func timelineCategory(action string) string {
+	action = strings.ToLower(strings.TrimSpace(action))
+	switch {
+	case strings.HasPrefix(action, "invite."):
+		return "invitation"
+	case strings.HasPrefix(action, "reset."):
+		return "password"
+	case strings.Contains(action, "email") || strings.Contains(action, "verification"):
+		return "email"
+	case strings.HasPrefix(action, "admin.login"):
+		return "security"
+	case strings.HasPrefix(action, "automation."):
+		return "automation"
+	case strings.HasPrefix(action, "user."):
+		return "account"
+	default:
+		return "general"
+	}
+}
+
+func timelineSeverity(action, details string) string {
+	text := strings.ToLower(strings.TrimSpace(action + " " + details))
+	if strings.Contains(text, "failed") || strings.Contains(text, "error") || strings.Contains(text, "echec") {
+		return "error"
+	}
+	if strings.Contains(text, "delete") || strings.Contains(text, "expired") || strings.Contains(text, "disabled") || strings.Contains(text, "banned") {
+		return "warning"
+	}
+	if strings.Contains(text, "created") || strings.Contains(text, "success") || strings.Contains(text, "sent") || strings.Contains(text, "verified") || strings.Contains(text, "updated") {
+		return "success"
+	}
+	return "info"
 }
 
 func normalizeTimelineAt(raw string) string {
@@ -2542,6 +2719,197 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	return nil
 }
 
+// CreateUser cree directement un compte utilisateur depuis l'admin.
+func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	if sess == nil || !sess.IsAdmin {
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
+		return
+	}
+	if h.jfClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: "Jellyfin indisponible"})
+		return
+	}
+
+	var req CreateAdminUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
+		return
+	}
+
+	req.Username = strings.TrimSpace(req.Username)
+	req.Email = strings.TrimSpace(req.Email)
+	req.PolicyPresetID = strings.TrimSpace(req.PolicyPresetID)
+
+	if req.Username == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Nom d'utilisateur requis"})
+		return
+	}
+	if req.DisableAfterDays < 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Duree d'expiration invalide"})
+		return
+	}
+
+	var alreadyExists int
+	_ = h.db.QueryRow(`SELECT COUNT(1) FROM users WHERE lower(username) = lower(?)`, req.Username).Scan(&alreadyExists)
+	if alreadyExists > 0 {
+		writeJSON(w, http.StatusConflict, APIResponse{Success: false, Message: "Un utilisateur avec ce nom existe deja"})
+		return
+	}
+
+	password := strings.TrimSpace(req.Password)
+	generatedPassword := ""
+	if password == "" {
+		token, err := generateSecureToken(18)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de generer un mot de passe temporaire"})
+			return
+		}
+		password = token
+		generatedPassword = token
+	}
+
+	inviteCfg, _ := h.db.GetInvitationProfileConfig()
+	if req.PolicyPresetID == "" {
+		req.PolicyPresetID = strings.TrimSpace(inviteCfg.PolicyPresetID)
+	}
+
+	var preset *config.JellyfinPolicyPreset
+	if req.PolicyPresetID != "" {
+		resolvedPreset, err := h.getJellyfinPresetByID(req.PolicyPresetID)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Preset Jellyfin introuvable"})
+			return
+		}
+		preset = resolvedPreset
+		req.PolicyPresetID = resolvedPreset.ID
+	}
+
+	effectiveDisableAfterDays := req.DisableAfterDays
+	if effectiveDisableAfterDays <= 0 && preset != nil && preset.DisableAfterDays > 0 {
+		effectiveDisableAfterDays = preset.DisableAfterDays
+	}
+
+	var expiryAt time.Time
+	if strings.TrimSpace(req.AccessExpiresAt) != "" {
+		parsedExpiry, err := parseAccessExpiry(strings.TrimSpace(req.AccessExpiresAt))
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Date d'expiration invalide"})
+			return
+		}
+		expiryAt = parsedExpiry
+	} else if effectiveDisableAfterDays > 0 {
+		expiryAt = time.Now().AddDate(0, 0, effectiveDisableAfterDays)
+	}
+
+	created, err := h.jfClient.CreateUser(req.Username, password)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Creation Jellyfin echouee: " + err.Error()})
+		return
+	}
+
+	if preset != nil {
+		patch := &BulkJellyfinPolicyPatch{
+			EnableDownloads:  &preset.EnableDownload,
+			EnableRemote:     &preset.EnableRemoteAccess,
+			MaxActiveSession: &preset.MaxSessions,
+			BitrateLimit:     &preset.BitrateLimit,
+		}
+		if err := h.applyJellyfinPolicyPatch(created.ID, patch); err != nil {
+			_ = h.jfClient.DeleteUser(created.ID)
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Application du preset impossible: " + err.Error()})
+			return
+		}
+	}
+
+	effectiveCanInvite := req.CanInvite
+	if preset != nil && preset.CanInvite {
+		effectiveCanInvite = true
+	}
+
+	storedExpiry := ""
+	var expiryValue interface{}
+	if !expiryAt.IsZero() {
+		storedExpiry = expiryAt.Format("2006-01-02 15:04:05")
+		expiryValue = storedExpiry
+	}
+
+	expiryAction := normalizeExpiryAction(inviteCfg.ExpiryAction)
+	deleteAfterDays := inviteCfg.DeleteAfterDays
+	if preset != nil {
+		expiryAction = normalizeExpiryAction(preset.ExpiryAction)
+		if preset.DeleteAfterDays >= 0 {
+			deleteAfterDays = preset.DeleteAfterDays
+		}
+	}
+
+	emailVerified := strings.TrimSpace(req.Email) == ""
+	if _, err := h.db.Exec(
+		`INSERT INTO users
+			(jellyfin_id, username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+		created.ID,
+		req.Username,
+		req.Email,
+		emailVerified,
+		"admin:"+sess.Username,
+		effectiveCanInvite,
+		expiryValue,
+		req.PolicyPresetID,
+		expiryAction,
+		deleteAfterDays,
+	); err != nil {
+		_ = h.jfClient.DeleteUser(created.ID)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible d'enregistrer l'utilisateur"})
+		return
+	}
+
+	var createdID int64
+	_ = h.db.QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, created.ID).Scan(&createdID)
+	rec := &adminUserRecord{ID: createdID, Username: req.Username, Email: req.Email, JellyfinID: created.ID, CanInvite: effectiveCanInvite}
+	if storedExpiry != "" {
+		rec.AccessExpiresAt = sql.NullString{String: storedExpiry, Valid: true}
+	}
+
+	welcomeSent := false
+	if req.SendWelcomeEmail && strings.TrimSpace(req.Email) != "" && h.mailer != nil {
+		emailCfg, cfgErr := h.db.GetEmailTemplatesConfig()
+		if cfgErr == nil && !emailCfg.DisableWelcomeEmail {
+			defaults := config.DefaultEmailTemplates()
+			subject := firstNonEmpty(emailCfg.WelcomeSubject, defaults.WelcomeSubject)
+			body := emailCfg.Welcome
+			if strings.TrimSpace(body) == "" {
+				body = defaults.Welcome
+			}
+			extra := map[string]string{}
+			if !expiryAt.IsZero() {
+				extra["ExpiryDate"] = emailTime(expiryAt)
+			}
+			if err := h.sendUserEventEmail(rec, subject, "welcome", body, emailCfg, extra); err == nil {
+				welcomeSent = true
+			}
+		}
+	}
+
+	_ = h.db.LogAction("user.created.admin", sess.Username, req.Username, fmt.Sprintf(`{"user_id":%d,"preset_id":"%s","can_invite":%t}`, createdID, req.PolicyPresetID, effectiveCanInvite))
+
+	respData := map[string]interface{}{
+		"id":                createdID,
+		"username":          req.Username,
+		"email":             req.Email,
+		"jellyfin_id":       created.ID,
+		"preset_id":         req.PolicyPresetID,
+		"can_invite":        effectiveCanInvite,
+		"access_expires_at": storedExpiry,
+		"welcome_sent":      welcomeSent,
+	}
+	if generatedPassword != "" {
+		respData["temporary_password"] = generatedPassword
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Utilisateur cree", Data: respData})
+}
+
 // UpdateUser met ÃƒÂ  jour les informations ÃƒÂ©ditables d'un utilisateur (email, parrainage, expiration).
 func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
@@ -2793,6 +3161,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Action manquante"})
 		return
 	}
+	previewOnly := req.Preview
 
 	results := make([]map[string]interface{}, 0, len(req.UserIDs))
 	successCount := 0
@@ -2815,6 +3184,31 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 		switch action {
 		case "send_email":
+			if previewOnly {
+				subject := strings.TrimSpace(req.EmailSubject)
+				body := strings.TrimSpace(req.EmailBody)
+				if h.mailer == nil {
+					entry["success"] = false
+					entry["message"] = "SMTP non configure"
+					break
+				}
+				if subject == "" || body == "" {
+					entry["success"] = false
+					entry["message"] = "Sujet/corps email requis"
+					break
+				}
+				if strings.TrimSpace(rec.Email) == "" {
+					entry["success"] = false
+					entry["message"] = "Utilisateur sans email"
+					break
+				}
+				entry["success"] = true
+				entry["message"] = "Email sera envoye"
+				entry["preview"] = true
+				entry["impact"] = map[string]interface{}{"channel": "email", "subject": subject}
+				break
+			}
+
 			if h.mailer == nil {
 				entry["success"] = false
 				entry["message"] = "SMTP non configurÃƒÂ©"
@@ -2849,6 +3243,19 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			entry["message"] = "Email envoyÃƒÂ©"
 
 		case "jellyfin_policy":
+			if previewOnly {
+				if req.JellyfinPolicy == nil {
+					entry["success"] = false
+					entry["message"] = "Parametres Jellyfin manquants"
+					break
+				}
+				entry["success"] = true
+				entry["message"] = "Parametres Jellyfin seront mis a jour"
+				entry["preview"] = true
+				entry["impact"] = map[string]interface{}{"jellyfin_id": rec.JellyfinID}
+				break
+			}
+
 			err := h.applyJellyfinPolicyPatch(rec.JellyfinID, req.JellyfinPolicy)
 			if err != nil {
 				entry["success"] = false
@@ -2865,6 +3272,14 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				entry["success"] = false
 				entry["message"] = err.Error()
+				break
+			}
+
+			if previewOnly {
+				entry["success"] = true
+				entry["message"] = "Preset Jellyfin sera applique"
+				entry["preview"] = true
+				entry["impact"] = map[string]interface{}{"preset_id": preset.ID, "preset_name": preset.Name}
 				break
 			}
 
@@ -2890,6 +3305,14 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			if req.CanInvite == nil {
 				entry["success"] = false
 				entry["message"] = "can_invite manquant"
+				break
+			}
+
+			if previewOnly {
+				entry["success"] = true
+				entry["message"] = "Parrainage sera mis a jour"
+				entry["preview"] = true
+				entry["impact"] = map[string]interface{}{"can_invite": *req.CanInvite}
 				break
 			}
 
@@ -2923,6 +3346,23 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 				expiry = exp
 			}
 
+			if previewOnly {
+				entry["success"] = true
+				if req.ClearExpiry {
+					entry["message"] = "Expiration sera supprimee"
+					entry["impact"] = map[string]interface{}{"clear_expiry": true}
+				} else {
+					displayExpiry := ""
+					if req.AccessExpiresAt != nil {
+						displayExpiry = strings.TrimSpace(*req.AccessExpiresAt)
+					}
+					entry["message"] = "Expiration sera mise a jour"
+					entry["impact"] = map[string]interface{}{"clear_expiry": false, "access_expires_at": displayExpiry}
+				}
+				entry["preview"] = true
+				break
+			}
+
 			_, err := h.db.Exec(`UPDATE users SET access_expires_at = ?, updated_at = datetime('now') WHERE id = ?`, expiry, rec.ID)
 			if err != nil {
 				entry["success"] = false
@@ -2944,6 +3384,18 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 		case "activate", "deactivate":
 			newState := action == "activate"
+			if previewOnly {
+				entry["success"] = true
+				if newState {
+					entry["message"] = "Utilisateur sera active"
+				} else {
+					entry["message"] = "Utilisateur sera desactive"
+				}
+				entry["preview"] = true
+				entry["impact"] = map[string]interface{}{"is_active": newState}
+				break
+			}
+
 			partials, err := h.setUserActiveState(rec, newState, sess.Username)
 			if err != nil {
 				entry["success"] = false
@@ -2961,6 +3413,19 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case "send_password_reset":
+			if previewOnly {
+				if strings.TrimSpace(rec.Email) == "" {
+					entry["success"] = false
+					entry["message"] = "Utilisateur sans email"
+					break
+				}
+				entry["success"] = true
+				entry["message"] = "Lien de reinitialisation sera envoye"
+				entry["preview"] = true
+				entry["impact"] = map[string]interface{}{"channel": "email"}
+				break
+			}
+
 			err := h.sendPasswordResetForUser(rec, sess.Username)
 			if err != nil {
 				entry["success"] = false
@@ -2972,6 +3437,14 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 			entry["message"] = "Lien de rÃƒÂ©initialisation envoyÃƒÂ©"
 
 		case "delete":
+			if previewOnly {
+				entry["success"] = true
+				entry["message"] = "Utilisateur sera supprime"
+				entry["preview"] = true
+				entry["impact"] = map[string]interface{}{"delete": true}
+				break
+			}
+
 			partials, err := h.deleteUserRecord(rec, sess.Username)
 			if err != nil {
 				entry["success"] = false
@@ -2997,12 +3470,18 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 		results = append(results, entry)
 	}
 
+	message := fmt.Sprintf("Action de masse terminÃƒÂ©e: %d/%d succÃƒÂ¨s", successCount, len(req.UserIDs))
+	if previewOnly {
+		message = fmt.Sprintf("Preview action de masse: %d/%d impact(s) valides", successCount, len(req.UserIDs))
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: fmt.Sprintf("Action de masse terminÃƒÂ©e: %d/%d succÃƒÂ¨s", successCount, len(req.UserIDs)),
+		Message: message,
 		Data: map[string]interface{}{
 			"total":   len(req.UserIDs),
 			"success": successCount,
+			"preview": previewOnly,
 			"results": results,
 		},
 	})
@@ -3493,6 +3972,28 @@ func (h *AdminHandler) countInvitationsCreatedSince(creator string, since time.T
 	}
 
 	return count, nil
+}
+
+func resolveInviteEmailVerificationRequirement(policy string, legacyRequire bool, createdByAdmin bool, maxUses int) bool {
+	mode := strings.TrimSpace(strings.ToLower(policy))
+	switch mode {
+	case "required":
+		return true
+	case "disabled":
+		return false
+	case "admin_bypass":
+		if createdByAdmin {
+			return false
+		}
+		return true
+	case "conditional":
+		if createdByAdmin && maxUses == 1 {
+			return false
+		}
+		return true
+	default:
+		return legacyRequire
+	}
 }
 
 // ListInvitations retourne les invitations SQLite avec pagination et recherche.
@@ -4004,6 +4505,13 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		effectiveUserExpiresAtRaw = effectiveUserExpiresAt.Format(time.RFC3339)
 	}
 
+	effectiveRequireEmailVerification := resolveInviteEmailVerificationRequirement(
+		inviteCfg.EmailVerificationPolicy,
+		inviteCfg.RequireEmailVerification,
+		sess.IsAdmin,
+		req.MaxUses,
+	)
+
 	// GÃƒÂ©nÃƒÂ©rer code alÃƒÂ©atoire (ici via crypt/rand classique, 12 caractÃƒÂ¨res)
 	code, err := generateSecureToken(12)
 	if err != nil {
@@ -4017,7 +4525,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		EnabledFolderIDs:         req.Libraries,
 		EnableDownload:           inviteCfg.EnableDownloads,
 		RequireEmail:             inviteCfg.RequireEmail,
-		RequireEmailVerification: inviteCfg.RequireEmailVerification,
+		RequireEmailVerification: effectiveRequireEmailVerification,
 		EnableRemoteAccess:       true,
 		UserExpiryDays:           effectiveDisableAfterDays,
 		UserExpiresAt:            effectiveUserExpiresAtRaw,
@@ -4074,7 +4582,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	// Les options exposees dans "Profil utilisateur" sont forcees par les paramÃƒÂ¨tres admin.
 	jfProfile.EnableDownload = inviteCfg.EnableDownloads
 	jfProfile.RequireEmail = inviteCfg.RequireEmail
-	jfProfile.RequireEmailVerification = inviteCfg.RequireEmailVerification
+	jfProfile.RequireEmailVerification = effectiveRequireEmailVerification
 	jfProfile.UsernameMinLength = inviteCfg.UsernameMinLength
 	jfProfile.UsernameMaxLength = inviteCfg.UsernameMaxLength
 	jfProfile.PasswordMinLength = inviteCfg.PasswordMinLength

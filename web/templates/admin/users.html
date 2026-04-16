@@ -6,9 +6,13 @@
 <div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
     <div>
         <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "users_heading" }}</h1>
-        <p class="text-jg-text-muted mt-2">Gérez vos utilisateurs Jellyfin et LDAP de manière centralisée.</p>
+        <p class="text-jg-text-muted mt-2">{{ .T "users_subheading" }}</p>
     </div>
     <div class="flex items-center gap-3">
+        <button id="btn-open-create-user" class="jg-btn jg-btn-ghost">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            {{ .T "users_new_user" }}
+        </button>
         <button id="btn-sync-users" class="jg-btn jg-btn-ghost">
             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             {{ .T "users_sync_jellyfin" }}
@@ -51,7 +55,7 @@
             <div class="flex items-center gap-3">
                 <button id="btn-toggle-filters" class="jg-btn jg-btn-ghost h-14 px-8 flex items-center gap-3 font-bold whitespace-nowrap border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                    <span>Filtres</span>
+                    <span>{{ .T "filters" }}</span>
                     <span id="active-filter-count" class="hidden px-2 py-0.5 rounded-full bg-jg-accent text-black text-[10px] font-black shadow-lg">0</span>
                 </button>
                 <button id="btn-clear-filters" class="w-14 h-14 flex items-center justify-center rounded-2xl jg-btn-ghost text-rose-400 hover:bg-rose-400/10 border border-white/5 transition-all hidden" title="{{ .T "users_filters_clear" }}">
@@ -65,16 +69,16 @@
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "col_status" }}</label>
                 <select id="filter-status" class="jg-select-premium h-11 text-xs">
-                    <option value="all">{{ .T "col_status" }} (Tous)</option>
+                    <option value="all">{{ .T "users_filter_status_all" }}</option>
                     <option value="active">{{ .T "status_active" }}</option>
                     <option value="inactive">{{ .T "status_inactive" }}</option>
                     <option value="banned">{{ .T "status_banned" }}</option>
                 </select>
             </div>
             <div class="jg-filter-group">
-                <label class="jg-filter-label">Jellyfin</label>
+                <label class="jg-filter-label">{{ .T "col_jellyfin" }}</label>
                 <select id="filter-jellyfin" class="jg-select-premium h-11 text-xs">
-                    <option value="all">Jellyfin (Tous)</option>
+                    <option value="all">{{ .T "users_filter_jellyfin_all" }}</option>
                     <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
                     <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
                     <option value="missing">{{ .T "users_filter_jellyfin_missing" }}</option>
@@ -83,15 +87,15 @@
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "users_col_invite" }}</label>
                 <select id="filter-invite" class="jg-select-premium h-11 text-xs">
-                    <option value="all">{{ .T "users_col_invite" }} (Tous)</option>
+                    <option value="all">{{ .T "users_filter_invite_all" }}</option>
                     <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
                     <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
                 </select>
             </div>
             <div class="jg-filter-group">
-                <label class="jg-filter-label">Filtres Spéciaux</label>
+                <label class="jg-filter-label">{{ .T "users_filter_extra_label" }}</label>
                 <select id="filter-extra" class="jg-select-premium h-11 text-xs">
-                    <option value="all">Extras (Aucun)</option>
+                    <option value="all">{{ .T "users_filter_extra_all" }}</option>
                     <option value="with-email">{{ .T "users_filter_with_email" }}</option>
                     <option value="without-email">{{ .T "users_filter_without_email" }}</option>
                     <option value="expiry-active">{{ .T "users_filter_expiry_active" }}</option>
@@ -142,7 +146,7 @@
                 {{/* ── Pagination ── */}}
                 <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-black/10 border-t border-white/5">
                     <div class="flex items-center gap-3 text-xs text-jg-text-muted">
-                        <span>Afficher</span>
+                        <span>{{ .T "pagination_show" }}</span>
                         <div class="relative flex items-center">
                             <select id="items-per-page" class="appearance-none h-9 pl-3 pr-8 text-[11px] bg-white/5 border border-white/10 rounded-xl focus:border-jg-accent/50 focus:ring-0 transition-all cursor-pointer outline-none text-jg-text">
                                 <option value="25" class="bg-jg-bg">25</option>
@@ -173,7 +177,7 @@
             <div class="h-6 w-px bg-black/20"></div>
             <button id="btn-open-bulk" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                <span>Actions en lot</span>
+                <span>{{ .T "users_bulk_title" }}</span>
             </button>
         </div>
 
@@ -187,7 +191,7 @@
                     </div>
                     <div>
                         <h2 class="text-lg font-bold">{{ .T "users_bulk_title" }}</h2>
-                        <p class="text-[10px] text-jg-text-muted uppercase tracking-widest font-black" id="bulk-drawer-count">0 sélectionnés</p>
+                        <p class="text-[10px] text-jg-text-muted uppercase tracking-widest font-black" id="bulk-drawer-count">0 {{ .T "users_bulk_selected_suffix" }}</p>
                     </div>
                 </div>
                 <button id="btn-close-bulk" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted">
@@ -223,14 +227,18 @@
                 </div>
 
                 <div class="space-y-4">
-                    <label class="jg-label">Validation</label>
+                    <label class="jg-label">{{ .T "users_bulk_validation_label" }}</label>
                     <div id="bulk-summary" class="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs leading-relaxed font-medium">
                         {{ .T "users_bulk_summary_placeholder" }}
                     </div>
+                    <div id="bulk-preview-results" class="hidden p-4 rounded-xl bg-slate-950/60 border border-white/10 text-xs space-y-3"></div>
                 </div>
             </div>
 
             <div class="jg-drawer-footer">
+                <button id="bulk-preview" class="w-full jg-btn jg-btn-ghost h-12 uppercase tracking-widest font-black border border-white/10">
+                    {{ .T "users_bulk_preview_button" }}
+                </button>
                 <button id="bulk-apply" class="w-full jg-btn jg-btn-primary h-14 uppercase tracking-widest font-black shadow-lg opacity-60 cursor-not-allowed" disabled>
                     {{ .T "users_apply" }}
                 </button>
@@ -248,7 +256,7 @@
         <div class="space-y-5">
             <div>
                 <label class="jg-label">{{ .T "field_email" }}</label>
-                <input type="email" id="edit-email" class="jg-input h-12" placeholder="nom@domaine.tld">
+                <input type="email" id="edit-email" class="jg-input h-12" placeholder='{{ .T "field_email_placeholder" }}'>
             </div>
             <div>
                 <label class="jg-label">{{ .T "users_col_preset" }}</label>
@@ -257,7 +265,7 @@
                 </select>
             </div>
             <div id="edit-group-wrapper" class="hidden">
-                <label class="jg-label text-xs opacity-50">{{ .T "users_col_group" }} (Lecture seule)</label>
+                <label class="jg-label text-xs opacity-50">{{ .T "users_col_group" }} ({{ .T "users_read_only" }})</label>
                 <div id="edit-group-name" class="text-sm font-medium text-jg-text-muted mt-1 px-1"></div>
             </div>
             <div>
@@ -278,6 +286,58 @@
         <div class="mt-10 flex flex-col md:flex-row justify-end gap-3">
             <button class="jg-btn jg-btn-ghost h-12 px-8" id="edit-cancel-btn">{{ .T "cancel" }}</button>
             <button class="jg-btn jg-btn-primary h-12 px-8" id="edit-save-btn">{{ .T "btn_save" }}</button>
+        </div>
+    </div>
+</div>
+
+<div id="create-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-modal-title" tabindex="-1">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>
+    <div class="jg-card jg-glass w-full max-w-xl relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200" role="document">
+        <h3 id="create-modal-title" class="text-2xl font-bold mb-6 text-jg-text">{{ .T "users_create_title" }}</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="jg-label" for="create-username">{{ .T "field_username" }}</label>
+                <input type="text" id="create-username" class="jg-input h-12" placeholder='{{ .T "field_username_placeholder" }}' minlength="3" required>
+            </div>
+            <div>
+                <label class="jg-label" for="create-email">{{ .T "field_email" }}</label>
+                <input type="email" id="create-email" class="jg-input h-12" placeholder='{{ .T "field_email_placeholder" }}'>
+            </div>
+            <div>
+                <label class="jg-label" for="create-password">{{ .T "users_create_password_optional" }}</label>
+                <input type="text" id="create-password" class="jg-input h-12" placeholder='{{ .T "users_create_password_auto" }}'>
+            </div>
+            <div>
+                <label class="jg-label" for="create-preset-id">{{ .T "users_col_preset" }}</label>
+                <select id="create-preset-id" class="jg-input jg-select-premium h-12 font-bold">
+                    <option value="">{{ .T "users_create_no_preset" }}</option>
+                </select>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                    <label class="jg-label" for="create-disable-days">{{ .T "users_create_expiry_days" }}</label>
+                    <input type="number" id="create-disable-days" class="jg-input h-12" min="0" placeholder='{{ .T "users_create_expiry_days_placeholder" }}'>
+                </div>
+                <div>
+                    <label class="jg-label" for="create-expiry">{{ .T "users_create_expiry_exact" }}</label>
+                    <input type="datetime-local" id="create-expiry" class="jg-input h-12">
+                </div>
+            </div>
+            <div class="flex flex-col gap-2 pt-1">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="create-can-invite" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent">
+                    <span class="text-sm text-jg-text-muted">{{ .T "users_allow_invite" }}</span>
+                </label>
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" id="create-send-welcome" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent" checked>
+                    <span class="text-sm text-jg-text-muted">{{ .T "users_create_send_welcome" }}</span>
+                </label>
+            </div>
+            <div id="create-temp-password-box" class="hidden rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200"></div>
+        </div>
+        <div class="mt-8 flex flex-col md:flex-row justify-end gap-3">
+            <button class="jg-btn jg-btn-ghost h-12 px-8" id="create-cancel-btn">{{ .T "cancel" }}</button>
+            <button class="jg-btn jg-btn-primary h-12 px-8" id="create-save-btn">{{ .T "users_create_submit" }}</button>
         </div>
     </div>
 </div>
@@ -308,7 +368,7 @@
             <button class="jg-btn jg-btn-ghost jg-btn-sm" id="timeline-close-btn" aria-label="{{ .T "users_close" }}">{{ .T "users_close" }}</button>
         </div>
         <div id="timeline-list" class="flex-1 overflow-y-auto pr-4 space-y-4">
-            <div class="text-center py-20 text-jg-text-muted animate-pulse">Chargement de la timeline...</div>
+            <div class="text-center py-20 text-jg-text-muted animate-pulse">{{ .T "users_timeline_loading" }}</div>
         </div>
     </div>
 </div>
@@ -321,9 +381,11 @@
             usersDisplayed: '{{ .T "users_displayed_count" }}',
             usersNoLocal: '{{ .T "users_no_local" }}',
             usersNoFilterMatch: '{{ .T "users_no_filter_match" }}',
+            loading: '{{ .T "logs_loading" }}',
             bulkChooseAction: '{{ .T "users_bulk_choose_action" }}',
             bulkActionGeneric: '{{ .T "users_bulk_action_generic" }}',
             bulkSelectOne: '{{ .T "users_bulk_select_one" }}',
+            bulkSelectedSuffix: '{{ .T "users_bulk_selected_suffix" }}',
             bulkNeedEmailBody: '{{ .T "users_bulk_need_email_body" }}',
             bulkNeedExpiry: '{{ .T "users_bulk_need_expiry" }}',
             bulkNeedJellyfinParam: '{{ .T "users_bulk_need_jellyfin_param" }}',
@@ -342,6 +404,10 @@
             timelineInfo: '{{ .T "users_timeline_info" }}',
             timelineTrace: '{{ .T "users_timeline_trace" }}',
             timelineEmpty: '{{ .T "users_timeline_empty" }}',
+            timelineLoading: '{{ .T "users_timeline_loading" }}',
+            timelineError: '{{ .T "users_timeline_critical" }}',
+            timelineWarning: '{{ .T "users_timeline_important" }}',
+            timelineActorPrefix: '{{ .T "users_timeline_actor_prefix" }}',
             editUpdated: '{{ .T "users_updated" }}',
             editUpdateError: '{{ .T "users_update_error" }}',
             deleteSuccess: '{{ .T "users_deleted" }}',
@@ -383,6 +449,17 @@
             filteredLabel: '{{ .T "users_overview_filtered" }}',
             invitersLabel: '{{ .T "users_overview_inviters" }}',
             expiringLabel: '{{ .T "users_overview_expiring" }}',
+            previewImpact: '{{ .T "users_bulk_preview_impact" }}',
+            previewBlocked: '{{ .T "users_bulk_preview_blocked" }}',
+            previewNoResult: '{{ .T "users_bulk_preview_no_result" }}',
+            previewComputed: '{{ .T "users_bulk_preview_computed" }}',
+            statusOk: '{{ .T "users_bulk_status_ok" }}',
+            statusRejected: '{{ .T "users_bulk_status_rejected" }}',
+            createNoPreset: '{{ .T "users_create_no_preset" }}',
+            createNeedUsername: '{{ .T "users_create_need_username" }}',
+            createFailed: '{{ .T "users_create_failed" }}',
+            createTempPassword: '{{ .T "users_create_temp_password" }}',
+            createSuccess: '{{ .T "users_create_success" }}',
         },
         bulkActionMeta: {
             send_email: { label: '{{ .T "users_action_send_email" }}', help: '{{ .T "users_action_send_email_help" }}' },
@@ -412,7 +489,12 @@
             bulkJfRemoteBlocked: '{{ .T "users_jf_remote_blocked" }}',
             bulkJfSessionsPlaceholder: '{{ .T "users_jf_sessions_placeholder" }}',
             bulkJfBitratePlaceholder: '{{ .T "users_jf_bitrate_placeholder" }}',
+            bulkJfDownloadLabel: '{{ .T "users_jf_download_label" }}',
+            bulkJfRemoteLabel: '{{ .T "users_jf_remote_label" }}',
+            bulkJfSessionsLabel: '{{ .T "users_jf_sessions_label" }}',
+            bulkJfBitrateLabel: '{{ .T "users_jf_bitrate_label" }}',
             bulkSelectPreset: '{{ .T "users_bulk_select_preset" }}',
+            bulkSelectPresetPlaceholder: '{{ .T "users_bulk_select_preset_placeholder" }}',
             bulkNoExtraParams: '{{ .T "users_bulk_no_extra_params" }}',
         },
     };

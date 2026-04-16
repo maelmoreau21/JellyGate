@@ -2811,3 +2811,61 @@ html:not(.dark) .jg-select-trigger {
 .timeline-dot.warning { border-color: var(--jg-warning); box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1); }
 .timeline-dot.danger { border-color: var(--jg-danger); box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1); }
 .timeline-dot.info { border-color: var(--jg-accent); box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1); }
+
+/* ── Logo visibility ─────────────────────────────────────────────────────── */
+.jg-logo-wrap {
+    line-height: 0;
+}
+
+.jg-logo-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.75rem;
+    transition: var(--jg-transition);
+}
+
+.jg-logo-mark {
+    filter: drop-shadow(0 4px 10px rgba(34, 211, 238, 0.2));
+}
+
+.jg-logo-play {
+    fill: #ffffff;
+}
+
+html:not(.dark) .jg-logo-chip {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.98));
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+}
+
+html:not(.dark) .jg-logo-mark {
+    filter: drop-shadow(0 4px 10px rgba(14, 116, 144, 0.25));
+}
+
+html:not(.dark) .jg-logo-play {
+    fill: #0f172a;
+}
+
+/* ── Light mode hover contrast fixes ─────────────────────────────────────── */
+html:not(.dark) .hover\:text-white:hover {
+    color: var(--jg-text) !important;
+}
+
+html:not(.dark) .group:hover .group-hover\:text-white {
+    color: var(--jg-text) !important;
+}
+
+html:not(.dark) .hover\:bg-white\/5:hover {
+    background-color: rgba(2, 6, 23, 0.06) !important;
+}
+
+html:not(.dark) .hover\:bg-white\/10:hover {
+    background-color: rgba(2, 6, 23, 0.08) !important;
+}
+
+html:not(.dark) .hover\:bg-white:hover {
+    background-color: #f1f5f9 !important;
+}

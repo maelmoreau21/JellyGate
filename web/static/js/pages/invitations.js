@@ -49,7 +49,6 @@
             
             const maxUses = parseInt(maxUsesInput.value, 10);
             const isAllowed = maxUses === 1;
-            const policyI18n = i18n.policy || {};
             
             forcedUserInput.disabled = !isAllowed;
             if (!isAllowed) forcedUserInput.value = '';
@@ -61,10 +60,10 @@
             
             if (forcedUserHelp) {
                 if (!isAllowed) {
-                    forcedUserHelp.textContent = policyI18n.forced_username_limit_hint || "Le nom reserve n'est disponible que pour les liens a usage unique (max = 1).";
+                    forcedUserHelp.textContent = i18n.forcedUsernameLimitHint || '';
                     forcedUserHelp.classList.add('text-amber-500');
                 } else {
-                    forcedUserHelp.textContent = i18n.forced_username_help || "";
+                    forcedUserHelp.textContent = i18n.forcedUsernameHelp || '';
                     forcedUserHelp.classList.remove('text-amber-500');
                 }
             }
@@ -96,13 +95,14 @@
 
             if (summary) {
                 const parts = [];
-                parts.push(`Base: ${inviteBaseURL}`);
-                if (!isAdmin && inviterMaxUses > 0) parts.push(`Max usages/lien: ${inviterMaxUses}`);
-                if (!isAdmin && limitLinkValidityDays > 0) parts.push(`Validite lien: ${limitLinkValidityDays} jour(s)`);
-                if (!isAdmin && inviterQuotaDay > 0) parts.push(`Quota jour: ${inviterQuotaDay}`);
-                if (!isAdmin && inviterQuotaMonth > 0) parts.push(`Quota mois: ${inviterQuotaMonth}`);
-                if (!isAdmin && !allowInviterGrant) parts.push('Delegation invitation verrouillee');
-                if (!isAdmin && !allowInviterUserExpiry) parts.push('Expiration utilisateur verrouillee');
+                parts.push(fmt(i18n.baseLinks, { url: inviteBaseURL }));
+                if (!isAdmin && inviterMaxUses > 0) parts.push(fmt(i18n.maxUsesPerLink, { n: inviterMaxUses }));
+                if (!isAdmin && inviterMaxLinkHours > 0) parts.push(fmt(i18n.maxTtl, { n: inviterMaxLinkHours }));
+                if (!isAdmin && inviterQuotaDay > 0) parts.push(fmt(i18n.quotaDay, { n: inviterQuotaDay }));
+                if (!isAdmin && inviterQuotaWeek > 0) parts.push(fmt(i18n.quotaWeek, { n: inviterQuotaWeek }));
+                if (!isAdmin && inviterQuotaMonth > 0) parts.push(fmt(i18n.quotaMonth, { n: inviterQuotaMonth }));
+                if (!isAdmin && !allowInviterGrant) parts.push(i18n.grantLocked);
+                if (!isAdmin && !allowInviterUserExpiry) parts.push(i18n.expiryLocked);
                 summary.textContent = parts.join(' • ');
             }
 
@@ -114,9 +114,9 @@
 
             if (linkHelp) {
                 if (!isAdmin && limitLinkValidityDays > 0) {
-                    linkHelp.textContent = `Ce lien est limite a ${limitLinkValidityDays} jour(s).`;
+                    linkHelp.textContent = fmt(i18n.linkHelpLimited, { n: inviterMaxLinkHours || (limitLinkValidityDays * 24) });
                 } else {
-                    linkHelp.textContent = '0 = lien sans date limite.';
+                    linkHelp.textContent = i18n.linkHelpDefault;
                 }
             }
 
@@ -200,7 +200,7 @@
                 renderInvitations(invitations);
                 renderPagination(meta);
             } else {
-                JG.toast(i18n.loadError || "Erreur de chargement", 'error');
+                JG.toast(i18n.loadError || 'Loading error', 'error');
             }
         }
 
@@ -361,7 +361,7 @@
             if (!isAdmin && maxUses <= 0) {
                 btn.disabled = false;
                 btn.innerHTML = createBtnLabel();
-                JG.toast(i18n.invalidMaxUses || 'Le nombre d\'utilisations est invalide.', 'error');
+                JG.toast(i18n.invalidMaxUses, 'error');
                 return;
             }
 
@@ -372,7 +372,7 @@
                 if (!isAdmin && expiresInDays > limitLinkValidityDays) {
                     btn.disabled = false;
                     btn.innerHTML = createBtnLabel();
-                    JG.toast(`Validite limitee a ${limitLinkValidityDays} jour(s).`, 'error');
+                    JG.toast(fmt(i18n.maxTtl, { n: inviterMaxLinkHours || (limitLinkValidityDays * 24) }), 'error');
                     return;
                 }
             }
@@ -380,7 +380,7 @@
             if (userExpiryEnabled && userExpiryDays <= 0) {
                 btn.disabled = false;
                 btn.innerHTML = createBtnLabel();
-                JG.toast(i18n.invalidUserExpiry || 'Expiration utilisateur invalide.', 'error');
+                JG.toast(i18n.invalidUserExpiry, 'error');
                 return;
             }
 
@@ -391,7 +391,7 @@
                 if (!isAdmin && userExpiryDays > limitUserExpiryDays) {
                     btn.disabled = false;
                     btn.innerHTML = createBtnLabel();
-                    JG.toast(`Expiration utilisateur limitee a ${limitUserExpiryDays} jour(s).`, 'error');
+                    JG.toast(i18n.expiryLocked, 'error');
                     return;
                 }
             }
@@ -413,7 +413,7 @@
             btn.innerHTML = createBtnLabel();
 
             if (res.success) {
-                JG.toast(i18n.created || "Invitation créée", 'success');
+                JG.toast(i18n.created, 'success');
                 JG.closeModal('create-modal');
                 document.getElementById('create-form')?.reset();
                 loadInvitations();
@@ -426,7 +426,7 @@
         async function submitDelete() {
             const res = await JG.api(`/admin/api/invitations/${pendingDeleteInvitationID}`, { method: 'DELETE' });
             if (res.success) {
-                JG.toast(i18n.deleted || "Supprimé", 'success');
+                JG.toast(i18n.deleted, 'success');
                 JG.closeModal('delete-modal');
                 loadInvitations();
                 loadSponsorStats();

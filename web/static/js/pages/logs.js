@@ -2,6 +2,7 @@
     const config = window.JGPageLogs || {};
     const i18n = config.i18n || {};
     const uiLocale = config.uiLocale || undefined;
+    const LOG_PRESETS_STORAGE_KEY = 'jg.logs.presets.v1';
     const state = {
         page: 1,
         limit: 50,
@@ -18,6 +19,7 @@
         totalPages: 1,
     };
     let searchTimeout;
+    let filterTimeout;
 
     function escapeHtml(unsafe) {
         if (!unsafe) {
@@ -46,6 +48,215 @@
             export: format,
         });
         window.open(`/admin/api/logs?${params.toString()}`, '_blank');
+    }
+
+    function getCurrentFilters() {
+        return {
+            action: state.action,
+            actor: state.actor,
+            result: state.result,
+            from: state.from,
+            to: state.to,
+            search: state.search,
+            limit: state.limit,
+            sort: state.sort,
+            order: state.order,
+        };
+    }
+
+    function readStoredPresets() {
+        try {
+            const raw = localStorage.getItem(LOG_PRESETS_STORAGE_KEY);
+            if (!raw) {
+                return [];
+            }
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) {
+                return [];
+            }
+            return parsed
+                .filter((item) => item && typeof item.name === 'string' && item.filters && typeof item.filters === 'object')
+                .map((item) => ({
+                    name: item.name.trim(),
+                    filters: item.filters,
+                }))
+                .filter((item) => item.name !== '');
+        } catch (_) {
+            return [];
+        }
+    }
+
+    function writeStoredPresets(presets) {
+        localStorage.setItem(LOG_PRESETS_STORAGE_KEY, JSON.stringify(presets));
+    }
+
+    function renderPresetOptions(selectedName = '') {
+        const select = document.getElementById('logs-preset-select');
+        const btnDelete = document.getElementById('logs-preset-delete');
+        if (!select) {
+            return;
+        }
+
+        const presets = readStoredPresets();
+        const defaultLabel = i18n.presetsLocal || 'Filter presets (local)';
+        const options = [`<option value="">${escapeHtml(defaultLabel)}</option>`]
+            .concat(presets.map((p) => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`));
+        select.innerHTML = options.join('');
+        if (selectedName) {
+            select.value = selectedName;
+        }
+
+        if (btnDelete) {
+            btnDelete.classList.toggle('hidden', !selectedName);
+        }
+    }
+
+    function applyFiltersToInputs(filters) {
+        const filterAction = document.getElementById('filter-action');
+        const filterActor = document.getElementById('filter-actor');
+        const filterResult = document.getElementById('filter-result');
+        const filterFrom = document.getElementById('filter-from');
+        const filterTo = document.getElementById('filter-to');
+        const searchInput = document.getElementById('search-input');
+        const limitSelect = document.getElementById('limit-select');
+
+        state.action = String(filters.action || '').trim();
+        state.actor = String(filters.actor || '').trim();
+        state.result = String(filters.result || '').trim();
+        state.from = String(filters.from || '').trim();
+        state.to = String(filters.to || '').trim();
+        state.search = String(filters.search || '').trim();
+        state.limit = Number.parseInt(filters.limit || state.limit, 10) || state.limit;
+        state.sort = String(filters.sort || state.sort).trim() || 'created_at';
+        state.order = String(filters.order || state.order).trim() === 'asc' ? 'asc' : 'desc';
+        state.page = 1;
+
+        if (filterAction) {
+            filterAction.value = state.action;
+        }
+        if (filterActor) {
+            filterActor.value = state.actor;
+        }
+        if (filterResult) {
+            filterResult.value = state.result;
+        }
+        if (filterFrom) {
+            filterFrom.value = state.from;
+        }
+        if (filterTo) {
+            filterTo.value = state.to;
+        }
+        if (searchInput) {
+            searchInput.value = state.search;
+        }
+        if (limitSelect) {
+            limitSelect.value = String(state.limit);
+        }
+
+        document.querySelectorAll('.sort-icon').forEach((icon) => {
+            icon.classList.add('hidden');
+            if (icon.dataset.col === state.sort) {
+                icon.classList.remove('hidden');
+                icon.textContent = state.order === 'desc' ? '▼' : '▲';
+            }
+        });
+
+        updateActiveFilterCount();
+    }
+
+    function saveCurrentPreset() {
+        const currentName = document.getElementById('logs-preset-select')?.value || '';
+        const nameInput = window.prompt(i18n.presetPromptName || 'Preset name', currentName);
+        if (!nameInput) {
+            return;
+        }
+        const name = nameInput.trim();
+        if (!name) {
+            return;
+        }
+
+        const presets = readStoredPresets().filter((p) => p.name !== name);
+        presets.push({ name, filters: getCurrentFilters() });
+        presets.sort((a, b) => a.name.localeCompare(b.name, uiLocale || 'fr'));
+        writeStoredPresets(presets);
+        renderPresetOptions(name);
+    }
+
+    function deleteSelectedPreset() {
+        const select = document.getElementById('logs-preset-select');
+        if (!select || !select.value) {
+            return;
+        }
+        const selected = select.value;
+        const presets = readStoredPresets().filter((p) => p.name !== selected);
+        writeStoredPresets(presets);
+        renderPresetOptions('');
+    }
+
+    function applySelectedPreset() {
+        const select = document.getElementById('logs-preset-select');
+        if (!select) {
+            return;
+        }
+
+        const selected = select.value;
+        const btnDelete = document.getElementById('logs-preset-delete');
+        if (btnDelete) {
+            btnDelete.classList.toggle('hidden', !selected);
+        }
+
+        if (!selected) {
+            return;
+        }
+
+        const preset = readStoredPresets().find((p) => p.name === selected);
+        if (!preset) {
+            return;
+        }
+        applyFiltersToInputs(preset.filters || {});
+        fetchLogs();
+    }
+
+    function refreshFilterStateFromInputs() {
+        state.action = document.getElementById('filter-action')?.value.trim() || '';
+        state.actor = document.getElementById('filter-actor')?.value.trim() || '';
+        state.result = document.getElementById('filter-result')?.value || '';
+        state.from = document.getElementById('filter-from')?.value || '';
+        state.to = document.getElementById('filter-to')?.value || '';
+    }
+
+    function formatDateInputValue(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function applyQuickRange(range) {
+        const now = new Date();
+        const start = new Date(now);
+        if (range === 'today') {
+            start.setHours(0, 0, 0, 0);
+        } else if (range === '24h') {
+            start.setDate(start.getDate() - 1);
+        } else if (range === '7d') {
+            start.setDate(start.getDate() - 7);
+        } else if (range === '30d') {
+            start.setDate(start.getDate() - 30);
+        }
+
+        const filterFrom = document.getElementById('filter-from');
+        const filterTo = document.getElementById('filter-to');
+        if (!filterFrom || !filterTo) {
+            return;
+        }
+
+        filterFrom.value = formatDateInputValue(start);
+        filterTo.value = formatDateInputValue(now);
+        refreshFilterStateFromInputs();
+        state.page = 1;
+        updateActiveFilterCount();
+        fetchLogs();
     }
 
     function toggleSort(col) {
@@ -233,25 +444,37 @@
             const el = document.getElementById(id);
             if (!el) return;
 
-            const handleInput = () => {
-                state.action = document.getElementById('filter-action')?.value.trim() || '';
-                state.actor = document.getElementById('filter-actor')?.value.trim() || '';
-                state.result = document.getElementById('filter-result')?.value || '';
-                state.from = document.getElementById('filter-from')?.value || '';
-                state.to = document.getElementById('filter-to')?.value || '';
+            const handleFastRefresh = () => {
+                refreshFilterStateFromInputs();
                 state.page = 1;
                 updateActiveFilterCount();
                 fetchLogs();
             };
 
-            el.addEventListener('input', handleInput);
-            el.addEventListener('change', handleInput);
+            if (id === 'filter-action' || id === 'filter-actor') {
+                el.addEventListener('input', () => {
+                    clearTimeout(filterTimeout);
+                    filterTimeout = setTimeout(handleFastRefresh, 250);
+                });
+            } else {
+                el.addEventListener('change', handleFastRefresh);
+            }
+        });
+
+        document.getElementById('logs-preset-save')?.addEventListener('click', saveCurrentPreset);
+        document.getElementById('logs-preset-delete')?.addEventListener('click', deleteSelectedPreset);
+        document.getElementById('logs-preset-select')?.addEventListener('change', applySelectedPreset);
+
+        document.querySelectorAll('#logs-quick-ranges [data-range]').forEach((btn) => {
+            btn.addEventListener('click', () => applyQuickRange(btn.dataset.range || ''));
         });
 
         // --- Export Listeners ---
         document.getElementById('export-json')?.addEventListener('click', () => triggerExport('json'));
         document.getElementById('export-csv')?.addEventListener('click', () => triggerExport('csv'));
 
+        renderPresetOptions('');
+        updateActiveFilterCount();
         fetchLogs();
     });
 })();

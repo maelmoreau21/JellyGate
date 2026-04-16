@@ -14,6 +14,7 @@ var (
 	templateKeyPattern   = regexp.MustCompile(`\.T\s+"([^"]+)"`)
 	placeholderPattern   = regexp.MustCompile(`\{[a-zA-Z0-9_]+\}`)
 	fallbackValuePattern = regexp.MustCompile(`^\[[^\]]+\]$`)
+	localeFilePattern    = regexp.MustCompile(`^[a-z]{2}(?:-[a-z]{2})?\.json$`)
 )
 
 type LocaleReport struct {
@@ -123,7 +124,12 @@ func loadLocales(i18nDir string) (map[string]map[string]string, error) {
 	}
 
 	locales := make(map[string]map[string]string, len(files))
+	loaded := 0
 	for _, file := range files {
+		if !localeFilePattern.MatchString(strings.ToLower(filepath.Base(file))) {
+			continue
+		}
+
 		data, readErr := os.ReadFile(file)
 		if readErr != nil {
 			return nil, fmt.Errorf("read locale %s: %w", file, readErr)
@@ -134,6 +140,11 @@ func loadLocales(i18nDir string) (map[string]map[string]string, error) {
 		}
 		locale := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file))
 		locales[locale] = kv
+		loaded++
+	}
+
+	if loaded == 0 {
+		return nil, fmt.Errorf("no active locale files matched in %s", i18nDir)
 	}
 	return locales, nil
 }

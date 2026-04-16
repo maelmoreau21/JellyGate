@@ -5,7 +5,7 @@
 {{ define "admin_content" }}
 <div class="jg-page-header">
     <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_settings" }}</h1>
-    <p class="text-jg-text-muted mt-2">Configurez les paramètres globaux de votre instance JellyGate, les connexions LDAP, SMTP et les webhooks.</p>
+  <p class="text-jg-text-muted mt-2">{{ .T "settings_subheading" }}</p>
 </div>
 
 {{/* ── Tabbed Navigation ────────────────────────────────────── */}}
@@ -72,7 +72,7 @@
                 <option value="nl">Nederlands</option>
                 <option value="pl">Polski</option>
                 <option value="pt-br">Português (Brasil)</option>
-                <option value="ru">Рђсский</option>
+                <option value="ru">Русский</option>
                 <option value="zh">中文 (简体)</option>
               </select>
               
@@ -133,6 +133,16 @@
               <div class="flex items-center gap-3 pt-6">
                 <input type="checkbox" id="invite-profile-require-email-verification" class="form-checkbox" checked>
                 <label class="text-sm text-slate-600 dark:text-slate-300" for="invite-profile-require-email-verification">{{ .T "settings_invite_require_email_verification" }}</label>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="jg-label" for="invite-profile-email-verification-policy">{{ .T "settings_invite_email_verification_policy" }}</label>
+                <select id="invite-profile-email-verification-policy" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11">
+                  <option value="required">{{ .T "settings_invite_email_verification_policy_required" }}</option>
+                  <option value="conditional">{{ .T "settings_invite_email_verification_policy_conditional" }}</option>
+                  <option value="admin_bypass">{{ .T "settings_invite_email_verification_policy_admin_bypass" }}</option>
+                  <option value="disabled">{{ .T "settings_invite_email_verification_policy_disabled" }}</option>
+                </select>
               </div>
 
               <div>

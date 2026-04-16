@@ -44,19 +44,28 @@
                 renderRecentUsers(users);
             }
 
-            if (invitationsRes && invitationsRes.success && statsRes && statsRes.success) {
-                const invitations = invitationsRes.data || [];
+            const invitations = (invitationsRes && invitationsRes.success && Array.isArray(invitationsRes.data)) ? invitationsRes.data : [];
+
+            if (statsRes && statsRes.success) {
                 const stats = statsRes.data || {};
-                
-                // On privilégie les stats agrégées du backend pour le compteur global
-                document.getElementById('stat-invitations').textContent = stats.invitations ? stats.invitations.total : invitations.length;
-                
+                const statInvitationsEl = document.getElementById('stat-invitations');
+
+                // Prefer backend aggregate stats when available.
+                if (statInvitationsEl) {
+                    statInvitationsEl.textContent = stats.invitations ? stats.invitations.total : invitations.length;
+                }
+
                 renderHealthStatus(stats.health || {});
                 renderRegistrationsChart(stats.registrations || []);
                 renderInvitationsChart(stats.invitations || {});
+            } else {
+                const statInvitationsEl = document.getElementById('stat-invitations');
+                if (statInvitationsEl && invitations.length > 0) {
+                    statInvitationsEl.textContent = invitations.length;
+                }
             }
         }).catch(err => {
-            console.error('Erreur chargement dashboard:', err);
+            console.error('Dashboard load error:', err);
         });
     }
 
@@ -95,10 +104,21 @@
     }
 
     function renderHealthStatus(health) {
+        const toBoolStatus = (value) => {
+            if (typeof value === 'boolean') return value;
+            if (typeof value === 'number') return value > 0;
+            if (typeof value === 'string') {
+                const normalized = value.trim().toLowerCase();
+                if (['true', 'ok', 'up', 'healthy', 'online', '1', 'enabled'].includes(normalized)) return true;
+                if (['false', 'ko', 'down', 'unhealthy', 'offline', '0', 'disabled', 'error'].includes(normalized)) return false;
+            }
+            return null;
+        };
+
         const updateLED = (id, status) => {
             const el = document.getElementById(id);
             if (!el) return;
-            el.className = 'w-2.5 h-2.5 rounded-full transition-all duration-700';
+            el.className = 'w-3 h-3 rounded-full transition-all duration-700';
             if (status === true) {
                 el.classList.add('bg-emerald-500', 'shadow-[0_0_10px_rgba(16,185,129,0.6)]');
             } else if (status === false) {
@@ -108,16 +128,22 @@
             }
         };
 
-        updateLED('health-db', health.database);
-        updateLED('health-jellyfin', health.jellyfin);
-        updateLED('health-ldap', health.ldap);
+        const normalizedHealth = {
+            database: toBoolStatus(health.database ?? health.db ?? health.DB),
+            jellyfin: toBoolStatus(health.jellyfin ?? health.jf ?? health.JF),
+            ldap: toBoolStatus(health.ldap ?? health.LDAP),
+        };
+
+        updateLED('health-db', normalizedHealth.database);
+        updateLED('health-jellyfin', normalizedHealth.jellyfin);
+        updateLED('health-ldap', normalizedHealth.ldap);
     }
 
     function renderRegistrationsChart(data) {
         const ctx = document.getElementById('registrationsChart');
         if (!ctx) return;
 
-        // Préparation des données (remplissage des jours manquants sur les 30 derniers jours)
+        // Fill missing days over the last 30 days.
         const labels = [];
         const values = [];
         const today = new Date();
@@ -140,7 +166,7 @@
             data: {
                 labels: labels,
                 datasets: [{
-                    label: i18n.chartRegistrationsLabel || 'Inscriptions',
+                    label: i18n.chartRegistrationsLabel || 'Signups',
                     data: values,
                     borderColor: '#22d3ee', // Cyan 400
                     backgroundColor: 'rgba(34, 211, 238, 0.1)',

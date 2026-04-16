@@ -20,6 +20,22 @@
 
     {{/* ── Tab: Tasks ────────────────────────────────────────────────── */}}
     <div id="tab-tasks" class="jg-tab-pane active">
+        <section class="jg-card p-5 mb-5 border border-white/10 bg-white/[0.02]">
+            <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-jg-text">{{ .T "automation_manual_center_title" }}</h3>
+                    <p class="text-xs text-jg-text-muted mt-1">{{ .T "automation_manual_center_desc" }}</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button id="btn-task-quick-sync-users" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_users" }}</button>
+                    <button id="btn-task-quick-sync-ldap" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_ldap" }}</button>
+                    <button id="btn-task-quick-cleanup" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_cleanup_resets" }}</button>
+                    <button id="btn-task-quick-backup" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_backup_now" }}</button>
+                </div>
+            </div>
+            <div id="quick-task-status" class="mt-3 hidden rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[11px] text-sky-200"></div>
+        </section>
+
         <section id="automation-tasks-list" class="jg-card p-0 overflow-hidden shadow-2xl relative border-white/5">
             <div class="px-6 py-5 border-b border-jg-border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
                 <h2 class="font-bold text-lg text-jg-text">{{ .T "automation_tasks_title" }}</h2>
@@ -81,9 +97,9 @@
                 <div class="mt-4">
                     <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
                     <select id="task-type" class="jg-input h-11 bg-black/20 text-sm">
-                        <option value="sync_ldap_users">Sync LDAP Users (LDAP -> JF)</option>
-                        <option value="cleanup_resets">Cleanup Resets</option>
-                        <option value="create_backup">Create Backup</option>
+                        <option value="sync_ldap_users">{{ .T "automation_manual_sync_ldap" }}</option>
+                        <option value="cleanup_resets">{{ .T "automation_manual_cleanup_resets" }}</option>
+                        <option value="create_backup">{{ .T "automation_manual_backup_now" }}</option>
                     </select>
                 </div>
 
@@ -144,24 +160,24 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {{ if .LDAPEnabled }}
                     <div>
-                        <label class="jg-label" for="preset-ldap-dn">Groupe LDAP utilisateurs (optionnel)</label>
-                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=jellyfin,OU=Groups,DC=...'>
+                        <label class="jg-label" for="preset-ldap-dn">{{ .T "automation_ldap_users_group_label" }}</label>
+                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_ldap_users_group_placeholder" }}'>
                     </div>
                     <div>
-                        <label class="jg-label" for="preset-ldap-dn-inviter">Groupe LDAP parrainage (optionnel)</label>
-                        <input id="preset-ldap-dn-inviter" class="jg-input h-11 bg-black/20 text-sm" placeholder='CN=jellyfin-Parrainage,OU=Groups,DC=...'>
+                        <label class="jg-label" for="preset-ldap-dn-inviter">{{ .T "automation_ldap_inviter_group_label" }}</label>
+                        <input id="preset-ldap-dn-inviter" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_ldap_inviter_group_placeholder" }}'>
                     </div>
                     {{ end }}
                     <div class="md:col-span-2">
                         <label class="jg-label" for="preset-name">{{ .T "automation_col_name" }}</label>
-                        <input id="preset-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='Ex: Standard'>
+                        <input id="preset-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_preset_name_placeholder" }}'>
                     </div>
                     <div class="md:col-span-2">
-                        <label class="jg-label" for="preset-template-user">Cloner un profil Jellyfin (bibliotheques + accueil)</label>
+                        <label class="jg-label" for="preset-template-user">{{ .T "automation_template_user_label" }}</label>
                         <select id="preset-template-user" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
-                            <option value="">Aucun profil clone</option>
+                            <option value="">{{ .T "automation_template_user_none" }}</option>
                         </select>
-                        <p class="text-xs text-jg-text-muted mt-2">Copie uniquement l'agencement accueil et les bibliotheques autorisees du compte modele.</p>
+                        <p class="text-xs text-jg-text-muted mt-2">{{ .T "automation_template_user_help" }}</p>
                     </div>
                 </div>
 
@@ -198,37 +214,37 @@
                     </div>
                 </div>
 
-                {{/* Sponsorship / Parrainage (Hidden by default, shown by JS) */}}
+                {{/* Sponsorship options (hidden by default, shown by JS) */}}
                 <div class="pt-6 border-t border-white/10 space-y-5">
                     <label class="flex items-center gap-3 cursor-pointer group bg-jg-accent/5 p-4 rounded-2xl border border-jg-accent/10 hover:border-jg-accent/30 transition-all">
                         <input id="preset-can-invite" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
                         <div>
                             <span class="block text-sm font-bold text-jg-accent uppercase tracking-wider">{{ .T "invitations_new_user_can_invite" }}</span>
-                            <span class="text-[10px] text-jg-text-muted">Permet au compte de générer ses propres liens d'invitation.</span>
+                            <span class="text-[10px] text-jg-text-muted">{{ .T "automation_sponsorship_help" }}</span>
                         </div>
                     </label>
 
                     <div id="preset-sponsorship-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in slide-in-from-top-1 duration-200" style="display: none;">
                         <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-quota-day">Quota d'invitations / jour</label>
+                            <label class="jg-label text-[10px]" for="preset-invite-quota-day">{{ .T "automation_invite_quota_day_label" }}</label>
                             <input id="preset-invite-quota-day" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
                         </div>
                         <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-quota-month">Quota d'invitations / mois</label>
+                            <label class="jg-label text-[10px]" for="preset-invite-quota-month">{{ .T "automation_invite_quota_month_label" }}</label>
                             <input id="preset-invite-quota-month" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
                         </div>
                         <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-max-uses">Utilisations par lien</label>
+                            <label class="jg-label text-[10px]" for="preset-invite-max-uses">{{ .T "automation_invite_max_uses_label" }}</label>
                             <input id="preset-invite-max-uses" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
                         </div>
                         <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-link-days">Validité du lien (jours)</label>
+                            <label class="jg-label text-[10px]" for="preset-invite-link-days">{{ .T "automation_invite_link_days_label" }}</label>
                             <input id="preset-invite-link-days" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
                         </div>
                         <div>
-                            <label class="jg-label text-[10px]" for="preset-target-preset">Preset des filleuls</label>
+                            <label class="jg-label text-[10px]" for="preset-target-preset">{{ .T "automation_target_preset_label" }}</label>
                             <select id="preset-target-preset" class="jg-input jg-select-premium h-10 bg-black/20 text-xs py-0">
-                                <option value="">(Par défaut)</option>
+                                <option value="">{{ .T "automation_target_preset_default" }}</option>
                             </select>
                         </div>
                     </div>
@@ -259,10 +275,10 @@
                         <tr>
                             <th class="px-6 py-4">{{ .T "automation_col_id" }}</th>
                             <th class="px-6 py-4">{{ .T "automation_col_name" }}</th>
-                            <th class="px-6 py-4">Téléchargement</th>
-                            <th class="px-6 py-4">Accès Distant</th>
-                            <th class="px-6 py-4">Flux Simultanés</th>
-                            <th class="px-6 py-4">Débit Max</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_download" }}</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_remote" }}</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_sessions" }}</th>
+                            <th class="px-6 py-4">{{ .T "automation_col_bitrate" }}</th>
                             <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
                         </tr>
                     </thead>
@@ -335,12 +351,38 @@
             taskRunFailed: '{{ .T "automation_task_run_failed" }}',
             taskRunSuccess: '{{ .T "automation_task_run_success" }}',
             taskUpdateFailed: '{{ .T "automation_task_update_failed" }}',
+            taskUpdated: '{{ .T "automation_task_updated" }}',
             taskPreviewEmpty: '{{ .T "automation_task_preview_empty" }}',
             taskPayloadReady: '{{ .T "automation_task_payload_ready" }}',
             taskPayloadEmpty: '{{ .T "automation_task_payload_empty" }}',
             taskEnabled: '{{ .T "automation_task_enabled" }}',
             taskDisabled: '{{ .T "automation_disable" }}',
-            deleteLabel: '{{ .T "automation_delete" }}'
+            statusOn: '{{ .T "automation_status_on" }}',
+            statusOff: '{{ .T "automation_status_off" }}',
+            allowedLabel: '{{ .T "automation_allowed" }}',
+            deniedLabel: '{{ .T "automation_denied" }}',
+            streamsUnit: '{{ .T "automation_streams_unit" }}',
+            defaultPresetName: '{{ .T "automation_default_preset_name" }}',
+            mappingLdapUsersSuffix: '{{ .T "automation_mapping_ldap_users_suffix" }}',
+            mappingLdapInviterSuffix: '{{ .T "automation_mapping_ldap_inviter_suffix" }}',
+            mappingDeleteConfirm: '{{ .T "automation_mapping_delete_confirm" }}',
+            groupNamePlaceholder: '{{ .T "automation_group_name_placeholder" }}',
+            sourceInternal: '{{ .T "automation_source_internal" }}',
+            sourceLdap: '{{ .T "automation_source_ldap" }}',
+            noTemplateUser: '{{ .T "automation_no_template_user" }}',
+            targetSamePreset: '{{ .T "automation_target_same_preset" }}',
+            editLabel: '{{ .T "automation_edit" }}',
+            presetDeleteConfirm: '{{ .T "automation_preset_delete_confirm" }}',
+            presetDeleteFailed: '{{ .T "automation_preset_delete_failed" }}',
+            presetDeleted: '{{ .T "automation_preset_deleted" }}',
+            manualSyncUsers: '{{ .T "automation_manual_sync_users" }}',
+            manualSyncLdap: '{{ .T "automation_manual_sync_ldap" }}',
+            manualCleanupResets: '{{ .T "automation_manual_cleanup_resets" }}',
+            manualBackupNow: '{{ .T "automation_manual_backup_now" }}',
+            quickTaskMissing: '{{ .T "automation_manual_task_missing" }}',
+            quickTaskRunning: '{{ .T "automation_manual_task_running" }}',
+            quickTaskFailed: '{{ .T "automation_manual_task_failed" }}',
+            quickTaskSuccess: '{{ .T "automation_manual_task_success" }}'
         },
         taskTypeDescriptions: {
             sync_users: '{{ .T "automation_type_sync_users_desc" }}',

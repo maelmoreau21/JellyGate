@@ -8,6 +8,8 @@
     let currentLDAPConfig = {};
     let basePreviewTimer = null;
     let basePreviewRequestId = 0;
+    const templateValidationTimers = new Map();
+    const templateValidationRequestIds = new Map();
 
     function t(key, fallback) {
         return i18n[key] || fallback || key;
@@ -74,7 +76,7 @@
 
         const empty = document.createElement('option');
         empty.value = '';
-        empty.textContent = t('settings_email_variable_picker_placeholder', 'Choisir une variable...');
+        empty.textContent = t('settings_email_variable_picker_placeholder', 'Choose a variable...');
         select.appendChild(empty);
 
         getEmailVariableOptions().forEach((item) => {
@@ -94,7 +96,7 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'jg-btn jg-btn-sm h-9 px-4 bg-jg-accent/10 hover:bg-jg-accent/20 text-jg-accent border border-jg-accent/20 hover:border-jg-accent/40 transition-all font-bold text-[10px] uppercase tracking-wider whitespace-nowrap shadow-sm';
-        button.innerHTML = `<span class="flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> ${t('settings_email_variable_insert', 'Inserer')}</span>`;
+        button.innerHTML = `<span class="flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> ${t('settings_email_variable_insert', 'Insert')}</span>`;
         
         button.addEventListener('click', () => {
             if (!select.value) {
@@ -109,6 +111,141 @@
 
         toolbar.append(selectWrapper, button);
         return toolbar;
+    }
+
+    function getAllowedTemplateVariableNames() {
+        const names = new Set();
+        getEmailVariableOptions().forEach((item) => {
+            const match = String(item.value || '').match(/^\{\{\.([A-Za-z0-9_]+)\}\}$/);
+            if (match && match[1]) {
+                names.add(match[1]);
+            }
+        });
+        return names;
+    }
+
+    function extractTemplateVariableNames(content) {
+        const source = String(content || '');
+        const found = [];
+        const regex = /\{\{\s*\.([A-Za-z0-9_]+)\s*\}\}/g;
+        let match;
+        while ((match = regex.exec(source)) !== null) {
+            if (match[1]) {
+                found.push(match[1]);
+            }
+        }
+        return found;
+    }
+
+    function getTemplateValidationBox(area) {
+        if (!area || !area.id) {
+            return null;
+        }
+        const boxId = `${area.id}-validation`;
+        let box = document.getElementById(boxId);
+        if (!box) {
+            box = document.createElement('div');
+            box.id = boxId;
+            box.className = 'mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-jg-text-muted';
+            area.insertAdjacentElement('afterend', box);
+        }
+        return box;
+    }
+
+    function renderTemplateValidationStatus(box, status, message) {
+        if (!box) {
+            return;
+        }
+        box.classList.remove('border-emerald-500/40', 'bg-emerald-500/10', 'text-emerald-200', 'border-amber-500/40', 'bg-amber-500/10', 'text-amber-200', 'border-rose-500/40', 'bg-rose-500/10', 'text-rose-200', 'border-sky-500/40', 'bg-sky-500/10', 'text-sky-200');
+        if (status === 'ok') {
+            box.classList.add('border-emerald-500/40', 'bg-emerald-500/10', 'text-emerald-200');
+        } else if (status === 'warn') {
+            box.classList.add('border-amber-500/40', 'bg-amber-500/10', 'text-amber-200');
+        } else if (status === 'error') {
+            box.classList.add('border-rose-500/40', 'bg-rose-500/10', 'text-rose-200');
+        } else {
+            box.classList.add('border-sky-500/40', 'bg-sky-500/10', 'text-sky-200');
+        }
+        box.textContent = message;
+    }
+
+    async function runLiveTemplateValidation(area) {
+        if (!area || !area.id) {
+            return;
+        }
+        const allowed = getAllowedTemplateVariableNames();
+        const found = extractTemplateVariableNames(area.value || '');
+        const unknown = [...new Set(found.filter((name) => !allowed.has(name)))];
+        const box = getTemplateValidationBox(area);
+        if (!box) {
+            return;
+        }
+
+        if (!String(area.value || '').trim()) {
+            renderTemplateValidationStatus(box, 'warn', t('template_empty', 'Template is empty.'));
+            return;
+        }
+
+        if (unknown.length > 0) {
+            const unknownPrefix = t('settings_template_variables_unknown', 'Unknown variables');
+            renderTemplateValidationStatus(box, 'error', `${unknownPrefix}: ${unknown.join(', ')}`);
+            return;
+        }
+
+        renderTemplateValidationStatus(box, 'info', t('preview_loading', 'Loading preview...'));
+        const currentRequestId = (templateValidationRequestIds.get(area.id) || 0) + 1;
+        templateValidationRequestIds.set(area.id, currentRequestId);
+
+        const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
+        const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
+        const baseTemplateHeader = document.getElementById('tpl-base-header')?.value || '';
+        const baseTemplateFooter = document.getElementById('tpl-base-footer')?.value || '';
+
+        const res = await JG.api('/admin/api/settings/email-templates/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                template: area.value || '',
+                template_key: emailTemplateKeyFromId(area.id),
+                base_template_header: baseTemplateHeader,
+                base_template_footer: baseTemplateFooter,
+                context: {
+                    JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
+                    JellyGateURL: jellygateURL || 'https://jellygate.example.com',
+                    HelpURL: jellyfinURL || 'https://jellyfin.example.com',
+                },
+            }),
+        });
+
+        if (templateValidationRequestIds.get(area.id) !== currentRequestId) {
+            return;
+        }
+
+        if (!res || !res.success) {
+            renderTemplateValidationStatus(box, 'error', (res && res.message) || t('preview_impossible', 'Preview failed'));
+            return;
+        }
+
+        if (found.length > 0) {
+            renderTemplateValidationStatus(box, 'ok', t('settings_template_variables_valid', 'Valid variables ({count}) and syntax OK.').replace('{count}', String(found.length)));
+            return;
+        }
+        renderTemplateValidationStatus(box, 'ok', t('settings_template_syntax_valid', 'Template syntax is valid.'));
+    }
+
+    function scheduleLiveTemplateValidation(area) {
+        if (!area || !area.id) {
+            return;
+        }
+        const previous = templateValidationTimers.get(area.id);
+        if (previous) {
+            clearTimeout(previous);
+        }
+        const timer = setTimeout(() => {
+            templateValidationTimers.delete(area.id);
+            runLiveTemplateValidation(area);
+        }, 350);
+        templateValidationTimers.set(area.id, timer);
     }
 
     function getBaseTemplatePreviewPayload() {
@@ -334,6 +471,15 @@
         currentInvitationProfile = { ...profile };
         document.getElementById('invite-profile-require-email').checked = profile.require_email !== false;
         document.getElementById('invite-profile-require-email-verification').checked = profile.require_email_verification !== false;
+        const policySelect = document.getElementById('invite-profile-email-verification-policy');
+        if (policySelect) {
+            const resolvedPolicy = String(profile.email_verification_policy || (profile.require_email_verification === false ? 'disabled' : 'required')).trim().toLowerCase();
+            if (policySelect.querySelector(`option[value="${resolvedPolicy}"]`)) {
+                policySelect.value = resolvedPolicy;
+            } else {
+                policySelect.value = 'required';
+            }
+        }
         document.getElementById('invite-profile-user-min').value = Number.isInteger(profile.username_min_length) ? profile.username_min_length : 3;
         document.getElementById('invite-profile-user-max').value = Number.isInteger(profile.username_max_length) ? profile.username_max_length : 32;
         document.getElementById('invite-profile-pw-min').value = Number.isInteger(profile.password_min_length) ? profile.password_min_length : 8;
@@ -342,17 +488,45 @@
         document.getElementById('invite-profile-pw-lower').checked = !!profile.password_require_lower;
         document.getElementById('invite-profile-pw-digit').checked = !!profile.password_require_digit;
         document.getElementById('invite-profile-pw-special').checked = !!profile.password_require_special;
+        syncInviteEmailPolicyControls();
         syncInviteEmailRequirementFromVerification();
+    }
+
+    function syncInviteEmailPolicyControls() {
+        const requireEmail = document.getElementById('invite-profile-require-email');
+        const requireVerification = document.getElementById('invite-profile-require-email-verification');
+        const policySelect = document.getElementById('invite-profile-email-verification-policy');
+        if (!requireEmail || !requireVerification || !policySelect) {
+            return;
+        }
+
+        const mode = String(policySelect.value || '').trim().toLowerCase();
+        if (mode === 'required' || mode === 'admin_bypass') {
+            requireVerification.checked = true;
+            requireEmail.checked = true;
+        } else if (mode === 'conditional') {
+            requireEmail.checked = true;
+        } else if (mode === 'disabled') {
+            requireVerification.checked = false;
+        }
     }
 
     function syncInviteEmailRequirementFromVerification() {
         const requireEmail = document.getElementById('invite-profile-require-email');
         const requireVerification = document.getElementById('invite-profile-require-email-verification');
+        const policySelect = document.getElementById('invite-profile-email-verification-policy');
         if (!requireEmail || !requireVerification) {
             return;
         }
         if (requireVerification.checked) {
             requireEmail.checked = true;
+            if (policySelect && policySelect.value === 'disabled') {
+                policySelect.value = 'required';
+            }
+            return;
+        }
+        if (policySelect && policySelect.value === 'required') {
+            policySelect.value = 'disabled';
         }
     }
 
@@ -501,6 +675,7 @@
                 ...currentInvitationProfile,
                 require_email: document.getElementById('invite-profile-require-email').checked,
                 require_email_verification: document.getElementById('invite-profile-require-email-verification').checked,
+                email_verification_policy: document.getElementById('invite-profile-email-verification-policy').value || 'required',
                 username_min_length: parseInt(document.getElementById('invite-profile-user-min').value, 10) || 3,
                 username_max_length: parseInt(document.getElementById('invite-profile-user-max').value, 10) || 32,
                 password_min_length: parseInt(document.getElementById('invite-profile-pw-min').value, 10) || 8,
@@ -704,6 +879,13 @@
             if (!card.querySelector('.jg-variable-picker')) {
                 area.insertAdjacentElement('afterend', buildVariablePicker(area));
             }
+
+            getTemplateValidationBox(area);
+            if (!area.dataset.validationBound) {
+                area.dataset.validationBound = '1';
+                area.addEventListener('input', () => scheduleLiveTemplateValidation(area));
+            }
+            scheduleLiveTemplateValidation(area);
         });
 
         const closeBtn = document.getElementById('email-preview-close');
@@ -885,6 +1067,7 @@
 
         document.getElementById('ldap-enabled')?.addEventListener('change', toggleLDAPFields);
         document.getElementById('invite-profile-require-email-verification')?.addEventListener('change', syncInviteEmailRequirementFromVerification);
+        document.getElementById('invite-profile-email-verification-policy')?.addEventListener('change', syncInviteEmailPolicyControls);
 
         const toggle = document.getElementById('sidebar-toggle');
         if (toggle) {

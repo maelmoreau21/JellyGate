@@ -893,6 +893,7 @@ type InvitationProfileConfig struct {
 	EnableDownloads          bool   `json:"enable_downloads"`
 	RequireEmail             bool   `json:"require_email"`
 	RequireEmailVerification bool   `json:"require_email_verification"`
+	EmailVerificationPolicy  string `json:"email_verification_policy"`
 	AutoDeleteClosedLinks    bool   `json:"auto_delete_closed_links"`
 	DisableAfterDays         int    `json:"disable_after_days"`
 	DeleteAfterDays          int    `json:"delete_after_days"`
@@ -923,6 +924,7 @@ func DefaultInvitationProfileConfig() InvitationProfileConfig {
 		EnableDownloads:          true,
 		RequireEmail:             true,
 		RequireEmailVerification: true,
+		EmailVerificationPolicy:  "required",
 		AutoDeleteClosedLinks:    false,
 		DisableAfterDays:         0,
 		DeleteAfterDays:          0,

@@ -202,6 +202,26 @@
                 </button>
             </div>
 
+            <div id="sponsorship-meta" class="mb-5 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+                <div class="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <div class="text-jg-text-muted uppercase tracking-wider text-[10px]">{{ .T "my_account_sponsorship_quota_day" }}</div>
+                    <div id="sponsorship-quota-day" class="font-semibold text-jg-text mt-1">-</div>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <div class="text-jg-text-muted uppercase tracking-wider text-[10px]">{{ .T "my_account_sponsorship_quota_month" }}</div>
+                    <div id="sponsorship-quota-month" class="font-semibold text-jg-text mt-1">-</div>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <div class="text-jg-text-muted uppercase tracking-wider text-[10px]">{{ .T "my_account_sponsorship_target_preset" }}</div>
+                    <div id="sponsorship-target-preset" class="font-semibold text-jg-text mt-1">-</div>
+                </div>
+                <div class="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+                    <div class="text-jg-text-muted uppercase tracking-wider text-[10px]">{{ .T "my_account_sponsorship_conversions" }}</div>
+                    <div id="sponsorship-conversions" class="font-semibold text-jg-text mt-1">0</div>
+                </div>
+            </div>
+            <div id="sponsorship-limit-note" class="hidden mb-4 text-[11px] text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2"></div>
+
             <div class="jg-table-wrap !bg-black/20 rounded-xl border border-white/5 overflow-hidden">
                 <table class="w-full text-left border-collapse">
                     <thead>
@@ -256,6 +276,19 @@
             emailVerificationOk: '{{ .T "my_account_email_verification_ok" }}',
             emailStatusUnverified: '{{ .T "my_account_email_status_unverified" }}',
             emailVerificationHelp: '{{ .T "my_account_email_verification_help" }}',
+            sponsorshipDisabled: '{{ .T "my_account_sponsorship_disabled" }}',
+            sponsorshipQuotaDayReached: '{{ .T "my_account_sponsorship_quota_day_reached" }}',
+            sponsorshipQuotaMonthReached: '{{ .T "my_account_sponsorship_quota_month_reached" }}',
+            sponsorshipNone: '{{ .T "my_account_no_invites" }}',
+            sponsorshipLinkCopied: '{{ .T "invitations_link_copied" }}',
+            sponsorshipDeleteConfirm: '{{ .T "my_account_sponsorship_delete_confirm" }}',
+            sponsorshipDeleted: '{{ .T "invitations_deleted" }}',
+            sponsorshipGenerated: '{{ .T "my_account_sponsorship_generated" }}',
+            sponsorshipGeneratedWithCode: '{{ .T "my_account_sponsorship_generated_with_code" }}',
+            sponsorshipGenerateError: '{{ .T "my_account_sponsorship_generate_error" }}',
+            avatarUpdated: '{{ .T "my_account_avatar_updated" }}',
+            avatarUploadError: '{{ .T "my_account_avatar_upload_error" }}',
+            networkError: '{{ .T "logs_network_error" }}',
         },
     };
 </script>

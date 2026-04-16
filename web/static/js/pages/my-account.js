@@ -107,6 +107,73 @@
         return date.toLocaleString(uiLocale);
     }
 
+    function setCreateSponsorshipButtonState(disabled) {
+        const btn = document.getElementById('create-sponsor-link-btn');
+        if (!btn) {
+            return;
+        }
+        btn.disabled = !!disabled;
+        btn.classList.toggle('opacity-50', !!disabled);
+        btn.classList.toggle('cursor-not-allowed', !!disabled);
+    }
+
+    function applySponsorshipMeta(payload) {
+        const data = payload || {};
+        const limits = data.limits || {};
+        const usage = data.usage || {};
+        const stats = data.stats || {};
+
+        const quotaDayEl = document.getElementById('sponsorship-quota-day');
+        const quotaMonthEl = document.getElementById('sponsorship-quota-month');
+        const targetPresetEl = document.getElementById('sponsorship-target-preset');
+        const conversionsEl = document.getElementById('sponsorship-conversions');
+        const limitNoteEl = document.getElementById('sponsorship-limit-note');
+
+        const quotaDay = Number(limits.quota_day || 0);
+        const quotaMonth = Number(limits.quota_month || 0);
+        const usedToday = Number(usage.today || 0);
+        const usedMonth = Number(usage.month || 0);
+
+        if (quotaDayEl) {
+            quotaDayEl.textContent = quotaDay > 0 ? `${usedToday}/${quotaDay}` : `${usedToday}/∞`;
+        }
+        if (quotaMonthEl) {
+            quotaMonthEl.textContent = quotaMonth > 0 ? `${usedMonth}/${quotaMonth}` : `${usedMonth}/∞`;
+        }
+        if (targetPresetEl) {
+            targetPresetEl.textContent = limits.target_preset_name || limits.target_preset_id || '—';
+        }
+        if (conversionsEl) {
+            const conversions = Number(stats.conversions || 0);
+            const totalLinks = Number(stats.total_links || 0);
+            conversionsEl.textContent = `${conversions}${totalLinks > 0 ? ` / ${totalLinks}` : ''}`;
+        }
+
+        let lockReason = '';
+        if (limits.can_invite === false) {
+            lockReason = i18n.sponsorshipDisabled || 'Sponsorship is disabled for this account.';
+        } else if (quotaDay > 0 && usedToday >= quotaDay) {
+            lockReason = (i18n.sponsorshipQuotaDayReached || 'Daily quota reached ({used}/{limit}).')
+                .replace('{used}', String(usedToday))
+                .replace('{limit}', String(quotaDay));
+        } else if (quotaMonth > 0 && usedMonth >= quotaMonth) {
+            lockReason = (i18n.sponsorshipQuotaMonthReached || 'Monthly quota reached ({used}/{limit}).')
+                .replace('{used}', String(usedMonth))
+                .replace('{limit}', String(quotaMonth));
+        }
+
+        setCreateSponsorshipButtonState(lockReason !== '');
+        if (limitNoteEl) {
+            if (lockReason) {
+                limitNoteEl.textContent = lockReason;
+                limitNoteEl.classList.remove('hidden');
+            } else {
+                limitNoteEl.textContent = '';
+                limitNoteEl.classList.add('hidden');
+            }
+        }
+    }
+
     async function loadMyAccount() {
         const res = await JG.api('/admin/api/users/me');
         if (!res.success) {
@@ -172,9 +239,13 @@
             const res = await JG.api('/admin/api/users/me/invitations');
             if (!res.success) return;
 
-            const list = res.data || [];
+            const payload = res.data || [];
+            const list = Array.isArray(payload) ? payload : (Array.isArray(payload.links) ? payload.links : []);
+            if (!Array.isArray(payload)) {
+                applySponsorshipMeta(payload);
+            }
             if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-jg-text-muted opacity-40 italic text-sm">Aucun lien généré</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-jg-text-muted opacity-40 italic text-sm">${i18n.sponsorshipNone || 'No generated links yet.'}</td></tr>`;
                 return;
             }
 
@@ -211,7 +282,7 @@
                 btn.onclick = () => {
                     const url = btn.dataset.url;
                     navigator.clipboard.writeText(url).then(() => {
-                        JG.toast('Lien copié !', 'success');
+                        JG.toast(i18n.sponsorshipLinkCopied || 'Link copied!', 'success');
                     });
                 };
             });
@@ -219,10 +290,10 @@
             tbody.querySelectorAll('.btn-delete-sponsor').forEach(btn => {
                 btn.onclick = async () => {
                     const code = btn.dataset.code;
-                    if (!confirm('Supprimer ce lien d\'invitation ?')) return;
+                    if (!confirm(i18n.sponsorshipDeleteConfirm || 'Delete this invitation link?')) return;
                     const delRes = await JG.api(`/admin/api/invitations/${code}`, { method: 'DELETE' });
                     if (delRes.success) {
-                        JG.toast('Lien supprimé', 'success');
+                        JG.toast(i18n.sponsorshipDeleted || 'Link deleted', 'success');
                         loadSponsorships();
                     }
                 };
@@ -236,11 +307,15 @@
     async function createSponsorship() {
         const res = await JG.api('/admin/api/users/me/invitations', { method: 'POST' });
         if (res.success) {
-            JG.toast('Lien de parrainage généré', 'success');
+            const code = res?.data?.code || '';
+            const message = code
+                ? (i18n.sponsorshipGeneratedWithCode || 'Sponsorship link created ({code})').replace('{code}', code)
+                : (i18n.sponsorshipGenerated || 'Sponsorship link created');
+            JG.toast(message, 'success');
             loadSponsorships();
             return;
         }
-        JG.toast(res.message || 'Erreur lors de la génération', 'error');
+        JG.toast(res.message || i18n.sponsorshipGenerateError || 'Unable to generate sponsorship link', 'error');
     }
 
     async function handleAvatarUpload(event) {
@@ -260,13 +335,13 @@
             });
             const data = await res.json();
             if (data.success) {
-                JG.toast('Photo de profil mise à jour', 'success');
+                JG.toast(i18n.avatarUpdated || 'Profile picture updated', 'success');
                 loadMyAccount();
             } else {
-                JG.toast(data.message || 'Erreur lors de l\'upload', 'error');
+                JG.toast(data.message || i18n.avatarUploadError || 'Upload failed', 'error');
             }
         } catch (err) {
-            JG.toast('Erreur réseau', 'error');
+            JG.toast(i18n.networkError || 'Network error', 'error');
         }
     }
 

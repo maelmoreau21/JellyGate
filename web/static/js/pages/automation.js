@@ -8,7 +8,6 @@
         document.addEventListener("click", (e) => {
             const openBtn = e.target.closest("#btn-open-task-modal");
             if (openBtn) {
-                console.log("Opening task modal...");
                 JG.openModal("modal-task-form");
             }
             
@@ -135,24 +134,81 @@
             if (taskCount) taskCount.textContent = `${tasks.length}`;
         }
 
+        function showQuickTaskStatus(message, type = 'info') {
+            const box = document.getElementById('quick-task-status');
+            if (!box) {
+                return;
+            }
+            box.classList.remove('hidden', 'border-sky-500/30', 'bg-sky-500/10', 'text-sky-200', 'border-emerald-500/30', 'bg-emerald-500/10', 'text-emerald-200', 'border-rose-500/30', 'bg-rose-500/10', 'text-rose-200');
+            if (type === 'success') {
+                box.classList.add('border-emerald-500/30', 'bg-emerald-500/10', 'text-emerald-200');
+            } else if (type === 'error') {
+                box.classList.add('border-rose-500/30', 'bg-rose-500/10', 'text-rose-200');
+            } else {
+                box.classList.add('border-sky-500/30', 'bg-sky-500/10', 'text-sky-200');
+            }
+            box.textContent = message;
+        }
+
+        function findTaskByType(taskType) {
+            const normalized = String(taskType || '').trim().toLowerCase();
+            if (!normalized) {
+                return null;
+            }
+            const enabledTask = tasks.find((task) => String(task.task_type || '').trim().toLowerCase() === normalized && !!task.enabled);
+            if (enabledTask) {
+                return enabledTask;
+            }
+            return tasks.find((task) => String(task.task_type || '').trim().toLowerCase() === normalized) || null;
+        }
+
+        async function runQuickTask(taskType, label) {
+            let target = findTaskByType(taskType);
+            if (!target) {
+                await loadTasks();
+                target = findTaskByType(taskType);
+            }
+
+            if (!target) {
+                const msg = String(i18n.quickTaskMissing || '').replace('{label}', label);
+                showQuickTaskStatus(msg, 'error');
+                return;
+            }
+
+            const runningMsg = String(i18n.quickTaskRunning || '').replace('{label}', label);
+            showQuickTaskStatus(runningMsg, 'info');
+            const res = await JG.api(`/admin/api/automation/tasks/${target.id}/run`, { method: 'POST' });
+            if (!res.success) {
+                const failedMsg = String(i18n.quickTaskFailed || '').replace('{label}', label);
+                showQuickTaskStatus(res.message || failedMsg, 'error');
+                return;
+            }
+
+            const successMsg = String(i18n.quickTaskSuccess || '')
+                .replace('{label}', label)
+                .replace('{task}', String(target.name || target.id));
+            showQuickTaskStatus(successMsg, 'success');
+            await loadTasks();
+        }
+
         function presetRow(preset, idx) {
             const downloadBadge = preset.enable_download 
-                ? '<span class="badge-success text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Autorisé</span>' 
-                : '<span class="badge-danger text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Refusé</span>';
+                ? `<span class="badge-success text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${JG.esc(i18n.allowedLabel)}</span>`
+                : `<span class="badge-danger text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${JG.esc(i18n.deniedLabel)}</span>`;
             const remoteBadge = preset.enable_remote_access 
-                ? '<span class="badge-success text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Autorisé</span>' 
-                : '<span class="badge-danger text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Refusé</span>';
+                ? `<span class="badge-success text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${JG.esc(i18n.allowedLabel)}</span>`
+                : `<span class="badge-danger text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">${JG.esc(i18n.deniedLabel)}</span>`;
 
             return `<tr class="hover:bg-white/[0.02] transition-colors border-b border-jg-border last:border-none">
             <td class="px-6 py-4"><code class="text-[10px] bg-white/5 px-2 py-1 rounded-md text-jg-text-muted border border-white/5">${JG.esc(preset.id || '')}</code></td>
             <td class="px-6 py-4 font-bold text-jg-text">${JG.esc(preset.name || '')}</td>
             <td class="px-6 py-4">${downloadBadge}</td>
             <td class="px-6 py-4">${remoteBadge}</td>
-            <td class="px-6 py-4"><span class="text-sm font-medium text-jg-text">${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}</span> <span class="text-[10px] text-jg-text-muted uppercase tracking-tighter ml-1">Flux</span></td>
+            <td class="px-6 py-4"><span class="text-sm font-medium text-jg-text">${Number.isInteger(preset.max_sessions) ? preset.max_sessions : 0}</span> <span class="text-[10px] text-jg-text-muted uppercase tracking-tighter ml-1">${JG.esc(i18n.streamsUnit)}</span></td>
             <td class="px-6 py-4"><span class="text-sm font-medium text-jg-text">${Number.isInteger(preset.bitrate_limit) ? preset.bitrate_limit : 0}</span> <span class="text-[10px] text-jg-text-muted uppercase tracking-tighter ml-1">Mbps</span></td>
             <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="preset-edit" data-index="${idx}">${JG.esc(i18n.edit || 'Éditer')}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="preset-edit" data-index="${idx}">${JG.esc(i18n.editLabel)}</button>
                     <button class="jg-btn jg-btn-sm jg-btn-danger/80 hover:bg-jg-danger transition-colors" data-action="preset-delete" data-index="${idx}">${JG.esc(i18n.deleteLabel)}</button>
                 </div>
             </td>
@@ -243,7 +299,7 @@
              if (!btn) return;
              if (btn.dataset.action === 'mapping-delete') {
                  const idx = parseInt(btn.dataset.index);
-                 const agreed = await confirmAction('Supprimer le mapping', 'Voulez-vous supprimer ce mapping de groupe ?');
+                 const agreed = await confirmAction(i18n.deleteLabel, i18n.mappingDeleteConfirm);
                  if (!agreed) return;
                  groupMappings.splice(idx, 1);
                  renderMappings();
@@ -254,11 +310,11 @@
             const presetOptions = presets.map(p => `<option value="${JG.esc(p.id)}" ${p.id === mapping.policy_preset_id ? 'selected' : ''}>${JG.esc(p.name || p.id)}</option>`).join('');
             
             return `<tr>
-                <td><input type="text" class="jg-input jg-input-sm" data-field="group_name" value="${JG.esc(mapping.group_name || '')}" placeholder="Nom du groupe"></td>
+                <td><input type="text" class="jg-input jg-input-sm" data-field="group_name" value="${JG.esc(mapping.group_name || '')}" placeholder="${JG.esc(i18n.groupNamePlaceholder)}"></td>
                 <td>
                     <select class="jg-input jg-input-sm jg-select-premium py-0" data-field="source">
-                        <option value="internal" ${mapping.source === 'internal' ? 'selected' : ''}>Interne</option>
-                        <option value="ldap" ${mapping.source === 'ldap' ? 'selected' : ''}>LDAP</option>
+                        <option value="internal" ${mapping.source === 'internal' ? 'selected' : ''}>${JG.esc(i18n.sourceInternal)}</option>
+                        <option value="ldap" ${mapping.source === 'ldap' ? 'selected' : ''}>${JG.esc(i18n.sourceLdap)}</option>
                     </select>
                 </td>
                 <td><input type="text" class="jg-input jg-input-sm text-xs" data-field="ldap_group_dn" value="${JG.esc(mapping.ldap_group_dn || '')}" placeholder="CN=...,DC=..."></td>
@@ -280,9 +336,7 @@
             
             // Wait for presets if they are not loaded yet
             if (!presets || presets.length === 0) {
-                // If we are currently loading presets, they will trigger a re-render
-                // Otherwise, it might be that there are really no presets
-                console.log("renderMappings called but presets are empty");
+                // If we are currently loading presets, they will trigger a re-render.
             }
 
             if (!groupMappings.length) {
@@ -313,7 +367,7 @@
             const select = document.getElementById('preset-template-user');
             if (!select) return;
 
-            const options = ['<option value="">Aucun profil clone</option>'];
+            const options = [`<option value="">${JG.esc(i18n.noTemplateUser)}</option>`];
             templateUsers.forEach((user) => {
                 options.push(`<option value="${JG.esc(user.value)}">${JG.esc(user.label)}</option>`);
             });
@@ -399,7 +453,7 @@
             document.getElementById('preset-delete-days').value = preset.delete_after_days || 0;
             populateTemplateUserSelect(preset.template_user_id || '');
             
-            // Sponsorship / Parrainage
+            // Sponsorship settings
             const canInviteEl = document.getElementById('preset-can-invite');
             if (canInviteEl) {
                 canInviteEl.checked = !!preset.can_invite;
@@ -437,7 +491,7 @@
             
             const targetSelect = document.getElementById('preset-target-preset');
             if (targetSelect) {
-                targetSelect.innerHTML = `<option value="">(Même preset que le parrain)</option>` + 
+                targetSelect.innerHTML = `<option value="">${JG.esc(i18n.targetSamePreset)}</option>` + 
                     presets.filter(p => p.id && p.id !== preset.id).map(p => `<option value="${JG.esc(p.id)}">${JG.esc(p.name || p.id)}</option>`).join('');
                 targetSelect.value = preset.target_preset_id || '';
             }
@@ -511,7 +565,7 @@
             // Also generate and save Group Mappings
             const mappingsPayload = [];
             presets.forEach(p => {
-                const presetLabel = String(p.name || p.id || 'Preset').trim();
+                const presetLabel = String(p.name || p.id || i18n.defaultPresetName).trim();
 
                 // Internal group mapping (implicit)
                 mappingsPayload.push({
@@ -524,7 +578,7 @@
                 // LDAP users group mapping (if defined)
                 if (p._ldap_dn) {
                     mappingsPayload.push({
-                        group_name: `${presetLabel} (LDAP users)`,
+                        group_name: `${presetLabel} ${i18n.mappingLdapUsersSuffix}`,
                         source: 'ldap',
                         ldap_group_dn: p._ldap_dn,
                         policy_preset_id: p.id
@@ -534,7 +588,7 @@
                 // LDAP sponsorship group mapping (if defined)
                 if (p._ldap_dn_inviter) {
                     mappingsPayload.push({
-                        group_name: `${presetLabel} (LDAP parrainage)`,
+                        group_name: `${presetLabel} ${i18n.mappingLdapInviterSuffix}`,
                         source: 'ldap',
                         ldap_group_dn: p._ldap_dn_inviter,
                         policy_preset_id: p.id
@@ -566,13 +620,13 @@
             tbody.innerHTML = tasks.map((task) => `<tr>
             <td>${JG.esc(task.name || '')}</td>
             <td>${JG.esc(task.task_type || '')}</td>
-            <td>${String(task.hour).padStart(2, '0')}:${String(task.minute).padStart(2, '0')} ${task.enabled ? '<span class="badge badge-success ml-2">ON</span>' : '<span class="badge badge-muted ml-2">OFF</span>'}</td>
+            <td>${String(task.hour).padStart(2, '0')}:${String(task.minute).padStart(2, '0')} ${task.enabled ? `<span class="badge badge-success ml-2">${JG.esc(i18n.statusOn)}</span>` : `<span class="badge badge-muted ml-2">${JG.esc(i18n.statusOff)}</span>`}</td>
             <td class="text-xs text-slate-400">${JG.esc(task.payload || '')}</td>
             <td class="text-sm text-slate-500">${JG.esc(task.last_run_at || '—')}</td>
             <td class="text-right">
                 <div class="flex justify-end gap-2">
                     <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-run" data-id="${task.id}">${JG.esc(i18n.runNow)}</button>
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-edit" data-id="${task.id}">${JG.esc(i18n.edit || 'Éditer')}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-edit" data-id="${task.id}">${JG.esc(i18n.editLabel)}</button>
                     <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-toggle" data-id="${task.id}">${task.enabled ? JG.esc(i18n.disable) : JG.esc(i18n.enable)}</button>
                     <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="task-delete" data-id="${task.id}">${JG.esc(i18n.deleteLabel)}</button>
                 </div>
@@ -630,7 +684,7 @@
             if (!Number.isInteger(index) || index < 0) return;
             
             if (button.dataset.action === 'preset-delete') {
-                const agreed = await confirmAction('Supprimer ce preset', 'Cette action va rendre caduc le preset pour les utilisateurs assignés.');
+                const agreed = await confirmAction(i18n.deleteLabel, i18n.presetDeleteConfirm);
                 if (!agreed) return;
 
                 const deletedPresetID = presets[index].id;
@@ -650,7 +704,7 @@
                 });
                 
                 if (!res.success) {
-                    JG.toast('Erreur lors de la suppression', 'error');
+                    JG.toast(res.message || i18n.presetDeleteFailed, 'error');
                     await loadPresets();
                     return;
                 }
@@ -658,7 +712,7 @@
                 // Also update mappings by just sending the alive ones
                 const mappingsPayload = [];
                 presets.forEach(p => {
-                    const presetLabel = String(p.name || p.id || 'Preset').trim();
+                    const presetLabel = String(p.name || p.id || i18n.defaultPresetName).trim();
 
                     mappingsPayload.push({
                         group_name: presetLabel,
@@ -668,7 +722,7 @@
                     });
                     if (p._ldap_dn) {
                         mappingsPayload.push({
-                            group_name: `${presetLabel} (LDAP users)`,
+                            group_name: `${presetLabel} ${i18n.mappingLdapUsersSuffix}`,
                             source: 'ldap',
                             ldap_group_dn: p._ldap_dn,
                             policy_preset_id: p.id
@@ -676,7 +730,7 @@
                     }
                     if (p._ldap_dn_inviter) {
                         mappingsPayload.push({
-                            group_name: `${presetLabel} (LDAP parrainage)`,
+                            group_name: `${presetLabel} ${i18n.mappingLdapInviterSuffix}`,
                             source: 'ldap',
                             ldap_group_dn: p._ldap_dn_inviter,
                             policy_preset_id: p.id
@@ -688,7 +742,7 @@
                     body: JSON.stringify(mappingsPayload),
                 });
 
-                JG.toast('Preset supprimé', 'success');
+                JG.toast(i18n.presetDeleted, 'success');
                 renderPresets();
             } else if (button.dataset.action === 'preset-edit') {
                 openPresetModal(index);
@@ -726,7 +780,7 @@
                 JG.toast(res.message || (id ? i18n.taskUpdateFailed : i18n.taskCreateFailed), 'error');
                 return;
             }
-            JG.toast(id ? i18n.taskUpdated || 'Tâche mise à jour' : i18n.taskCreated, 'success');
+            JG.toast(id ? i18n.taskUpdated : i18n.taskCreated, 'success');
             event.target.reset();
             document.getElementById('task-enabled').checked = true;
             updateTaskPreview();
@@ -746,7 +800,7 @@
             const task = tasks.find((entry) => String(entry.id) === String(id));
 
             if (action === 'task-delete') {
-                const agreed = await confirmAction('Supprimer la tâche', 'Êtes-vous sûr de vouloir supprimer cette tâche planifiée ?');
+                const agreed = await confirmAction(i18n.deleteLabel, i18n.taskDeleteConfirm);
                 if (!agreed) {
                     return;
                 }
@@ -804,6 +858,19 @@
         });
 
         const toggle = document.getElementById('sidebar-toggle');
+
+        document.getElementById('btn-task-quick-sync-users')?.addEventListener('click', async () => {
+            await runQuickTask('sync_users', i18n.manualSyncUsers);
+        });
+        document.getElementById('btn-task-quick-sync-ldap')?.addEventListener('click', async () => {
+            await runQuickTask('sync_ldap_users', i18n.manualSyncLdap);
+        });
+        document.getElementById('btn-task-quick-cleanup')?.addEventListener('click', async () => {
+            await runQuickTask('cleanup_resets', i18n.manualCleanupResets);
+        });
+        document.getElementById('btn-task-quick-backup')?.addEventListener('click', async () => {
+            await runQuickTask('create_backup', i18n.manualBackupNow);
+        });
 
         // Sidebar toggle
         if (toggle) {

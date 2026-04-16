@@ -578,6 +578,30 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 func normalizeInvitationProfile(cfg config.InvitationProfileConfig) config.InvitationProfileConfig {
 	cfg.PolicyPresetID = strings.TrimSpace(strings.ToLower(cfg.PolicyPresetID))
 	cfg.TemplateUserID = strings.TrimSpace(cfg.TemplateUserID)
+	cfg.EmailVerificationPolicy = strings.TrimSpace(strings.ToLower(cfg.EmailVerificationPolicy))
+	switch cfg.EmailVerificationPolicy {
+	case "required", "conditional", "admin_bypass", "disabled":
+	default:
+		if cfg.RequireEmailVerification {
+			cfg.EmailVerificationPolicy = "required"
+		} else {
+			cfg.EmailVerificationPolicy = "disabled"
+		}
+	}
+
+	switch cfg.EmailVerificationPolicy {
+	case "required":
+		cfg.RequireEmailVerification = true
+		cfg.RequireEmail = true
+	case "conditional":
+		cfg.RequireEmail = true
+	case "admin_bypass":
+		cfg.RequireEmailVerification = true
+		cfg.RequireEmail = true
+	case "disabled":
+		cfg.RequireEmailVerification = false
+	}
+
 	if cfg.RequireEmailVerification {
 		cfg.RequireEmail = true
 	}

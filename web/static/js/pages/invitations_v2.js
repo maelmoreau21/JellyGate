@@ -54,7 +54,7 @@
                 forcedUserWrap.classList.toggle('pointer-events-none', !isAllowed);
             }
             if (forcedUserHelp) {
-                forcedUserHelp.textContent = isAllowed ? '' : 'Le nom reserve n est disponible que pour les liens a usage unique (max = 1).';
+                forcedUserHelp.textContent = isAllowed ? '' : (i18n.forcedUsernameLimitHint || '');
             }
         }
 
@@ -309,7 +309,7 @@
             if (forcedUsername && maxUses !== 1) {
                 btn.disabled = false;
                 btn.innerHTML = createBtnLabel();
-                JG.toast('Le nom reserve necessite un lien a usage unique (max = 1).', 'error');
+                JG.toast(i18n.forcedUsernameLimitHint || i18n.invalidMaxUses, 'error');
                 return;
             }
 

@@ -54,7 +54,7 @@
         function updateSelectionUI() {
             const count = selectedIds.size;
             const bulkDrawerCount = document.getElementById('bulk-drawer-count');
-            if (bulkDrawerCount) bulkDrawerCount.textContent = count + ' selectionnes';
+            if (bulkDrawerCount) bulkDrawerCount.textContent = `${count} ${i18n.bulkSelectedSuffix || i18n.bulkReadySuffix || 'selected'}`;
             const selectionCount = document.getElementById('selection-count');
             if (selectionCount) selectionCount.textContent = count;
             const selectionBar = document.getElementById('selection-bar');
@@ -75,7 +75,7 @@
         function renderLoadingUsers() {
             const tbody = document.getElementById('users-tbody');
             if (!tbody) return;
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16"><div class="flex flex-col items-center gap-3"><span class="spinner w-7 h-7 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span><span class="text-jg-text-muted text-xs uppercase tracking-widest font-bold">Chargement...</span></div></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-16"><div class="flex flex-col items-center gap-3"><span class="spinner w-7 h-7 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span><span class="text-jg-text-muted text-xs uppercase tracking-widest font-bold">' + JG.esc(i18n.loading || 'Loading...') + '</span></div></td></tr>';
         }
 
         function openBulkDrawer() {
@@ -95,9 +95,14 @@
             const actionSelect = document.getElementById('bulk-action');
             if (actionSelect) actionSelect.value = '';
             const bulkFields = document.getElementById('bulk-fields');
-            if (bulkFields) bulkFields.innerHTML = '<div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">' + JG.esc(i18n.bulkChooseAction || 'Choisir une action') + '</div>';
+            if (bulkFields) bulkFields.innerHTML = '<div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">' + JG.esc(i18n.bulkChooseAction || 'Choose an action') + '</div>';
             const bulkHelp = document.getElementById('bulk-help');
             if (bulkHelp) { bulkHelp.classList.add('hidden'); bulkHelp.textContent = ''; }
+            const previewBox = document.getElementById('bulk-preview-results');
+            if (previewBox) {
+                previewBox.classList.add('hidden');
+                previewBox.innerHTML = '';
+            }
             updateBulkWizardState();
         }
 
@@ -145,8 +150,8 @@
             }
 
             let html = '';
-            const previousLabel = JG.esc(i18n.previous || 'Precedent');
-            const nextLabel = JG.esc(i18n.next || 'Suivant');
+            const previousLabel = JG.esc(i18n.previous || 'Previous');
+            const nextLabel = JG.esc(i18n.next || 'Next');
             // Previous
             html += `<button class="jg-btn jg-btn-ghost h-10 px-3 flex items-center justify-center rounded-xl text-xs font-semibold ${paginationMeta.page <= 1 ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page - 1}" ${paginationMeta.page <= 1 ? 'disabled' : ''}>
                 ${previousLabel}
@@ -194,7 +199,7 @@
             const tbody = document.getElementById('users-tbody');
             if (!tbody) return;
             const userCount = document.getElementById('user-count');
-            if (userCount) userCount.textContent = (paginationMeta.total || 0) + ' ' + (i18n.totalLabel || 'utilisateurs');
+            if (userCount) userCount.textContent = (paginationMeta.total || 0) + ' ' + (i18n.totalLabel || 'users');
             
             const st = document.getElementById('users-stat-total'); if (st) st.textContent = paginationMeta.total_global || 0;
             const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = paginationMeta.total || 0;
@@ -286,7 +291,7 @@
                 paginationMeta = res.data.meta || paginationMeta;
                 renderUsers(allUsers);
             }
-            else { JG.toast(i18n.loadError || 'Erreur', 'error'); }
+            else { JG.toast(i18n.loadError || 'Error', 'error'); }
         }
 
         async function loadPresets() {
@@ -309,9 +314,9 @@
             }
             const summary = document.getElementById('bulk-summary');
             if (summary) {
-                if (selectedIds.size === 0) summary.textContent = i18n.bulkSelectOne || 'Selectionnez au moins un utilisateur.';
-                else if (!action) summary.textContent = i18n.bulkChooseAction || 'Choisissez une action.';
-                else { const m = bulkActionMeta[action]; summary.textContent = (i18n.bulkValidPrefix||'') + ' ' + (m?m.label:action) + ' ' + (i18n.bulkActionOn||'sur') + ' ' + selectedIds.size + ' ' + (i18n.bulkReadySuffix||'utilisateur(s)'); }
+                if (selectedIds.size === 0) summary.textContent = i18n.bulkSelectOne || 'Select at least one user.';
+                else if (!action) summary.textContent = i18n.bulkChooseAction || 'Choose an action.';
+                else { const m = bulkActionMeta[action]; summary.textContent = (i18n.bulkValidPrefix||'') + ' ' + (m?m.label:action) + ' ' + (i18n.bulkActionOn||'on') + ' ' + selectedIds.size + ' ' + (i18n.bulkReadySuffix||'user(s)'); }
             }
         }
 
@@ -321,55 +326,151 @@
             if (action === 'send_email') {
                 c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkEmailSubjectPlaceholder||'Sujet') + '</label><input type="text" id="bulk-email-subject" class="jg-input h-12" placeholder="' + JG.esc(text.bulkEmailSubjectPlaceholder||'Sujet') + '"></div><div><label class="jg-label">' + JG.esc(text.bulkEmailBodyPlaceholder||'Message') + '</label><textarea id="bulk-email-body" class="jg-input" rows="6" placeholder="' + JG.esc(text.bulkEmailBodyPlaceholder||'Corps du message...') + '"></textarea></div><div class="text-xs text-jg-text-muted">' + JG.esc(text.bulkEmailVariablesLabel||'Variables') + ': {{.Username}}, {{.Email}}</div></div>';
             } else if (action === 'set_expiry') {
-                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkExpiryLabel||'Expiration') + '</label><input type="datetime-local" id="bulk-expiry" class="jg-input h-12"></div><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="bulk-clear-expiry" class="form-checkbox"><span class="text-sm">' + JG.esc(text.bulkClearExpiry||'Supprimer') + '</span></label></div>';
+                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkExpiryLabel||'Expiry') + '</label><input type="datetime-local" id="bulk-expiry" class="jg-input h-12"></div><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="bulk-clear-expiry" class="form-checkbox"><span class="text-sm">' + JG.esc(text.bulkClearExpiry||'Clear') + '</span></label></div>';
             } else if (action === 'set_parrainage') {
-                c.innerHTML = '<div class="space-y-4"><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="true" class="form-radio"><span>' + JG.esc(text.bulkInviteEnabled||'Activer') + '</span></label><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="false" checked class="form-radio"><span>' + JG.esc(text.bulkInviteDisabled||'Desactiver') + '</span></label></div>';
+                c.innerHTML = '<div class="space-y-4"><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="true" class="form-radio"><span>' + JG.esc(text.bulkInviteEnabled||'Enable') + '</span></label><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="false" checked class="form-radio"><span>' + JG.esc(text.bulkInviteDisabled||'Disable') + '</span></label></div>';
             } else if (action === 'jellyfin_policy') {
-                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">Download</label><select id="bulk-jf-download" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfDownloadUnchanged||'Inchange') + '</option><option value="true">' + JG.esc(text.bulkJfDownloadAllowed||'Autorise') + '</option><option value="false">' + JG.esc(text.bulkJfDownloadBlocked||'Bloque') + '</option></select></div><div><label class="jg-label">Remote</label><select id="bulk-jf-remote" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfRemoteUnchanged||'Inchange') + '</option><option value="true">' + JG.esc(text.bulkJfRemoteAllowed||'Autorise') + '</option><option value="false">' + JG.esc(text.bulkJfRemoteBlocked||'Bloque') + '</option></select></div><div><label class="jg-label">Sessions</label><input type="number" id="bulk-jf-sessions" class="jg-input h-12" min="0"></div><div><label class="jg-label">Bitrate</label><input type="number" id="bulk-jf-bitrate" class="jg-input h-12" min="0"></div></div>';
+                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkJfDownloadLabel || 'Download') + '</label><select id="bulk-jf-download" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfDownloadUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfDownloadAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfDownloadBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfRemoteLabel || 'Remote') + '</label><select id="bulk-jf-remote" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfRemoteUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfRemoteAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfRemoteBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfSessionsLabel || 'Sessions') + '</label><input type="number" id="bulk-jf-sessions" class="jg-input h-12" min="0"></div><div><label class="jg-label">' + JG.esc(text.bulkJfBitrateLabel || 'Bitrate') + '</label><input type="number" id="bulk-jf-bitrate" class="jg-input h-12" min="0"></div></div>';
             } else if (action === 'apply_preset') {
                 const opts = jellyfinPresets.map(p => '<option value="' + JG.esc(p.id) + '">' + JG.esc(p.name||p.id) + '</option>').join('');
-                c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Preset') + '</label><select id="bulk-preset" class="jg-input h-12"><option value="">' + JG.esc(text.bulkSelectPreset||'Selectionner...') + '</option>' + opts + '</select></div>';
+                c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Preset') + '</label><select id="bulk-preset" class="jg-input h-12"><option value="">' + JG.esc(text.bulkSelectPresetPlaceholder||'Select...') + '</option>' + opts + '</select></div>';
             } else if (['activate','deactivate','delete','send_password_reset'].includes(action)) {
-                c.innerHTML = '<div class="text-center py-8 text-jg-text-muted">' + JG.esc(text.bulkNoExtraParams||'Aucun parametre supplementaire requis.') + '</div>';
+                c.innerHTML = '<div class="text-center py-8 text-jg-text-muted">' + JG.esc(text.bulkNoExtraParams||'No additional parameters required.') + '</div>';
             } else {
-                c.innerHTML = '<div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">' + JG.esc(i18n.bulkChooseAction||'Choisir une action') + '</div>';
+                c.innerHTML = '<div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">' + JG.esc(i18n.bulkChooseAction||'Choose an action') + '</div>';
+            }
+
+            const previewBox = document.getElementById('bulk-preview-results');
+            if (previewBox) {
+                previewBox.classList.add('hidden');
+                previewBox.innerHTML = '';
             }
         }
 
-        async function executeBulkAction() {
+        function buildBulkPayload(options = {}) {
             const action = document.getElementById('bulk-action')?.value || '';
-            if (!action || selectedIds.size === 0) return;
+            if (!action || selectedIds.size === 0) {
+                return { error: i18n.selectionEmpty || 'Select at least one user' };
+            }
+
             const ids = Array.from(selectedIds)
                 .map((id) => parseInt(id, 10))
                 .filter((id) => Number.isFinite(id));
             if (ids.length === 0) {
-                JG.toast(i18n.selectionEmpty || 'Selectionnez des utilisateurs', 'info');
-                return;
+                return { error: i18n.selectionEmpty || 'Select at least one user' };
             }
-            const m = bulkActionMeta[action];
-            if (!confirm((m?m.label:action) + ' ' + (i18n.bulkActionOn||'sur') + ' ' + ids.length + ' ' + (i18n.bulkReadySuffix||'utilisateur(s)') + ' ?')) return;
-            let payload = { action: action, user_ids: ids };
+
+            const payload = { action, user_ids: ids, preview: !!options.preview };
+
             if (action === 'send_email') {
-                payload.subject = document.getElementById('bulk-email-subject')?.value || '';
-                payload.body = document.getElementById('bulk-email-body')?.value || '';
-                if (!payload.subject || !payload.body) { JG.toast(i18n.bulkNeedEmailBody||'Sujet et corps requis', 'error'); return; }
+                payload.email_subject = document.getElementById('bulk-email-subject')?.value || '';
+                payload.email_body = document.getElementById('bulk-email-body')?.value || '';
+                if (!payload.email_subject || !payload.email_body) {
+                    return { error: i18n.bulkNeedEmailBody || 'Subject and body are required' };
+                }
             } else if (action === 'set_expiry') {
                 payload.clear_expiry = !!document.getElementById('bulk-clear-expiry')?.checked;
-                if (!payload.clear_expiry) { payload.expiry = document.getElementById('bulk-expiry')?.value || ''; if (!payload.expiry) { JG.toast(i18n.bulkNeedExpiry||'Date requise', 'error'); return; } }
+                if (!payload.clear_expiry) {
+                    payload.access_expires_at = document.getElementById('bulk-expiry')?.value || '';
+                    if (!payload.access_expires_at) {
+                        return { error: i18n.bulkNeedExpiry || 'Date is required' };
+                    }
+                }
             } else if (action === 'set_parrainage') {
                 payload.can_invite = document.querySelector('input[name="bulk-invite-value"]:checked')?.value === 'true';
             } else if (action === 'jellyfin_policy') {
-                payload.download = document.getElementById('bulk-jf-download')?.value || '';
-                payload.remote = document.getElementById('bulk-jf-remote')?.value || '';
-                payload.max_sessions = parseInt(document.getElementById('bulk-jf-sessions')?.value||'0', 10)||0;
-                payload.bitrate_limit = parseInt(document.getElementById('bulk-jf-bitrate')?.value||'0', 10)||0;
+                const download = document.getElementById('bulk-jf-download')?.value || '';
+                const remote = document.getElementById('bulk-jf-remote')?.value || '';
+                const sessionsRaw = document.getElementById('bulk-jf-sessions')?.value || '';
+                const bitrateRaw = document.getElementById('bulk-jf-bitrate')?.value || '';
+                payload.jellyfin_policy = {};
+                if (download !== '') payload.jellyfin_policy.enable_downloads = download === 'true';
+                if (remote !== '') payload.jellyfin_policy.enable_remote_access = remote === 'true';
+                if (sessionsRaw !== '') payload.jellyfin_policy.max_active_sessions = parseInt(sessionsRaw, 10) || 0;
+                if (bitrateRaw !== '') payload.jellyfin_policy.remote_bitrate_limit = parseInt(bitrateRaw, 10) || 0;
+                if (Object.keys(payload.jellyfin_policy).length === 0) {
+                    return { error: i18n.bulkNeedJellyfinParam || 'Add at least one Jellyfin parameter' };
+                }
             } else if (action === 'apply_preset') {
-                payload.preset_id = document.getElementById('bulk-preset')?.value || '';
-                if (!payload.preset_id) { JG.toast(i18n.bulkNeedPreset||'Selectionnez un preset', 'error'); return; }
+                payload.policy_preset_id = document.getElementById('bulk-preset')?.value || '';
+                if (!payload.policy_preset_id) {
+                    return { error: i18n.bulkNeedPreset || 'Select a preset' };
+                }
             }
-            const res = await JG.api('/admin/api/users/bulk', { method: 'POST', body: JSON.stringify(payload) });
+
+            return { payload };
+        }
+
+        function renderBulkPreview(resultData) {
+            const previewBox = document.getElementById('bulk-preview-results');
+            if (!previewBox) return;
+
+            const rows = Array.isArray(resultData?.results) ? resultData.results : [];
+            const success = Number(resultData?.success || 0);
+            const total = Number(resultData?.total || rows.length || 0);
+            const failed = Math.max(total - success, 0);
+
+            let html = '';
+            html += '<div class="flex items-center justify-between gap-3">';
+            html += '<div class="text-[10px] uppercase tracking-widest text-jg-text-muted">' + JG.esc(i18n.previewImpact || 'Preview impact') + '</div>';
+            html += '<div class="text-[11px] font-semibold text-jg-text"><span class="text-emerald-400">' + success + ' ' + JG.esc(i18n.statusOk || 'OK') + '</span> · <span class="text-rose-400">' + failed + ' ' + JG.esc(i18n.previewBlocked || 'blocked') + '</span></div>';
+            html += '</div>';
+
+            if (rows.length === 0) {
+                html += '<div class="text-jg-text-muted/70">' + JG.esc(i18n.previewNoResult || 'No results.') + '</div>';
+            } else {
+                html += '<div class="max-h-56 overflow-y-auto space-y-2 pr-1">';
+                rows.forEach((row) => {
+                    const ok = !!row.success;
+                    html += '<div class="p-2 rounded-lg border ' + (ok ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-rose-500/30 bg-rose-500/10') + '">';
+                    html += '<div class="flex items-center justify-between gap-2">';
+                    html += '<span class="font-semibold text-jg-text">' + JG.esc(row.username || ('#' + row.id)) + '</span>';
+                    html += '<span class="text-[10px] uppercase tracking-wider ' + (ok ? 'text-emerald-300' : 'text-rose-300') + '">' + JG.esc(ok ? (i18n.statusOk || 'OK') : (i18n.statusRejected || 'Rejected')) + '</span>';
+                    html += '</div>';
+                    html += '<div class="mt-1 text-[11px] text-jg-text-muted/90">' + JG.esc(row.message || '') + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            }
+
+            previewBox.innerHTML = html;
+            previewBox.classList.remove('hidden');
+        }
+
+        async function runBulkPreview() {
+            const built = buildBulkPayload({ preview: true });
+            if (built.error) {
+                JG.toast(built.error, 'error');
+                return;
+            }
+
+            const res = await JG.api('/admin/api/users/bulk', { method: 'POST', body: JSON.stringify(built.payload) });
+            if (!res.success) {
+                JG.toast(res.message || (i18n.bulkActionFailed || 'Error'), 'error');
+                return;
+            }
+
+            renderBulkPreview(res.data || {});
+            JG.toast(res.message || i18n.previewComputed || 'Preview computed', 'info');
+        }
+
+        async function executeBulkAction() {
+            const action = document.getElementById('bulk-action')?.value || '';
+            const built = buildBulkPayload({ preview: false });
+            if (built.error) {
+                JG.toast(built.error, 'error');
+                return;
+            }
+            const ids = built.payload.user_ids || [];
+            const m = bulkActionMeta[action];
+            const confirmMsg = (text.bulkConfirmTemplate || '{action} on {count} users?')
+                .replace('{action}', (m ? m.label : action))
+                .replace('{count}', String(ids.length));
+            if (!confirm(confirmMsg)) return;
+
+            const res = await JG.api('/admin/api/users/bulk', { method: 'POST', body: JSON.stringify(built.payload) });
             if (res.success) { JG.toast(i18n.bulkDone||'OK', 'success'); selectedIds.clear(); closeBulkDrawer(); await loadUsers(); }
-            else { JG.toast(res.message||i18n.bulkActionFailed||'Erreur', 'error'); }
+            else { JG.toast(res.message||i18n.bulkActionFailed||'Error', 'error'); }
         }
 
         // Event Listeners
@@ -377,7 +478,7 @@
             if (!confirm(i18n.syncConfirm)) return;
             const res = await JG.api('/admin/api/users/sync', { method: 'POST' });
             if (res.success) { JG.toast(i18n.syncDone||'OK', 'success'); loadUsers(); }
-            else { JG.toast(res.message||i18n.syncError||'Erreur', 'error'); }
+            else { JG.toast(res.message||i18n.syncError||'Error', 'error'); }
         });
 
         document.getElementById('search-users')?.addEventListener('input', () => {
@@ -437,7 +538,7 @@
                 if (!user) return;
                 const res = await JG.api('/admin/api/users/' + uid + '/toggle', { method: 'POST' });
                 if (res.success) { JG.toast(i18n.toggleUpdated||'OK', 'success'); await loadUsers(); }
-                else { JG.toast(res.message||i18n.toggleError||'Erreur', 'error'); }
+                else { JG.toast(res.message||i18n.toggleError||'Error', 'error'); }
                 return;
             }
             if (btn.classList.contains('action-delete')) { openDeleteModal(uid, user); return; }
@@ -445,7 +546,7 @@
 
         // Bulk email button
         document.getElementById('btn-open-bulk-email')?.addEventListener('click', () => {
-            if (selectedIds.size === 0) { JG.toast(i18n.selectionEmpty||'Selectionnez des utilisateurs', 'info'); return; }
+            if (selectedIds.size === 0) { JG.toast(i18n.selectionEmpty||'Select users first', 'info'); return; }
             openBulkDrawer();
             const sel = document.getElementById('bulk-action');
             if (sel) { sel.value = 'send_email'; sel.dispatchEvent(new Event('change')); }
@@ -464,9 +565,79 @@
             updateBulkWizardState();
         });
 
+        document.getElementById('bulk-preview')?.addEventListener('click', runBulkPreview);
         document.getElementById('bulk-apply')?.addEventListener('click', executeBulkAction);
 
         // Edit Modal
+        function fillPresetSelect(select, selectedValue = '') {
+            if (!select) return;
+            let html = '<option value="">' + JG.esc(i18n.createNoPreset || 'No preset') + '</option>';
+            jellyfinPresets.forEach(p => {
+                html += `<option value="${JG.esc(p.id)}">${JG.esc(p.name || p.id)}</option>`;
+            });
+            select.innerHTML = html;
+            select.value = selectedValue || '';
+        }
+
+        function openCreateModal() {
+            const presetSel = document.getElementById('create-preset-id');
+            fillPresetSelect(presetSel, '');
+            document.getElementById('create-username').value = '';
+            document.getElementById('create-email').value = '';
+            document.getElementById('create-password').value = '';
+            document.getElementById('create-disable-days').value = '';
+            document.getElementById('create-expiry').value = '';
+            document.getElementById('create-can-invite').checked = false;
+            document.getElementById('create-send-welcome').checked = true;
+            const tempBox = document.getElementById('create-temp-password-box');
+            if (tempBox) {
+                tempBox.classList.add('hidden');
+                tempBox.textContent = '';
+            }
+            JG.openModal('create-modal');
+        }
+
+        async function saveCreatedUser() {
+            const username = (document.getElementById('create-username')?.value || '').trim();
+            if (!username) {
+                JG.toast(i18n.createNeedUsername || 'Username is required', 'error');
+                return;
+            }
+
+            const payload = {
+                username: username,
+                email: (document.getElementById('create-email')?.value || '').trim(),
+                password: (document.getElementById('create-password')?.value || '').trim(),
+                policy_preset_id: document.getElementById('create-preset-id')?.value || '',
+                disable_after_days: parseInt(document.getElementById('create-disable-days')?.value || '0', 10) || 0,
+                access_expires_at: document.getElementById('create-expiry')?.value || '',
+                can_invite: !!document.getElementById('create-can-invite')?.checked,
+                send_welcome_email: !!document.getElementById('create-send-welcome')?.checked,
+            };
+
+            const res = await JG.api('/admin/api/users', { method: 'POST', body: JSON.stringify(payload) });
+            if (!res.success) {
+                JG.toast(res.message || i18n.createFailed || 'Unable to create user', 'error');
+                return;
+            }
+
+            const temporaryPassword = res?.data?.temporary_password || '';
+            const tempBox = document.getElementById('create-temp-password-box');
+            if (temporaryPassword && tempBox) {
+                tempBox.textContent = (i18n.createTempPassword || 'Temporary password: {password}').replace('{password}', temporaryPassword);
+                tempBox.classList.remove('hidden');
+            } else if (tempBox) {
+                tempBox.classList.add('hidden');
+                tempBox.textContent = '';
+            }
+
+            JG.toast(res.message || i18n.createSuccess || 'User created', 'success');
+            await loadUsers();
+            if (!temporaryPassword) {
+                JG.closeModal('create-modal');
+            }
+        }
+
         function openEditModal(uid, user) {
             if (!user) return;
             document.getElementById('edit-user-id').value = uid;
@@ -474,14 +645,7 @@
             
             // Populate Presets
             const presetSel = document.getElementById('edit-preset-id');
-            if (presetSel) {
-                let html = '<option value="">(Aucun preset)</option>';
-                jellyfinPresets.forEach(p => {
-                    html += `<option value="${JG.esc(p.id)}">${JG.esc(p.name || p.id)}</option>`;
-                });
-                presetSel.innerHTML = html;
-                presetSel.value = user.preset_id || '';
-            }
+            fillPresetSelect(presetSel, user.preset_id || '');
 
             // Show Read-only Group
             const groupWrap = document.getElementById('edit-group-wrapper');
@@ -513,15 +677,24 @@
             };
             const res = await JG.api('/admin/api/users/' + uid, { method: 'PATCH', body: JSON.stringify(p) });
             if (res.success) { JG.toast(i18n.editUpdated||'OK', 'success'); JG.closeModal('edit-modal'); await loadUsers(); }
-            else { JG.toast(res.message||i18n.editUpdateError||'Erreur', 'error'); }
+            else { JG.toast(res.message||i18n.editUpdateError||'Error', 'error'); }
         });
         document.getElementById('edit-modal')?.addEventListener('click', (e) => { if (e.target.id === 'edit-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('edit-modal'); });
+
+        document.getElementById('btn-open-create-user')?.addEventListener('click', openCreateModal);
+        document.getElementById('create-cancel-btn')?.addEventListener('click', () => JG.closeModal('create-modal'));
+        document.getElementById('create-save-btn')?.addEventListener('click', saveCreatedUser);
+        document.getElementById('create-modal')?.addEventListener('click', (e) => {
+            if (e.target.id === 'create-modal' || e.target.closest('[aria-hidden="true"]')) {
+                JG.closeModal('create-modal');
+            }
+        });
 
         // Delete Modal
         function openDeleteModal(uid, user) {
             pendingDeleteUser = uid;
             const t = document.getElementById('delete-modal-text');
-            if (t && user) t.textContent = (i18n.deleteConfirmTemplate||'Supprimer {username} ?').replace('{username}', user.username);
+            if (t && user) t.textContent = (i18n.deleteConfirmTemplate||'Delete {username}?').replace('{username}', user.username);
             JG.openModal('delete-modal');
         }
         document.getElementById('delete-cancel-btn')?.addEventListener('click', () => { pendingDeleteUser = null; JG.closeModal('delete-modal'); });
@@ -529,7 +702,7 @@
             if (!pendingDeleteUser) return;
             const res = await JG.api('/admin/api/users/' + pendingDeleteUser, { method: 'DELETE' });
             if (res.success) { JG.toast(i18n.deleteSuccess||'OK', 'success'); selectedIds.delete(String(pendingDeleteUser)); pendingDeleteUser = null; JG.closeModal('delete-modal'); await loadUsers(); }
-            else { JG.toast(res.message||i18n.deleteError||'Erreur', 'error'); }
+            else { JG.toast(res.message||i18n.deleteError||'Error', 'error'); }
         });
         document.getElementById('delete-modal')?.addEventListener('click', (e) => { if (e.target.id === 'delete-modal' || e.target.closest('[aria-hidden="true"]')) { pendingDeleteUser = null; JG.closeModal('delete-modal'); } });
 
@@ -540,31 +713,46 @@
 
             JG.openModal('timeline-modal');
             const list = document.getElementById('timeline-list');
-            if (list) list.innerHTML = '<div class="text-center py-20 text-jg-text-muted animate-pulse">Chargement de l\'historique...</div>';
+            if (list) list.innerHTML = '<div class="text-center py-20 text-jg-text-muted animate-pulse">' + JG.esc(i18n.timelineLoading || 'Loading timeline...') + '</div>';
 
             const res = await JG.api(`/admin/api/users/${uid}/timeline`);
             if (res.success && Array.isArray(res.data)) {
                 if (res.data.length === 0) {
                     list.innerHTML = `<div class="text-center py-20 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-3xl bg-white/5 uppercase text-[10px] items-center justify-center flex flex-col gap-4">
                         <svg class="w-12 h-12 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        ${JG.esc(i18n.timelineEmpty || 'Aucun email envoye.')}
+                        ${JG.esc(i18n.timelineEmpty || 'No events found.')}
                     </div>`;
                     return;
                 }
 
                 let html = '<div class="space-y-3 pb-4">';
                 res.data.forEach(entry => {
-                    const action = (entry.action || '').toLowerCase();
-                    const isFailed = action.includes('failed') || action.includes('error');
-                    
-                    let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`;
-                    if (action.includes('verify')) icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-                    if (action.includes('reset')) icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>`;
+                    const category = String(entry.category || '').toLowerCase();
+                    const severity = String(entry.severity || '').toLowerCase();
+                    const isFailed = severity === 'error';
+                    const isWarning = severity === 'warning';
+
+                    let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
+                    if (category === 'email') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`;
+                    if (category === 'password') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>`;
+                    if (category === 'invitation') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
+                    if (category === 'security') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3zm0 2c-2.761 0-5 1.79-5 4v1h10v-1c0-2.21-2.239-4-5-4z" /></svg>`;
+
+                    const stateClass = isFailed
+                        ? 'text-rose-400 uppercase tracking-widest bg-rose-500/10'
+                        : (isWarning ? 'text-amber-300 uppercase tracking-widest bg-amber-500/10' : 'text-emerald-400 uppercase tracking-widest bg-emerald-500/10');
+                    const stateDotClass = isFailed ? 'bg-rose-400 animate-pulse' : (isWarning ? 'bg-amber-300' : 'bg-emerald-400');
+                    const stateLabel = isFailed
+                        ? (i18n.timelineError || 'ERROR')
+                        : (isWarning ? (i18n.timelineWarning || 'WARNING') : (i18n.statusOk || 'OK'));
+                    const iconWrapClass = isFailed
+                        ? 'bg-rose-500/10 text-rose-400'
+                        : (isWarning ? 'bg-amber-500/10 text-amber-300' : 'bg-jg-accent/10 text-jg-accent');
 
                     html += `
                     <div class="group p-4 rounded-2xl bg-white/5 border border-jg-border hover:bg-white/10 hover:border-jg-accent/30 transition-all duration-300">
                         <div class="flex items-start gap-4">
-                            <div class="w-10 h-10 rounded-xl ${isFailed ? 'bg-rose-500/10 text-rose-400' : 'bg-jg-accent/10 text-jg-accent'} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
+                            <div class="w-10 h-10 rounded-xl ${iconWrapClass} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
                                 ${icon}
                             </div>
                             <div class="flex-1 min-w-0">
@@ -573,8 +761,9 @@
                                     <span class="text-[10px] font-medium text-jg-text-muted uppercase tracking-wider whitespace-nowrap">${fmtDate(entry.at)}</span>
                                 </div>
                                 <div class="flex items-center gap-2">
-                                    ${isFailed ? `<span class="flex items-center gap-1 text-[10px] font-bold text-rose-400 uppercase tracking-widest bg-rose-500/10 px-2 py-0.5 rounded-full"><span class="w-1 h-1 rounded-full bg-rose-400 animate-pulse"></span> ECHEC</span>` : `<span class="flex items-center gap-1 text-[10px] font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-2 py-0.5 rounded-full"><span class="w-1 h-1 rounded-full bg-emerald-400"></span> ENVOYE</span>`}
-                                    ${entry.actor ? `<span class="text-[10px] text-jg-text-muted/60 tracking-wider">PAR : ${JG.esc(entry.actor)}</span>` : ''}
+                                    <span class="flex items-center gap-1 text-[10px] font-bold ${stateClass} px-2 py-0.5 rounded-full"><span class="w-1 h-1 rounded-full ${stateDotClass}"></span> ${stateLabel}</span>
+                                    ${entry.category ? `<span class="text-[10px] text-jg-text-muted/80 tracking-wider uppercase">${JG.esc(entry.category)}</span>` : ''}
+                                    ${entry.actor ? `<span class="text-[10px] text-jg-text-muted/60 tracking-wider">${JG.esc(i18n.timelineActorPrefix || 'BY:')} ${JG.esc(entry.actor)}</span>` : ''}
                                 </div>
                                 ${entry.details ? `<div class="mt-2 text-[11px] text-jg-text-muted/80 leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5 select-all font-mono break-all">${JG.esc(entry.details)}</div>` : ''}
                             </div>
@@ -585,7 +774,7 @@
                 list.innerHTML = html;
 
             } else {
-                list.innerHTML = `<div class="text-center py-20 text-rose-400">${JG.esc(i18n.timelineLoadError || 'Erreur lors du chargement.')}</div>`;
+                list.innerHTML = `<div class="text-center py-20 text-rose-400">${JG.esc(i18n.timelineLoadError || 'Unable to load timeline.')}</div>`;
             }
         }
         document.getElementById('timeline-close-btn')?.addEventListener('click', () => JG.closeModal('timeline-modal'));

@@ -288,6 +288,7 @@ func main() {
 				r.Route("/api/users", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)
+					r.Post("/", adminHandler.CreateUser)
 					r.Get("/dashboard/stats", adminHandler.DashboardStats)
 					r.Get("/invitations", adminHandler.ListInvitations)
 					r.Get("/{id}/avatar", adminHandler.UserAvatar)
