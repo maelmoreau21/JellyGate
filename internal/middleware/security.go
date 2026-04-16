@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
 	"strings"
@@ -12,6 +13,11 @@ const csrfCookieName = "jg_csrf"
 const csrfHeaderName = "X-CSRF-Token"
 
 type scriptNonceContextKey struct{}
+type csrfTokenContextKey struct{}
+
+func CSRFCookieName() string {
+	return csrfCookieName
+}
 
 func ScriptNonceFromContext(ctx context.Context) string {
 	if ctx == nil {
@@ -19,6 +25,16 @@ func ScriptNonceFromContext(ctx context.Context) string {
 	}
 	if nonce, ok := ctx.Value(scriptNonceContextKey{}).(string); ok {
 		return strings.TrimSpace(nonce)
+	}
+	return ""
+}
+
+func CSRFTokenFromContext(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if token, ok := ctx.Value(csrfTokenContextKey{}).(string); ok {
+		return strings.TrimSpace(token)
 	}
 	return ""
 }
@@ -31,6 +47,10 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			w.Header().Set("X-Permitted-Cross-Domain-Policies", "none")
+			w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+			w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
+			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
 			csp := "default-src 'self'; script-src 'self'"
 			if strings.TrimSpace(nonce) != "" {
 				csp += " 'nonce-" + nonce + "'"
@@ -52,9 +72,15 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 func EnsureCSRFCookie(baseURL string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if _, err := r.Cookie(csrfCookieName); err != nil {
-				token, tokenErr := generateCSRFToken()
+			token := ""
+			if existing, err := r.Cookie(csrfCookieName); err == nil {
+				token = strings.TrimSpace(existing.Value)
+			}
+
+			if token == "" {
+				freshToken, tokenErr := generateCSRFToken()
 				if tokenErr == nil {
+					token = freshToken
 					http.SetCookie(w, &http.Cookie{
 						Name:     csrfCookieName,
 						Value:    token,
@@ -67,7 +93,8 @@ func EnsureCSRFCookie(baseURL string) func(http.Handler) http.Handler {
 				}
 			}
 
-			next.ServeHTTP(w, r)
+			ctx := context.WithValue(r.Context(), csrfTokenContextKey{}, token)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
@@ -92,7 +119,8 @@ func RequireCSRF() func(http.Handler) http.Handler {
 				token = strings.TrimSpace(r.FormValue("_csrf"))
 			}
 
-			if token == "" || token != strings.TrimSpace(cookie.Value) {
+			cookieToken := strings.TrimSpace(cookie.Value)
+			if token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(cookieToken)) != 1 {
 				http.Error(w, "CSRF token invalide", http.StatusForbidden)
 				return
 			}

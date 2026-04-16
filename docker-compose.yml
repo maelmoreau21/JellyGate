@@ -3,6 +3,13 @@ services:
     image: ghcr.io/maelmoreau21/jellygate:latest
     container_name: jellygate
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
     ports:
       - "${JELLYGATE_PORT:-8097}:8097"
     volumes:
@@ -16,6 +23,7 @@ services:
       - JELLYGATE_DATA_DIR=/data
       - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
       - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-fr}
+      - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
 
       # ── Base SQL (SQLite par défaut) ────────────────────────────────
       - DB_TYPE=sqlite

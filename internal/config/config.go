@@ -65,13 +65,14 @@ func IsSupportedLanguage(lang string) bool {
 // Ne contient que les paramètres essentiels au démarrage de l'application.
 type Config struct {
 	// Application
-	Port        int    // Port d'écoute HTTP (défaut: 8097)
-	BaseURL     string // URL de base publique
-	DataDir     string // Répertoire des données (SQLite, etc.)
-	SecretKey   string // Clé secrète pour sessions/tokens (min 32 chars)
-	TLSCert     string // Chemin vers le certificat TLS
-	TLSKey      string // Chemin vers la clé privée TLS
-	DefaultLang string // Langue par défaut de l'interface (défaut: fr)
+	Port              int    // Port d'écoute HTTP (défaut: 8097)
+	BaseURL           string // URL de base publique
+	DataDir           string // Répertoire des données (SQLite, etc.)
+	SecretKey         string // Clé secrète pour sessions/tokens (min 32 chars)
+	TLSCert           string // Chemin vers le certificat TLS
+	TLSKey            string // Chemin vers la clé privée TLS
+	DefaultLang       string // Langue par défaut de l'interface (défaut: fr)
+	EnableDebugRoutes bool   // Active les routes /admin/debug (dev uniquement)
 
 	// Base de donnees (sqlite ou postgres)
 	Database DatabaseConfig
@@ -1043,13 +1044,14 @@ type MatrixWebhook struct {
 // LDAP, SMTP et Webhooks sont chargés depuis la base de données.
 func Load() (*Config, error) {
 	cfg := &Config{
-		Port:        getEnvInt("JELLYGATE_PORT", 8097),
-		BaseURL:     getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
-		DataDir:     getEnv("JELLYGATE_DATA_DIR", "/data"),
-		SecretKey:   getEnv("JELLYGATE_SECRET_KEY", ""),
-		TLSCert:     getEnv("JELLYGATE_TLS_CERT", ""),
-		TLSKey:      getEnv("JELLYGATE_TLS_KEY", ""),
-		DefaultLang: NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
+		Port:              getEnvInt("JELLYGATE_PORT", 8097),
+		BaseURL:           getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
+		DataDir:           getEnv("JELLYGATE_DATA_DIR", "/data"),
+		SecretKey:         getEnv("JELLYGATE_SECRET_KEY", ""),
+		TLSCert:           getEnv("JELLYGATE_TLS_CERT", ""),
+		TLSKey:            getEnv("JELLYGATE_TLS_KEY", ""),
+		DefaultLang:       NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
+		EnableDebugRoutes: getEnvBool("JELLYGATE_ENABLE_DEBUG_ROUTES", false),
 
 		Database: DatabaseConfig{
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", "sqlite"))),

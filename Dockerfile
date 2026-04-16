@@ -52,10 +52,12 @@ RUN mkdir -p /data && chown jellygate:jellygate /data
 WORKDIR /app
 
 # Copier le binaire compilé
-COPY --from=builder /build/jellygate .
+COPY --from=builder --chown=jellygate:jellygate /build/jellygate .
 
 # Copier les assets web (templates, static, locales)
-COPY --from=builder /build/web ./web
+COPY --from=builder --chown=jellygate:jellygate /build/web ./web
+
+RUN chmod 0550 /app/jellygate
 
 # Passage en utilisateur non-root
 USER jellygate

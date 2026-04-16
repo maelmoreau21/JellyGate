@@ -326,12 +326,18 @@
         formData.append('image', file);
 
         try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                (window.JG && typeof JG.getCookie === 'function' ? JG.getCookie('jg_csrf') : '');
+            const headers = {};
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken;
+            }
+
             const res = await fetch('/admin/api/users/me/avatar', {
                 method: 'POST',
                 body: formData,
-                headers: {
-                   'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ""
-                }
+                headers,
+                credentials: 'same-origin',
             });
             const data = await res.json();
             if (data.success) {

@@ -3,6 +3,13 @@ services:
     image: ghcr.io/maelmoreau21/jellygate:latest
     container_name: jellygate
     restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=64m,noexec,nosuid,nodev
     ports:
       - "${JELLYGATE_PORT:-8097}:8097"
     volumes:
@@ -15,13 +22,14 @@ services:
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
       - JELLYGATE_DATA_DIR=/data
       - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
+      - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
 
       # ── Base SQL (PostgreSQL) ──────────────────────────────────────
       - DB_TYPE=postgres
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER:-jellygate}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-jellygate}
+      - DB_USER=${POSTGRES_USER:?❌ POSTGRES_USER est requis}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD est requis}
       - DB_NAME=${POSTGRES_DB:-jellygate}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
 
@@ -47,10 +55,12 @@ services:
     image: postgres:18-alpine
     container_name: jellygate-postgres
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-jellygate}
-      - POSTGRES_USER=${POSTGRES_USER:-jellygate}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-jellygate}
+      - POSTGRES_USER=${POSTGRES_USER:?❌ POSTGRES_USER est requis}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD est requis}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
