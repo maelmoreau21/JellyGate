@@ -24,6 +24,16 @@
                 <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}' class="jg-input h-12 px-4 text-sm rounded-xl w-full focus:border-jg-accent/30 transition-all">
             </div>
 
+            {{/* Categories Tabs */}}
+            <div class="flex bg-black/20 p-1 rounded-xl border border-white/5">
+                <button data-category="app" class="log-category-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-jg-accent text-black">
+                    Application
+                </button>
+                <button data-category="system" class="log-category-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-jg-text-muted hover:text-jg-text">
+                    Système
+                </button>
+            </div>
+
             {{/* Actions */}}
             <div class="flex items-center gap-2">
                 <select id="logs-preset-select" class="jg-input jg-select-premium h-12 px-4 text-xs min-w-[210px]">

@@ -16,6 +16,7 @@
         result: '',
         from: '',
         to: '',
+        category: 'app',
         totalPages: 1,
     };
     let searchTimeout;
@@ -45,6 +46,7 @@
             result: state.result,
             from: state.from,
             to: state.to,
+            category: state.category,
             export: format,
         });
         window.open(`/admin/api/logs?${params.toString()}`, '_blank');
@@ -61,6 +63,7 @@
             limit: state.limit,
             sort: state.sort,
             order: state.order,
+            category: state.category,
         };
     }
 
@@ -129,6 +132,7 @@
         state.limit = Number.parseInt(filters.limit || state.limit, 10) || state.limit;
         state.sort = String(filters.sort || state.sort).trim() || 'created_at';
         state.order = String(filters.order || state.order).trim() === 'asc' ? 'asc' : 'desc';
+        state.category = String(filters.category || state.category).trim() || 'app';
         state.page = 1;
 
         if (filterAction) {
@@ -162,6 +166,7 @@
         });
 
         updateActiveFilterCount();
+        updateCategoryTabUI();
     }
 
     function saveCurrentPreset() {
@@ -313,6 +318,7 @@
                 result: state.result,
                 from: state.from,
                 to: state.to,
+                category: state.category,
             });
 
             const res = await fetch(`/admin/api/logs?${params}`);
@@ -381,6 +387,9 @@
         }
     }
 
+        }
+    }
+
     function updateActiveFilterCount() {
         const filters = ['filter-action', 'filter-actor', 'filter-result', 'filter-from', 'filter-to'];
         let count = 0;
@@ -394,6 +403,18 @@
             badge.textContent = count;
             badge.classList.toggle('hidden', count === 0);
         }
+    }
+
+    function updateCategoryTabUI() {
+        document.querySelectorAll('.log-category-btn').forEach(btn => {
+            if (btn.dataset.category === state.category) {
+                btn.classList.add('bg-jg-accent', 'text-black');
+                btn.classList.remove('text-jg-text-muted', 'hover:text-jg-text');
+            } else {
+                btn.classList.remove('bg-jg-accent', 'text-black');
+                btn.classList.add('text-jg-text-muted', 'hover:text-jg-text');
+            }
+        });
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -467,6 +488,16 @@
 
         document.querySelectorAll('#logs-quick-ranges [data-range]').forEach((btn) => {
             btn.addEventListener('click', () => applyQuickRange(btn.dataset.range || ''));
+        });
+
+        document.querySelectorAll('.log-category-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (state.category === btn.dataset.category) return;
+                state.category = btn.dataset.category;
+                state.page = 1;
+                updateCategoryTabUI();
+                fetchLogs();
+            });
         });
 
         // --- Export Listeners ---

@@ -2,15 +2,15 @@
 {{ define "logo" }}
 <div class="jg-logo-wrap flex items-center gap-2">
     <span class="jg-logo-chip" aria-hidden="true">
-        <svg class="jg-logo-mark w-8 h-8 flex-shrink-0" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg class="jg-logo-mark w-8 h-8 flex-shrink-0" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <linearGradient id="jg-logo-gradient" x1="0" y1="0" x2="32" y2="32">
-                    <stop style="stop-color: var(--jg-accent-cyan)" />
-                    <stop offset="1" style="stop-color: var(--jg-accent-emerald)" />
+                <linearGradient id="jg-logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#AA5CC3" />
+                    <stop offset="100%" stop-color="#00A4DC" />
                 </linearGradient>
             </defs>
-            <circle class="jg-logo-disc" cx="16" cy="16" r="14" fill="url(#jg-logo-gradient)" />
-            <path class="jg-logo-play" d="M10 22V10l12 6-12 6z" fill="#fff" />
+            <path d="M128 24 L32 64 L32 144 C32 200 128 240 128 240 C128 240 224 200 224 144 L224 64 Z" fill="url(#jg-logo-gradient)" />
+            <path d="M128 72 C105.9 72 88 89.9 88 112 C88 126.8 96.1 139.8 108 146.5 L108 184 L148 184 L148 146.5 C159.9 139.8 168 126.8 168 112 C168 89.9 150.1 72 128 72 Z" fill="#FFFFFF" />
         </svg>
     </span>
 </div>

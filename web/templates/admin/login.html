@@ -19,8 +19,9 @@
             <div class="glass-card shadow-2xl p-8 relative border border-white/10 dark:border-white/5 rounded-3xl">
                 <div class="text-center mb-8">
                     <div class="w-14 h-14 mx-auto bg-gradient-to-br from-jg-accent-cyan to-jg-accent-emerald rounded-2xl flex items-center justify-center text-white mb-4 shadow-xl">
-                        <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 256 256">
+                            <path d="M128 24 L32 64 L32 144 C32 200 128 240 128 240 C128 240 224 200 224 144 L224 64 Z" />
+                            <path d="M128 72 C105.9 72 88 89.9 88 112 C88 126.8 96.1 139.8 108 146.5 L108 184 L148 184 L148 146.5 C159.9 139.8 168 126.8 168 112 C168 89.9 150.1 72 128 72 Z" fill="white" />
                         </svg>
                     </div>
                     <h1 class="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">JellyGate</h1>
@@ -121,8 +122,9 @@
         <div class="relative z-10 flex flex-col items-center max-w-md w-full text-center">
             
             <div class="mb-10 p-5 rounded-[2rem] bg-white/5 backdrop-blur-md border border-white/10 shadow-2xl">
-                <svg class="w-16 h-16 text-jg-accent drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                <svg class="w-16 h-16 text-jg-accent drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M128 24 L32 64 L32 144 C32 200 128 240 128 240 C128 240 224 200 224 144 L224 64 Z" />
+                    <path d="M128 72 C105.9 72 88 89.9 88 112 C88 126.8 96.1 139.8 108 146.5 L108 184 L148 184 L148 146.5 C159.9 139.8 168 126.8 168 112 C168 89.9 150.1 72 128 72 Z" fill="white" />
                 </svg>
             </div>
             
@@ -149,7 +151,7 @@
                 {{ if .Data.JellyseerrURL }}
                 <a href="{{ .Data.JellyseerrURL }}" target="_blank" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
                     <svg class="w-4 h-4 text-emerald-500 group-hover:-translate-y-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                    Req
+                    Jellyseerr
                 </a>
                 {{ end }}
                 {{ if .Data.JellyTrackURL }}

@@ -1716,9 +1716,16 @@ func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
 	fromDate := strings.TrimSpace(q.Get("from"))
 	toDate := strings.TrimSpace(q.Get("to"))
 	exportFmt := strings.ToLower(strings.TrimSpace(q.Get("export")))
+	category := strings.ToLower(strings.TrimSpace(q.Get("category")))
 
 	whereParts := make([]string, 0, 10)
 	args := make([]interface{}, 0, 20)
+
+	if category == "system" {
+		whereParts = append(whereParts, "(action LIKE 'admin.login.%' OR action LIKE 'task.%' OR action LIKE 'backup.%' OR action LIKE 'settings.%' OR action LIKE 'automation.%' OR action = 'users.sync' OR actor = 'system' OR actor = 'scheduler')")
+	} else if category == "app" {
+		whereParts = append(whereParts, "(action LIKE 'invite.%' OR (action LIKE 'user.%' AND action != 'users.sync') OR action LIKE 'reset.%' OR action LIKE 'admin.%' AND action NOT LIKE 'admin.login.%')")
+	}
 
 	if search != "" {
 		term := "%" + search + "%"
