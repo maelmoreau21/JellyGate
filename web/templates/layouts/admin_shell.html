@@ -12,8 +12,10 @@
     {{/* ── Mobile Header ────────────────────────────────────────────────── */}}
     <header class="jg-mobile-header lg:hidden jg-glass">
         <div class="flex items-center justify-between px-4 h-16">
-            <div class="flex items-center gap-3">
-                {{ template "logo" . }}
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 flex-shrink-0">
+                    {{ template "logo" . }}
+                </div>
                 <span class="font-bold text-lg tracking-tight">JellyGate</span>
             </div>
             <button id="mobile-menu-toggle" class="p-2 rounded-xl bg-white/5 text-jg-text-muted hover:text-jg-text transition-colors">
@@ -28,7 +30,9 @@
     <aside id="sidebar" class="jg-sidebar jg-glass border-r border-jg-border">
         <div class="jg-sidebar-inner flex flex-col h-full">
             <div class="jg-sidebar-header px-6 py-8 hidden lg:flex items-center gap-3">
-                {{ template "logo" . }}
+                <div class="w-8 h-8 flex-shrink-0">
+                    {{ template "logo" . }}
+                </div>
                 <span class="font-bold text-xl tracking-tight">JellyGate</span>
             </div>
 
