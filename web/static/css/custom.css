@@ -1509,6 +1509,28 @@ html:not(.dark) .jg-nav-item svg {
     width: fit-content;
 }
 
+/* Settings Tabs Visual Feedback */
+.jg-glass-tabs .tab-btn {
+    position: relative;
+}
+
+.jg-glass-tabs .tab-btn.active {
+    color: var(--jg-accent) !important;
+    border-bottom-color: var(--jg-accent) !important;
+    background: rgba(20, 184, 166, 0.05);
+}
+
+.jg-glass-tabs .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--jg-accent);
+    box-shadow: 0 0 10px var(--jg-accent);
+}
+
 .jg-tab-btn {
     padding: 0.6rem 1.25rem;
     border-radius: calc(var(--jg-radius-sm) - 4px);
@@ -2828,7 +2850,7 @@ html:not(.dark) .jg-select-trigger {
 }
 
 .jg-logo-mark {
-    filter: drop-shadow(0 4px 10px rgba(34, 211, 238, 0.2));
+    /* Removed drop-shadow to avoid blurriness at small sizes */
 }
 
 .jg-logo-play {

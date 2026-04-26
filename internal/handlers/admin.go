@@ -1724,7 +1724,7 @@ func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
 	if category == "system" {
 		whereParts = append(whereParts, "(action LIKE 'admin.login.%' OR action LIKE 'task.%' OR action LIKE 'backup.%' OR action LIKE 'settings.%' OR action LIKE 'automation.%' OR action = 'users.sync' OR actor = 'system' OR actor = 'scheduler')")
 	} else if category == "app" {
-		whereParts = append(whereParts, "(action LIKE 'invite.%' OR (action LIKE 'user.%' AND action != 'users.sync') OR action LIKE 'reset.%' OR action LIKE 'admin.%' AND action NOT LIKE 'admin.login.%')")
+		whereParts = append(whereParts, "( (action LIKE 'invite.%') OR (action LIKE 'user.%' AND action != 'users.sync') OR (action LIKE 'reset.%') OR (action LIKE 'email.%') OR (action LIKE 'auth.%' AND action != 'auth.login') )")
 	}
 
 	if search != "" {

@@ -387,9 +387,6 @@
         }
     }
 
-        }
-    }
-
     function updateActiveFilterCount() {
         const filters = ['filter-action', 'filter-actor', 'filter-result', 'filter-from', 'filter-to'];
         let count = 0;
