@@ -1,11 +1,20 @@
-[![Docker Build](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml)
-[![GHCR Image](https://img.shields.io/badge/GHCR-ghcr.io%2Fmaelmoreau21%2Fjellygate-blue?logo=github)](https://ghcr.io/maelmoreau21/jellygate)
+<p align="center">
+  <img src="logo.svg" width="128" height="128" alt="JellyGate Logo">
+</p>
 
 <h1 align="center">JellyGate</h1>
 
 <p align="center">
+  <a href="https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml"><img src="https://github.com/maelmoreau21/Jellygate/actions/workflows/docker-publish.yml/badge.svg" alt="Docker Build"></a>
+  <a href="https://ghcr.io/maelmoreau21/jellygate"><img src="https://img.shields.io/badge/GHCR-ghcr.io%2Fmaelmoreau21%2Fjellygate-blue?logo=github" alt="GHCR Image"></a>
+</p>
+
+<p align="center">
   <strong>Portail d'invitations, de récupération de mot de passe et de gestion d'utilisateurs pour Jellyfin, avec LDAP/Active Directory natif.</strong>
 </p>
+
+> [!IMPORTANT]
+> **Méthode recommandée :** L'installation via **Docker** est la méthode officielle et recommandée pour garantir la stabilité et la facilité de mise à jour.
 
 ## Vue d'ensemble
 
@@ -75,29 +84,30 @@ Tags publiés:
 
 Il n'y a plus de tags `sha-*`, `vX.Y` ou `vX`.
 
-## Démarrage rapide
+## Démarrage rapide (Docker)
 
-### 1. Prérequis
+L'utilisation de **Docker Compose** est le moyen le plus simple et recommandé pour déployer JellyGate.
 
-- Docker
-- une instance Jellyfin avec clé API admin
-- LDAP/Active Directory si tu utilises le mode annuaire
-- SMTP si tu veux les emails transactionnels
-
-### 2. Configuration
+### 1. Préparer l'environnement
 
 ```bash
-git clone https://github.com/maelmoreau21/JellyGate.git
-cd JellyGate
+mkdir jellygate && cd jellygate
+curl -O https://raw.githubusercontent.com/maelmoreau21/JellyGate/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/maelmoreau21/JellyGate/main/.env.example
 cp .env.example .env
 ```
 
-Variables minimales:
+### 2. Configuration
+
+Éditez le fichier `.env` avec vos paramètres :
 
 ```bash
-JELLYGATE_SECRET_KEY=...
-JELLYFIN_URL=http://jellyfin:8096
-JELLYFIN_API_KEY=...
+# Obligatoire : Clé secrète pour les sessions
+JELLYGATE_SECRET_KEY=générez_une_clé_aléatoire_ici
+
+# Jellyfin
+JELLYFIN_URL=http://votre-jellyfin:8096
+JELLYFIN_API_KEY=votre_clé_api_admin
 ```
 
 ### 3. Lancement
@@ -106,17 +116,16 @@ JELLYFIN_API_KEY=...
 docker compose up -d
 ```
 
-Pour PostgreSQL:
+Si vous préférez utiliser **PostgreSQL** au lieu de SQLite :
 
 ```bash
 docker compose -f docker-compose.postgres.yml up -d
 ```
 
-### 4. Connexion admin
+### 4. Accès
 
-1. ouvre `/admin/login`
-2. connecte-toi avec un compte Jellyfin administrateur
-3. JellyGate crée la session et charge la langue préférée utilisateur si elle existe
+Rendez-vous sur `http://localhost:8097/admin/login` et connectez-vous avec votre compte Jellyfin administrateur.
+JellyGate créera la session et chargera automatiquement votre langue préférée.
 
 ## Variables d'environnement utiles
 
