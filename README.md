@@ -13,24 +13,11 @@
   <strong>Portail d'invitations, de récupération de mot de passe et de gestion d'utilisateurs pour Jellyfin, avec LDAP/Active Directory natif.</strong>
 </p>
 
-> [!IMPORTANT]
-> **Méthode recommandée :** L'installation via **Docker** est la méthode officielle et recommandée pour garantir la stabilité, la sécurité et la facilité de mise à jour.
+---
 
-## Vue d'ensemble
+## 🚀 Installation (Méthode Recommandée : Docker)
 
-JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-hosted:
-
-- invitations avec quotas, expiration, profils et automatisation
-- création de comptes en mode hybride LDAP + Jellyfin ou LDAP only
-- récupération de mot de passe unifiée
-- administration web complète
-- notifications email et webhooks
-- audit logs exploitables et exportables
-- i18n pilotée par fichiers JSON avec vérification de cohérence en CI
-
-## Démarrage rapide (Docker)
-
-L'utilisation de **Docker Compose** est le moyen le plus simple et recommandé pour déployer JellyGate.
+L'utilisation de **Docker Compose** est le moyen le plus simple et recommandé pour déployer JellyGate. Cela garantit la stabilité, la sécurité et la facilité de mise à jour.
 
 ### 1. Préparer l'environnement
 
@@ -60,145 +47,64 @@ JELLYFIN_API_KEY=votre_clé_api_admin
 docker compose up -d
 ```
 
-Si vous préférez utiliser **PostgreSQL** au lieu de SQLite :
-
-```bash
-docker compose -f docker-compose.postgres.yml up -d
-```
+> [!TIP]
+> Si vous préférez utiliser **PostgreSQL** au lieu de SQLite, utilisez :
+> `docker compose -f docker-compose.postgres.yml up -d`
 
 ### 4. Accès
 
 Rendez-vous sur `http://localhost:8097/admin/login` et connectez-vous avec votre compte Jellyfin administrateur.
-JellyGate créera la session et chargera automatiquement votre langue préférée.
 
-## Fonctionnalités principales
+---
+
+## 🌟 Fonctionnalités principales
 
 | Domaine | Détail |
 |---|---|
-| Invitations | Liens uniques, expiration, quotas, groupe cible, preset Jellyfin, provisioning tiers |
-| Comptes | Création atomique LDAP + Jellyfin + SQL, rollback en cas d'échec |
-| Utilisateurs | Listing, toggle, suppression, synchronisation Jellyfin, profil utilisateur |
-| Reset mot de passe | Demande publique, lien/token, mise à jour Jellyfin + LDAP |
-| Sécurité | CSRF sur routes admin mutables, rate limiting, headers HTTP centralisés, cookies signés |
-| Audit | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
-| i18n | `web/i18n/*.json`, fallback `lang demandée -> en -> fr`, check CI |
-| Frontend | HTML, Tailwind build local, JS vanilla, CSS custom |
-| Intégrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, JellyTrack |
-| Base de données | SQLite par défaut, PostgreSQL supporté |
+| **Invitations** | Liens uniques, expiration, quotas, groupe cible, preset Jellyfin, provisioning tiers |
+| **Comptes** | Création atomique LDAP + Jellyfin + SQL, rollback en cas d'échec |
+| **Utilisateurs** | Listing, toggle, suppression, synchronisation Jellyfin, profil utilisateur |
+| **Reset mot de passe** | Demande publique, lien/token, mise à jour Jellyfin + LDAP |
+| **Sécurité** | CSRF, rate limiting, headers HTTP centralisés, cookies signés |
+| **Audit** | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
+| **i18n** | Système multilingue complet (`fr`, `en`, etc.) |
+| **Intégrations** | SMTP, Discord, Telegram, Matrix, Jellyseerr, JellyTrack |
 
-## Langues
+---
 
-Le changement de langue fonctionne selon cette priorité:
-
-1. cookie `lang`
-2. header `Accept-Language`
-3. paramètre global `default_lang`
-
-Le sélecteur est disponible dans l'interface admin et reste visible sur les pages publiques. Le moteur de rendu applique ensuite les traductions côté serveur sur chaque requête.
-
-Note: plusieurs locales non `fr`/`en` existent déjà, mais certaines chaînes restent encore proches de l'anglais dans les fichiers JSON. Le mécanisme fonctionne, mais la qualité de traduction dépend du contenu de chaque locale.
-
-## Sécurité actuellement en place
-
-- authentification admin déléguée à Jellyfin
-- session signée HMAC-SHA256
-- token CSRF pour les routes admin d'écriture
-- rate limiting mémoire sur `/admin/login`, `/invite/*`, `/reset/request`, `/reset/*`
-- headers `Content-Security-Policy`, `Strict-Transport-Security` quand HTTPS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`
-- journaux d'audit avec `request_id`
-
-Reste à durcir côté production:
-
-- cookies `Secure` derrière reverse proxy TLS non généralisés partout
-- secrets LDAP/SMTP/Webhooks encore stockés en clair dans `settings`
-- PostgreSQL TLS à imposer explicitement en prod
-
-## Docker et publication GHCR
-
-Le workflow GitHub Actions publie une image multi-arch pour:
-
-- `linux/amd64`
-- `linux/arm64`
-
-Tags publiés:
-
-- `latest` sur la branche par défaut
-- `vX.Y.Z` sur les tags Git semver
-
-Il n'y a plus de tags `sha-*`, `vX.Y` ou `vX`.
-
-
-## Variables d'environnement utiles
+## ⚙️ Variables d'environnement
 
 | Variable | Requis | Défaut | Description |
 |---|---|---|---|
 | `JELLYGATE_SECRET_KEY` | Oui | - | Clé de signature de session |
 | `JELLYGATE_PORT` | Non | `8097` | Port HTTP |
 | `JELLYGATE_BASE_URL` | Non | `http://localhost:8097` | URL publique |
-| `JELLYGATE_DATA_DIR` | Non | `/data` | Répertoire de persistance |
-| `JELLYGATE_DEFAULT_LANG` | Non | `fr` | Langue par défaut |
-| `JELLYGATE_TLS_CERT`     | Non | -    | Chemin vers le certificat TLS |
-| `JELLYGATE_TLS_KEY`      | Non | -    | Chemin vers la clé privée TLS |
-| `JELLYFIN_URL`           | Oui | -    | URL de Jellyfin |
-| `JELLYFIN_API_KEY`       | Oui | -    | Clé API Jellyfin |
-| `JELLYSEERR_URL`         | Non | -    | URL de Jellyseerr |
-| `JELLYSEERR_API_KEY`     | Non | -    | Clé API Jellyseerr |
-| `JELLYTRACK_URL`         | Non | -    | URL de JellyTrack |
-| `JELLYTRACK_API_KEY`     | Non | -    | Clé API JellyTrack |
+| `JELLYFIN_URL` | Oui | - | URL de Jellyfin |
+| `JELLYFIN_API_KEY` | Oui | - | Clé API Jellyfin |
 | `DB_TYPE` | Non | `sqlite` | `sqlite` ou `postgres` |
 
-LDAP, SMTP, webhooks et templates email se configurent ensuite depuis l'admin et sont stockés en base.
+> [!NOTE]
+> LDAP, SMTP, webhooks et templates email se configurent ensuite directement depuis l'interface d'administration.
 
-Guide LDAP detaille: [docs/ldap-setup.md](docs/ldap-setup.md)
+---
 
-## Structure du projet
+## 🌍 Langues
 
-```text
-cmd/
-  i18ncheck/         # Vérification i18n pour CI
-  i18ncoverage/      # Couverture de traduction (valeurs identiques à en)
-  jellygate/         # Entrée principale
-internal/
-  backup/
-  config/
-  database/
-  handlers/
-  integrations/
-  jellyfin/
-  ldap/
-  mail/
-  middleware/
-  notify/
-  render/
-  scheduler/
-  session/
-web/
-  i18n/
-  static/
-  templates/
-.github/workflows/
-```
+Le changement de langue est automatique selon la priorité : cookie `lang` > header `Accept-Language` > paramètre `default_lang`. Un sélecteur est également disponible dans l'interface.
 
-## Vérifications utiles
+---
+
+## 🛠️ Développement & Vérifications
 
 ```bash
-npm run build:css
-go build ./...
-go test ./...
-go run ./cmd/i18ncheck
-go run ./cmd/i18ncoverage
+npm run build:css     # Compiler Tailwind
+go build ./...        # Vérifier la compilation
+go test ./...         # Lancer les tests
+go run ./cmd/i18ncheck # Vérifier les traductions
 ```
 
-Le workflow `.github/workflows/i18n-quality.yml` exécute `i18ncheck` et `i18ncoverage`.
-Le seuil de blocage est piloté par la variable de dépôt `I18N_MAX_SAME_AS_BASE`.
-Par défaut, le workflow utilise le plafond de non-régression actuel (`195`) et il faut le baisser progressivement jusqu'à `0` à mesure que les locales sont nettoyées.
+---
 
-## Licence
+## 📄 Licence
 
-MIT
-
-## Mise à jour
-
-- Ajout de la prise en charge de PostgreSQL dans `docker-compose.postgres.yml`.
-- Instructions pour la configuration dans `.env.example`.
-- Amélioration des logs d'audit et des intégrations Jellyfin.
+Distribué sous licence **MIT**.
