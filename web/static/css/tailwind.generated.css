@@ -997,6 +997,12 @@
       border-color: color-mix(in oklab, var(--color-jg-accent) 20%, transparent);
     }
   }
+  .border-jg-accent\/40 {
+    border-color: color-mix(in srgb, #14b8a6 40%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-jg-accent) 40%, transparent);
+    }
+  }
   .border-jg-bg {
     border-color: var(--color-jg-bg);
   }
@@ -2680,6 +2686,11 @@
   .lg\:w-1\/2 {
     @media (width >= 64rem) {
       width: calc(1 / 2 * 100%);
+    }
+  }
+  .lg\:max-w-sm {
+    @media (width >= 64rem) {
+      max-width: var(--container-sm);
     }
   }
   .lg\:grid-cols-2 {

@@ -24,6 +24,7 @@ const (
 	SettingWebhooksConfig              = "webhooks_config"                // JSON: config.WebhooksConfig
 	SettingPortalLinks                 = "portal_links"                   // JSON: config.PortalLinksConfig
 	SettingEmailTemplates              = "email_templates"                // JSON: config.EmailTemplatesConfig
+	SettingEmailTemplatesByLang        = "email_templates_by_lang"        // JSON: map[lang]config.EmailTemplatesConfig
 	SettingBackupConfig                = "backup_config"                  // JSON: config.BackupConfig
 	SettingJellyfinPresets             = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
 	SettingGroupMappings               = "group_mappings"                 // JSON: []config.GroupPolicyMapping
@@ -355,7 +356,17 @@ func (db *DB) SetBackupLastRun(day string) error {
 // ── Emails Templates Config ─────────────────────────────────────────────────
 
 // GetEmailTemplatesConfig récupère la configuration des gabarits d'emails.
-func (db *DB) GetEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
+func normalizeEmailTemplatesConfig(cfg *config.EmailTemplatesConfig) {
+	if cfg == nil {
+		return
+	}
+	config.UpgradeLegacyEmailTemplates(cfg)
+	if cfg.ExpiryReminderDays < 1 || cfg.ExpiryReminderDays > 365 {
+		cfg.ExpiryReminderDays = 3
+	}
+}
+
+func (db *DB) getLegacyEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
 	cfg := config.DefaultEmailTemplates()
 
 	raw, err := db.GetSetting(SettingEmailTemplates)
@@ -368,29 +379,180 @@ func (db *DB) GetEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
 
 	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
 		slog.Warn("Erreur de parsing de la config EmailTemplates", "error", err)
-		return cfg, nil // Fallback silenceus sur defaults
+		return cfg, nil // Fallback silenceux sur defaults
 	}
 
-	config.UpgradeLegacyEmailTemplates(&cfg)
-
-	if cfg.ExpiryReminderDays < 1 || cfg.ExpiryReminderDays > 365 {
-		cfg.ExpiryReminderDays = 3
-	}
-
+	normalizeEmailTemplatesConfig(&cfg)
 	return cfg, nil
 }
 
-// SaveEmailTemplatesConfig sauvegarde la configuration des gabarits.
-func (db *DB) SaveEmailTemplatesConfig(cfg config.EmailTemplatesConfig) error {
-	if cfg.ExpiryReminderDays < 1 || cfg.ExpiryReminderDays > 365 {
-		cfg.ExpiryReminderDays = 3
+func parseEmailTemplatesByLanguage(raw string) (map[string]config.EmailTemplatesConfig, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return map[string]config.EmailTemplatesConfig{}, nil
 	}
 
-	data, err := json.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("SaveEmailTemplatesConfig marshal: %w", err)
+	entries := map[string]json.RawMessage{}
+	if err := json.Unmarshal([]byte(raw), &entries); err != nil {
+		var wrapped struct {
+			Templates map[string]json.RawMessage `json:"templates"`
+		}
+		if wrappedErr := json.Unmarshal([]byte(raw), &wrapped); wrappedErr != nil {
+			return nil, err
+		}
+		entries = wrapped.Templates
 	}
-	return db.SetSetting(SettingEmailTemplates, string(data))
+
+	result := make(map[string]config.EmailTemplatesConfig, len(entries))
+	for rawLang, payload := range entries {
+		lang := config.NormalizeLanguageTag(rawLang)
+		if !config.IsSupportedLanguage(lang) {
+			continue
+		}
+
+		cfg := config.DefaultEmailTemplates()
+		if len(payload) > 0 {
+			if err := json.Unmarshal(payload, &cfg); err != nil {
+				slog.Warn("Erreur parsing template e-mail par langue", "lang", rawLang, "error", err)
+				continue
+			}
+		}
+		normalizeEmailTemplatesConfig(&cfg)
+		result[lang] = cfg
+	}
+
+	return result, nil
+}
+
+// GetEmailTemplatesConfigByLanguage retourne tous les templates par langue
+// avec fallback compatible vers le stockage legacy.
+func (db *DB) GetEmailTemplatesConfigByLanguage() (map[string]config.EmailTemplatesConfig, error) {
+	defaultLang := db.GetDefaultLang()
+	legacyCfg, err := db.getLegacyEmailTemplatesConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	templates := map[string]config.EmailTemplatesConfig{
+		defaultLang: legacyCfg,
+	}
+
+	raw, err := db.GetSetting(SettingEmailTemplatesByLang)
+	if err != nil {
+		return templates, err
+	}
+	if strings.TrimSpace(raw) == "" {
+		return templates, nil
+	}
+
+	parsed, err := parseEmailTemplatesByLanguage(raw)
+	if err != nil {
+		slog.Warn("Erreur parsing email_templates_by_lang", "error", err)
+		return templates, nil
+	}
+	for lang, cfg := range parsed {
+		templates[lang] = cfg
+	}
+
+	if _, ok := templates[defaultLang]; !ok {
+		templates[defaultLang] = legacyCfg
+	}
+
+	return templates, nil
+}
+
+// GetEmailTemplatesConfigForLang retourne les templates pour la langue demandee
+// avec fallback sur la langue par defaut.
+func (db *DB) GetEmailTemplatesConfigForLang(lang string) (config.EmailTemplatesConfig, string, error) {
+	templates, err := db.GetEmailTemplatesConfigByLanguage()
+	defaultLang := db.GetDefaultLang()
+	if err != nil {
+		return config.DefaultEmailTemplates(), defaultLang, err
+	}
+
+	requested := config.NormalizeLanguageTag(lang)
+	if config.IsSupportedLanguage(requested) {
+		if cfg, ok := templates[requested]; ok {
+			return cfg, requested, nil
+		}
+	}
+
+	if cfg, ok := templates[defaultLang]; ok {
+		return cfg, defaultLang, nil
+	}
+	if cfg, ok := templates["en"]; ok {
+		return cfg, "en", nil
+	}
+	if cfg, ok := templates["fr"]; ok {
+		return cfg, "fr", nil
+	}
+	return config.DefaultEmailTemplates(), defaultLang, nil
+}
+
+// GetEmailTemplatesConfig retourne la configuration active de la langue par defaut.
+func (db *DB) GetEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
+	cfg, _, err := db.GetEmailTemplatesConfigForLang(db.GetDefaultLang())
+	return cfg, err
+}
+
+// SaveEmailTemplatesConfigByLanguage sauvegarde les templates par langue
+// et met a jour la cle legacy sur la langue par defaut.
+func (db *DB) SaveEmailTemplatesConfigByLanguage(values map[string]config.EmailTemplatesConfig) error {
+	normalized := make(map[string]config.EmailTemplatesConfig)
+	for rawLang, cfg := range values {
+		lang := config.NormalizeLanguageTag(rawLang)
+		if !config.IsSupportedLanguage(lang) {
+			continue
+		}
+		normalizeEmailTemplatesConfig(&cfg)
+		normalized[lang] = cfg
+	}
+
+	defaultLang := db.GetDefaultLang()
+	if _, ok := normalized[defaultLang]; !ok {
+		if fallback, okEn := normalized["en"]; okEn {
+			normalized[defaultLang] = fallback
+		} else if fallback, okFr := normalized["fr"]; okFr {
+			normalized[defaultLang] = fallback
+		} else {
+			normalized[defaultLang] = config.DefaultEmailTemplates()
+		}
+	}
+
+	payload, err := json.Marshal(normalized)
+	if err != nil {
+		return fmt.Errorf("SaveEmailTemplatesConfigByLanguage marshal: %w", err)
+	}
+	if err := db.SetSetting(SettingEmailTemplatesByLang, string(payload)); err != nil {
+		return err
+	}
+
+	legacyPayload, err := json.Marshal(normalized[defaultLang])
+	if err != nil {
+		return fmt.Errorf("SaveEmailTemplatesConfig legacy marshal: %w", err)
+	}
+	return db.SetSetting(SettingEmailTemplates, string(legacyPayload))
+}
+
+// SaveEmailTemplatesConfigForLang sauvegarde les templates pour une langue cible.
+func (db *DB) SaveEmailTemplatesConfigForLang(lang string, cfg config.EmailTemplatesConfig) error {
+	normalizedLang := config.NormalizeLanguageTag(lang)
+	if !config.IsSupportedLanguage(normalizedLang) {
+		normalizedLang = db.GetDefaultLang()
+	}
+
+	templates, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		return err
+	}
+	templates[normalizedLang] = cfg
+	return db.SaveEmailTemplatesConfigByLanguage(templates)
+}
+
+// SaveEmailTemplatesConfig sauvegarde la configuration des templates
+// sur la langue par defaut de l'instance.
+func (db *DB) SaveEmailTemplatesConfig(cfg config.EmailTemplatesConfig) error {
+	return db.SaveEmailTemplatesConfigForLang(db.GetDefaultLang(), cfg)
 }
 
 // ── Jellyfin Presets Config ───────────────────────────────────────────────

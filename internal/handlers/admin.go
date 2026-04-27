@@ -269,7 +269,10 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 		return nil
 	}
 
-	emailCfg, err := h.db.GetEmailTemplatesConfig()
+	emailCfg, _, err := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
+		PreferredLang: rec.PreferredLang,
+		GroupName:     rec.GroupName,
+	})
 	if err != nil {
 		return err
 	}
@@ -1628,6 +1631,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	td.Data["InviteInviterQuotaMonth"] = limits.QuotaMonth
 	td.Data["InviteDefaultDisableAfterDays"] = limits.UserExpiryDays
 	td.Data["InviteRequireEmail"] = inviteCfg.RequireEmail
+	td.Data["DefaultLang"] = h.db.GetDefaultLang()
 
 	if td.IsAdmin {
 		td.CanInvite = true
@@ -2705,7 +2709,13 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 		publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
 	}
 	resetURL := fmt.Sprintf("%s/reset/%s", publicBaseURL, token)
-	mailCfg, _ := h.db.GetEmailTemplatesConfig()
+	mailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
+		PreferredLang: rec.PreferredLang,
+		GroupName:     rec.GroupName,
+	})
+	if cfgErr != nil {
+		mailCfg = config.DefaultEmailTemplates()
+	}
 	tpl := mailCfg.PasswordReset
 	if tpl == "" {
 		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de rÃƒÂ©initialisation de mot de passe : {{.ResetLink}}"
@@ -3757,6 +3767,7 @@ type InvitationResponse struct {
 	ID              int64                  `json:"id"`
 	Code            string                 `json:"code"`
 	Label           string                 `json:"label"`
+	PreferredLang   string                 `json:"preferred_lang"`
 	MaxUses         int                    `json:"max_uses"`
 	UsedCount       int                    `json:"used_count"`
 	JellyfinProfile map[string]interface{} `json:"jellyfin_profile"`
@@ -4058,7 +4069,7 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 
 	// 2. RÃ©cupÃ©rer les donnÃ©es paginÃ©es
 	offset := (page - 1) * limit
-	query := fmt.Sprintf(`SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_at FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
+	query := fmt.Sprintf(`SELECT id, code, label, preferred_lang, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_at FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
 
 	queryArgs := append(args, limit, offset)
 	rows, err := h.db.Query(query, queryArgs...)
@@ -4072,12 +4083,12 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	var invs []InvitationResponse
 	for rows.Next() {
 		var i InvitationResponse
-		var label, profile, createdBy sql.NullString
+		var label, profile, createdBy, preferredLang sql.NullString
 		var rawExpiresAt interface{}
 		var rawCreatedAt interface{}
 
 		err := rows.Scan(
-			&i.ID, &i.Code, &label, &i.MaxUses, &i.UsedCount,
+			&i.ID, &i.Code, &label, &preferredLang, &i.MaxUses, &i.UsedCount,
 			&profile, &rawExpiresAt, &createdBy, &rawCreatedAt,
 		)
 		if err != nil {
@@ -4086,6 +4097,7 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		}
 
 		i.Label = label.String
+		i.PreferredLang = normalizeSupportedEmailLang(preferredLang.String)
 		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedBy = createdBy.String
 		i.CreatedAt = anyToDateString(rawCreatedAt)
@@ -4275,6 +4287,7 @@ func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
 // CreateInvitationRequest payload pour la crÃƒÂ©ation d'invitation
 type CreateInvitationRequest struct {
 	Label                  string   `json:"label"`
+	PreferredLang          string   `json:"preferred_lang"`
 	MaxUses                int      `json:"max_uses"`   // 0 = illimitÃƒÂ©
 	ExpiresAt              string   `json:"expires_at"` // Legacy: date prÃƒÂ©cise, exemple "2026-10-05T12:00"
 	ExpiresInDays          int      `json:"expires_in_days"`
@@ -4328,6 +4341,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	if req.DisableAfterDays < 0 {
 		req.DisableAfterDays = 0
 	}
+	req.PreferredLang = normalizeSupportedEmailLang(req.PreferredLang)
 
 	inviteCfg, err := h.db.GetInvitationProfileConfig()
 	if err != nil {
@@ -4645,9 +4659,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	profileJSON, _ := json.Marshal(jfProfile)
 
 	_, err = h.db.Exec(
-		`INSERT INTO invitations (code, label, max_uses, jellyfin_profile, expires_at, created_by)
-		 VALUES (?, ?, ?, ?, ?, ?)`,
-		code, req.Label, req.MaxUses, string(profileJSON), expiresAt, sess.Username,
+		`INSERT INTO invitations (code, label, max_uses, jellyfin_profile, preferred_lang, expires_at, created_by)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		code, req.Label, req.MaxUses, string(profileJSON), req.PreferredLang, expiresAt, sess.Username,
 	)
 
 	if err != nil {
@@ -4680,8 +4694,11 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				inviteeName = "invitÃƒÂ©"
 			}
 
-			go func(recipient, username, expiryDate, customBody string) {
-				emailCfg, _ := h.db.GetEmailTemplatesConfig()
+			go func(recipient, username, expiryDate, customBody, invitationLang string) {
+				emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, invitationLang, emailLanguageContext{})
+				if cfgErr != nil {
+					emailCfg = config.DefaultEmailTemplates()
+				}
 				sections := []string{emailCfg.Invitation}
 				if expiryDate != "" && !emailCfg.DisableInviteExpiryEmail {
 					sections = append(sections, emailCfg.InviteExpiry)
@@ -4722,7 +4739,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", recipient, "error", errMail)
 					_ = h.db.LogAction("invite.email.failed", sess.Username, code, errMail.Error())
 				}
-			}(sendToEmail, inviteeName, inviteExpiryDate, customMessage)
+			}(sendToEmail, inviteeName, inviteExpiryDate, customMessage, req.PreferredLang)
 		} else {
 			slog.Warn("Option e-mail cochÃƒÂ©e pour l'invitation, mais le serveur SMTP n'est pas configurÃƒÂ©.")
 		}

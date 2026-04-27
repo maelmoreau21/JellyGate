@@ -2,7 +2,8 @@
     const config = window.JGPageSettings || {};
     const i18n = config.i18n || {};
     let backupDatabaseType = 'sqlite';
-    let loadedEmailTemplates = {};
+    let loadedEmailTemplatesByLang = {};
+    let activeEmailTemplatesLang = '';
     let emailBaseDefaults = { header: '', footer: '' };
     let currentInvitationProfile = {};
     let currentLDAPConfig = {};
@@ -10,9 +11,66 @@
     let basePreviewRequestId = 0;
     const templateValidationTimers = new Map();
     const templateValidationRequestIds = new Map();
+    const emailLanguageOrder = ['fr', 'en', 'de', 'es', 'it', 'nl', 'pl', 'pt-br', 'ru', 'zh'];
 
     function t(key, fallback) {
         return i18n[key] || fallback || key;
+    }
+
+    function normalizeLangTag(raw) {
+        const value = String(raw || '').trim().toLowerCase().replace(/_/g, '-');
+        if (!value) {
+            return '';
+        }
+        if (value === 'pt' || value.startsWith('pt-')) {
+            return 'pt-br';
+        }
+        if (emailLanguageOrder.includes(value)) {
+            return value;
+        }
+        if (value.includes('-')) {
+            const base = value.split('-')[0];
+            if (base === 'pt') {
+                return 'pt-br';
+            }
+            if (emailLanguageOrder.includes(base)) {
+                return base;
+            }
+        }
+        return value;
+    }
+
+    function getEmailTemplateLanguageOptions() {
+        const source = document.getElementById('default-lang');
+        const byLang = new Map();
+        if (source) {
+            [...source.options].forEach((option) => {
+                const lang = normalizeLangTag(option.value);
+                if (!lang || !emailLanguageOrder.includes(lang)) {
+                    return;
+                }
+                if (!byLang.has(lang)) {
+                    byLang.set(lang, (option.textContent || option.value || '').trim() || lang);
+                }
+            });
+        }
+        emailLanguageOrder.forEach((lang) => {
+            if (!byLang.has(lang)) {
+                byLang.set(lang, lang);
+            }
+        });
+        return emailLanguageOrder.map((lang) => ({ value: lang, label: byLang.get(lang) || lang }));
+    }
+
+    function cloneEmailTemplateConfig(value) {
+        if (!value || typeof value !== 'object') {
+            return {};
+        }
+        try {
+            return JSON.parse(JSON.stringify(value));
+        } catch (_) {
+            return { ...value };
+        }
     }
 
     function emailTemplateKeyFromId(id) {
@@ -34,6 +92,7 @@
             { value: '{{.VerificationURL}}', label: t('settings_email_var_verification_link', 'email verification link') },
             { value: '{{.VerificationCode}}', label: t('settings_email_var_verification_code', 'email verification code') },
             { value: '{{.ExpiresIn}}', label: t('settings_email_var_expires_in', 'validity duration') },
+            { value: '{{.EmailLogoURL}}', label: t('settings_email_var_logo_url', 'email logo URL') },
             { value: '{{.ExpiryDate}}', label: t('settings_email_var_expiry_date', 'expiry date') },
             { value: '{{.JellyGateURL}}', label: t('settings_email_var_jellygate_url', 'public JellyGate URL') },
             { value: '{{.JellyfinURL}}', label: t('settings_email_var_jellyfin_url', 'Jellyfin login URL') },
@@ -213,6 +272,7 @@
                     JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
                     JellyGateURL: jellygateURL || 'https://jellygate.example.com',
                     HelpURL: jellyfinURL || 'https://jellyfin.example.com',
+                    EmailLogoURL: resolveEmailLogoPreviewURL(),
                 },
             }),
         });
@@ -260,6 +320,7 @@
                 JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
                 JellyGateURL: jellygateURL || 'https://jellygate.example.com',
                 HelpURL: jellyfinURL || 'https://jellyfin.example.com',
+                EmailLogoURL: resolveEmailLogoPreviewURL(),
             },
         };
     }
@@ -318,7 +379,229 @@
         scheduleBaseLivePreview();
     }
 
+    function resolveEmailLogoPreviewURL() {
+        const configured = (document.getElementById('tpl-email-logo-url')?.value || '').trim();
+        if (/^https?:\/\//i.test(configured)) {
+            return configured;
+        }
+
+        const path = configured || '/static/img/logos/jellygate.svg';
+        if (/^https?:\/\//i.test(path)) {
+            return path;
+        }
+
+        const baseURL = (document.getElementById('general-jellygate-url')?.value || '').trim() || window.location.origin;
+        if (!path.startsWith('/')) {
+            return `${String(baseURL).replace(/\/+$/, '')}/${path}`;
+        }
+        return `${String(baseURL).replace(/\/+$/, '')}${path}`;
+    }
+
+    function readEmailTemplateForm() {
+        const reminderDaysRaw = parseInt(document.getElementById('tpl-expiry-reminder-days').value, 10);
+        const reminderDays = Number.isInteger(reminderDaysRaw) ? reminderDaysRaw : 3;
+        const reminderTemplate = document.getElementById('tpl-expiry-reminder').value;
+
+        return {
+            base_template_header: document.getElementById('tpl-base-header').value,
+            base_template_footer: document.getElementById('tpl-base-footer').value,
+            email_logo_url: (document.getElementById('tpl-email-logo-url')?.value || '').trim(),
+            confirmation: document.getElementById('tpl-confirmation').value,
+            confirmation_subject: document.getElementById('tpl-confirmation-subject').value.trim(),
+            disable_confirmation_email: !document.getElementById('tpl-enable-confirmation-email').checked,
+            expiry_reminder: reminderTemplate,
+            expiry_reminder_subject: document.getElementById('tpl-expiry-reminder-subject').value.trim(),
+            disable_expiry_reminder_emails: !document.getElementById('tpl-enable-expiry-reminder-email').checked,
+            expiry_reminder_days: Math.max(1, Math.min(365, reminderDays)),
+            expiry_reminder_14: reminderTemplate,
+            expiry_reminder_7: reminderTemplate,
+            expiry_reminder_1: reminderTemplate,
+            invitation: document.getElementById('tpl-invitation').value,
+            invitation_subject: document.getElementById('tpl-invitation-subject').value.trim(),
+            invite_expiry: document.getElementById('tpl-invite-expiry').value,
+            invite_expiry_subject: document.getElementById('tpl-invite-expiry-subject').value.trim(),
+            disable_invite_expiry_email: !document.getElementById('tpl-enable-invite-expiry-email').checked,
+            password_reset: document.getElementById('tpl-password-reset').value,
+            password_reset_subject: document.getElementById('tpl-password-reset-subject').value.trim(),
+            email_verification: document.getElementById('tpl-email-verification').value,
+            email_verification_subject: document.getElementById('tpl-email-verification-subject').value.trim(),
+            pre_signup_help: '',
+            disable_pre_signup_help_email: true,
+            post_signup_help: '',
+            disable_post_signup_help_email: true,
+            user_creation: document.getElementById('tpl-user-creation').value,
+            user_creation_subject: document.getElementById('tpl-user-creation-subject').value.trim(),
+            disable_user_creation_email: !document.getElementById('tpl-enable-user-creation-email').checked,
+            user_deletion: document.getElementById('tpl-user-deletion').value,
+            user_deletion_subject: document.getElementById('tpl-user-deletion-subject').value.trim(),
+            disable_user_deletion_email: !document.getElementById('tpl-enable-user-deletion-email').checked,
+            user_disabled: document.getElementById('tpl-user-disabled').value,
+            user_disabled_subject: document.getElementById('tpl-user-disabled-subject').value.trim(),
+            disable_user_disabled_email: !document.getElementById('tpl-enable-user-disabled-email').checked,
+            user_enabled: document.getElementById('tpl-user-enabled').value,
+            user_enabled_subject: document.getElementById('tpl-user-enabled-subject').value.trim(),
+            disable_user_enabled_email: !document.getElementById('tpl-enable-user-enabled-email').checked,
+            user_expired: document.getElementById('tpl-user-expired').value,
+            user_expired_subject: document.getElementById('tpl-user-expired-subject').value.trim(),
+            disable_user_expired_email: !document.getElementById('tpl-enable-user-expired-email').checked,
+            expiry_adjusted: document.getElementById('tpl-expiry-adjusted').value,
+            expiry_adjusted_subject: document.getElementById('tpl-expiry-adjusted-subject').value.trim(),
+            disable_expiry_adjusted_email: !document.getElementById('tpl-enable-expiry-adjusted-email').checked,
+            welcome: document.getElementById('tpl-welcome').value,
+            welcome_subject: document.getElementById('tpl-welcome-subject').value.trim(),
+            disable_welcome_email: !document.getElementById('tpl-enable-welcome-email').checked,
+        };
+    }
+
+    function applyEmailTemplateForm(configValue) {
+        const value = configValue || {};
+        document.getElementById('tpl-base-header').value = value.base_template_header || '';
+        document.getElementById('tpl-base-footer').value = value.base_template_footer || '';
+        document.getElementById('tpl-email-logo-url').value = value.email_logo_url || '';
+        document.getElementById('tpl-confirmation').value = value.confirmation || '';
+        document.getElementById('tpl-confirmation-subject').value = value.confirmation_subject || '';
+        document.getElementById('tpl-enable-confirmation-email').checked = !value.disable_confirmation_email;
+        document.getElementById('tpl-expiry-reminder').value = value.expiry_reminder || '';
+        document.getElementById('tpl-expiry-reminder-subject').value = value.expiry_reminder_subject || '';
+        document.getElementById('tpl-enable-expiry-reminder-email').checked = !value.disable_expiry_reminder_emails;
+        document.getElementById('tpl-expiry-reminder-days').value = value.expiry_reminder_days || 3;
+        document.getElementById('tpl-invitation').value = value.invitation || '';
+        document.getElementById('tpl-invitation-subject').value = value.invitation_subject || '';
+        document.getElementById('tpl-invite-expiry').value = value.invite_expiry || '';
+        document.getElementById('tpl-invite-expiry-subject').value = value.invite_expiry_subject || '';
+        document.getElementById('tpl-enable-invite-expiry-email').checked = !value.disable_invite_expiry_email;
+        document.getElementById('tpl-password-reset').value = value.password_reset || '';
+        document.getElementById('tpl-password-reset-subject').value = value.password_reset_subject || '';
+        document.getElementById('tpl-email-verification').value = value.email_verification || '';
+        document.getElementById('tpl-email-verification-subject').value = value.email_verification_subject || '';
+        document.getElementById('tpl-user-creation').value = value.user_creation || '';
+        document.getElementById('tpl-user-creation-subject').value = value.user_creation_subject || '';
+        document.getElementById('tpl-enable-user-creation-email').checked = !value.disable_user_creation_email;
+        document.getElementById('tpl-user-deletion').value = value.user_deletion || '';
+        document.getElementById('tpl-user-deletion-subject').value = value.user_deletion_subject || '';
+        document.getElementById('tpl-enable-user-deletion-email').checked = !value.disable_user_deletion_email;
+        document.getElementById('tpl-user-disabled').value = value.user_disabled || '';
+        document.getElementById('tpl-user-disabled-subject').value = value.user_disabled_subject || '';
+        document.getElementById('tpl-enable-user-disabled-email').checked = !value.disable_user_disabled_email;
+        document.getElementById('tpl-user-enabled').value = value.user_enabled || '';
+        document.getElementById('tpl-user-enabled-subject').value = value.user_enabled_subject || '';
+        document.getElementById('tpl-enable-user-enabled-email').checked = !value.disable_user_enabled_email;
+        document.getElementById('tpl-user-expired').value = value.user_expired || '';
+        document.getElementById('tpl-user-expired-subject').value = value.user_expired_subject || '';
+        document.getElementById('tpl-enable-user-expired-email').checked = !value.disable_user_expired_email;
+        document.getElementById('tpl-expiry-adjusted').value = value.expiry_adjusted || '';
+        document.getElementById('tpl-expiry-adjusted-subject').value = value.expiry_adjusted_subject || '';
+        document.getElementById('tpl-enable-expiry-adjusted-email').checked = !value.disable_expiry_adjusted_email;
+        document.getElementById('tpl-welcome').value = value.welcome || '';
+        document.getElementById('tpl-welcome-subject').value = value.welcome_subject || '';
+        document.getElementById('tpl-enable-welcome-email').checked = !value.disable_welcome_email;
+    }
+
+    function storeActiveEmailTemplateDraft() {
+        if (!activeEmailTemplatesLang) {
+            return;
+        }
+        loadedEmailTemplatesByLang[activeEmailTemplatesLang] = cloneEmailTemplateConfig(readEmailTemplateForm());
+    }
+
+    function ensureEmailTemplateForLanguage(lang) {
+        const normalized = normalizeLangTag(lang);
+        if (!normalized) {
+            return '';
+        }
+        if (!loadedEmailTemplatesByLang[normalized]) {
+            const defaultLang = normalizeLangTag(document.getElementById('default-lang')?.value || '');
+            const seed = loadedEmailTemplatesByLang[defaultLang] || Object.values(loadedEmailTemplatesByLang)[0] || {};
+            loadedEmailTemplatesByLang[normalized] = cloneEmailTemplateConfig(seed);
+        }
+        return normalized;
+    }
+
+    function syncEmailTemplateLanguageControls() {
+        const select = document.getElementById('email-template-lang-select');
+        const tabs = document.querySelectorAll('#email-template-lang-tabs .email-template-lang-tab');
+        if (select && activeEmailTemplatesLang) {
+            select.value = activeEmailTemplatesLang;
+        }
+        tabs.forEach((tab) => {
+            const active = tab.dataset.lang === activeEmailTemplatesLang;
+            tab.classList.toggle('bg-jg-accent/20', active);
+            tab.classList.toggle('text-jg-accent', active);
+            tab.classList.toggle('border-jg-accent/40', active);
+            tab.classList.toggle('bg-black/20', !active);
+            tab.classList.toggle('text-slate-300', !active);
+            tab.classList.toggle('border-white/10', !active);
+        });
+    }
+
+    function switchEmailTemplatesLanguage(lang) {
+        const normalized = ensureEmailTemplateForLanguage(lang);
+        if (!normalized) {
+            return;
+        }
+        if (activeEmailTemplatesLang && activeEmailTemplatesLang !== normalized) {
+            storeActiveEmailTemplateDraft();
+        }
+        activeEmailTemplatesLang = normalized;
+        applyEmailTemplateForm(loadedEmailTemplatesByLang[activeEmailTemplatesLang]);
+        syncEmailTemplateLanguageControls();
+        document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]').forEach((area) => scheduleLiveTemplateValidation(area));
+        scheduleBaseLivePreview();
+    }
+
+    function renderEmailTemplateLanguageControls(defaultLang) {
+        const options = getEmailTemplateLanguageOptions();
+        const select = document.getElementById('email-template-lang-select');
+        const tabsContainer = document.getElementById('email-template-lang-tabs');
+        if (!select || !tabsContainer) {
+            return;
+        }
+
+        select.innerHTML = '';
+        options.forEach((option) => {
+            const opt = document.createElement('option');
+            opt.value = option.value;
+            opt.textContent = option.label;
+            select.appendChild(opt);
+        });
+
+        tabsContainer.innerHTML = '';
+        options.forEach((option) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.lang = option.value;
+            btn.className = 'email-template-lang-tab px-3 py-1.5 rounded-lg text-xs font-bold border transition-all bg-black/20 text-slate-300 border-white/10 hover:border-jg-accent/40';
+            btn.textContent = option.label;
+            tabsContainer.appendChild(btn);
+        });
+
+        if (!select.dataset.bound) {
+            select.dataset.bound = '1';
+            select.addEventListener('change', () => switchEmailTemplatesLanguage(select.value));
+        }
+        if (!tabsContainer.dataset.bound) {
+            tabsContainer.dataset.bound = '1';
+            tabsContainer.addEventListener('click', (event) => {
+                const tab = event.target.closest('.email-template-lang-tab');
+                if (!tab) {
+                    return;
+                }
+                switchEmailTemplatesLanguage(tab.dataset.lang || '');
+            });
+        }
+
+        const fallbackLang = normalizeLangTag(defaultLang) || options[0]?.value || 'fr';
+        if (!activeEmailTemplatesLang) {
+            activeEmailTemplatesLang = fallbackLang;
+        }
+        switchEmailTemplatesLanguage(activeEmailTemplatesLang);
+    }
+
     function switchTab(name) {
+        const emailPanel = document.getElementById('panel-email-templates');
+        if (emailPanel && !emailPanel.classList.contains('hidden')) {
+            storeActiveEmailTemplateDraft();
+        }
         document.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.add('hidden'));
         document.querySelectorAll('.tab-btn').forEach((button) => button.classList.remove('active'));
         document.getElementById(`panel-${name}`)?.classList.remove('hidden');
@@ -612,48 +895,26 @@
             footer: data.default_email_base_footer || '',
         };
 
-        if (data.email_templates) {
-            loadedEmailTemplates = { ...data.email_templates };
-            document.getElementById('tpl-base-header').value = data.email_templates.base_template_header || '';
-            document.getElementById('tpl-base-footer').value = data.email_templates.base_template_footer || '';
-            document.getElementById('tpl-confirmation').value = data.email_templates.confirmation || '';
-            document.getElementById('tpl-confirmation-subject').value = data.email_templates.confirmation_subject || '';
-            document.getElementById('tpl-enable-confirmation-email').checked = !data.email_templates.disable_confirmation_email;
-            document.getElementById('tpl-expiry-reminder').value = data.email_templates.expiry_reminder || '';
-            document.getElementById('tpl-expiry-reminder-subject').value = data.email_templates.expiry_reminder_subject || '';
-            document.getElementById('tpl-enable-expiry-reminder-email').checked = !data.email_templates.disable_expiry_reminder_emails;
-            document.getElementById('tpl-expiry-reminder-days').value = data.email_templates.expiry_reminder_days || 3;
-            document.getElementById('tpl-invitation').value = data.email_templates.invitation || '';
-            document.getElementById('tpl-invitation-subject').value = data.email_templates.invitation_subject || '';
-            document.getElementById('tpl-invite-expiry').value = data.email_templates.invite_expiry || '';
-            document.getElementById('tpl-invite-expiry-subject').value = data.email_templates.invite_expiry_subject || '';
-            document.getElementById('tpl-enable-invite-expiry-email').checked = !data.email_templates.disable_invite_expiry_email;
-            document.getElementById('tpl-password-reset').value = data.email_templates.password_reset || '';
-            document.getElementById('tpl-password-reset-subject').value = data.email_templates.password_reset_subject || '';
-            document.getElementById('tpl-email-verification').value = data.email_templates.email_verification || '';
-            document.getElementById('tpl-email-verification-subject').value = data.email_templates.email_verification_subject || '';
-            document.getElementById('tpl-user-creation').value = data.email_templates.user_creation || '';
-            document.getElementById('tpl-user-creation-subject').value = data.email_templates.user_creation_subject || '';
-            document.getElementById('tpl-enable-user-creation-email').checked = !data.email_templates.disable_user_creation_email;
-            document.getElementById('tpl-user-deletion').value = data.email_templates.user_deletion || '';
-            document.getElementById('tpl-user-deletion-subject').value = data.email_templates.user_deletion_subject || '';
-            document.getElementById('tpl-enable-user-deletion-email').checked = !data.email_templates.disable_user_deletion_email;
-            document.getElementById('tpl-user-disabled').value = data.email_templates.user_disabled || '';
-            document.getElementById('tpl-user-disabled-subject').value = data.email_templates.user_disabled_subject || '';
-            document.getElementById('tpl-enable-user-disabled-email').checked = !data.email_templates.disable_user_disabled_email;
-            document.getElementById('tpl-user-enabled').value = data.email_templates.user_enabled || '';
-            document.getElementById('tpl-user-enabled-subject').value = data.email_templates.user_enabled_subject || '';
-            document.getElementById('tpl-enable-user-enabled-email').checked = !data.email_templates.disable_user_enabled_email;
-            document.getElementById('tpl-user-expired').value = data.email_templates.user_expired || '';
-            document.getElementById('tpl-user-expired-subject').value = data.email_templates.user_expired_subject || '';
-            document.getElementById('tpl-enable-user-expired-email').checked = !data.email_templates.disable_user_expired_email;
-            document.getElementById('tpl-expiry-adjusted').value = data.email_templates.expiry_adjusted || '';
-            document.getElementById('tpl-expiry-adjusted-subject').value = data.email_templates.expiry_adjusted_subject || '';
-            document.getElementById('tpl-enable-expiry-adjusted-email').checked = !data.email_templates.disable_expiry_adjusted_email;
-            document.getElementById('tpl-welcome').value = data.email_templates.welcome || '';
-            document.getElementById('tpl-welcome-subject').value = data.email_templates.welcome_subject || '';
-            document.getElementById('tpl-enable-welcome-email').checked = !data.email_templates.disable_welcome_email;
+        loadedEmailTemplatesByLang = {};
+        const templatesByLang = data.email_templates_by_lang || {};
+        Object.entries(templatesByLang).forEach(([rawLang, value]) => {
+            const lang = normalizeLangTag(rawLang);
+            if (!lang || !emailLanguageOrder.includes(lang) || !value || typeof value !== 'object') {
+                return;
+            }
+            loadedEmailTemplatesByLang[lang] = cloneEmailTemplateConfig(value);
+        });
+
+        const defaultEmailLang = normalizeLangTag(data.default_lang || '') || 'fr';
+        if (Object.keys(loadedEmailTemplatesByLang).length === 0 && data.email_templates) {
+            loadedEmailTemplatesByLang[defaultEmailLang] = cloneEmailTemplateConfig(data.email_templates);
         }
+        if (!loadedEmailTemplatesByLang[defaultEmailLang] && data.email_templates) {
+            loadedEmailTemplatesByLang[defaultEmailLang] = cloneEmailTemplateConfig(data.email_templates);
+        }
+
+        activeEmailTemplatesLang = defaultEmailLang;
+        renderEmailTemplateLanguageControls(defaultEmailLang);
 
         await requestBasePreview(document.getElementById('tpl-base-live-preview-frame'), { showLoading: true });
     }
@@ -712,58 +973,16 @@
                 },
             };
         } else if (section === 'email-templates') {
-            const reminderDaysRaw = parseInt(document.getElementById('tpl-expiry-reminder-days').value, 10);
-            const reminderDays = Number.isInteger(reminderDaysRaw) ? reminderDaysRaw : 3;
-            const reminderTemplate = document.getElementById('tpl-expiry-reminder').value;
+            storeActiveEmailTemplateDraft();
+            if (!activeEmailTemplatesLang) {
+                activeEmailTemplatesLang = normalizeLangTag(document.getElementById('default-lang')?.value || '') || 'fr';
+            }
+            if (!loadedEmailTemplatesByLang[activeEmailTemplatesLang]) {
+                loadedEmailTemplatesByLang[activeEmailTemplatesLang] = cloneEmailTemplateConfig(readEmailTemplateForm());
+            }
             body = {
-                base_template_header: document.getElementById('tpl-base-header').value,
-                base_template_footer: document.getElementById('tpl-base-footer').value,
-                confirmation: document.getElementById('tpl-confirmation').value,
-                confirmation_subject: document.getElementById('tpl-confirmation-subject').value.trim(),
-                disable_confirmation_email: !document.getElementById('tpl-enable-confirmation-email').checked,
-                email_verification_subject: loadedEmailTemplates.email_verification_subject || '',
-                email_verification: loadedEmailTemplates.email_verification || '',
-                expiry_reminder: reminderTemplate,
-                expiry_reminder_subject: document.getElementById('tpl-expiry-reminder-subject').value.trim(),
-                disable_expiry_reminder_emails: !document.getElementById('tpl-enable-expiry-reminder-email').checked,
-                expiry_reminder_days: Math.max(1, Math.min(365, reminderDays)),
-                expiry_reminder_14: reminderTemplate,
-                expiry_reminder_7: reminderTemplate,
-                expiry_reminder_1: reminderTemplate,
-                invitation: document.getElementById('tpl-invitation').value,
-                invitation_subject: document.getElementById('tpl-invitation-subject').value.trim(),
-                invite_expiry: document.getElementById('tpl-invite-expiry').value,
-                invite_expiry_subject: document.getElementById('tpl-invite-expiry-subject').value.trim(),
-                disable_invite_expiry_email: !document.getElementById('tpl-enable-invite-expiry-email').checked,
-                password_reset: document.getElementById('tpl-password-reset').value,
-                password_reset_subject: document.getElementById('tpl-password-reset-subject').value.trim(),
-                email_verification: document.getElementById('tpl-email-verification').value,
-                email_verification_subject: document.getElementById('tpl-email-verification-subject').value.trim(),
-                pre_signup_help: '',
-                disable_pre_signup_help_email: true,
-                post_signup_help: '',
-                disable_post_signup_help_email: true,
-                user_creation: document.getElementById('tpl-user-creation').value,
-                user_creation_subject: document.getElementById('tpl-user-creation-subject').value.trim(),
-                disable_user_creation_email: !document.getElementById('tpl-enable-user-creation-email').checked,
-                user_deletion: document.getElementById('tpl-user-deletion').value,
-                user_deletion_subject: document.getElementById('tpl-user-deletion-subject').value.trim(),
-                disable_user_deletion_email: !document.getElementById('tpl-enable-user-deletion-email').checked,
-                user_disabled: document.getElementById('tpl-user-disabled').value,
-                user_disabled_subject: document.getElementById('tpl-user-disabled-subject').value.trim(),
-                disable_user_disabled_email: !document.getElementById('tpl-enable-user-disabled-email').checked,
-                user_enabled: document.getElementById('tpl-user-enabled').value,
-                user_enabled_subject: document.getElementById('tpl-user-enabled-subject').value.trim(),
-                disable_user_enabled_email: !document.getElementById('tpl-enable-user-enabled-email').checked,
-                user_expired: document.getElementById('tpl-user-expired').value,
-                user_expired_subject: document.getElementById('tpl-user-expired-subject').value.trim(),
-                disable_user_expired_email: !document.getElementById('tpl-enable-user-expired-email').checked,
-                expiry_adjusted: document.getElementById('tpl-expiry-adjusted').value,
-                expiry_adjusted_subject: document.getElementById('tpl-expiry-adjusted-subject').value.trim(),
-                disable_expiry_adjusted_email: !document.getElementById('tpl-enable-expiry-adjusted-email').checked,
-                welcome: document.getElementById('tpl-welcome').value,
-                welcome_subject: document.getElementById('tpl-welcome-subject').value.trim(),
-                disable_welcome_email: !document.getElementById('tpl-enable-welcome-email').checked,
+                language: activeEmailTemplatesLang,
+                templates_by_lang: loadedEmailTemplatesByLang,
             };
         } else if (section === 'backup') {
             const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
@@ -834,6 +1053,7 @@
                     JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
                     JellyGateURL: jellygateURL || 'https://jellygate.example.com',
                     HelpURL: jellyfinURL || 'https://jellyfin.example.com',
+                    EmailLogoURL: resolveEmailLogoPreviewURL(),
                 },
             }),
         });
@@ -912,7 +1132,8 @@
 
         const baseHeader = document.getElementById('tpl-base-header');
         const baseFooter = document.getElementById('tpl-base-footer');
-        [baseHeader, baseFooter].forEach((field) => {
+        const logoField = document.getElementById('tpl-email-logo-url');
+        [baseHeader, baseFooter, logoField].forEach((field) => {
             if (field && !field.dataset.livePreviewBound) {
                 field.dataset.livePreviewBound = '1';
                 field.addEventListener('input', scheduleBaseLivePreview);

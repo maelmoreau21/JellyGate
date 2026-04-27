@@ -69,8 +69,11 @@ func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
 	return buf.String(), nil
 }
 
-func resolveEmailLogoURL(data map[string]string) string {
-	logoPath := "/static/img/logos/jellygate.svg"
+func resolveEmailLogoURL(data map[string]string, configuredLogo string) string {
+	logoPath := strings.TrimSpace(configuredLogo)
+	if logoPath == "" {
+		logoPath = "/static/img/logos/jellygate.svg"
+	}
 	if data == nil {
 		return logoPath
 	}
@@ -109,7 +112,7 @@ func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, templateKey, tpl
 	if data == nil {
 		data = map[string]string{}
 	}
-	data["EmailLogoURL"] = resolveEmailLogoURL(data)
+	data["EmailLogoURL"] = resolveEmailLogoURL(data, emailCfg.EmailLogoURL)
 	renderedSubject, err := renderInlineTemplate(subject, data)
 	if err != nil {
 		return err

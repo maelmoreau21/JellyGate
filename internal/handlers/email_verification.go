@@ -29,6 +29,8 @@ type emailVerificationTarget struct {
 	Username           string
 	Email              string
 	PendingEmail       string
+	PreferredLang      string
+	GroupName          string
 	EmailVerified      bool
 	VerificationSentAt sql.NullString
 }
@@ -67,18 +69,20 @@ func defaultEmailVerificationSubject() string {
 
 func loadEmailVerificationTarget(db *database.DB, userID int64) (*emailVerificationTarget, error) {
 	var target emailVerificationTarget
-	var email, pendingEmail sql.NullString
+	var email, pendingEmail, preferredLang, groupName sql.NullString
 	err := db.QueryRow(
-		`SELECT id, username, email, pending_email, email_verified, email_verification_sent_at
+		`SELECT id, username, email, pending_email, preferred_lang, group_name, email_verified, email_verification_sent_at
 		 FROM users
 		 WHERE id = ?`,
 		userID,
-	).Scan(&target.UserID, &target.Username, &email, &pendingEmail, &target.EmailVerified, &target.VerificationSentAt)
+	).Scan(&target.UserID, &target.Username, &email, &pendingEmail, &preferredLang, &groupName, &target.EmailVerified, &target.VerificationSentAt)
 	if err != nil {
 		return nil, err
 	}
 	target.Email = strings.TrimSpace(email.String)
 	target.PendingEmail = strings.TrimSpace(pendingEmail.String)
+	target.PreferredLang = strings.TrimSpace(preferredLang.String)
+	target.GroupName = strings.TrimSpace(groupName.String)
 	return &target, nil
 }
 
@@ -117,7 +121,7 @@ func canResendVerification(target *emailVerificationTarget) (bool, time.Duration
 	return false, remaining
 }
 
-func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *mail.Mailer, username, address, token string) error {
+func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *mail.Mailer, username, address, token, invitationLang string, langCtx emailLanguageContext) error {
 	if mailer == nil {
 		return fmt.Errorf("SMTP non configurÃƒÂ©")
 	}
@@ -146,15 +150,15 @@ func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *
 
 	templateBody := defaultEmailVerificationTemplate()
 	templateSubject := defaultEmailVerificationSubject()
-	emailCfg := config.DefaultEmailTemplates()
-	if savedEmailCfg, cfgErr := db.GetEmailTemplatesConfig(); cfgErr == nil {
-		emailCfg = savedEmailCfg
-		if strings.TrimSpace(emailCfg.EmailVerification) != "" {
-			templateBody = emailCfg.EmailVerification
-		}
-		if strings.TrimSpace(emailCfg.EmailVerificationSubject) != "" {
-			templateSubject = emailCfg.EmailVerificationSubject
-		}
+	emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(db, invitationLang, langCtx)
+	if cfgErr != nil {
+		emailCfg = config.DefaultEmailTemplates()
+	}
+	if strings.TrimSpace(emailCfg.EmailVerification) != "" {
+		templateBody = emailCfg.EmailVerification
+	}
+	if strings.TrimSpace(emailCfg.EmailVerificationSubject) != "" {
+		templateSubject = emailCfg.EmailVerificationSubject
 	}
 
 	if err := sendTemplateIfConfigured(mailer, address, templateSubject, "email_verification", templateBody, emailCfg, emailData); err != nil {
@@ -235,7 +239,11 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 		return fmt.Errorf("validation verification email: %w", err)
 	}
 
-	if err := sendVerificationEmailTemplate(cfg, db, mailer, target.Username, address, token); err != nil {
+	langCtx := emailLanguageContext{
+		PreferredLang: target.PreferredLang,
+		GroupName:     target.GroupName,
+	}
+	if err := sendVerificationEmailTemplate(cfg, db, mailer, target.Username, address, token, "", langCtx); err != nil {
 		return err
 	}
 

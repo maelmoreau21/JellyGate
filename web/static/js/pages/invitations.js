@@ -15,6 +15,19 @@
     const inviterQuotaMonth = Number(config.inviterQuotaMonth || 0);
     const limitUserExpiryDays = Number(config.limitUserExpiryDays || 0);
     const defaultDisableAfterDays = Number(config.defaultDisableAfterDays || 0);
+    const defaultLang = normalizeLangTag(config.defaultLang || 'fr') || 'fr';
+
+    function normalizeLangTag(raw) {
+        const value = String(raw || '').trim().toLowerCase().replace(/_/g, '-');
+        if (!value) return '';
+        if (value === 'pt' || value.startsWith('pt-')) return 'pt-br';
+        if (value.includes('-')) {
+            const base = value.split('-')[0];
+            if (base === 'pt') return 'pt-br';
+            if (base) return base;
+        }
+        return value;
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         let currentPage = 1;
@@ -185,6 +198,12 @@
                 }
             }
 
+            const preferredLangInput = document.getElementById('inv-preferred-lang');
+            if (preferredLangInput) {
+                const resolved = defaultLang || 'fr';
+                preferredLangInput.value = preferredLangInput.querySelector(`option[value="${resolved}"]`) ? resolved : '';
+            }
+
             updateForcedUsernameState();
         }
 
@@ -302,6 +321,7 @@
                 const deleteLabel = profile.delete_after_days > 0 ? fmt(i18n.deleteAfterDays, { n: profile.delete_after_days }) : i18n.noDeletePlanned;
                 const roleLabel = profile.can_invite ? i18n.roleCanInvite : i18n.roleStandard;
                 const groupLabel = profile.group_name ? fmt(i18n.groupPrefix, { group: profile.group_name }) : i18n.groupDefault;
+                const inviteLang = normalizeLangTag(invitation.preferred_lang || '') || defaultLang;
                 
                 const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
                 const badge = isOver 
@@ -321,7 +341,7 @@
                     <td class="px-6 py-4 text-xs font-bold text-jg-text-muted uppercase tracking-widest">${expDate}</td>
                     <td class="px-6 py-4 border-l border-jg-border">
                         <div class="font-bold text-jg-text">${JG.esc(expiryLabel)} · <span class="text-jg-accent">${JG.esc(roleLabel)}</span></div>
-                        <div class="text-[10px] text-jg-text-muted uppercase tracking-wider mt-1">${JG.esc(deleteLabel)} · ${JG.esc(groupLabel)}</div>
+                        <div class="text-[10px] text-jg-text-muted uppercase tracking-wider mt-1">${JG.esc(deleteLabel)} | ${JG.esc(groupLabel)} | LANG: ${JG.esc(String(inviteLang).toUpperCase())}</div>
                     </td>
                     <td class="px-6 py-4 text-xs font-bold text-jg-text-muted uppercase tracking-widest">${JG.esc(invitation.created_by || 'System')}</td>
                     <td class="px-6 py-4 text-right">
@@ -346,6 +366,7 @@
             const canInviteInput = document.getElementById('inv-new-user-can-invite');
             const forcedUserInput = document.getElementById('inv-forced-user');
             const emailInput = document.getElementById('inv-email');
+            const preferredLangInput = document.getElementById('inv-preferred-lang');
             const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
             const ignoreUserInput = document.getElementById('inv-ignore-user-expiry-limit');
 
@@ -357,6 +378,7 @@
             const forcedUsername = (forcedUserInput?.value || '').trim();
             const ignorePresetLinkExpiry = !!(ignoreLinkInput && !ignoreLinkInput.disabled && ignoreLinkInput.checked);
             const ignorePresetUserExpiry = !!(ignoreUserInput && !ignoreUserInput.disabled && ignoreUserInput.checked);
+            const preferredLang = normalizeLangTag(preferredLangInput?.value || '');
 
             if (!isAdmin && maxUses <= 0) {
                 btn.disabled = false;
@@ -406,6 +428,7 @@
                 new_user_can_invite: grantInvite,
                 forced_username: forcedUsername,
                 send_to_email: (emailInput?.value || '').trim(),
+                preferred_lang: preferredLang,
             };
 
             const res = await JG.api('/admin/api/invitations', { method: 'POST', body: JSON.stringify(data) });

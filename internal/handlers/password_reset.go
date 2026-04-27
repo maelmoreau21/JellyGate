@@ -66,6 +66,8 @@ type userRecord struct {
 	Email      string
 	JellyfinID string
 	LdapDN     string
+	PreferredLang string
+	GroupName     string
 }
 
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ Password Reset Handler Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
@@ -218,7 +220,13 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		"JellyTrackURL": links.JellyTrackURL,
 	}
 
-	emailCfg, _ := h.db.GetEmailTemplatesConfig()
+	emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
+		PreferredLang: user.PreferredLang,
+		GroupName:     user.GroupName,
+	})
+	if cfgErr != nil {
+		emailCfg = config.DefaultEmailTemplates()
+	}
 	tpl := emailCfg.PasswordReset
 	if tpl == "" {
 		tpl = "Bonjour {{.Username}},\n\nVoici le lien pour rÃƒÂ©initialiser votre mot de passe : {{.ResetURL}}"
@@ -399,15 +407,15 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 // findUserByIdentifier recherche un utilisateur par email ou username dans SQLite.
 func (h *PasswordResetHandler) findUserByIdentifier(identifier string) (*userRecord, error) {
 	var user userRecord
-	var jellyfinID, email, ldapDN sql.NullString
+	var jellyfinID, email, ldapDN, preferredLang, groupName sql.NullString
 
 	err := h.db.QueryRow(
-		`SELECT id, username, email, jellyfin_id, ldap_dn
+		`SELECT id, username, email, jellyfin_id, ldap_dn, preferred_lang, group_name
 		 FROM users
 		 WHERE username = ? OR email = ?
 		 LIMIT 1`,
 		identifier, identifier,
-	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN)
+	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN, &preferredLang, &groupName)
 
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("aucun utilisateur trouvÃƒÂ© pour %q", identifier)
@@ -419,6 +427,8 @@ func (h *PasswordResetHandler) findUserByIdentifier(identifier string) (*userRec
 	user.Email = email.String
 	user.JellyfinID = jellyfinID.String
 	user.LdapDN = ldapDN.String
+	user.PreferredLang = strings.TrimSpace(preferredLang.String)
+	user.GroupName = strings.TrimSpace(groupName.String)
 
 	return &user, nil
 }
@@ -466,12 +476,12 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 
 	// RÃƒÂ©cupÃƒÂ©rer l'utilisateur associÃƒÂ©
 	var user userRecord
-	var jellyfinID, email, ldapDN sql.NullString
+	var jellyfinID, email, ldapDN, preferredLang, groupName sql.NullString
 
 	err = h.db.QueryRow(
-		`SELECT id, username, email, jellyfin_id, ldap_dn FROM users WHERE id = ?`,
+		`SELECT id, username, email, jellyfin_id, ldap_dn, preferred_lang, group_name FROM users WHERE id = ?`,
 		rec.UserID,
-	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN)
+	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN, &preferredLang, &groupName)
 
 	if err != nil {
 		return nil, nil, fmt.Errorf("utilisateur associÃƒÂ© au token introuvable: %w", err)
@@ -480,6 +490,8 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 	user.Email = email.String
 	user.JellyfinID = jellyfinID.String
 	user.LdapDN = ldapDN.String
+	user.PreferredLang = strings.TrimSpace(preferredLang.String)
+	user.GroupName = strings.TrimSpace(groupName.String)
 
 	return &rec, &user, nil
 }

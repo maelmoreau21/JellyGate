@@ -462,6 +462,7 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_action TEXT NOT NULL DEFAULT 'disable'`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN expired_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN preferred_lang TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN preset_id TEXT`) // NEW
 		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN used BOOLEAN NOT NULL DEFAULT 0`)
@@ -485,6 +486,7 @@ func (db *DB) migrate() error {
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_action TEXT NOT NULL DEFAULT 'disable'`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS expiry_delete_after_days INTEGER NOT NULL DEFAULT 0`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS expired_at TIMESTAMPTZ`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS preferred_lang TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS preset_id TEXT`,
 			`ALTER TABLE pending_invite_signups ADD COLUMN IF NOT EXISTS used BOOLEAN NOT NULL DEFAULT FALSE`,
@@ -622,6 +624,7 @@ func (db *DB) sqliteMigrations() []migration {
 				max_uses         INTEGER NOT NULL DEFAULT 1,
 				used_count       INTEGER NOT NULL DEFAULT 0,
 				jellyfin_profile TEXT,
+				preferred_lang   TEXT    NOT NULL DEFAULT '',
 				expires_at       DATETIME,
 				created_by       TEXT,
 				created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -809,6 +812,7 @@ func (db *DB) postgresMigrations() []migration {
 				max_uses         INTEGER NOT NULL DEFAULT 1,
 				used_count       INTEGER NOT NULL DEFAULT 0,
 				jellyfin_profile TEXT,
+				preferred_lang   TEXT NOT NULL DEFAULT '',
 				expires_at       TIMESTAMPTZ,
 				created_by       TEXT,
 				created_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -161,7 +161,14 @@ func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invi
 		return fmt.Errorf("validation invitation en attente: %w", err)
 	}
 
-	if err := sendVerificationEmailTemplate(h.cfg, h.db, h.mailer, form.Username, form.Email, token); err != nil {
+	langCtx := emailLanguageContext{}
+	if strings.TrimSpace(inv.JellyfinProfile) != "" {
+		var inviteProfile jellyfin.InviteProfile
+		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &inviteProfile); err == nil {
+			langCtx.GroupName = strings.TrimSpace(inviteProfile.GroupName)
+		}
+	}
+	if err := sendVerificationEmailTemplate(h.cfg, h.db, h.mailer, form.Username, form.Email, token, strings.TrimSpace(inv.PreferredLang), langCtx); err != nil {
 		_, _ = h.db.Exec(`DELETE FROM pending_invite_signups WHERE code = ?`, token)
 		return err
 	}

@@ -448,6 +448,17 @@
           
         </div>
 
+        <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
+          <div class="flex flex-col lg:flex-row lg:items-center gap-4">
+            <div class="w-full lg:max-w-sm">
+              <label class="jg-label" for="email-template-lang-select">Langue des modèles</label>
+              <select id="email-template-lang-select" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11"></select>
+            </div>
+            <div id="email-template-lang-tabs" class="flex flex-wrap gap-2"></div>
+          </div>
+          <p class="text-xs text-slate-400 mt-3">Chaque langue possède sa propre version des sujets et contenus e-mail.</p>
+        </div>
+
         <details class="settings-collapsible mb-6">
           <summary>{{ .T "settings_email_base_variables_title" }}</summary>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 text-xs text-slate-600 dark:text-slate-300 mt-4">
@@ -473,6 +484,12 @@
         <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
           <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_base_title" }}</h3>
           
+          <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
+            <label class="jg-label" for="tpl-email-logo-url">Logo dans l’en-tête e-mail (URL)</label>
+            <input type="text" id="tpl-email-logo-url" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="https://example.com/logo.png">
+            <p class="text-xs text-slate-400 mt-2">Laisser vide pour utiliser automatiquement <code>/static/img/logos/jellygate.svg</code>.</p>
+          </div>
+
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
               <label class="jg-label" for="tpl-base-header">{{ .T "settings_email_base_header" }}</label>

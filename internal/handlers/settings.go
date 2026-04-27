@@ -312,18 +312,19 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
-	DefaultLang            string                         `json:"default_lang"`
-	DatabaseType           string                         `json:"database_type"`
-	BackupSQLiteOnly       bool                           `json:"backup_sqlite_only"`
-	DefaultEmailBaseHeader string                         `json:"default_email_base_header"`
-	DefaultEmailBaseFooter string                         `json:"default_email_base_footer"`
-	PortalLinks            config.PortalLinksConfig       `json:"portal_links"`
-	InvitationProfile      config.InvitationProfileConfig `json:"invitation_profile"`
-	LDAP                   config.LDAPConfig              `json:"ldap"`
-	SMTP                   config.SMTPConfig              `json:"smtp"`
-	Webhooks               config.WebhooksConfig          `json:"webhooks"`
-	Backup                 config.BackupConfig            `json:"backup"`
-	EmailTemplates         config.EmailTemplatesConfig    `json:"email_templates"`
+	DefaultLang            string                                 `json:"default_lang"`
+	DatabaseType           string                                 `json:"database_type"`
+	BackupSQLiteOnly       bool                                   `json:"backup_sqlite_only"`
+	DefaultEmailBaseHeader string                                 `json:"default_email_base_header"`
+	DefaultEmailBaseFooter string                                 `json:"default_email_base_footer"`
+	PortalLinks            config.PortalLinksConfig               `json:"portal_links"`
+	InvitationProfile      config.InvitationProfileConfig         `json:"invitation_profile"`
+	LDAP                   config.LDAPConfig                      `json:"ldap"`
+	SMTP                   config.SMTPConfig                      `json:"smtp"`
+	Webhooks               config.WebhooksConfig                  `json:"webhooks"`
+	Backup                 config.BackupConfig                    `json:"backup"`
+	EmailTemplates         config.EmailTemplatesConfig            `json:"email_templates"`
+	EmailTemplatesByLang   map[string]config.EmailTemplatesConfig `json:"email_templates_by_lang"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
@@ -393,6 +394,26 @@ func trimEmailTemplateSubjects(cfg *config.EmailTemplatesConfig) {
 	cfg.UserExpiredSubject = strings.TrimSpace(cfg.UserExpiredSubject)
 	cfg.ExpiryAdjustedSubject = strings.TrimSpace(cfg.ExpiryAdjustedSubject)
 	cfg.WelcomeSubject = strings.TrimSpace(cfg.WelcomeSubject)
+}
+
+func sanitizeEmailTemplatesInput(cfg *config.EmailTemplatesConfig) error {
+	if cfg == nil {
+		return fmt.Errorf("configuration email vide")
+	}
+	if cfg.ExpiryReminderDays == 0 {
+		cfg.ExpiryReminderDays = 3
+	}
+	normalizeEmailBaseTemplates(cfg)
+	normalizeEmailTemplateBodies(cfg)
+	trimEmailTemplateSubjects(cfg)
+	cfg.PreSignupHelp = ""
+	cfg.DisablePreSignupHelpEmail = true
+	cfg.PostSignupHelp = ""
+	cfg.DisablePostSignupHelpEmail = true
+	if cfg.ExpiryReminderDays < 1 || cfg.ExpiryReminderDays > 365 {
+		return fmt.Errorf("expiry_reminder_days doit etre entre 1 et 365")
+	}
+	return nil
 }
 
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /admin/api/settings Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
@@ -475,12 +496,23 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		maskedSMTP.Password = "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
 	}
 
-	emailTemplatesCfg, err := h.db.GetEmailTemplatesConfig()
+	emailTemplatesByLang, err := h.db.GetEmailTemplatesConfigByLanguage()
 	if err != nil {
-		slog.Error("Erreur lecture config Email Templates", "error", err)
+		slog.Error("Erreur lecture config Email Templates (par langue)", "error", err)
+		emailTemplatesByLang = map[string]config.EmailTemplatesConfig{}
 	}
-	normalizeEmailTemplateBodies(&emailTemplatesCfg)
-	trimEmailTemplateSubjects(&emailTemplatesCfg)
+	for lang, cfg := range emailTemplatesByLang {
+		normalizeEmailTemplateBodies(&cfg)
+		trimEmailTemplateSubjects(&cfg)
+		emailTemplatesByLang[lang] = cfg
+	}
+
+	emailTemplatesCfg, ok := emailTemplatesByLang[defaultLang]
+	if !ok {
+		emailTemplatesCfg = config.DefaultEmailTemplates()
+		normalizeEmailTemplateBodies(&emailTemplatesCfg)
+		trimEmailTemplateSubjects(&emailTemplatesCfg)
+	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
@@ -497,6 +529,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			Webhooks:               webhooksCfg,
 			Backup:                 backupCfg,
 			EmailTemplates:         emailTemplatesCfg,
+			EmailTemplatesByLang:   emailTemplatesByLang,
 		},
 	})
 }
@@ -879,13 +912,29 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/settings/email-templates Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 // SaveEmailTemplates sauvegarde les modÃƒÂ¨les de courriels personnalisÃƒÂ©s.
+type saveEmailTemplatesInput struct {
+	Language        string                                 `json:"language"`
+	Template        *config.EmailTemplatesConfig           `json:"template"`
+	TemplatesByLang map[string]config.EmailTemplatesConfig `json:"templates_by_lang"`
+}
+
+// SaveEmailTemplates sauvegarde les modeles e-mail (mono-langue ou multi-langue).
 func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
 	}
 
-	var input config.EmailTemplatesConfig
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+	rawBody, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Lecture du corps impossible: " + err.Error(),
+		})
+		return
+	}
+
+	var payload saveEmailTemplatesInput
+	if err := json.Unmarshal(rawBody, &payload); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
 			Message: "JSON invalide : " + err.Error(),
@@ -893,39 +942,116 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if input.ExpiryReminderDays == 0 {
-		input.ExpiryReminderDays = 3
+	if len(payload.TemplatesByLang) > 0 {
+		sanitized := make(map[string]config.EmailTemplatesConfig, len(payload.TemplatesByLang))
+		for rawLang, cfg := range payload.TemplatesByLang {
+			lang := config.NormalizeLanguageTag(rawLang)
+			if !config.IsSupportedLanguage(lang) {
+				continue
+			}
+			if err := sanitizeEmailTemplatesInput(&cfg); err != nil {
+				writeJSON(w, http.StatusBadRequest, APIResponse{
+					Success: false,
+					Message: fmt.Sprintf("Langue %s: %s", lang, err.Error()),
+				})
+				return
+			}
+			sanitized[lang] = cfg
+		}
+
+		if len(sanitized) == 0 {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "Aucune langue valide dans templates_by_lang",
+			})
+			return
+		}
+
+		if err := h.db.SaveEmailTemplatesConfigByLanguage(sanitized); err != nil {
+			slog.Error("Erreur sauvegarde config Email Templates (multi-langue)", "error", err)
+			writeJSON(w, http.StatusInternalServerError, APIResponse{
+				Success: false,
+				Message: "Erreur de sauvegarde des modeles",
+			})
+			return
+		}
+
+		slog.Info("Configuration Email Templates sauvegardee (multi-langue)", "languages", len(sanitized))
+		_ = h.db.LogAction("settings.email_templates.saved", "", "", fmt.Sprintf(`{"languages":%d}`, len(sanitized)))
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: "Modeles e-mail sauvegardes",
+		})
+		return
 	}
-	normalizeEmailBaseTemplates(&input)
-	normalizeEmailTemplateBodies(&input)
-	trimEmailTemplateSubjects(&input)
-	input.PreSignupHelp = ""
-	input.DisablePreSignupHelpEmail = true
-	input.PostSignupHelp = ""
-	input.DisablePostSignupHelpEmail = true
-	if input.ExpiryReminderDays < 1 || input.ExpiryReminderDays > 365 {
+
+	if payload.Template != nil {
+		cfg := *payload.Template
+		if err := sanitizeEmailTemplatesInput(&cfg); err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		targetLang := config.NormalizeLanguageTag(payload.Language)
+		if !config.IsSupportedLanguage(targetLang) {
+			targetLang = h.db.GetDefaultLang()
+		}
+
+		if err := h.db.SaveEmailTemplatesConfigForLang(targetLang, cfg); err != nil {
+			slog.Error("Erreur sauvegarde config Email Templates (langue cible)", "lang", targetLang, "error", err)
+			writeJSON(w, http.StatusInternalServerError, APIResponse{
+				Success: false,
+				Message: "Erreur de sauvegarde des modeles",
+			})
+			return
+		}
+
+		slog.Info("Configuration Email Templates sauvegardee", "lang", targetLang)
+		_ = h.db.LogAction("settings.email_templates.saved", "", "", fmt.Sprintf(`{"language":"%s"}`, targetLang))
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: "Modeles e-mail sauvegardes",
+		})
+		return
+	}
+
+	var legacy config.EmailTemplatesConfig
+	if err := json.Unmarshal(rawBody, &legacy); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
-			Message: "expiry_reminder_days doit etre entre 1 et 365",
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+	if err := sanitizeEmailTemplatesInput(&legacy); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: err.Error(),
 		})
 		return
 	}
 
-	if err := h.db.SaveEmailTemplatesConfig(input); err != nil {
-		slog.Error("Erreur sauvegarde config Email Templates", "error", err)
+	targetLang := config.NormalizeLanguageTag(payload.Language)
+	if !config.IsSupportedLanguage(targetLang) {
+		targetLang = h.db.GetDefaultLang()
+	}
+	if err := h.db.SaveEmailTemplatesConfigForLang(targetLang, legacy); err != nil {
+		slog.Error("Erreur sauvegarde config Email Templates (legacy)", "lang", targetLang, "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur de sauvegarde des modÃ¨les",
+			Message: "Erreur de sauvegarde des modeles",
 		})
 		return
 	}
 
-	slog.Info("Configuration Email Templates sauvegardÃ©e")
-	_ = h.db.LogAction("settings.email_templates.saved", "", "", "")
-
+	slog.Info("Configuration Email Templates sauvegardee (legacy)", "lang", targetLang)
+	_ = h.db.LogAction("settings.email_templates.saved", "", "", fmt.Sprintf(`{"language":"%s","legacy":true}`, targetLang))
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "ModÃ¨les d'emails sauvegardÃ©s avec succÃ¨s",
+		Message: "Modeles e-mail sauvegardes",
 	})
 }
 

@@ -177,6 +177,7 @@ func DefaultBackupConfig() BackupConfig {
 type EmailTemplatesConfig struct {
 	BaseTemplateHeader          string `json:"base_template_header"`
 	BaseTemplateFooter          string `json:"base_template_footer"`
+	EmailLogoURL                string `json:"email_logo_url"`
 	Confirmation                string `json:"confirmation"`
 	ConfirmationSubject         string `json:"confirmation_subject"`
 	DisableConfirmationEmail    bool   `json:"disable_confirmation_email"`
@@ -227,11 +228,22 @@ var emailTagPattern = regexp.MustCompile(`(?is)<[^>]+>`)
 var emailAnchorPattern = regexp.MustCompile(`(?is)<a\b[^>]*href=(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>(.*?)</a>`)
 var plainEmailVariablePattern = regexp.MustCompile(`{{\s*\.[A-Za-z0-9_]+\s*}}`)
 
+const defaultEmailLogoPath = "/static/img/logos/jellygate.svg"
+
 const defaultEmailCardStyle = `
 <div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
 	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dde3ec;border-radius:12px;overflow:hidden;">
 		<tr>
-			<td style="background:linear-gradient(135deg,#22d3ee,#10b981);color:#000000;padding:22px 28px;font-size:20px;font-weight:700;">JellyGate</td>
+			<td style="background:#0f172a;padding:18px 24px;">
+				<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+					<tr>
+						<td style="color:#e2e8f0;font-size:20px;font-weight:700;">JellyGate</td>
+						<td align="right">
+							<img src="{{.EmailLogoURL}}" alt="JellyGate" style="max-height:34px;width:auto;display:block;">
+						</td>
+					</tr>
+				</table>
+			</td>
 		</tr>
 		<tr>
 			<td style="padding:24px 28px;color:#0f172a;line-height:1.6;font-size:15px;">
@@ -412,7 +424,7 @@ func defaultNoCodeEmailBody(key string) string {
 	case "confirmation":
 		return "Bonjour {{.Username}},\n\nTon inscription est bien validee et ton acces Jellyfin est maintenant actif.\n\nTu peux te connecter quand tu veux. Si tu as besoin d aide, tu peux aussi utiliser {{.HelpURL}}."
 	case "email_verification":
-		return "Bonjour {{.Username}},\n\nMerci de confirmer ton adresse e-mail pour finaliser la securisation de ton acces Jellyfin.\n\nLe bouton, le lien direct et le code de verification sont ajoutes automatiquement sous ce message."
+		return "Bonjour {{.Username}},\n\nMerci de confirmer ton adresse e-mail pour finaliser la securisation de ton acces Jellyfin.\n\nLe bouton de verification et la duree de validite sont ajoutes automatiquement sous ce message."
 	case "expiry_reminder":
 		return "Bonjour {{.Username}},\n\nPetit rappel: ton acces Jellyfin arrive bientot a expiration.\n\nLa date exacte est ajoutee automatiquement dans l e-mail pour que tu puisses t organiser."
 	case "invitation":
@@ -490,8 +502,7 @@ func buildAutomaticEmailBlock(templateKey string) string {
 <div style="margin:22px 0 0 0;">
 	<a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verifier mon e-mail</a>
 </div>
-<p style="font-size:13px;color:#475569;">Lien direct: {{.VerificationURL}}</p>
-<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expire dans {{.ExpiresIn}}</p>`
+<p style="font-size:13px;color:#475569;">Expire dans {{.ExpiresIn}}</p>`
 	case "expiry_reminder", "invite_expiry", "expiry_adjusted":
 		return `
 <div style="margin:22px 0 0 0;padding:14px 16px;border:1px solid #dbe4f0;border-radius:10px;background:#f8fafc;color:#0f172a;">
@@ -591,6 +602,7 @@ func PrepareEmailTemplateBodyFor(templateKey, content, baseHeader, baseFooter st
 
 func legacyEmailTemplates() EmailTemplatesConfig {
 	return EmailTemplatesConfig{
+		EmailLogoURL: defaultEmailLogoPath,
 		Confirmation: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Inscription confirmee</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
@@ -603,8 +615,7 @@ func legacyEmailTemplates() EmailTemplatesConfig {
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
 <p>Confirme ton adresse e-mail pour finaliser la securisation de ton compte JellyGate.</p>
 <p style="margin:20px 0;"><a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verifier mon e-mail</a></p>
-<p style="font-size:13px;color:#475569;">Lien direct: {{.VerificationURL}}</p>
-<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expire dans {{.ExpiresIn}}</p>
+<p style="font-size:13px;color:#475569;">Expire dans {{.ExpiresIn}}</p>
 `),
 		EmailVerificationSubject: `Verifie ton adresse e-mail - JellyGate`,
 		ExpiryReminder: defaultEmailBody(`
@@ -712,6 +723,10 @@ func UpgradeLegacyEmailTemplates(cfg *EmailTemplatesConfig) {
 	replaceLegacyEmailField(&cfg.ExpiryAdjustedSubject, legacy.ExpiryAdjustedSubject, updated.ExpiryAdjustedSubject)
 	replaceLegacyEmailField(&cfg.Welcome, legacy.Welcome, updated.Welcome)
 	replaceLegacyEmailField(&cfg.WelcomeSubject, legacy.WelcomeSubject, updated.WelcomeSubject)
+
+	if strings.TrimSpace(cfg.EmailLogoURL) == "" {
+		cfg.EmailLogoURL = defaultEmailLogoPath
+	}
 }
 
 // DefaultEmailTemplates retourne les traductions de base des modèles d'emails
@@ -719,6 +734,7 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 	return EmailTemplatesConfig{
 		BaseTemplateHeader: DefaultEmailBaseHeader(),
 		BaseTemplateFooter: DefaultEmailBaseFooter(),
+		EmailLogoURL:      defaultEmailLogoPath,
 		Confirmation: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Inscription confirmee</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
@@ -733,8 +749,7 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
 <p>Confirme ton adresse e-mail pour finaliser la securisation de ton acces Jellyfin.</p>
 <p style="margin:20px 0;"><a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verifier mon e-mail</a></p>
-<p style="font-size:13px;color:#475569;">Lien direct: {{.VerificationURL}}</p>
-<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> · Expire dans {{.ExpiresIn}}</p>
+<p style="font-size:13px;color:#475569;">Expire dans {{.ExpiresIn}}</p>
 `),
 		ExpiryReminder: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Rappel d'expiration</h2>

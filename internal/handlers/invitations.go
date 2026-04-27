@@ -46,6 +46,7 @@ type invitation struct {
 	MaxUses         int
 	UsedCount       int
 	JellyfinProfile string // JSON brut du profil
+	PreferredLang   string
 	ExpiresAt       sql.NullTime
 	CreatedBy       string
 	CreatedAt       time.Time
@@ -549,17 +550,17 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 	cleanupClosedInvitationsIfEnabled(h.db)
 
 	row := h.db.QueryRow(
-		`SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_at
+		`SELECT id, code, label, max_uses, used_count, jellyfin_profile, preferred_lang, expires_at, created_by, created_at
 		 FROM invitations WHERE code = ?`, code)
 
 	var inv invitation
 	var jellyfinProfile sql.NullString
 	var label sql.NullString
-	var createdBy sql.NullString
+	var createdBy, preferredLang sql.NullString
 
 	err := row.Scan(
 		&inv.ID, &inv.Code, &label, &inv.MaxUses, &inv.UsedCount,
-		&jellyfinProfile, &inv.ExpiresAt, &createdBy, &inv.CreatedAt,
+		&jellyfinProfile, &preferredLang, &inv.ExpiresAt, &createdBy, &inv.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("invitation %q introuvable", code)
@@ -571,6 +572,7 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 	// Reconstituer les champs nullable
 	inv.Label = label.String
 	inv.JellyfinProfile = jellyfinProfile.String
+	inv.PreferredLang = strings.TrimSpace(preferredLang.String)
 	inv.CreatedBy = createdBy.String
 
 	// VÃƒÂ©rifier l'expiration
@@ -744,7 +746,12 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	})
 
 	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
-		emailCfg, _ := h.db.GetEmailTemplatesConfig()
+		emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, strings.TrimSpace(inv.PreferredLang), emailLanguageContext{
+			GroupName: strings.TrimSpace(provisionPlan.EffectiveProfile.GroupName),
+		})
+		if cfgErr != nil {
+			emailCfg = config.DefaultEmailTemplates()
+		}
 		defaults := config.DefaultEmailTemplates()
 		links := resolvePortalLinks(h.cfg, h.db)
 		publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
@@ -885,12 +892,13 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	}
 
 	canInvite := roleAllowsInvites(ldapRole) || canInviteFromProfile
+	preferredLang := normalizeSupportedEmailLang(inv.PreferredLang)
 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, email_verified, ldap_dn, group_name, invited_by, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at, preset_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL, ?)`,
-		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID,
+		`INSERT INTO users (jellyfin_id, username, email, email_verified, ldap_dn, group_name, invited_by, preferred_lang, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at, preset_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL, ?)`,
+		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, preferredLang, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insÃƒÂ©rer l'utilisateur %q: %w", form.Username, err)

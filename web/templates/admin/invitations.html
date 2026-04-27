@@ -200,6 +200,23 @@
                             <label class="jg-label">{{ .T "invitations_send_to_email_label" }}</label>
                             <input type="email" id="inv-email" class="jg-input h-11" placeholder="exemple@gmail.com">
                         </div>
+                        <div>
+                            <label class="jg-label" for="inv-preferred-lang">Langue de l’invitation</label>
+                            <select id="inv-preferred-lang" class="jg-input jg-select-premium h-11 bg-black/20 hover:bg-black/40 text-sm">
+                                <option value="">Langue par défaut de l’instance</option>
+                                <option value="fr">Français</option>
+                                <option value="en">English</option>
+                                <option value="de">Deutsch</option>
+                                <option value="es">Español</option>
+                                <option value="it">Italiano</option>
+                                <option value="nl">Nederlands</option>
+                                <option value="pl">Polski</option>
+                                <option value="pt-br">Português (Brasil)</option>
+                                <option value="ru">Русский</option>
+                                <option value="zh">中文 (简体)</option>
+                            </select>
+                            <div class="text-xs text-jg-text-muted mt-2">Priorité d’envoi: langue invitation &gt; langue utilisateur &gt; langue par défaut.</div>
+                        </div>
                         <div class="text-xs text-jg-text-muted leading-relaxed">
                             Le lien est généré immédiatement. Si un e-mail est renseigné, il sera aussi envoyé automatiquement.
                         </div>
@@ -239,6 +256,7 @@
 <script nonce="{{ .ScriptNonce }}">
     window.JGPageInvitations = {
         inviteBaseURL: '{{ .Data.InviteBaseURL }}',
+        defaultLang: '{{ .Data.DefaultLang }}' || 'fr',
         uiLocale: '{{ .Lang }}' || undefined,
         isAdmin: "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true",
         allowInviterGrant: "{{ if .Data.InviteAllowInviterGrant }}true{{ else }}false{{ end }}" === "true",
