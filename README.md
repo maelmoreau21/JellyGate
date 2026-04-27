@@ -14,7 +14,7 @@
 </p>
 
 > [!IMPORTANT]
-> **Méthode recommandée :** L'installation via **Docker** est la méthode officielle et recommandée pour garantir la stabilité et la facilité de mise à jour.
+> **Méthode recommandée :** L'installation via **Docker** est la méthode officielle et recommandée pour garantir la stabilité, la sécurité et la facilité de mise à jour.
 
 ## Vue d'ensemble
 
@@ -27,6 +27,49 @@ JellyGate remplace jfa-go avec une approche plus intégrée côté infra self-ho
 - notifications email et webhooks
 - audit logs exploitables et exportables
 - i18n pilotée par fichiers JSON avec vérification de cohérence en CI
+
+## Démarrage rapide (Docker)
+
+L'utilisation de **Docker Compose** est le moyen le plus simple et recommandé pour déployer JellyGate.
+
+### 1. Préparer l'environnement
+
+```bash
+mkdir jellygate && cd jellygate
+curl -O https://raw.githubusercontent.com/maelmoreau21/JellyGate/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/maelmoreau21/JellyGate/main/.env.example
+cp .env.example .env
+```
+
+### 2. Configuration
+
+Éditez le fichier `.env` avec vos paramètres :
+
+```bash
+# Obligatoire : Clé secrète pour les sessions
+JELLYGATE_SECRET_KEY=générez_une_clé_aléatoire_ici
+
+# Jellyfin
+JELLYFIN_URL=http://votre-jellyfin:8096
+JELLYFIN_API_KEY=votre_clé_api_admin
+```
+
+### 3. Lancement
+
+```bash
+docker compose up -d
+```
+
+Si vous préférez utiliser **PostgreSQL** au lieu de SQLite :
+
+```bash
+docker compose -f docker-compose.postgres.yml up -d
+```
+
+### 4. Accès
+
+Rendez-vous sur `http://localhost:8097/admin/login` et connectez-vous avec votre compte Jellyfin administrateur.
+JellyGate créera la session et chargera automatiquement votre langue préférée.
 
 ## Fonctionnalités principales
 
@@ -84,48 +127,6 @@ Tags publiés:
 
 Il n'y a plus de tags `sha-*`, `vX.Y` ou `vX`.
 
-## Démarrage rapide (Docker)
-
-L'utilisation de **Docker Compose** est le moyen le plus simple et recommandé pour déployer JellyGate.
-
-### 1. Préparer l'environnement
-
-```bash
-mkdir jellygate && cd jellygate
-curl -O https://raw.githubusercontent.com/maelmoreau21/JellyGate/main/docker-compose.yml
-curl -O https://raw.githubusercontent.com/maelmoreau21/JellyGate/main/.env.example
-cp .env.example .env
-```
-
-### 2. Configuration
-
-Éditez le fichier `.env` avec vos paramètres :
-
-```bash
-# Obligatoire : Clé secrète pour les sessions
-JELLYGATE_SECRET_KEY=générez_une_clé_aléatoire_ici
-
-# Jellyfin
-JELLYFIN_URL=http://votre-jellyfin:8096
-JELLYFIN_API_KEY=votre_clé_api_admin
-```
-
-### 3. Lancement
-
-```bash
-docker compose up -d
-```
-
-Si vous préférez utiliser **PostgreSQL** au lieu de SQLite :
-
-```bash
-docker compose -f docker-compose.postgres.yml up -d
-```
-
-### 4. Accès
-
-Rendez-vous sur `http://localhost:8097/admin/login` et connectez-vous avec votre compte Jellyfin administrateur.
-JellyGate créera la session et chargera automatiquement votre langue préférée.
 
 ## Variables d'environnement utiles
 

@@ -1,6 +1,6 @@
 # CLAUDE — Consignes d'agent et Contexte du projet JellyGate
 <p align="center">
-  <img src="../../logo.svg" width="64" height="64" alt="JellyGate Logo">
+  <img src="../../logo.svg" width="128" height="128" alt="JellyGate Logo">
 </p>
 
 Dernière mise à jour : 2026-04-26 (Version Finale)
@@ -15,7 +15,7 @@ Règles essentielles
 - Proposer un plan succinct (3–6 étapes) pour toute tâche non triviale et utiliser la TODO/tool de suivi pour garder la trace des étapes.
 - Ne pas modifier la section "Contexte du projet" sans accord explicite : proposer les changements en commentaire ou en PR.
 - Principe "Link, don't embed" : lier la documentation existante plutôt que la dupliquer.
-- **Docker First** : L'installation Docker est la méthode recommandée. Toute modification impactant le déploiement doit être vérifiée dans `docker-compose.yml`.
+- **Docker First** : L'installation via **Docker** est la seule méthode officiellement recommandée pour la production. Toute modification impactant le déploiement doit être impérativement vérifiée dans `docker-compose.yml` et le `Dockerfile`.
 - Préserver la compatibilité i18n : après toute modification de templates ou labels, vérifier chaque fichier `web/i18n/*.json` (10 langues : fr, en, de, es, it, nl, pl, pt-br, ru, zh) et lancer `go run ./cmd/i18ncheck` si pertinent.
 - Tests et validations locales recommandés : exécuter `go build ./...` et `go test ./...` après modifications Go ; pour le CSS, `npm run build:css`.
 - Encodage : sauvegarder les fichiers JSON en UTF-8 sans BOM (important pour `zh.json`).
