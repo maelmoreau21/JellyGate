@@ -21,6 +21,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -331,6 +332,29 @@ type generalInput struct {
 	DefaultLang   string `json:"default_lang"`
 	JellyfinURL   string `json:"jellyfin_url"`
 	JellyseerrURL string `json:"jellyseerr_url"`
+	JellyTrackURL string `json:"jellytrack_url"`
+}
+
+func normalizePublicPortalURL(raw string) (string, error) {
+	candidate := strings.TrimSpace(raw)
+	if candidate == "" {
+		return "", nil
+	}
+
+	parsed, err := url.ParseRequestURI(candidate)
+	if err != nil {
+		return "", fmt.Errorf("format invalide")
+	}
+
+	scheme := strings.ToLower(strings.TrimSpace(parsed.Scheme))
+	if scheme != "http" && scheme != "https" {
+		return "", fmt.Errorf("schema http/https requis")
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return "", fmt.Errorf("hote requis")
+	}
+
+	return strings.TrimRight(candidate, "/"), nil
 }
 
 func normalizeEmailTemplateBodies(cfg *config.EmailTemplatesConfig) {
@@ -505,6 +529,24 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var err error
+	if input.JellyGateURL, err = normalizePublicPortalURL(input.JellyGateURL); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL publique JellyGate invalide: " + err.Error()})
+		return
+	}
+	if input.JellyfinURL, err = normalizePublicPortalURL(input.JellyfinURL); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL publique Jellyfin invalide: " + err.Error()})
+		return
+	}
+	if input.JellyseerrURL, err = normalizePublicPortalURL(input.JellyseerrURL); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL publique Jellyseerr invalide: " + err.Error()})
+		return
+	}
+	if input.JellyTrackURL, err = normalizePublicPortalURL(input.JellyTrackURL); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL publique JellyTrack invalide: " + err.Error()})
+		return
+	}
+
 	if err := h.db.SetSetting(database.SettingDefaultLang, input.DefaultLang); err != nil {
 		slog.Error("Erreur sauvegarde default_lang", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
@@ -518,6 +560,7 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		JellyGateURL:  input.JellyGateURL,
 		JellyfinURL:   input.JellyfinURL,
 		JellyseerrURL: input.JellyseerrURL,
+		JellyTrackURL: input.JellyTrackURL,
 	}); err != nil {
 		slog.Error("Erreur sauvegarde portal_links", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{

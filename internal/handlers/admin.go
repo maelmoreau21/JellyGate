@@ -2699,7 +2699,12 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 		return fmt.Errorf("insertion du token en base: %w", err)
 	}
 
-	resetURL := fmt.Sprintf("%s/reset/%s", strings.TrimRight(h.cfg.BaseURL, "/"), token)
+	links := resolvePortalLinks(h.cfg, h.db)
+	publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
+	if publicBaseURL == "" && h.cfg != nil {
+		publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
+	}
+	resetURL := fmt.Sprintf("%s/reset/%s", publicBaseURL, token)
 	mailCfg, _ := h.db.GetEmailTemplatesConfig()
 	tpl := mailCfg.PasswordReset
 	if tpl == "" {
@@ -2708,15 +2713,16 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	subject := firstNonEmpty(mailCfg.PasswordResetSubject, config.DefaultEmailTemplates().PasswordResetSubject)
 
 	data := map[string]string{
-		"Username":  rec.Username,
-		"ResetLink": resetURL,
-		"ResetURL":  resetURL,
-		"ResetCode": token,
-		"ExpiresIn": "15 minutes",
+		"Username":      rec.Username,
+		"ResetLink":     resetURL,
+		"ResetURL":      resetURL,
+		"ResetCode":     token,
+		"ExpiresIn":     "15 minutes",
+		"HelpURL":       publicBaseURL,
+		"JellyGateURL":  publicBaseURL,
+		"JellyfinURL":   links.JellyfinURL,
+		"JellyseerrURL": links.JellyseerrURL,
 	}
-	links := resolvePortalLinks(h.cfg, h.db)
-	data["JellyfinURL"] = links.JellyfinURL
-	data["JellyseerrURL"] = links.JellyseerrURL
 
 	if err := sendTemplateIfConfigured(h.mailer, rec.Email, subject, "password_reset", tpl, mailCfg, data); err != nil {
 		return fmt.Errorf("envoi de l'email: %w", err)

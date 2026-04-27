@@ -1,7 +1,7 @@
 # =============================================================================
 # JellyGate — Dockerfile (Multi-stage build)
 # =============================================================================
-# Image finale : ~10-15 Mo (Alpine + binaire Go statique, pure Go / sans CGO)
+# Runtime base Postgres 18 pour garantir un major-match pg_dump/psql en Docker.
 # =============================================================================
 
 # ── Étape 1 : Compilation du binaire Go ─────────────────────────────────────
@@ -38,10 +38,10 @@ RUN CGO_ENABLED=0 \
       ./cmd/jellygate
 
 # ── Étape 2 : Image finale minimale ─────────────────────────────────────────
-FROM alpine:3.21
+FROM postgres:18-alpine
 
-# Certificats TLS (nécessaires pour LDAPS et SMTP TLS)
-RUN apk add --no-cache ca-certificates tzdata wget postgresql-client
+# Certificats TLS + outils utilitaires
+RUN apk add --no-cache ca-certificates tzdata wget
 
 # Utilisateur non-root pour la sécurité
 RUN addgroup -S jellygate && adduser -S jellygate -G jellygate

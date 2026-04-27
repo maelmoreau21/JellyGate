@@ -545,7 +545,7 @@
                 note.innerHTML = [
                     `<div class="font-semibold mb-1">${JG.esc(t('backup_pg_mode_title', 'PostgreSQL mode detected'))}</div>`,
                     `<div>${JG.esc(t('backup_pg_mode_desc_1', 'Backups and restore are available in PostgreSQL mode.'))}</div>`,
-                    `<div class="mt-2">${JG.esc(t('backup_pg_mode_desc_2', 'Ensure pg_dump and psql are installed on the server.'))}</div>`,
+                    `<div class="mt-2">${JG.esc(t('backup_pg_mode_desc_2', 'In Docker mode, pg_dump and psql are included in the JellyGate image. Rebuild the image if PostgreSQL major versions do not match. Outside Docker, keep pg_dump and psql installed on the host.'))}</div>`,
                 ].join('');
             }
         }

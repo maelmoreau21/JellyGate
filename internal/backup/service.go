@@ -168,7 +168,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 		)
 		cmdOutput, err := cmd.CombinedOutput()
 		if err != nil {
-			return info, fmt.Errorf("dump postgresql echoue: %w. Verifiez que 'pg_dump' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
+			return info, fmt.Errorf("dump postgresql echoue: %w. En mode Docker, 'pg_dump' est inclus dans l'image JellyGate (reconstruisez l'image si la version majeure PostgreSQL ne correspond pas). Hors Docker, verifiez que 'pg_dump' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
 		}
 		zipFileName = "jellygate.sql"
 	} else {
@@ -326,7 +326,7 @@ func (s *Service) RestorePostgresBackup(name string) error {
 	)
 	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("restauration postgresql echouee: %w. Verifiez que 'psql' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
+		return fmt.Errorf("restauration postgresql echouee: %w. En mode Docker, 'psql' est inclus dans l'image JellyGate (reconstruisez l'image si la version majeure PostgreSQL ne correspond pas). Hors Docker, verifiez que 'psql' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
 	}
 
 	return nil

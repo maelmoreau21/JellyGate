@@ -330,13 +330,13 @@
           <div class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="jg-label" for="smtp-host">{{ .T "settings_host_required" }}</label>
+                <label class="jg-label" for="smtp-host">{{ .T "settings_smtp_host_required" }}</label>
                 <input type="text" id="smtp-host" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="smtp.gmail.com">
               </div>
               <div>
-                <label class="jg-label" for="smtp-port">{{ .T "settings_port" }}</label>
+                <label class="jg-label" for="smtp-port">{{ .T "settings_smtp_port" }}</label>
                 <input type="number" id="smtp-port" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="587">
-                
+                <p class="mt-2 text-xs text-slate-400">{{ .T "settings_smtp_port_help" }}</p>
               </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

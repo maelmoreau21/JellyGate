@@ -194,8 +194,15 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	slog.Info("Token de reset crÃƒÂ©ÃƒÂ©", "user_id", user.ID, "expires_at", expiresAt.Format(time.RFC3339))
 
 	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 4. Envoyer l'email Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-	resetURL := fmt.Sprintf("%s/reset/%s", strings.TrimRight(h.cfg.BaseURL, "/"), token)
 	links := resolvePortalLinks(h.cfg, h.db)
+	publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
+	if publicBaseURL == "" && h.cfg != nil {
+		publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
+	}
+	if publicBaseURL == "" {
+		publicBaseURL = strings.TrimRight(requestBaseURL(r), "/")
+	}
+	resetURL := fmt.Sprintf("%s/reset/%s", publicBaseURL, token)
 
 	emailData := map[string]string{
 		"Username":      user.Username,
@@ -203,6 +210,8 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		"ResetURL":      resetURL,
 		"ResetCode":     token,
 		"ExpiresIn":     "15 minutes",
+		"HelpURL":       publicBaseURL,
+		"JellyGateURL":  publicBaseURL,
 		"JellyfinURL":   links.JellyfinURL,
 		"JellyseerrURL": links.JellyseerrURL,
 	}
