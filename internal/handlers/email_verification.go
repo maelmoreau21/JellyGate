@@ -58,9 +58,7 @@ func defaultEmailVerificationTemplate() string {
 	return `<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Verify your email address</h2>
 <p>Hello <strong>{{.Username}}</strong>,</p>
 <p>Please confirm your email address to finish securing your Jellyfin access.</p>
-<p style="margin:20px 0;"><a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Verify my email</a></p>
-<p style="font-size:13px;color:#475569;">Verification link: {{.VerificationURL}}</p>
-<p style="font-size:13px;color:#475569;">Code: <strong>{{.VerificationCode}}</strong> Ã‚Â· Expires in {{.ExpiresIn}}</p>`
+<p style="margin:0;">The verification button and expiry information are added automatically below this message.</p>`
 }
 
 func defaultEmailVerificationSubject() string {
@@ -143,6 +141,7 @@ func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *
 		"JellyGateURL":     publicBaseURL,
 		"JellyfinURL":      links.JellyfinURL,
 		"JellyseerrURL":    links.JellyseerrURL,
+		"JellyTrackURL":    links.JellyTrackURL,
 	}
 
 	templateBody := defaultEmailVerificationTemplate()
@@ -353,6 +352,7 @@ func renderEmailVerificationPage(r *http.Request, w http.ResponseWriter, rendere
 	td.Data["LoginLabel"] = loginLabel
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
 	w.WriteHeader(statusCode)
 	if err := renderer.Render(w, "verify_email.html", td); err != nil {
 		http.Error(w, message, statusCode)

@@ -69,6 +69,34 @@ func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
 	return buf.String(), nil
 }
 
+func resolveEmailLogoURL(data map[string]string) string {
+	logoPath := "/static/img/logos/jellygate.svg"
+	if data == nil {
+		return logoPath
+	}
+
+	if explicit := strings.TrimSpace(data["EmailLogoURL"]); explicit != "" {
+		if strings.HasPrefix(explicit, "http://") || strings.HasPrefix(explicit, "https://") {
+			return explicit
+		}
+		logoPath = explicit
+	}
+
+	baseURL := strings.TrimSpace(data["JellyGateURL"])
+	if baseURL == "" {
+		return logoPath
+	}
+
+	baseURL = strings.TrimRight(baseURL, "/")
+	if strings.HasPrefix(logoPath, "http://") || strings.HasPrefix(logoPath, "https://") {
+		return logoPath
+	}
+	if strings.HasPrefix(logoPath, "/") {
+		return baseURL + logoPath
+	}
+	return baseURL + "/" + logoPath
+}
+
 func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, templateKey, tpl string, emailCfg config.EmailTemplatesConfig, data map[string]string) error {
 	if mailer == nil {
 		return nil
@@ -78,6 +106,10 @@ func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, templateKey, tpl
 	if strings.TrimSpace(to) == "" || strings.TrimSpace(preparedTemplate) == "" {
 		return nil
 	}
+	if data == nil {
+		data = map[string]string{}
+	}
+	data["EmailLogoURL"] = resolveEmailLogoURL(data)
 	renderedSubject, err := renderInlineTemplate(subject, data)
 	if err != nil {
 		return err

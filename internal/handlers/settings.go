@@ -640,6 +640,7 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		"JellyGateURL":     links.JellyGateURL,
 		"JellyfinURL":      links.JellyfinURL,
 		"JellyseerrURL":    links.JellyseerrURL,
+		"EmailLogoURL":     strings.TrimRight(links.JellyGateURL, "/") + "/static/img/logos/jellygate.svg",
 		"Message":          "Ton acces Jellyfin est pret. Utilise les liens ci-dessous.",
 	}
 	for k, v := range input.Context {

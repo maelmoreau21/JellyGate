@@ -610,6 +610,22 @@
 
             <details class="email-template-item">
               <summary class="email-template-summary">
+                <span class="email-template-summary-title">{{ .T "settings_email_tpl_email_verification" }}</span>
+              </summary>
+              <div class="email-template-panel">
+                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
+                  <label class="jg-label" for="tpl-email-verification-subject">{{ .T "users_bulk_email_subject" }}</label>
+                  <input type="text" id="tpl-email-verification-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+                </div>
+                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
+                  <label class="jg-label" for="tpl-email-verification">{{ .T "settings_email_tpl_email_verification" }}</label>
+                  <textarea id="tpl-email-verification" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
+                </div>
+              </div>
+            </details>
+
+            <details class="email-template-item">
+              <summary class="email-template-summary">
                 <span class="email-template-summary-title">{{ .T "settings_email_tpl_user_creation" }}</span>
               </summary>
               <div class="email-template-panel">

@@ -1,13 +1,15 @@
 {{/* logo.html — Shared JellyGate logo partial */}}
 {{ define "logo" }}
-<svg class="jg-logo-mark w-full h-full flex-shrink-0" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" height="100%" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
-        <linearGradient id="jg-logo-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <linearGradient id="jellyfinGrad" x1="32" y1="24" x2="224" y2="240" gradientUnits="userSpaceOnUse">
             <stop offset="0%" stop-color="#AA5CC3" />
             <stop offset="100%" stop-color="#00A4DC" />
         </linearGradient>
     </defs>
-    <path d="M128 24 L32 64 L32 144 C32 200 128 240 128 240 C128 240 224 200 224 144 L224 64 Z" fill="url(#jg-logo-gradient)" />
-    <path d="M128 72 C105.9 72 88 89.9 88 112 C88 126.8 96.1 139.8 108 146.5 L108 184 L148 184 L148 146.5 C159.9 139.8 168 126.8 168 112 C168 89.9 150.1 72 128 72 Z" fill="#FFFFFF" />
+    <path fill-rule="evenodd" clip-rule="evenodd" 
+          d="M128 24 L32 64 L32 144 C32 200 128 240 128 240 C128 240 224 200 224 144 L224 64 Z 
+             M128 72 C105.9 72 88 89.9 88 112 C88 126.8 96.1 139.8 108 146.5 L108 184 L148 184 L148 146.5 C159.9 139.8 168 126.8 168 112 C168 89.9 150.1 72 128 72 Z" 
+          fill="url(#jellyfinGrad)" />
 </svg>
 {{ end }}

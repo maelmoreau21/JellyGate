@@ -630,6 +630,8 @@
             document.getElementById('tpl-enable-invite-expiry-email').checked = !data.email_templates.disable_invite_expiry_email;
             document.getElementById('tpl-password-reset').value = data.email_templates.password_reset || '';
             document.getElementById('tpl-password-reset-subject').value = data.email_templates.password_reset_subject || '';
+            document.getElementById('tpl-email-verification').value = data.email_templates.email_verification || '';
+            document.getElementById('tpl-email-verification-subject').value = data.email_templates.email_verification_subject || '';
             document.getElementById('tpl-user-creation').value = data.email_templates.user_creation || '';
             document.getElementById('tpl-user-creation-subject').value = data.email_templates.user_creation_subject || '';
             document.getElementById('tpl-enable-user-creation-email').checked = !data.email_templates.disable_user_creation_email;
@@ -735,6 +737,8 @@
                 disable_invite_expiry_email: !document.getElementById('tpl-enable-invite-expiry-email').checked,
                 password_reset: document.getElementById('tpl-password-reset').value,
                 password_reset_subject: document.getElementById('tpl-password-reset-subject').value.trim(),
+                email_verification: document.getElementById('tpl-email-verification').value,
+                email_verification_subject: document.getElementById('tpl-email-verification-subject').value.trim(),
                 pre_signup_help: '',
                 disable_pre_signup_help_email: true,
                 post_signup_help: '',

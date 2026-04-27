@@ -113,6 +113,7 @@ func (h *PasswordResetHandler) RequestPage(w http.ResponseWriter, r *http.Reques
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
 	td.ShowNewPasswordForm = false
 	if err := h.renderer.Render(w, "reset.html", td); err != nil {
 		slog.Error("Erreur rendu reset request", "error", err)
@@ -214,6 +215,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		"JellyGateURL":  publicBaseURL,
 		"JellyfinURL":   links.JellyfinURL,
 		"JellyseerrURL": links.JellyseerrURL,
+		"JellyTrackURL": links.JellyTrackURL,
 	}
 
 	emailCfg, _ := h.db.GetEmailTemplatesConfig()
@@ -245,7 +247,6 @@ func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request)
 	code := chi.URLParam(r, "code")
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.Section = "login"
-
 	// VÃƒÂ©rifier que le token est valide avant d'afficher le formulaire
 	_, _, err := h.getValidResetToken(code)
 	if err != nil {
@@ -253,13 +254,12 @@ func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Lien de rÃƒÂ©initialisation invalide ou expirÃƒÂ©", http.StatusNotFound)
 		return
 	}
-
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
 	td.ShowNewPasswordForm = true
 	td.ResetCode = code
-
 	if err := h.renderer.Render(w, "reset.html", td); err != nil {
 		slog.Error("Erreur rendu reset logic", "error", err)
 		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
@@ -502,6 +502,7 @@ func (h *PasswordResetHandler) renderSuccessPage(w http.ResponseWriter, r *http.
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
 	if err := h.renderer.Render(w, "reset.html", td); err != nil {
 		slog.Error("Erreur rendu success page", "error", err)
 		http.Error(w, "Erreur serveur", http.StatusInternalServerError)

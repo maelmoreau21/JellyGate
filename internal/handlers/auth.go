@@ -66,6 +66,7 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
 	td.Section = "login"
 
 	if err := h.renderer.Render(w, "admin/login.html", td); err != nil {

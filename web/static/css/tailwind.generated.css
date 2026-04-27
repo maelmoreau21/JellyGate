@@ -867,8 +867,8 @@
   .rounded-3xl {
     border-radius: var(--radius-3xl);
   }
-  .rounded-\[2rem\] {
-    border-radius: 2rem;
+  .rounded-\[2\.5rem\] {
+    border-radius: 2.5rem;
   }
   .rounded-full {
     border-radius: calc(infinity * 1px);
@@ -1415,6 +1415,9 @@
   .bg-clip-text {
     background-clip: text;
   }
+  .object-contain {
+    object-fit: contain;
+  }
   .object-cover {
     object-fit: cover;
   }
@@ -1813,9 +1816,6 @@
   .text-purple-400 {
     color: var(--color-purple-400);
   }
-  .text-purple-500 {
-    color: var(--color-purple-500);
-  }
   .text-red-200 {
     color: var(--color-red-200);
   }
@@ -1929,10 +1929,6 @@
     --tw-shadow: 0 25px 50px -12px var(--tw-shadow-color, rgb(0 0 0 / 0.25));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
   }
-  .shadow-\[0_0_8px_rgba\(148\,163\,184\,0\.5\)\] {
-    --tw-shadow: 0 0 8px var(--tw-shadow-color, rgba(148,163,184,0.5));
-    box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
-  }
   .shadow-\[0_0_10px_rgba\(16\,185\,129\,0\.6\)\] {
     --tw-shadow: 0 0 10px var(--tw-shadow-color, rgba(16,185,129,0.6));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
@@ -1993,8 +1989,13 @@
       --tw-ring-color: color-mix(in oklab, var(--color-jg-accent) 30%, transparent);
     }
   }
-  .drop-shadow-\[0_0_15px_rgba\(34\,211\,238\,0\.5\)\] {
-    --tw-drop-shadow-size: drop-shadow(0 0 15px var(--tw-drop-shadow-color, rgba(34,211,238,0.5)));
+  .drop-shadow-\[0_0_20px_rgba\(34\,211\,238\,0\.3\)\] {
+    --tw-drop-shadow-size: drop-shadow(0 0 20px var(--tw-drop-shadow-color, rgba(34,211,238,0.3)));
+    --tw-drop-shadow: var(--tw-drop-shadow-size);
+    filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
+  }
+  .drop-shadow-\[0_8px_15px_rgba\(170\,92\,195\,0\.25\)\] {
+    --tw-drop-shadow-size: drop-shadow(0 8px 15px var(--tw-drop-shadow-color, rgba(170,92,195,0.25)));
     --tw-drop-shadow: var(--tw-drop-shadow-size);
     filter: var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,);
   }
@@ -2052,10 +2053,6 @@
   .duration-300 {
     --tw-duration: 300ms;
     transition-duration: 300ms;
-  }
-  .duration-500 {
-    --tw-duration: 500ms;
-    transition-duration: 500ms;
   }
   .duration-700 {
     --tw-duration: 700ms;
@@ -4104,6 +4101,24 @@ html:not(.dark) .jg-nav-item svg {
   margin-bottom: 2rem;
   width: fit-content;
 }
+.jg-glass-tabs .tab-btn {
+  position: relative;
+}
+.jg-glass-tabs .tab-btn.active {
+  color: var(--jg-accent) !important;
+  border-bottom-color: var(--jg-accent) !important;
+  background: rgba(20, 184, 166, 0.05);
+}
+.jg-glass-tabs .tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: var(--jg-accent);
+  box-shadow: 0 0 10px var(--jg-accent);
+}
 .jg-tab-btn {
   padding: 0.6rem 1.25rem;
   border-radius: calc(var(--jg-radius-sm) - 4px);
@@ -5274,9 +5289,6 @@ html:not(.dark) .jg-select-trigger {
   height: 2.25rem;
   border-radius: 0.75rem;
   transition: var(--jg-transition);
-}
-.jg-logo-mark {
-  filter: drop-shadow(0 4px 10px rgba(34, 211, 238, 0.2));
 }
 .jg-logo-play {
   fill: #ffffff;

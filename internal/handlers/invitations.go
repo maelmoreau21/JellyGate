@@ -151,6 +151,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
 	profile := jellyfin.InviteProfile{UsernameMinLength: 3, UsernameMaxLength: 32, PasswordMinLength: 8, PasswordMaxLength: 128, RequireEmail: true, RequireEmailVerification: true}
 
 	// Analyser le profil pour vÃƒÂ©rifier si un username est forcÃƒÂ© (Flux B)
@@ -351,6 +352,7 @@ func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *ht
 	td.Data["AccountCreated"] = accountCreated
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
 
 	if err := h.renderer.Render(w, "invite.html", td); err != nil {
 		slog.Error("Erreur rendu invite success page", "error", err)
@@ -779,6 +781,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 				"JellyGateURL":  publicBaseURL,
 				"JellyfinURL":   links.JellyfinURL,
 				"JellyseerrURL": links.JellyseerrURL,
+				"JellyTrackURL": links.JellyTrackURL,
 			}
 			subject := firstNonEmpty(append(subjectCandidates, defaults.WelcomeSubject)...)
 			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, "welcome", combinedTemplate, emailCfg, emailData); err != nil {
