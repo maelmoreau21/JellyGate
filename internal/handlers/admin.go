@@ -746,7 +746,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.renderer.Render(w, "admin/dashboard.html", td); err != nil {
 		slog.Error("Erreur rendu dashboard", "error", err)
-		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur : impossible de charger la page"), http.StatusInternalServerError)
 	}
 }
 

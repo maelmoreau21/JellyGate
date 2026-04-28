@@ -27,6 +27,18 @@ func NewAutomationHandler(db *database.DB, renderer *render.Engine, schedulerSvc
 	return &AutomationHandler{db: db, renderer: renderer, scheduler: schedulerSvc}
 }
 
+func (h *AutomationHandler) tr(r *http.Request, key, fallback string) string {
+	if h.renderer == nil {
+		return fallback
+	}
+	lang := jgmw.LangFromContext(r.Context())
+	value := h.renderer.Translate(lang, key)
+	if value == "["+key+"]" {
+		return fallback
+	}
+	return value
+}
+
 func (h *AutomationHandler) AutomationPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
@@ -36,14 +48,14 @@ func (h *AutomationHandler) AutomationPage(w http.ResponseWriter, r *http.Reques
 	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "automation"
 	if err := h.renderer.Render(w, "admin/automation.html", td); err != nil {
-		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur : impossible de charger la page"), http.StatusInternalServerError)
 	}
 }
 
 func (h *AutomationHandler) ListPresets(w http.ResponseWriter, r *http.Request) {
 	presets, err := h.db.GetJellyfinPolicyPresets()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture presets"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_error_presets", "Erreur lecture presets")})
 		return
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: presets})
@@ -52,13 +64,13 @@ func (h *AutomationHandler) ListPresets(w http.ResponseWriter, r *http.Request) 
 func (h *AutomationHandler) SavePresets(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
-		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "login_error_forbidden", "Acces admin requis")})
 		return
 	}
 
 	var presets []config.JellyfinPolicyPreset
 	if err := json.NewDecoder(r.Body).Decode(&presets); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "common_bad_request", "JSON invalide")})
 		return
 	}
 
@@ -68,24 +80,24 @@ func (h *AutomationHandler) SavePresets(w http.ResponseWriter, r *http.Request) 
 			presets[i].ID = "preset-" + strconv.Itoa(i+1)
 		}
 		if presets[i].Name == "" {
-			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Chaque preset doit avoir un nom"})
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "automation_error_preset_name_required", "Chaque preset doit avoir un nom")})
 			return
 		}
 	}
 
 	if err := h.db.SaveJellyfinPolicyPresets(presets); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Sauvegarde presets impossible"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_save_presets_failed", "Sauvegarde presets impossible")})
 		return
 	}
 
 	_ = h.db.LogAction("automation.presets.saved", sess.Username, "jellyfin_presets", strconv.Itoa(len(presets)))
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Presets sauvegardes"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "automation_presets_saved", "Presets sauvegardes")})
 }
 
 func (h *AutomationHandler) ListGroupMappings(w http.ResponseWriter, r *http.Request) {
 	mappings, err := h.db.GetGroupPolicyMappings()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture mappings de groupes"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_error_group_mappings", "Erreur lecture mappings de groupes")})
 		return
 	}
 
@@ -95,19 +107,19 @@ func (h *AutomationHandler) ListGroupMappings(w http.ResponseWriter, r *http.Req
 func (h *AutomationHandler) SaveGroupMappings(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
-		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "login_error_forbidden", "Acces admin requis")})
 		return
 	}
 
 	var mappings []config.GroupPolicyMapping
 	if err := json.NewDecoder(r.Body).Decode(&mappings); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "common_bad_request", "JSON invalide")})
 		return
 	}
 
 	presets, err := h.db.GetJellyfinPolicyPresets()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de lire les presets"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_error_presets", "Impossible de lire les presets")})
 		return
 	}
 
@@ -127,18 +139,18 @@ func (h *AutomationHandler) SaveGroupMappings(w http.ResponseWriter, r *http.Req
 			continue
 		}
 		if _, ok := presetIndex[mappings[i].PolicyPresetID]; !ok {
-			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Un mapping rÃƒÂ©fÃƒÂ©rence un preset introuvable"})
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "automation_error_mapping_invalid_preset", "Un mapping rÃƒÂ©fÃƒÂ©rence un preset introuvable")})
 			return
 		}
 	}
 
 	if err := h.db.SaveGroupPolicyMappings(mappings); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Sauvegarde mappings impossible"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_save_mappings_failed", "Sauvegarde mappings impossible")})
 		return
 	}
 
 	_ = h.db.LogAction("automation.group_mappings.saved", sess.Username, "group_mappings", strconv.Itoa(len(mappings)))
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Mappings de groupes sauvegardes"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "automation_mappings_saved", "Mappings de groupes sauvegardes")})
 }
 
 func (h *AutomationHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
@@ -147,7 +159,7 @@ func (h *AutomationHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 		 FROM scheduled_tasks ORDER BY created_at DESC`,
 	)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture taches"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_error_tasks", "Erreur lecture taches")})
 		return
 	}
 	defer rows.Close()
@@ -166,22 +178,22 @@ func (h *AutomationHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 func (h *AutomationHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
-		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "login_error_forbidden", "Acces admin requis")})
 		return
 	}
 
 	var input scheduler.TaskRecord
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "common_bad_request", "Payload JSON invalide")})
 		return
 	}
 
 	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.TaskType) == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Nom et type requis"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "automation_error_task_name_type_required", "Nom et type requis")})
 		return
 	}
 	if input.Hour < 0 || input.Hour > 23 || input.Minute < 0 || input.Minute > 59 {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Horaire invalide"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "automation_error_task_schedule_invalid", "Horaire invalide")})
 		return
 	}
 
@@ -199,17 +211,17 @@ func (h *AutomationHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		time.Now().Format("2006-01-02 15:04:05"),
 	)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Creation tache impossible"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_task_create_failed", "Creation tache impossible")})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Tache planifiee creee"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "automation_task_created", "Tache planifiee creee")})
 }
 
 func (h *AutomationHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
-		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "login_error_forbidden", "Acces admin requis")})
 		return
 	}
 
@@ -238,17 +250,17 @@ func (h *AutomationHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		taskID,
 	)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Mise a jour impossible"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_task_update_failed", "Mise a jour impossible")})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Tache mise a jour"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "automation_task_updated", "Tache mise a jour")})
 }
 
 func (h *AutomationHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
-		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "login_error_forbidden", "Acces admin requis")})
 		return
 	}
 
@@ -260,15 +272,15 @@ func (h *AutomationHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.db.Exec(`DELETE FROM scheduled_tasks WHERE id = ?`, taskID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Suppression impossible"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "automation_task_delete_failed", "Suppression impossible")})
 		return
 	}
 	if n, _ := res.RowsAffected(); n == 0 {
-		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Tache introuvable"})
+		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "automation_manual_task_missing", "Tache introuvable")})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Tache supprimee"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "automation_task_deleted", "Tache supprimee")})
 }
 
 func (h *AutomationHandler) RunTaskNow(w http.ResponseWriter, r *http.Request) {
@@ -285,11 +297,11 @@ func (h *AutomationHandler) RunTaskNow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.scheduler.RunTaskNow(taskID); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Execution echouee: " + err.Error()})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "automation_task_run_failed", "Execution echouee") + ": " + err.Error()})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Tache executee"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "automation_task_run_success", "Tache executee")})
 }
 
 func (h *AutomationHandler) GetPresetByID(id string) (*config.JellyfinPolicyPreset, error) {

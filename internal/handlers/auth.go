@@ -58,6 +58,18 @@ func NewAuthHandler(cfg *config.Config, db *database.DB, renderer *render.Engine
 	return &AuthHandler{cfg: cfg, db: db, renderer: renderer}
 }
 
+func (h *AuthHandler) tr(r *http.Request, key, fallback string) string {
+	if h.renderer == nil {
+		return fallback
+	}
+	lang := jgmw.LangFromContext(r.Context())
+	value := h.renderer.Translate(lang, key)
+	if value == "["+key+"]" {
+		return fallback
+	}
+	return value
+}
+
 // LoginPage affiche la page de connexion admin (GET /admin/login).
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
@@ -71,7 +83,7 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.renderer.Render(w, "admin/login.html", td); err != nil {
 		slog.Error("Erreur rendu login", "error", err)
-		http.Error(w, "Erreur serveur : impossible de charger la page", http.StatusInternalServerError)
+		http.Error(w, h.tr(r, "common_server_error_page", "Server error: unable to load page"), http.StatusInternalServerError)
 	}
 }
 
@@ -192,7 +204,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	cookieValue, err := session.Sign(sess, h.cfg.SecretKey)
 	if err != nil {
 		slog.Error("Erreur lors de la signature de la session", "error", err)
-		http.Error(w, "Erreur interne", http.StatusInternalServerError)
+		http.Error(w, h.tr(r, "common_server_error", "Server error"), http.StatusInternalServerError)
 		return
 	}
 

@@ -57,6 +57,7 @@ type emailTextPack struct {
 	DirectAccessLabel        string
 	PreviewDuration          string
 	PreviewMessage           string
+	AutomaticFooter          string
 }
 
 var emailTextPacks = map[string]emailTextPack{
@@ -64,15 +65,15 @@ var emailTextPacks = map[string]emailTextPack{
 		ConfirmationSubject:      `Acces {{.JellyfinServerName}} active`,
 		ConfirmationBody:         "Bonjour {{.Username}},\n\nTon acces a {{.JellyfinServerName}} est maintenant actif.\n\nTu peux te connecter quand tu veux. Besoin d'aide ? {{.HelpURL}}",
 		EmailVerificationSubject: `Verifie ton adresse e-mail pour {{.JellyfinServerName}}`,
-		EmailVerificationBody:    "Bonjour {{.Username}},\n\nMerci de verifier ton adresse e-mail pour securiser ton acces a {{.JellyfinServerName}}.\n\nLe bouton de verification et la duree de validite sont ajoutes automatiquement sous ce message.",
+		EmailVerificationBody:    "Bonjour {{.Username}},\n\nMerci de verifier ton adresse e-mail pour securiser ton acces a {{.JellyfinServerName}}.\n\nLe bouton de verification est disponible sous ce message.",
 		ExpiryReminderSubject:    `Rappel d'expiration pour {{.JellyfinServerName}}`,
-		ExpiryReminderBody:       "Bonjour {{.Username}},\n\nPetit rappel : ton acces a {{.JellyfinServerName}} expirera bientot.\n\nLa date exacte est ajoutee automatiquement dans cet e-mail.",
+		ExpiryReminderBody:       "Bonjour {{.Username}},\n\nPetit rappel : ton acces a {{.JellyfinServerName}} expirera bientot.\n\nLa date d'expiration est disponible dans cet e-mail.",
 		InvitationSubject:        `Invitation a rejoindre {{.JellyfinServerName}}`,
-		InvitationBody:           "Bonjour,\n\nTu as recu une invitation pour rejoindre {{.JellyfinServerName}}.\n\nLe bouton de creation de compte et le lien direct sont ajoutes automatiquement sous ce message.",
+		InvitationBody:           "Bonjour,\n\nTu as recu une invitation pour rejoindre {{.JellyfinServerName}}.\n\nLe bouton de creation de compte est disponible sous ce message.",
 		InviteExpirySubject:      `Expiration du lien d'invitation pour {{.JellyfinServerName}}`,
-		InviteExpiryBody:         "Bonjour,\n\nTon lien d'invitation vers {{.JellyfinServerName}} expirera bientot.\n\nLa date limite est ajoutee automatiquement dans cet e-mail.",
+		InviteExpiryBody:         "Bonjour,\n\nTon lien d'invitation vers {{.JellyfinServerName}} expirera bientot.\n\nLa date limite est indiquee dans cet e-mail.",
 		PasswordResetSubject:     `Reinitialisation du mot de passe {{.JellyfinServerName}}`,
-		PasswordResetBody:        "Bonjour {{.Username}},\n\nNous avons recu une demande de reinitialisation pour ton compte {{.JellyfinServerName}}.\n\nLe bouton de reinitialisation, le lien direct et le code sont ajoutes automatiquement sous ce message.",
+		PasswordResetBody:        "Bonjour {{.Username}},\n\nNous avons recu une demande de reinitialisation pour ton compte {{.JellyfinServerName}}.\n\nLe bouton de reinitialisation est disponible sous ce message.",
 		UserCreationSubject:      `Compte {{.JellyfinServerName}} cree`,
 		UserCreationBody:         "Bonjour {{.Username}},\n\nUn administrateur vient de creer ton compte {{.JellyfinServerName}}.\n\nTu peux utiliser les informations recues pour te connecter.",
 		UserDeletionSubject:      `Compte {{.JellyfinServerName}} supprime`,
@@ -84,9 +85,9 @@ var emailTextPacks = map[string]emailTextPack{
 		UserExpiredSubject:       `Acces {{.JellyfinServerName}} expire`,
 		UserExpiredBody:          "Bonjour {{.Username}},\n\nTon acces a {{.JellyfinServerName}} a expire et ton compte a ete desactive automatiquement.\n\nContacte l'equipe d'administration si tu souhaites retrouver l'acces.",
 		ExpiryAdjustedSubject:    `Expiration de l'acces {{.JellyfinServerName}} ajustee`,
-		ExpiryAdjustedBody:       "Bonjour {{.Username}},\n\nLa date d'expiration de ton acces a {{.JellyfinServerName}} a ete mise a jour.\n\nLa nouvelle date apparait automatiquement dans cet e-mail.",
+		ExpiryAdjustedBody:       "Bonjour {{.Username}},\n\nLa date d'expiration de ton acces a {{.JellyfinServerName}} a ete mise a jour.\n\nLa nouvelle date apparait dans cet e-mail.",
 		WelcomeSubject:           `Bienvenue sur {{.JellyfinServerName}}`,
-		WelcomeBody:              "Bonjour {{.Username}},\n\nTon compte {{.JellyfinServerName}} est pret.\n\nLe bouton d'acces direct est ajoute automatiquement sous ce message.",
+		WelcomeBody:              "Bonjour {{.Username}},\n\nTon compte {{.JellyfinServerName}} est pret.\n\nLe bouton d'acces direct est disponible sous ce message.",
 		VerifyButtonLabel:        "Verifier mon e-mail",
 		ExpiryDateLabel:          "Date",
 		ExpiresInLabel:           "Expire dans",
@@ -98,20 +99,21 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Acces direct",
 		PreviewDuration:          "15 minutes",
 		PreviewMessage:           "Ton acces a {{.JellyfinServerName}} est pret. Utilise les liens ci-dessous.",
+		AutomaticFooter:          "Ceci est un message automatique envoyé par JellyGate.",
 	},
 	"en": {
 		ConfirmationSubject:      `{{.JellyfinServerName}} access activated`,
 		ConfirmationBody:         "Hello {{.Username}},\n\nYour access to {{.JellyfinServerName}} is now active.\n\nYou can sign in whenever you want. Need help? {{.HelpURL}}",
 		EmailVerificationSubject: `Verify your email for {{.JellyfinServerName}}`,
-		EmailVerificationBody:    "Hello {{.Username}},\n\nPlease verify your email address to secure your access to {{.JellyfinServerName}}.\n\nThe verification button and expiry information are added automatically below this message.",
+		EmailVerificationBody:    "Hello {{.Username}},\n\nPlease verify your email address to secure your access to {{.JellyfinServerName}}.\n\nThe verification button is available below this message.",
 		ExpiryReminderSubject:    `{{.JellyfinServerName}} access expiry reminder`,
-		ExpiryReminderBody:       "Hello {{.Username}},\n\nThis is a quick reminder that your access to {{.JellyfinServerName}} will expire soon.\n\nThe exact date is added automatically in this email.",
+		ExpiryReminderBody:       "Hello {{.Username}},\n\nThis is a quick reminder that your access to {{.JellyfinServerName}} will expire soon.\n\nThe expiry date is available in this email.",
 		InvitationSubject:        `Invitation to join {{.JellyfinServerName}}`,
-		InvitationBody:           "Hello,\n\nYou have been invited to join {{.JellyfinServerName}}.\n\nThe account creation button and direct link are added automatically below this message.",
+		InvitationBody:           "Hello,\n\nYou have been invited to join {{.JellyfinServerName}}.\n\nThe account creation button is available below this message.",
 		InviteExpirySubject:      `Invitation link for {{.JellyfinServerName}} is expiring soon`,
-		InviteExpiryBody:         "Hello,\n\nYour invitation link for {{.JellyfinServerName}} will expire soon.\n\nThe deadline is added automatically in this email.",
+		InviteExpiryBody:         "Hello,\n\nYour invitation link for {{.JellyfinServerName}} will expire soon.\n\nThe deadline is indicated in this email.",
 		PasswordResetSubject:     `Reset your {{.JellyfinServerName}} password`,
-		PasswordResetBody:        "Hello {{.Username}},\n\nWe received a password reset request for your {{.JellyfinServerName}} account.\n\nThe reset button, direct link, and code are added automatically below this message.",
+		PasswordResetBody:        "Hello {{.Username}},\n\nWe received a password reset request for your {{.JellyfinServerName}} account.\n\nThe reset button is available below this message.",
 		UserCreationSubject:      `{{.JellyfinServerName}} account created`,
 		UserCreationBody:         "Hello {{.Username}},\n\nAn administrator has created your {{.JellyfinServerName}} account.\n\nYou can now use the details you received to sign in.",
 		UserDeletionSubject:      `{{.JellyfinServerName}} account deleted`,
@@ -123,9 +125,9 @@ var emailTextPacks = map[string]emailTextPack{
 		UserExpiredSubject:       `{{.JellyfinServerName}} access expired`,
 		UserExpiredBody:          "Hello {{.Username}},\n\nYour access to {{.JellyfinServerName}} expired and your account was disabled automatically.\n\nPlease contact the administrators if you need access again.",
 		ExpiryAdjustedSubject:    `{{.JellyfinServerName}} access expiry updated`,
-		ExpiryAdjustedBody:       "Hello {{.Username}},\n\nThe expiry date for your access to {{.JellyfinServerName}} has been updated.\n\nThe new date is added automatically in this email.",
+		ExpiryAdjustedBody:       "Hello {{.Username}},\n\nThe expiry date for your access to {{.JellyfinServerName}} has been updated.\n\nThe new date is available in this email.",
 		WelcomeSubject:           `Welcome to {{.JellyfinServerName}}`,
-		WelcomeBody:              "Hello {{.Username}},\n\nYour {{.JellyfinServerName}} account is ready.\n\nThe direct access button is added automatically below this message.",
+		WelcomeBody:              "Hello {{.Username}},\n\nYour {{.JellyfinServerName}} account is ready.\n\nThe direct access button is available below this message.",
 		VerifyButtonLabel:        "Verify my email",
 		ExpiryDateLabel:          "Date",
 		ExpiresInLabel:           "Expires in",
@@ -137,20 +139,21 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Direct access",
 		PreviewDuration:          "15 minutes",
 		PreviewMessage:           "Your access to {{.JellyfinServerName}} is ready. Use the links below.",
+		AutomaticFooter:          "This is an automated message sent by JellyGate.",
 	},
 	"de": {
 		ConfirmationSubject:      `Zugang zu {{.JellyfinServerName}} aktiviert`,
 		ConfirmationBody:         "Hallo {{.Username}},\n\nDein Zugang zu {{.JellyfinServerName}} ist jetzt aktiv.\n\nDu kannst dich jederzeit anmelden. Hilfe findest du unter {{.HelpURL}}.",
 		EmailVerificationSubject: `Bestatige deine E-Mail fur {{.JellyfinServerName}}`,
-		EmailVerificationBody:    "Hallo {{.Username}},\n\nBitte bestatige deine E-Mail-Adresse, um deinen Zugang zu {{.JellyfinServerName}} zu sichern.\n\nDer Bestatigungsbutton und die Ablaufzeit werden automatisch unter dieser Nachricht eingefugt.",
+		EmailVerificationBody:    "Hallo {{.Username}},\n\nBitte bestatige deine E-Mail-Adresse, um deinen Zugang zu {{.JellyfinServerName}} zu sichern.\n\nDer Bestatigungsbutton ist unter dieser Nachricht verfugbar.",
 		ExpiryReminderSubject:    `Ablauf-Erinnerung fur {{.JellyfinServerName}}`,
-		ExpiryReminderBody:       "Hallo {{.Username}},\n\nDies ist eine Erinnerung: dein Zugang zu {{.JellyfinServerName}} lauft bald ab.\n\nDas genaue Datum wird automatisch in dieser E-Mail eingefugt.",
+		ExpiryReminderBody:       "Hallo {{.Username}},\n\nDies ist eine Erinnerung: dein Zugang zu {{.JellyfinServerName}} lauft bald ab.\n\nDas Ablaufdatum ist in dieser E-Mail verfugbar.",
 		InvitationSubject:        `Einladung zu {{.JellyfinServerName}}`,
-		InvitationBody:           "Hallo,\n\nDu wurdest zu {{.JellyfinServerName}} eingeladen.\n\nDer Button zur Kontoerstellung und der Direktlink werden automatisch unter dieser Nachricht eingefugt.",
+		InvitationBody:           "Hallo,\n\nDu wurdest zu {{.JellyfinServerName}} eingeladen.\n\nDer Button zur Kontoerstellung ist unter dieser Nachricht verfugbar.",
 		InviteExpirySubject:      `Einladungslink fur {{.JellyfinServerName}} lauft bald ab`,
-		InviteExpiryBody:         "Hallo,\n\nDein Einladungslink fur {{.JellyfinServerName}} lauft bald ab.\n\nDie Frist wird automatisch in dieser E-Mail eingefugt.",
+		InviteExpiryBody:         "Hallo,\n\nDein Einladungslink fur {{.JellyfinServerName}} lauft bald ab.\n\nDie Frist ist in dieser E-Mail angegeben.",
 		PasswordResetSubject:     `Passwort fur {{.JellyfinServerName}} zurucksetzen`,
-		PasswordResetBody:        "Hallo {{.Username}},\n\nWir haben eine Anfrage zum Zurucksetzen des Passworts fur dein {{.JellyfinServerName}}-Konto erhalten.\n\nDer Reset-Button, der Direktlink und der Code werden automatisch unter dieser Nachricht eingefugt.",
+		PasswordResetBody:        "Hallo {{.Username}},\n\nWir haben eine Anfrage zum Zurucksetzen des Passworts fur dein {{.JellyfinServerName}}-Konto erhalten.\n\nDer Reset-Button ist unter dieser Nachricht verfugbar.",
 		UserCreationSubject:      `{{.JellyfinServerName}}-Konto erstellt`,
 		UserCreationBody:         "Hallo {{.Username}},\n\nEin Administrator hat dein {{.JellyfinServerName}}-Konto erstellt.\n\nDu kannst dich jetzt mit den erhaltenen Informationen anmelden.",
 		UserDeletionSubject:      `{{.JellyfinServerName}}-Konto geloscht`,
@@ -162,9 +165,9 @@ var emailTextPacks = map[string]emailTextPack{
 		UserExpiredSubject:       `Zugang zu {{.JellyfinServerName}} abgelaufen`,
 		UserExpiredBody:          "Hallo {{.Username}},\n\nDein Zugang zu {{.JellyfinServerName}} ist abgelaufen und dein Konto wurde automatisch deaktiviert.\n\nBitte kontaktiere die Administratoren, wenn du wieder Zugang brauchst.",
 		ExpiryAdjustedSubject:    `Ablaufdatum fur {{.JellyfinServerName}} aktualisiert`,
-		ExpiryAdjustedBody:       "Hallo {{.Username}},\n\nDas Ablaufdatum deines Zugangs zu {{.JellyfinServerName}} wurde aktualisiert.\n\nDas neue Datum wird automatisch in dieser E-Mail eingefugt.",
+		ExpiryAdjustedBody:       "Hallo {{.Username}},\n\nDas Ablaufdatum deines Zugangs zu {{.JellyfinServerName}} wurde aktualisiert.\n\nDas neue Datum ist in dieser E-Mail verfugbar.",
 		WelcomeSubject:           `Willkommen bei {{.JellyfinServerName}}`,
-		WelcomeBody:              "Hallo {{.Username}},\n\nDein Konto fur {{.JellyfinServerName}} ist bereit.\n\nDer Direktzugriff wird automatisch unter dieser Nachricht eingefugt.",
+		WelcomeBody:              "Hallo {{.Username}},\n\nDein Konto fur {{.JellyfinServerName}} ist bereit.\n\nDer Direktzugriff ist unter dieser Nachricht verfugbar.",
 		VerifyButtonLabel:        "E-Mail bestatigen",
 		ExpiryDateLabel:          "Datum",
 		ExpiresInLabel:           "Lauft ab in",
@@ -176,6 +179,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Direktzugang",
 		PreviewDuration:          "15 Minuten",
 		PreviewMessage:           "Dein Zugang zu {{.JellyfinServerName}} ist bereit. Nutze die Links unten.",
+		AutomaticFooter:          "Dies ist eine automatische Nachricht von JellyGate.",
 	},
 	"es": {
 		ConfirmationSubject:      `Acceso a {{.JellyfinServerName}} activado`,
@@ -215,6 +219,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Acceso directo",
 		PreviewDuration:          "15 minutos",
 		PreviewMessage:           "Tu acceso a {{.JellyfinServerName}} esta listo. Usa los enlaces de abajo.",
+		AutomaticFooter:          "Este es un mensaje automático enviado por JellyGate.",
 	},
 	"it": {
 		ConfirmationSubject:      `Accesso a {{.JellyfinServerName}} attivato`,
@@ -254,6 +259,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Accesso diretto",
 		PreviewDuration:          "15 minuti",
 		PreviewMessage:           "Il tuo accesso a {{.JellyfinServerName}} e pronto. Usa i link qui sotto.",
+		AutomaticFooter:          "Questo è un messaggio automatico inviato da JellyGate.",
 	},
 	"nl": {
 		ConfirmationSubject:      `Toegang tot {{.JellyfinServerName}} geactiveerd`,
@@ -293,6 +299,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Directe toegang",
 		PreviewDuration:          "15 minuten",
 		PreviewMessage:           "Je toegang tot {{.JellyfinServerName}} is klaar. Gebruik de links hieronder.",
+		AutomaticFooter:          "Dit is een automatisch bericht verzonden door JellyGate.",
 	},
 	"pl": {
 		ConfirmationSubject:      `Dostep do {{.JellyfinServerName}} aktywowany`,
@@ -332,6 +339,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Dostep bezposredni",
 		PreviewDuration:          "15 minut",
 		PreviewMessage:           "Twoj dostep do {{.JellyfinServerName}} jest gotowy. Uzyj ponizszych linkow.",
+		AutomaticFooter:          "To jest automatyczna wiadomość wysłana przez JellyGate.",
 	},
 	"pt-br": {
 		ConfirmationSubject:      `Acesso ao {{.JellyfinServerName}} ativado`,
@@ -371,6 +379,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Acesso direto",
 		PreviewDuration:          "15 minutos",
 		PreviewMessage:           "Seu acesso ao {{.JellyfinServerName}} esta pronto. Use os links abaixo.",
+		AutomaticFooter:          "Esta é uma mensagem automática enviada pelo JellyGate.",
 	},
 	"ru": {
 		ConfirmationSubject:      `Доступ к {{.JellyfinServerName}} активирован`,
@@ -410,6 +419,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "Прямой доступ",
 		PreviewDuration:          "15 минут",
 		PreviewMessage:           "Ваш доступ к {{.JellyfinServerName}} готов. Используйте ссылки ниже.",
+		AutomaticFooter:          "Это автоматическое сообщение, отправленное JellyGate.",
 	},
 	"zh": {
 		ConfirmationSubject:      `已启用 {{.JellyfinServerName}} 访问`,
@@ -449,6 +459,7 @@ var emailTextPacks = map[string]emailTextPack{
 		DirectAccessLabel:        "直接访问",
 		PreviewDuration:          "15 分钟",
 		PreviewMessage:           "你对 {{.JellyfinServerName}} 的访问已经准备好了。请使用下面的链接。",
+		AutomaticFooter:          "这是由 JellyGate 发送的自动消息。",
 	},
 }
 
@@ -556,20 +567,18 @@ func automaticEmailBlockForLanguage(lang, templateKey string) string {
 		return `
 <div style="margin:22px 0 0 0;">
 	<a href="{{.InviteLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:700;">` + html.EscapeString(pack.CreateAccountButtonLabel) + `</a>
-</div>
-<p style="font-size:13px;color:#475569;">` + html.EscapeString(pack.DirectLinkLabel) + `: {{.InviteLink}}</p>`
+</div>`
 	case "password_reset":
 		return `
 <div style="margin:22px 0 0 0;">
 	<a href="{{.ResetLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:700;">` + html.EscapeString(pack.ResetPasswordButtonLabel) + `</a>
 </div>
-<p style="font-size:13px;color:#475569;">` + html.EscapeString(pack.CodeLabel) + `: <strong>{{.ResetCode}}</strong> - ` + html.EscapeString(pack.ExpiresInLabel) + ` {{.ExpiresIn}}</p>`
+<p style="font-size:13px;color:#475569;">` + html.EscapeString(pack.ExpiresInLabel) + ` {{.ExpiresIn}}</p>`
 	case "welcome":
 		return `
 <div style="margin:22px 0 0 0;">
 	<a href="{{.JellyfinURL}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:700;">` + html.EscapeString(pack.OpenServerButtonLabel) + `</a>
-</div>
-<p style="font-size:13px;color:#475569;">` + html.EscapeString(pack.DirectAccessLabel) + `: {{.JellyfinURL}}</p>`
+</div>`
 	default:
 		return ""
 	}
@@ -581,6 +590,10 @@ func DefaultEmailPreviewDurationForLanguage(lang string) string {
 
 func DefaultEmailPreviewMessageForLanguage(lang string) string {
 	return emailTextPackFor(lang).PreviewMessage
+}
+
+func DefaultEmailAutomaticFooterForLanguage(lang string) string {
+	return emailTextPackFor(lang).AutomaticFooter
 }
 
 func DefaultEmailTemplatesForLanguage(lang string) EmailTemplatesConfig {

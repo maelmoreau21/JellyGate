@@ -128,9 +128,9 @@ func main() {
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, provisioner, mailer, notifier, renderEngine)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
-	settingsHandler := handlers.NewSettingsHandler(db, jfClient)
+	settingsHandler := handlers.NewSettingsHandler(db, jfClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
-	backupHandler := handlers.NewBackupHandler(db, backupService)
+	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
 	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer, notifier)
 	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService)
 

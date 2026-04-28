@@ -115,6 +115,9 @@ func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, lang, templateKe
 	if strings.TrimSpace(data["JellyfinServerName"]) == "" {
 		data["JellyfinServerName"] = "Jellyfin"
 	}
+	if strings.TrimSpace(data["AutomaticFooter"]) == "" {
+		data["AutomaticFooter"] = config.DefaultEmailAutomaticFooterForLanguage(lang)
+	}
 	data["EmailLogoURL"] = resolveEmailLogoURL(data, emailCfg.EmailLogoURL)
 	renderedSubject, err := renderInlineTemplate(subject, data)
 	if err != nil {

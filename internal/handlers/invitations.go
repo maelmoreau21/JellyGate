@@ -260,29 +260,28 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Ã¢â€�â‚¬Ã¢â€�â‚¬ JFA-Go Flux B (Forced Username) Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	if profile.ForcedUsername != "" {
-		slog.Debug("Flux JFA-Go (Forced Username) dÃƒÂ©tectÃƒÂ©", "forced", profile.ForcedUsername, "submitted", form.Username)
+		slog.Debug("Flux JFA-Go (Forced Username) détecté", "forced", profile.ForcedUsername, "submitted", form.Username)
 		form.Username = profile.ForcedUsername
-		if err := validateInviteUsername(form.Username, &profile); err != nil {
-			slog.Error("Nom d'utilisateur forcÃƒÂ© invalide", "code", code, "forced_username", profile.ForcedUsername, "error", err)
+		if err := h.validateInviteUsername(r, form.Username, &profile); err != nil {
+			slog.Error("Nom d'utilisateur forcé invalide", "code", code, "forced_username", profile.ForcedUsername, "error", err)
 			http.Error(w, h.tr(r, "invite_error_config", "Erreur de configuration de l'invitation"), http.StatusInternalServerError)
 			return
 		}
 	}
 
-	if err := h.ensureInviteUsernameAvailable(form.Username); err != nil {
+	if err := h.ensureInviteUsernameAvailable(r, form.Username); err != nil {
 		slog.Warn("Nom d'utilisateur indisponible pour invitation", "code", code, "username", form.Username, "error", err)
 		h.logInviteAction(r, "invite.validation.failed", form.Username, code, err.Error())
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
 
-	slog.Info("Ã¢Å“â€¦ Ãƒâ€°tape 1/5 terminÃƒÂ©e", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))
+	slog.Info("✅ Étape 1/5 terminée", "code", code, "uses", fmt.Sprintf("%d/%d", inv.UsedCount, inv.MaxUses))
 
 	if profile.RequireEmailVerification {
 		if err := h.createPendingInviteSignup(r, inv, form); err != nil {
-			slog.Error("Impossible de prÃƒÂ©parer la vÃƒÂ©rification email avant crÃƒÂ©ation", "username", form.Username, "email", form.Email, "error", err)
+			slog.Error("Impossible de préparer la vérification email avant création", "username", form.Username, "email", form.Email, "error", err)
 			h.logInviteAction(r, "invite.email_verification.failed", form.Username, code, err.Error())
 			statusCode := http.StatusInternalServerError
 			message := err.Error()
@@ -477,7 +476,7 @@ func resolveInvitePasswordPolicy(profile jellyfin.InviteProfile) invitePasswordP
 	}
 }
 
-func validateInviteUsername(username string, profile *jellyfin.InviteProfile) error {
+func (h *InvitationHandler) validateInviteUsername(r *http.Request, username string, profile *jellyfin.InviteProfile) error {
 	usernamePolicy := jellyfin.InviteProfile{}
 	if profile != nil {
 		usernamePolicy = *profile
@@ -485,41 +484,48 @@ func validateInviteUsername(username string, profile *jellyfin.InviteProfile) er
 	minLength, maxLength := resolveInviteUsernamePolicy(usernamePolicy)
 
 	if username == "" {
-		return fmt.Errorf("le nom d'utilisateur est requis")
+		return fmt.Errorf(h.tr(r, "field_username_required", "Username is required"))
 	}
 	if len(username) < minLength || len(username) > maxLength {
-		return fmt.Errorf("le nom d'utilisateur doit faire entre %d et %d caractÃƒÂ¨res", minLength, maxLength)
+		msg := h.tr(r, "field_username_min_max", "Username must be between {min} and {max} characters")
+		msg = strings.ReplaceAll(msg, "{min}", fmt.Sprintf("%d", minLength))
+		msg = strings.ReplaceAll(msg, "{max}", fmt.Sprintf("%d", maxLength))
+		return fmt.Errorf(msg)
 	}
 
 	for _, c := range username {
 		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
-			return fmt.Errorf("le nom d'utilisateur ne peut contenir que des lettres, chiffres, tirets et underscores")
+			return fmt.Errorf(h.tr(r, "field_username_invalid_chars", "Username can only contain letters, numbers, dashes, and underscores"))
 		}
 	}
 
-	return nil
+	return h.ensureInviteUsernameAvailable(r, username)
 }
 
-func validateInvitePassword(password string, profile *jellyfin.InviteProfile) error {
+func (h *InvitationHandler) validateInvitePassword(r *http.Request, password string, profile *jellyfin.InviteProfile) error {
 	policy := resolveInvitePasswordPolicy(jellyfin.InviteProfile{})
 	if profile != nil {
 		policy = resolveInvitePasswordPolicy(*profile)
 	}
 
 	if len(password) < policy.MinLength {
-		return fmt.Errorf("le mot de passe doit faire au minimum %d caractÃƒÂ¨res", policy.MinLength)
+		msg := h.tr(r, "password_rule_at_least", "at least {n} characters")
+		msg = strings.ReplaceAll(msg, "{n}", fmt.Sprintf("%d", policy.MinLength))
+		return fmt.Errorf(msg)
 	}
 	if len(password) > policy.MaxLength {
-		return fmt.Errorf("le mot de passe doit faire au maximum %d caractÃƒÂ¨res", policy.MaxLength)
+		msg := h.tr(r, "password_rule_at_most", "at most {n} characters")
+		msg = strings.ReplaceAll(msg, "{n}", fmt.Sprintf("%d", policy.MaxLength))
+		return fmt.Errorf(msg)
 	}
 	if policy.RequireUpper && !strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-		return fmt.Errorf("le mot de passe doit contenir au moins une lettre majuscule")
+		return fmt.Errorf(h.tr(r, "password_rule_upper", "one uppercase letter"))
 	}
 	if policy.RequireLower && !strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") {
-		return fmt.Errorf("le mot de passe doit contenir au moins une lettre minuscule")
+		return fmt.Errorf(h.tr(r, "password_rule_lower", "one lowercase letter"))
 	}
 	if policy.RequireDigit && !strings.ContainsAny(password, "0123456789") {
-		return fmt.Errorf("le mot de passe doit contenir au moins un chiffre")
+		return fmt.Errorf(h.tr(r, "password_rule_digit", "one digit"))
 	}
 	if policy.RequireSpecial {
 		hasSpecial := false
@@ -533,7 +539,7 @@ func validateInvitePassword(password string, profile *jellyfin.InviteProfile) er
 			}
 		}
 		if !hasSpecial {
-			return fmt.Errorf("le mot de passe doit contenir au moins un caractÃƒÂ¨re spÃƒÂ©cial")
+			return fmt.Errorf(h.tr(r, "password_rule_special", "one special character"))
 		}
 	}
 
@@ -588,15 +594,15 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 	return &inv, nil
 }
 
-func (h *InvitationHandler) ensureInviteUsernameAvailable(username string) error {
+func (h *InvitationHandler) ensureInviteUsernameAvailable(r *http.Request, username string) error {
 	if strings.TrimSpace(username) == "" {
-		return fmt.Errorf("le nom d'utilisateur est requis")
+		return fmt.Errorf(h.tr(r, "field_username_required", "Username is required"))
 	}
 
 	var existingUserID int64
 	err := h.db.QueryRow(`SELECT id FROM users WHERE lower(username) = lower(?) LIMIT 1`, username).Scan(&existingUserID)
 	if err == nil {
-		return fmt.Errorf("ce nom d'utilisateur est dÃƒÂ©jÃƒÂ  utilisÃƒÂ©")
+		return fmt.Errorf(h.tr(r, "field_username_taken", "This username is already taken"))
 	}
 	if err != sql.ErrNoRows {
 		return fmt.Errorf("impossible de vÃƒÂ©rifier la disponibilitÃƒÂ© du nom d'utilisateur: %w", err)

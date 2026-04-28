@@ -95,13 +95,12 @@
             {{end}}
             <p>Cliquez sur le bouton ci-dessous pour créer votre compte :</p>
             <p><a href="{{.InviteURL}}" class="btn">Créer mon compte</a></p>
-            <p><small>Ou copiez ce lien : {{.InviteURL}}</small></p>
             {{if .ExpiresAt}}
             <p class="warning">⏱ Cette invitation expire le {{.ExpiresAt}}.</p>
             {{end}}
         </div>
         <div class="footer">
-            <p>Cet email a été envoyé automatiquement par {{.JellyfinServerName}}.</p>
+            <p>{{.AutomaticFooter}}</p>
         </div>
     </div>
 </body>

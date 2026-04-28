@@ -249,10 +249,10 @@ const defaultEmailCardStyle = `
 			<td style="background:linear-gradient(135deg,#22d3ee,#10b981);padding:18px 24px;">
 				<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
 					<tr>
-						<td style="color:#06202a;font-size:20px;font-weight:700;">JellyGate</td>
+						<td style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.02em;">JellyGate</td>
 						<td align="right">
-							<div style="display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.92);border:1px solid rgba(15,23,42,0.08);border-radius:999px;padding:8px 12px;">
-								<img src="{{.EmailLogoURL}}" alt="JellyGate" style="max-height:28px;width:auto;display:block;">
+							<div style="display:inline-block;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:12px;padding:6px 10px;backdrop-filter:blur(8px);">
+								<img src="{{.EmailLogoURL}}" alt="JellyGate" style="max-height:24px;width:auto;display:block;">
 							</div>
 						</td>
 					</tr>
@@ -267,7 +267,7 @@ const defaultEmailCardEnd = `
 			</td>
 		</tr>
 		<tr>
-			<td style="padding:16px 28px;background:#f8fafc;color:#64748b;font-size:12px;border-top:1px solid #e2e8f0;">JellyGate</td>
+			<td style="padding:16px 28px;background:#f8fafc;color:#64748b;font-size:12px;border-top:1px solid #e2e8f0;text-align:center;">{{.AutomaticFooter}}</td>
 		</tr>
 	</table>
 </div>`
@@ -600,7 +600,6 @@ func legacyEmailTemplates() EmailTemplatesConfig {
 <p>Bonjour,</p>
 <p>Tu es invite a rejoindre le serveur. Clique sur le bouton ci-dessous pour creer ton compte.</p>
 <p style="margin:20px 0;"><a href="{{.InviteLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;">Creer mon compte</a></p>
-<p style="font-size:13px;color:#475569;">Lien direct: {{.InviteLink}}</p>
 `),
 		InvitationSubject:    `Invitation a rejoindre JellyGate`,
 		InviteExpirySubject:  `Expiration du lien d'invitation - JellyGate`,

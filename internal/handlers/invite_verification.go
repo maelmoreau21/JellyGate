@@ -117,15 +117,15 @@ func loadPendingInviteSignup(db *database.DB, code string) (*pendingInviteSignup
 
 func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invitation, form *inviteFormData) error {
 	if h.mailer == nil {
-		return fmt.Errorf("SMTP non configurÃƒÂ©")
+		return fmt.Errorf(h.tr(r, "settings_save_smtp", "SMTP not configured"))
 	}
-	if err := h.ensureInviteUsernameAvailable(form.Username); err != nil {
+	if err := h.ensureInviteUsernameAvailable(r, form.Username); err != nil {
 		return err
 	}
 
 	token, err := generateSecureToken(emailVerificationTokenLength)
 	if err != nil {
-		return fmt.Errorf("gÃƒÂ©nÃƒÂ©ration du token d'invitation: %w", err)
+		return fmt.Errorf("gÃ©nÃ©ration du token d'invitation: %w", err)
 	}
 
 	passwordCiphertext, err := encryptPendingInvitePassword(h.cfg.SecretKey, form.Password)
@@ -154,7 +154,7 @@ func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invi
 		passwordCiphertext,
 		expiresAt.Format("2006-01-02 15:04:05"),
 	); err != nil {
-		return fmt.Errorf("crÃƒÂ©ation invitation en attente: %w", err)
+		return fmt.Errorf("crÃ©ation invitation en attente: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -168,7 +168,7 @@ func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invi
 			langCtx.GroupName = strings.TrimSpace(inviteProfile.GroupName)
 		}
 	}
-	if err := sendVerificationEmailTemplate(h.cfg, h.db, h.mailer, form.Username, form.Email, token, strings.TrimSpace(inv.PreferredLang), langCtx); err != nil {
+	if err := sendVerificationEmailTemplate(r, h.cfg, h.db, h.mailer, form.Username, form.Email, token, strings.TrimSpace(inv.PreferredLang), langCtx); err != nil {
 		_, _ = h.db.Exec(`DELETE FROM pending_invite_signups WHERE code = ?`, token)
 		return err
 	}
@@ -187,10 +187,10 @@ func (h *InvitationHandler) completePendingInviteSignup(r *http.Request, code st
 	}
 
 	if record.Used {
-		return "used", true, fmt.Errorf("invitation dÃƒÂ©jÃƒÂ  utilisÃƒÂ©e")
+		return "used", true, fmt.Errorf("invitation dÃ©jÃ  utilisÃ©e")
 	}
 	if time.Now().After(record.ExpiresAt) {
-		return "expired", true, fmt.Errorf("invitation en attente expirÃƒÂ©e")
+		return "expired", true, fmt.Errorf("invitation en attente expirÃ©e")
 	}
 
 	password, err := decryptPendingInvitePassword(h.cfg.SecretKey, record.PasswordCiphertext)
@@ -219,7 +219,7 @@ func (h *InvitationHandler) completePendingInviteSignup(r *http.Request, code st
 		form.Username = strings.TrimSpace(profile.ForcedUsername)
 	}
 
-	if err := h.ensureInviteUsernameAvailable(form.Username); err != nil {
+	if err := h.ensureInviteUsernameAvailable(r, form.Username); err != nil {
 		return "failed", true, err
 	}
 
@@ -228,7 +228,7 @@ func (h *InvitationHandler) completePendingInviteSignup(r *http.Request, code st
 	}
 
 	if _, err := h.db.Exec(`UPDATE pending_invite_signups SET used = TRUE WHERE code = ?`, code); err != nil {
-		slog.Warn("Impossible de marquer l'invitation en attente comme utilisÃƒÂ©e", "code", code, "error", err)
+		slog.Warn("Impossible de marquer l'invitation en attente comme utilisÃ©e", "code", code, "error", err)
 	}
 	if _, err := h.db.Exec(`DELETE FROM pending_invite_signups WHERE lower(username) = lower(?) AND code <> ?`, form.Username, code); err != nil {
 		slog.Warn("Impossible de nettoyer les anciennes invitations en attente", "username", form.Username, "error", err)
@@ -248,7 +248,7 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 	status, handled, err := h.completePendingInviteSignup(r, code)
 	if handled {
 		if err != nil {
-			slog.Warn("Validation email invitation ÃƒÂ©chouÃƒÂ©e", "code", code, "status", status, "error", err)
+			slog.Warn("Validation email invitation Ã©chouÃ©e", "code", code, "status", status, "error", err)
 			switch status {
 			case "expired":
 				statusCode = http.StatusGone
@@ -285,7 +285,7 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 
 	_, status, err = consumeEmailVerification(h.db, code)
 	if err != nil {
-		slog.Warn("Verification email ÃƒÂ©chouÃƒÂ©e", "code", code, "status", status, "error", err)
+		slog.Warn("Verification email Ã©chouÃ©e", "code", code, "status", status, "error", err)
 		switch status {
 		case "expired":
 			statusCode = http.StatusGone

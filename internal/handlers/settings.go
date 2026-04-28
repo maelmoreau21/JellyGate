@@ -29,32 +29,46 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
+	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
+	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ SettingsHandler Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// — SettingsHandler ———————————————————————————————————————————————————————————————————————————
 
-// SettingsHandler gÃƒÂ¨re les routes de configuration.
+// SettingsHandler gère les routes de configuration.
 type SettingsHandler struct {
 	db       *database.DB
 	jfClient *jellyfin.Client
+	renderer *render.Engine
 
-	// Callbacks de rechargement Ã¢â‚¬â€� appelÃƒÂ©s aprÃƒÂ¨s sauvegarde pour
-	// rÃƒÂ©initialiser les clients ÃƒÂ  chaud sans redÃƒÂ©marrer le conteneur.
+	// Callbacks de rechargement à chaud
 	OnLDAPReload     func(config.LDAPConfig)
 	OnSMTPReload     func(config.SMTPConfig)
 	OnWebhooksReload func(config.WebhooksConfig)
 }
 
-// NewSettingsHandler crÃƒÂ©e un nouveau handler de paramÃƒÂ¨tres.
-func NewSettingsHandler(db *database.DB, jf *jellyfin.Client) *SettingsHandler {
-	return &SettingsHandler{db: db, jfClient: jf}
+func (h *SettingsHandler) tr(r *http.Request, key, fallback string) string {
+	if h.renderer == nil {
+		return fallback
+	}
+	lang := jgmw.LangFromContext(r.Context())
+	value := h.renderer.Translate(lang, key)
+	if value == "["+key+"]" {
+		return fallback
+	}
+	return value
+}
+
+// NewSettingsHandler crée un nouveau handler de paramètres.
+func NewSettingsHandler(db *database.DB, jf *jellyfin.Client, renderer *render.Engine) *SettingsHandler {
+	return &SettingsHandler{db: db, jfClient: jf, renderer: renderer}
 }
 
 func (h *SettingsHandler) ensureAdmin(w http.ResponseWriter, r *http.Request) bool {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
-		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces reserve aux administrateurs"})
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "login_error_forbidden", "Acces reserve aux administrateurs")})
 		return false
 	}
 	return true
@@ -129,7 +143,7 @@ func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
 
 func validateLDAPMinimalConfig(input config.LDAPConfig) error {
 	if strings.TrimSpace(input.Host) == "" {
-		return fmt.Errorf("host LDAP requis")
+		return fmt.Errorf("host LDAP requis") // This is internal error, handled by caller
 	}
 	if strings.TrimSpace(input.BindDN) == "" {
 		return fmt.Errorf("bind_dn requis")
@@ -163,11 +177,11 @@ func (h *SettingsHandler) TestLDAPConnection(w http.ResponseWriter, r *http.Requ
 
 	client := jgldap.New(input)
 	if err := client.TestConnection(); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Echec connexion LDAP: " + err.Error()})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_connection", "Echec connexion LDAP") + ": " + err.Error()})
 		return
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Connexion LDAP OK (reseau + bind)"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "settings_success_ldap_connection", "Connexion LDAP OK (reseau + bind)")})
 }
 
 // TestLDAPUserLookup teste la recherche d'un utilisateur LDAP via l'attribut
@@ -198,17 +212,17 @@ func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Requ
 	client := jgldap.New(input.LDAPConfig)
 	entry, isAdmin, err := client.ResolveUserAccess(username)
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Echec recherche LDAP: " + err.Error()})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_lookup", "Echec recherche LDAP") + ": " + err.Error()})
 		return
 	}
 	if entry == nil {
-		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Utilisateur LDAP introuvable"})
+		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_user_not_found", "Utilisateur LDAP introuvable")})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Utilisateur LDAP trouve (filtre d'acces applique)",
+		Message: h.tr(r, "settings_success_ldap_user_found", "Utilisateur LDAP trouve (filtre d'acces applique)"),
 		Data: map[string]interface{}{
 			"dn":            entry.DN,
 			"username":      entry.Username,
@@ -251,7 +265,7 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 		}
 	}
 	if baseURL == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL Jellyfin indisponible"})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_jellyfin_url_missing", "URL Jellyfin indisponible")})
 		return
 	}
 
@@ -295,13 +309,13 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 		} `json:"User"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Reponse Jellyfin invalide"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "settings_error_jellyfin_response_invalid", "Reponse Jellyfin invalide")})
 		return
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Authentification Jellyfin via LDAP plugin OK",
+		Message: h.tr(r, "settings_success_jellyfin_auth", "Authentification Jellyfin via LDAP plugin OK"),
 		Data: map[string]interface{}{
 			"jellyfin_user_id": authResp.User.ID,
 			"jellyfin_name":    authResp.User.Name,
@@ -433,7 +447,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur lecture config LDAP", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur lecture configuration LDAP",
+			Message: h.tr(r, "settings_error_ldap_read", "Erreur lecture configuration LDAP"),
 		})
 		return
 	}
@@ -443,7 +457,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur lecture config SMTP", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: "Erreur lecture configuration SMTP",
+			Message: h.tr(r, "settings_error_smtp_read", "Erreur lecture configuration SMTP"),
 		})
 		return
 	}
@@ -615,7 +629,7 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "ParamÃ¨tres gÃ©nÃ©raux sauvegardÃ©s",
+		Message: h.tr(r, "settings_success_general_saved", "ParamÃ¨tres gÃ©nÃ©raux sauvegardÃ©s"),
 	})
 }
 
@@ -702,17 +716,12 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 	tplRaw = config.PrepareEmailTemplateBodyForLanguage(previewLang, strings.TrimSpace(input.TemplateKey), tplRaw, previewCfg.BaseTemplateHeader, previewCfg.BaseTemplateFooter)
 
 	links := resolvePortalLinks(nil, h.db)
-	if strings.TrimSpace(links.JellyGateURL) == "" {
-		links.JellyGateURL = "https://jellygate.example.com"
-	}
-	if strings.TrimSpace(links.JellyfinURL) == "" {
-		links.JellyfinURL = "https://jellyfin.example.com"
-	}
-	if strings.TrimSpace(links.JellyseerrURL) == "" {
-		links.JellyseerrURL = "https://jellyseerr.example.com"
-	}
-	if strings.TrimSpace(links.JellyTrackURL) == "" {
-		links.JellyTrackURL = "https://jellytrack.example.com"
+	if links.JellyGateURL == "" {
+		scheme := "http"
+		if r.TLS != nil {
+			scheme = "https"
+		}
+		links.JellyGateURL = fmt.Sprintf("%s://%s", scheme, r.Host)
 	}
 	sample := map[string]string{
 		"Username":           "demo.user",
@@ -735,9 +744,10 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		"JellyfinServerName": links.JellyfinServerName,
 		"JellyseerrURL":      links.JellyseerrURL,
 		"JellyTrackURL":      links.JellyTrackURL,
-		"EmailLogoURL":       strings.TrimRight(links.JellyGateURL, "/") + "/static/img/logos/jellygate.svg",
 		"Message":            config.DefaultEmailPreviewMessageForLanguage(previewLang),
+		"AutomaticFooter":    config.DefaultEmailAutomaticFooterForLanguage(previewLang),
 	}
+	sample["EmailLogoURL"] = resolveEmailLogoURL(sample, previewCfg.EmailLogoURL)
 	for k, v := range input.Context {
 		key := strings.TrimSpace(k)
 		if key == "" {

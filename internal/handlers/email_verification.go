@@ -121,9 +121,9 @@ func canResendVerification(target *emailVerificationTarget) (bool, time.Duration
 	return false, remaining
 }
 
-func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *mail.Mailer, username, address, token, invitationLang string, langCtx emailLanguageContext) error {
+func sendVerificationEmailTemplate(r *http.Request, cfg *config.Config, db *database.DB, mailer *mail.Mailer, username, address, token, invitationLang string, langCtx emailLanguageContext) error {
 	if mailer == nil {
-		return fmt.Errorf("SMTP non configurÃƒÂ©")
+		return fmt.Errorf("SMTP not configured")
 	}
 
 	links := resolvePortalLinks(cfg, db)
@@ -169,9 +169,9 @@ func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *
 	return nil
 }
 
-func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mailer, userID int64, force bool) error {
+func sendEmailVerification(r *http.Request, cfg *config.Config, db *database.DB, mailer *mail.Mailer, userID int64, force bool) error {
 	if mailer == nil {
-		return fmt.Errorf("SMTP non configurÃƒÂ©")
+		return fmt.Errorf("SMTP not configured")
 	}
 
 	target, err := loadEmailVerificationTarget(db, userID)
@@ -181,10 +181,10 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 
 	address := effectiveVerificationEmail(target)
 	if address == "" {
-		return fmt.Errorf("aucune adresse email ÃƒÂ  vÃƒÂ©rifier")
+		return fmt.Errorf("no email address to verify")
 	}
 	if !requiresEmailVerification(target) {
-		return fmt.Errorf("adresse email dÃƒÂ©jÃƒÂ  vÃƒÂ©rifiÃƒÂ©e")
+		return fmt.Errorf("email address already verified")
 	}
 	if !force {
 		if ok, remaining := canResendVerification(target); !ok {
@@ -192,7 +192,7 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 			if seconds < 1 {
 				seconds = 1
 			}
-			return fmt.Errorf("merci d'attendre %d secondes avant un nouvel envoi", seconds)
+			return fmt.Errorf("please wait %d seconds before resending", seconds)
 		}
 	}
 
@@ -244,7 +244,7 @@ func sendEmailVerification(cfg *config.Config, db *database.DB, mailer *mail.Mai
 		PreferredLang: target.PreferredLang,
 		GroupName:     target.GroupName,
 	}
-	if err := sendVerificationEmailTemplate(cfg, db, mailer, target.Username, address, token, "", langCtx); err != nil {
+	if err := sendVerificationEmailTemplate(r, cfg, db, mailer, target.Username, address, token, "", langCtx); err != nil {
 		return err
 	}
 
@@ -419,23 +419,34 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 func (h *AdminHandler) ResendMyEmailVerification(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if err := h.ensureUserRowForSession(sess); err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de prÃƒÂ©parer le profil utilisateur"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "profile_prep_error", "Unable to prepare user profile")})
 		return
 	}
 
 	var userID int64
 	err := h.db.QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&userID)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Utilisateur introuvable"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "user_not_found", "User not found")})
 		return
 	}
 
-	if err := sendEmailVerification(h.cfg, h.db, h.mailer, userID, false); err != nil {
+	if err := sendEmailVerification(r, h.cfg, h.db, h.mailer, userID, false); err != nil {
 		message := err.Error()
 		statusCode := http.StatusBadRequest
-		if strings.Contains(strings.ToLower(message), "attendre") {
+
+		// Localize generic error messages from sendEmailVerification
+		if strings.Contains(strings.ToLower(message), "no email address") {
+			message = h.tr(r, "email_error_none", "No email address configured")
+		} else if strings.Contains(strings.ToLower(message), "already verified") {
+			message = h.tr(r, "email_error_already_verified", "Email address already verified")
+		} else if strings.Contains(strings.ToLower(message), "please wait") {
 			statusCode = http.StatusTooManyRequests
+			// We could extract the seconds but let's keep it simple for now or use a key
+			message = h.tr(r, "email_error_cooldown", "Please wait before resending")
+		} else if strings.Contains(strings.ToLower(message), "smtp") {
+			message = h.tr(r, "smtp_not_configured", "SMTP not configured")
 		}
+
 		writeJSON(w, statusCode, APIResponse{Success: false, Message: message})
 		return
 	}

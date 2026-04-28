@@ -1522,26 +1522,20 @@ html:not(.dark) .jg-nav-item svg {
     width: fit-content;
 }
 
-/* Settings Tabs Visual Feedback */
+.jg-glass-tabs {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
 .jg-glass-tabs .tab-btn {
     position: relative;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
 }
 
 .jg-glass-tabs .tab-btn.active {
     color: var(--jg-accent) !important;
     border-bottom-color: var(--jg-accent) !important;
-    background: rgba(20, 184, 166, 0.05);
-}
-
-.jg-glass-tabs .tab-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 20%;
-    right: 20%;
-    height: 2px;
-    background: var(--jg-accent);
-    box-shadow: 0 0 10px var(--jg-accent);
+    background: transparent !important;
 }
 
 .jg-tab-btn {

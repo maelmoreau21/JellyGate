@@ -13,22 +13,37 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/backup"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
+	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
 type BackupHandler struct {
-	db      *database.DB
-	service *backup.Service
+	db       *database.DB
+	service  *backup.Service
+	renderer *render.Engine
 }
 
-func NewBackupHandler(db *database.DB, service *backup.Service) *BackupHandler {
-	return &BackupHandler{db: db, service: service}
+func NewBackupHandler(db *database.DB, service *backup.Service, renderer *render.Engine) *BackupHandler {
+	return &BackupHandler{db: db, service: service, renderer: renderer}
+}
+
+func (h *BackupHandler) tr(r *http.Request, key, fallback string) string {
+	if h.renderer == nil {
+		return fallback
+	}
+	lang := jgmw.LangFromContext(r.Context())
+	value := h.renderer.Translate(lang, key)
+	if value == "["+key+"]" {
+		return fallback
+	}
+	return value
 }
 
 func (h *BackupHandler) ListBackups(w http.ResponseWriter, r *http.Request) {
 	list, err := h.service.ListBackups()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de lister les sauvegardes"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "backup_error_list", "Impossible de lister les sauvegardes")})
 		return
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: list})
@@ -42,7 +57,7 @@ func (h *BackupHandler) CreateBackup(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Ã‰chec de crÃ©ation de la sauvegarde"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "backup_error_create", "Ã‰chec de crÃ©ation de la sauvegarde")})
 		return
 	}
 
@@ -51,27 +66,27 @@ func (h *BackupHandler) CreateBackup(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = h.db.LogAction("backup.manual.created", sess.Username, info.Name, "")
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde crÃ©Ã©e", Data: info})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "backup_created", "Sauvegarde crÃ©Ã©e"), Data: info})
 }
 
 func (h *BackupHandler) DownloadBackup(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	path, err := h.service.BackupPath(name)
 	if err != nil {
-		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Sauvegarde introuvable"})
+		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "backup_error_not_found", "Sauvegarde introuvable")})
 		return
 	}
 
 	f, err := os.Open(path)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de lire la sauvegarde"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "backup_error_read", "Impossible de lire la sauvegarde")})
 		return
 	}
 	defer f.Close()
 
 	st, err := f.Stat()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de lire la sauvegarde"})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "backup_error_read", "Impossible de lire la sauvegarde")})
 		return
 	}
 
@@ -111,7 +126,7 @@ func (h *BackupHandler) ImportBackup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = h.db.LogAction("backup.imported", sess.Username, info.Name, "")
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde importÃ©e", Data: info})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "backup_imported", "Sauvegarde importÃ©e"), Data: info})
 }
 
 func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
@@ -131,7 +146,7 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 		_ = h.db.LogAction("backup.restore.applied", sess.Username, name, time.Now().Format(time.RFC3339))
 		writeJSON(w, http.StatusOK, APIResponse{
 			Success: true,
-			Message: "Restauration PostgreSQL appliquée.",
+			Message: h.tr(r, "backup_restore_applied", "Restauration PostgreSQL appliquÃ©e."),
 			Data: map[string]interface{}{
 				"restart_required": false,
 				"backup":           name,
@@ -152,7 +167,7 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 	_ = h.db.LogAction("backup.restore.prepared", sess.Username, name, time.Now().Format(time.RFC3339))
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Restauration préparée. Redémarre JellyGate pour appliquer la sauvegarde.",
+		Message: h.tr(r, "backup_restore_prepared", "Restauration prÃ©parÃ©e. RedÃ©marre JellyGate pour appliquer la sauvegarde."),
 		Data: map[string]interface{}{
 			"restart_required": true,
 			"backup":           name,
@@ -168,5 +183,5 @@ func (h *BackupHandler) DeleteBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = h.db.LogAction("backup.deleted", sess.Username, name, "")
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Sauvegarde supprimÃ©e"})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "backup_deleted", "Sauvegarde supprimÃ©e")})
 }
