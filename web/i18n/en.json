@@ -204,9 +204,6 @@
     "settings_backup_list_pg_unavailable": "PostgreSQL mode: SQLite archives are unavailable. Use pg_dump/pg_restore.",
     "settings_backup_manual_desc": "Create an exportable ZIP archive (SQLite DB + settings + templates).",
     "settings_backup_manual_title": "Manual Trigger",
-    "settings_backup_pg_mode_desc_1": "Backups and restore are available in PostgreSQL mode.",
-    "settings_backup_pg_mode_desc_2": "In Docker mode, pg_dump and psql are included in the JellyGate image. Rebuild the image if PostgreSQL major versions do not match. Outside Docker, keep pg_dump and psql installed on the host.",
-    "settings_backup_pg_mode_title": "PostgreSQL mode detected",
     "settings_backup_pg_not_supported": "Action not supported in PostgreSQL mode",
     "settings_backup_pg_plan_unavailable": "Local backup scheduler unavailable in PostgreSQL mode (use pg_dump/pg_restore)",
     "settings_backup_restore_confirm_prefix": "Prepare restoration for",
@@ -958,5 +955,17 @@
     "settings_email_var_logo_url": "email logo URL",
     "settings_template_variables_unknown": "Unknown variables",
     "settings_template_variables_valid": "Valid variables ({count}) and syntax OK.",
-    "settings_template_syntax_valid": "Template syntax is valid."
+    "settings_template_syntax_valid": "Template syntax is valid.",
+    "settings_jellyfin_server_name_label": "Jellyfin server name",
+    "settings_jellyfin_server_name_placeholder": "Jellyfin",
+    "settings_jellyfin_server_name_desc": "Used in email subjects, messages, and previews.",
+    "settings_email_variables_open": "Variables",
+    "settings_email_variables_close_aria": "Close variables",
+    "settings_email_variables_modal_desc": "Click a variable to insert it into the active field.",
+    "settings_email_base_shared_desc": "Logo, layout, and global enable or disable options shared across every language.",
+    "settings_email_base_shared_tag": "Global",
+    "settings_email_var_jellyfin_server_name": "Jellyfin server name",
+    "invitations_preferred_lang_label": "Invitation language",
+    "invitations_preferred_lang_default": "Instance default language",
+    "invitations_preferred_lang_help": "Delivery priority: user language > invitation language > default language."
 }

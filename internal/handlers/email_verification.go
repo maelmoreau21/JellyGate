@@ -134,26 +134,27 @@ func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *
 	verificationURL := publicBaseURL + "/verify-email/" + token
 
 	emailData := map[string]string{
-		"Username":         username,
-		"DisplayName":      username,
-		"Email":            address,
-		"VerificationLink": verificationURL,
-		"VerificationURL":  verificationURL,
-		"VerificationCode": token,
-		"ExpiresIn":        "24 hours",
-		"HelpURL":          publicBaseURL,
-		"JellyGateURL":     publicBaseURL,
-		"JellyfinURL":      links.JellyfinURL,
-		"JellyseerrURL":    links.JellyseerrURL,
-		"JellyTrackURL":    links.JellyTrackURL,
+		"Username":           username,
+		"DisplayName":        username,
+		"Email":              address,
+		"VerificationLink":   verificationURL,
+		"VerificationURL":    verificationURL,
+		"VerificationCode":   token,
+		"HelpURL":            publicBaseURL,
+		"JellyGateURL":       publicBaseURL,
+		"JellyfinURL":        links.JellyfinURL,
+		"JellyfinServerName": links.JellyfinServerName,
+		"JellyseerrURL":      links.JellyseerrURL,
+		"JellyTrackURL":      links.JellyTrackURL,
 	}
 
 	templateBody := defaultEmailVerificationTemplate()
 	templateSubject := defaultEmailVerificationSubject()
-	emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(db, invitationLang, langCtx)
+	emailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(db, invitationLang, langCtx)
 	if cfgErr != nil {
-		emailCfg = config.DefaultEmailTemplates()
+		emailCfg = config.DefaultEmailTemplatesForLanguage(usedLang)
 	}
+	emailData["ExpiresIn"] = config.DefaultEmailPreviewDurationForLanguage(usedLang)
 	if strings.TrimSpace(emailCfg.EmailVerification) != "" {
 		templateBody = emailCfg.EmailVerification
 	}
@@ -161,7 +162,7 @@ func sendVerificationEmailTemplate(cfg *config.Config, db *database.DB, mailer *
 		templateSubject = emailCfg.EmailVerificationSubject
 	}
 
-	if err := sendTemplateIfConfigured(mailer, address, templateSubject, "email_verification", templateBody, emailCfg, emailData); err != nil {
+	if err := sendTemplateIfConfigured(mailer, address, templateSubject, usedLang, "email_verification", templateBody, emailCfg, emailData); err != nil {
 		return fmt.Errorf("envoi email verification: %w", err)
 	}
 

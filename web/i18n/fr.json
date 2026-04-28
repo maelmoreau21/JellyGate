@@ -412,9 +412,6 @@
     "settings_backup_list_pg_unavailable": "Mode PostgreSQL : les archives SQLite ne sont pas disponibles. Utilisez pg_dump et pg_restore.",
     "settings_backup_manual_desc": "Creez une archive ZIP exportable (base SQLite + parametres + modeles).",
     "settings_backup_manual_title": "Sauvegarde manuelle",
-    "settings_backup_pg_mode_desc_1": "Les sauvegardes et la restauration sont disponibles en mode PostgreSQL.",
-    "settings_backup_pg_mode_desc_2": "En mode Docker, pg_dump et psql sont inclus dans l'image JellyGate. Reconstruisez l'image si les versions majeures PostgreSQL ne correspondent pas. Hors Docker, gardez pg_dump et psql installes sur l'hote.",
-    "settings_backup_pg_mode_title": "Mode PostgreSQL detecte",
     "settings_backup_pg_not_supported": "Action non prise en charge en mode PostgreSQL",
     "settings_backup_pg_plan_unavailable": "Le planificateur local de sauvegarde est indisponible en mode PostgreSQL (utilisez pg_dump et pg_restore)",
     "settings_backup_restore_confirm_prefix": "Preparer la restauration de",
@@ -963,5 +960,17 @@
     "settings_email_var_logo_url": "URL du logo e-mail",
     "settings_template_variables_unknown": "Variables inconnues",
     "settings_template_variables_valid": "Variables valides ({count}) et syntaxe OK.",
-    "settings_template_syntax_valid": "La syntaxe du modele est valide."
+    "settings_template_syntax_valid": "La syntaxe du modele est valide.",
+    "settings_jellyfin_server_name_label": "Nom du serveur Jellyfin",
+    "settings_jellyfin_server_name_placeholder": "Jellyfin",
+    "settings_jellyfin_server_name_desc": "Utilise ce nom dans les sujets, messages et apercus d e-mail.",
+    "settings_email_variables_open": "Variables",
+    "settings_email_variables_close_aria": "Fermer les variables",
+    "settings_email_variables_modal_desc": "Clique sur une variable pour l inserer dans le champ actif.",
+    "settings_email_base_shared_desc": "Logo, habillage et activations globales partages par toutes les langues.",
+    "settings_email_base_shared_tag": "Global",
+    "settings_email_var_jellyfin_server_name": "nom du serveur Jellyfin",
+    "invitations_preferred_lang_label": "Langue de l invitation",
+    "invitations_preferred_lang_default": "Langue par defaut de l instance",
+    "invitations_preferred_lang_help": "Priorite d envoi: langue utilisateur > langue invitation > langue par defaut."
 }

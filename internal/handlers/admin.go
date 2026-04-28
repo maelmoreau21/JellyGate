@@ -206,7 +206,7 @@ func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 // SetMailer remplace le Mailer SMTP (rechargement ÃƒÂ  chaud).
 func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
-func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templateKey, templateBody string, emailCfg config.EmailTemplatesConfig, extra map[string]string) error {
+func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, lang, templateKey, templateBody string, emailCfg config.EmailTemplatesConfig, extra map[string]string) error {
 	if rec == nil {
 		return nil
 	}
@@ -222,12 +222,14 @@ func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templat
 	}
 
 	data := map[string]string{
-		"Username":      rec.Username,
-		"Email":         rec.Email,
-		"HelpURL":       helpURL,
-		"JellyGateURL":  helpURL,
-		"JellyfinURL":   links.JellyfinURL,
-		"JellyseerrURL": links.JellyseerrURL,
+		"Username":           rec.Username,
+		"Email":              rec.Email,
+		"HelpURL":            helpURL,
+		"JellyGateURL":       helpURL,
+		"JellyfinURL":        links.JellyfinURL,
+		"JellyfinServerName": links.JellyfinServerName,
+		"JellyseerrURL":      links.JellyseerrURL,
+		"JellyTrackURL":      links.JellyTrackURL,
 	}
 	if rec.AccessExpiresAt.Valid {
 		if t, err := parseAccessExpiry(rec.AccessExpiresAt.String); err == nil {
@@ -238,7 +240,7 @@ func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, templat
 		data[key] = value
 	}
 
-	return sendTemplateIfConfigured(h.mailer, rec.Email, subject, templateKey, templateBody, emailCfg, data)
+	return sendTemplateIfConfigured(h.mailer, rec.Email, subject, lang, templateKey, templateBody, emailCfg, data)
 }
 
 func (h *AdminHandler) canSendUserTemplate(userID int64, templateKey string) bool {
@@ -269,14 +271,14 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 		return nil
 	}
 
-	emailCfg, _, err := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
+	emailCfg, usedLang, err := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
 		PreferredLang: rec.PreferredLang,
 		GroupName:     rec.GroupName,
 	})
 	if err != nil {
 		return err
 	}
-	defaults := config.DefaultEmailTemplates()
+	defaults := config.DefaultEmailTemplatesForLanguage(usedLang)
 
 	var subject, body string
 	switch templateKey {
@@ -320,7 +322,7 @@ func (h *AdminHandler) sendUserTemplateByKey(rec *adminUserRecord, templateKey s
 		return nil
 	}
 
-	return h.sendUserEventEmail(rec, subject, templateKey, body, emailCfg, extra)
+	return h.sendUserEventEmail(rec, subject, usedLang, templateKey, body, emailCfg, extra)
 }
 
 func containsInt(values []int, target int) bool {
@@ -535,8 +537,9 @@ func (h *AdminHandler) runExpirationCheck() {
 				AccessExpiresAt: expiryRaw,
 			}
 			templateBody := chooseExpiryReminderTemplate(emailCfg, stageDays)
-			subject := firstNonEmpty(emailCfg.ExpiryReminderSubject, config.DefaultEmailTemplates().ExpiryReminderSubject)
-			if err := h.sendUserEventEmail(rec, subject, "expiry_reminder", templateBody, emailCfg, map[string]string{
+			usedLang := h.db.GetDefaultLang()
+			subject := firstNonEmpty(emailCfg.ExpiryReminderSubject, config.DefaultEmailTemplatesForLanguage(usedLang).ExpiryReminderSubject)
+			if err := h.sendUserEventEmail(rec, subject, usedLang, "expiry_reminder", templateBody, emailCfg, map[string]string{
 				"ExpiryDate":    emailTime(expiryTime),
 				"ReminderStage": fmt.Sprintf("J-%d", stageDays),
 			}); err != nil {
@@ -2709,32 +2712,34 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 		publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
 	}
 	resetURL := fmt.Sprintf("%s/reset/%s", publicBaseURL, token)
-	mailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
+	mailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
 		PreferredLang: rec.PreferredLang,
 		GroupName:     rec.GroupName,
 	})
 	if cfgErr != nil {
-		mailCfg = config.DefaultEmailTemplates()
+		mailCfg = config.DefaultEmailTemplatesForLanguage(usedLang)
 	}
 	tpl := mailCfg.PasswordReset
 	if tpl == "" {
 		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de rÃƒÂ©initialisation de mot de passe : {{.ResetLink}}"
 	}
-	subject := firstNonEmpty(mailCfg.PasswordResetSubject, config.DefaultEmailTemplates().PasswordResetSubject)
+	subject := firstNonEmpty(mailCfg.PasswordResetSubject, config.DefaultEmailTemplatesForLanguage(usedLang).PasswordResetSubject)
 
 	data := map[string]string{
-		"Username":      rec.Username,
-		"ResetLink":     resetURL,
-		"ResetURL":      resetURL,
-		"ResetCode":     token,
-		"ExpiresIn":     "15 minutes",
-		"HelpURL":       publicBaseURL,
-		"JellyGateURL":  publicBaseURL,
-		"JellyfinURL":   links.JellyfinURL,
-		"JellyseerrURL": links.JellyseerrURL,
+		"Username":           rec.Username,
+		"ResetLink":          resetURL,
+		"ResetURL":           resetURL,
+		"ResetCode":          token,
+		"ExpiresIn":          config.DefaultEmailPreviewDurationForLanguage(usedLang),
+		"HelpURL":            publicBaseURL,
+		"JellyGateURL":       publicBaseURL,
+		"JellyfinURL":        links.JellyfinURL,
+		"JellyfinServerName": links.JellyfinServerName,
+		"JellyseerrURL":      links.JellyseerrURL,
+		"JellyTrackURL":      links.JellyTrackURL,
 	}
 
-	if err := sendTemplateIfConfigured(h.mailer, rec.Email, subject, "password_reset", tpl, mailCfg, data); err != nil {
+	if err := sendTemplateIfConfigured(h.mailer, rec.Email, subject, usedLang, "password_reset", tpl, mailCfg, data); err != nil {
 		return fmt.Errorf("envoi de l'email: %w", err)
 	}
 
@@ -2896,9 +2901,10 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	welcomeSent := false
 	if req.SendWelcomeEmail && strings.TrimSpace(req.Email) != "" && h.mailer != nil {
-		emailCfg, cfgErr := h.db.GetEmailTemplatesConfig()
+		usedLang := h.db.GetDefaultLang()
+		emailCfg, _, cfgErr := h.db.GetEmailTemplatesConfigForLang(usedLang)
 		if cfgErr == nil && !emailCfg.DisableWelcomeEmail {
-			defaults := config.DefaultEmailTemplates()
+			defaults := config.DefaultEmailTemplatesForLanguage(usedLang)
 			subject := firstNonEmpty(emailCfg.WelcomeSubject, defaults.WelcomeSubject)
 			body := emailCfg.Welcome
 			if strings.TrimSpace(body) == "" {
@@ -2908,7 +2914,7 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 			if !expiryAt.IsZero() {
 				extra["ExpiryDate"] = emailTime(expiryAt)
 			}
-			if err := h.sendUserEventEmail(rec, subject, "welcome", body, emailCfg, extra); err == nil {
+			if err := h.sendUserEventEmail(rec, subject, usedLang, "welcome", body, emailCfg, extra); err == nil {
 				welcomeSent = true
 			}
 		}
@@ -4695,9 +4701,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			}
 
 			go func(recipient, username, expiryDate, customBody, invitationLang string) {
-				emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, invitationLang, emailLanguageContext{})
+				emailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(h.db, invitationLang, emailLanguageContext{})
 				if cfgErr != nil {
-					emailCfg = config.DefaultEmailTemplates()
+					emailCfg = config.DefaultEmailTemplatesForLanguage(usedLang)
 				}
 				sections := []string{emailCfg.Invitation}
 				if expiryDate != "" && !emailCfg.DisableInviteExpiryEmail {
@@ -4717,14 +4723,16 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				}
 
 				emailData := map[string]string{
-					"InviteLink":    inviteURL,
-					"InviteURL":     inviteURL,
-					"InviteCode":    code,
-					"HelpURL":       strings.TrimRight(baseURL, "/"),
-					"JellyGateURL":  strings.TrimRight(baseURL, "/"),
-					"Username":      username,
-					"JellyfinURL":   links.JellyfinURL,
-					"JellyseerrURL": links.JellyseerrURL,
+					"InviteLink":         inviteURL,
+					"InviteURL":          inviteURL,
+					"InviteCode":         code,
+					"HelpURL":            strings.TrimRight(baseURL, "/"),
+					"JellyGateURL":       strings.TrimRight(baseURL, "/"),
+					"Username":           username,
+					"JellyfinURL":        links.JellyfinURL,
+					"JellyfinServerName": links.JellyfinServerName,
+					"JellyseerrURL":      links.JellyseerrURL,
+					"JellyTrackURL":      links.JellyTrackURL,
 				}
 				if expiryDate != "" {
 					emailData["ExpiryDate"] = expiryDate
@@ -4733,8 +4741,8 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 					emailData["Message"] = customBody
 				}
 
-				subject := firstNonEmpty(emailCfg.InvitationSubject, emailCfg.InviteExpirySubject, config.DefaultEmailTemplates().InvitationSubject)
-				errMail := sendTemplateIfConfigured(h.mailer, recipient, subject, "invitation", combinedTemplate, emailCfg, emailData)
+				subject := firstNonEmpty(emailCfg.InvitationSubject, emailCfg.InviteExpirySubject, config.DefaultEmailTemplatesForLanguage(usedLang).InvitationSubject)
+				errMail := sendTemplateIfConfigured(h.mailer, recipient, subject, usedLang, "invitation", combinedTemplate, emailCfg, emailData)
 				if errMail != nil {
 					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", recipient, "error", errMail)
 					_ = h.db.LogAction("invite.email.failed", sess.Username, code, errMail.Error())

@@ -100,17 +100,20 @@ func resolveEmailLogoURL(data map[string]string, configuredLogo string) string {
 	return baseURL + "/" + logoPath
 }
 
-func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, templateKey, tpl string, emailCfg config.EmailTemplatesConfig, data map[string]string) error {
+func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, lang, templateKey, tpl string, emailCfg config.EmailTemplatesConfig, data map[string]string) error {
 	if mailer == nil {
 		return nil
 	}
 	normalizeEmailBaseTemplates(&emailCfg)
-	preparedTemplate := config.PrepareEmailTemplateBodyFor(templateKey, tpl, emailCfg.BaseTemplateHeader, emailCfg.BaseTemplateFooter)
+	preparedTemplate := config.PrepareEmailTemplateBodyForLanguage(lang, templateKey, tpl, emailCfg.BaseTemplateHeader, emailCfg.BaseTemplateFooter)
 	if strings.TrimSpace(to) == "" || strings.TrimSpace(preparedTemplate) == "" {
 		return nil
 	}
 	if data == nil {
 		data = map[string]string{}
+	}
+	if strings.TrimSpace(data["JellyfinServerName"]) == "" {
+		data["JellyfinServerName"] = "Jellyfin"
 	}
 	data["EmailLogoURL"] = resolveEmailLogoURL(data, emailCfg.EmailLogoURL)
 	renderedSubject, err := renderInlineTemplate(subject, data)
@@ -139,6 +142,9 @@ func resolvePortalLinks(cfg *config.Config, db *database.DB) config.PortalLinksC
 	if strings.TrimSpace(links.JellyfinURL) == "" && cfg != nil {
 		links.JellyfinURL = strings.TrimSpace(cfg.Jellyfin.URL)
 	}
+	if strings.TrimSpace(links.JellyfinServerName) == "" {
+		links.JellyfinServerName = "Jellyfin"
+	}
 	if strings.TrimSpace(links.JellyseerrURL) == "" && cfg != nil {
 		links.JellyseerrURL = strings.TrimSpace(cfg.ThirdParty.JellyseerrURL)
 	}
@@ -148,6 +154,10 @@ func resolvePortalLinks(cfg *config.Config, db *database.DB) config.PortalLinksC
 
 	links.JellyGateURL = strings.TrimSpace(links.JellyGateURL)
 	links.JellyfinURL = strings.TrimSpace(links.JellyfinURL)
+	links.JellyfinServerName = strings.TrimSpace(links.JellyfinServerName)
+	if links.JellyfinServerName == "" {
+		links.JellyfinServerName = "Jellyfin"
+	}
 	links.JellyseerrURL = strings.TrimSpace(links.JellyseerrURL)
 	links.JellyTrackURL = strings.TrimSpace(links.JellyTrackURL)
 	return links

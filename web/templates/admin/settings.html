@@ -92,6 +92,11 @@
                 
               </div>
               <div>
+                <label class="jg-label" for="general-jellyfin-server-name">{{ .T "settings_jellyfin_server_name_label" }}</label>
+                <input type="text" id="general-jellyfin-server-name" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder='{{ .T "settings_jellyfin_server_name_placeholder" }}'>
+                <p class="text-xs text-slate-400 mt-2">{{ .T "settings_jellyfin_server_name_desc" }}</p>
+              </div>
+              <div>
                 <label class="jg-label" for="general-jellyseerr-url">{{ .T "settings_public_jellyseerr_url" }}</label>
                 <input type="url" id="general-jellyseerr-url" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="https://seerr.example.com">
                 
@@ -449,35 +454,33 @@
         </div>
 
         <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
-          <div class="w-full lg:max-w-sm">
-            <label class="jg-label" for="email-template-lang-select">{{ .T "settings_email_language_label" }}</label>
-            <select id="email-template-lang-select" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11"></select>
-            <p class="text-xs text-slate-400 mt-3">{{ .T "settings_email_language_desc" }}</p>
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div class="w-full lg:max-w-sm">
+              <label class="jg-label" for="email-template-lang-select">{{ .T "settings_email_language_label" }}</label>
+              <select id="email-template-lang-select" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11"></select>
+              <p class="text-xs text-slate-400 mt-3">{{ .T "settings_email_language_desc" }}</p>
+            </div>
+            <div class="flex-1 rounded-xl border border-black/5 dark:border-white/10 bg-black/20 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div class="text-[10px] font-black uppercase tracking-[0.24em] text-jg-text-muted/70 mb-1">{{ .T "settings_email_active_field_label" }}</div>
+                <div id="email-variable-target" class="text-sm font-semibold text-white">{{ .T "settings_email_active_field_none" }}</div>
+                <p class="text-xs text-slate-400 mt-2">{{ .T "settings_email_variable_instructions" }}</p>
+              </div>
+              <button type="button" id="email-variable-open-btn" class="jg-btn jg-btn-sm jg-btn-ghost whitespace-nowrap">{{ .T "settings_email_variables_open" }}</button>
+            </div>
           </div>
         </div>
 
-        <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
-          <div class="flex flex-col lg:flex-row lg:items-start gap-4">
-            <div class="w-full lg:max-w-md">
-              <label class="jg-label" for="email-variable-search">{{ .T "settings_email_variable_search_label" }}</label>
-              <input type="search" id="email-variable-search" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder='{{ .T "settings_email_variable_search_placeholder" }}'>
+        <details class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
+          <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-semibold text-white">{{ .T "settings_email_base_title" }}</h3>
+              <p class="text-xs text-slate-400 mt-2">{{ .T "settings_email_base_shared_desc" }}</p>
             </div>
-            <div class="flex-1 rounded-xl border border-black/5 dark:border-white/10 bg-black/20 px-4 py-3">
-              <div class="text-[10px] font-black uppercase tracking-[0.24em] text-jg-text-muted/70 mb-1">{{ .T "settings_email_active_field_label" }}</div>
-              <div id="email-variable-target" class="text-sm font-semibold text-white">{{ .T "settings_email_active_field_none" }}</div>
-              <p class="text-xs text-slate-400 mt-2">{{ .T "settings_email_variable_instructions" }}</p>
-            </div>
-          </div>
-          <div class="mt-4">
-            <h3 class="text-sm font-semibold text-white mb-3">{{ .T "settings_email_variables_title" }}</h3>
-            <div id="email-variable-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
-          </div>
-        </div>
+            <span class="text-[10px] font-black uppercase tracking-[0.22em] text-jg-text-muted/70">{{ .T "settings_email_base_shared_tag" }}</span>
+          </summary>
 
-        <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
-          <h3 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_base_title" }}</h3>
-          
-          <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
+          <div class="mt-4 p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
             <label class="jg-label" for="tpl-email-logo-url">{{ .T "settings_email_logo_label" }}</label>
             <input type="text" id="tpl-email-logo-url" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="https://example.com/logo.png">
             <p class="text-xs text-slate-400 mt-2">{{ .T "settings_email_logo_desc" }}</p>
@@ -494,7 +497,6 @@
             </div>
           </div>
           <div class="mt-4 flex items-center justify-between gap-3 flex-wrap">
-            
             <div class="flex items-center gap-2 flex-wrap">
               <button type="button" id="tpl-base-restore-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_restore" }}</button>
               <button type="button" id="tpl-base-preview-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_preview" }}</button>
@@ -505,7 +507,7 @@
             <p class="text-xs text-slate-400 mb-3">{{ .T "settings_email_base_live_preview_desc" }}</p>
             <iframe id="tpl-base-live-preview-frame" class="w-full rounded-lg border border-black/5 dark:border-white/10 bg-white" style="min-height:420px"></iframe>
           </div>
-        </div>
+        </details>
 
         <div class="rounded-xl bg-sky-500/10 border border-sky-500/20 p-4 mb-6">
           <h3 class="text-sm font-semibold text-sky-100 mb-2">{{ .T "settings_email_body_mode_title" }}</h3>
@@ -760,6 +762,21 @@
             <iframe id="email-preview-frame" class="w-full rounded-lg border border-black/5 dark:border-white/10 bg-white" style="min-height:420px"></iframe>
           </div>
         </div>
+
+        <div id="email-variable-modal" class="modal-overlay" style="display:none">
+          <div class="glass-card modal-content modal-content-lg relative">
+            <button type="button" id="email-variable-close" class="absolute top-4 right-4 text-slate-500 dark:text-slate-400 hover:text-white" aria-label='{{ .T "settings_email_variables_close_aria" }}'>
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <h3 class="text-lg font-semibold text-white mb-1">{{ .T "settings_email_variables_title" }}</h3>
+            <p class="text-xs text-slate-400 mb-4">{{ .T "settings_email_variables_modal_desc" }}</p>
+            <label class="jg-label" for="email-variable-search">{{ .T "settings_email_variable_search_label" }}</label>
+            <input type="search" id="email-variable-search" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder='{{ .T "settings_email_variable_search_placeholder" }}'>
+            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" id="email-variable-list"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -773,7 +790,7 @@
           
         </div>
 
-        <div id="backup-db-note" class="hidden mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100"></div>
+
 
         <form id="form-backup">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -847,9 +864,6 @@
       ldap_test_failed: '{{ .T "settings_ldap_test_failed" }}',
       default_none: '{{ .T "settings_default_none" }}',
       preset_fallback: '{{ .T "settings_preset_fallback" }}',
-      backup_pg_mode_title: '{{ .T "settings_backup_pg_mode_title" }}',
-      backup_pg_mode_desc_1: '{{ .T "settings_backup_pg_mode_desc_1" }}',
-      backup_pg_mode_desc_2: '{{ .T "settings_backup_pg_mode_desc_2" }}',
       backup_pg_plan_unavailable: '{{ .T "settings_backup_pg_plan_unavailable" }}',
       settings_saved: '{{ .T "settings_saved" }}',
       settings_save_error: '{{ .T "settings_save_error" }}',
@@ -894,6 +908,7 @@
       settings_email_var_expiry_date: '{{ .T "settings_email_var_expiry_date" }}',
       settings_email_var_jellygate_url: '{{ .T "settings_email_var_jellygate_url" }}',
       settings_email_var_jellyfin_url: '{{ .T "settings_email_var_jellyfin_url" }}',
+      settings_email_var_jellyfin_server_name: '{{ .T "settings_email_var_jellyfin_server_name" }}',
       settings_email_var_jellyseerr_url: '{{ .T "settings_email_var_jellyseerr_url" }}',
       settings_email_var_jellytrack_url: '{{ .T "settings_email_var_jellytrack_url" }}',
       settings_email_var_message: '{{ .T "settings_email_var_message" }}',

@@ -329,11 +329,12 @@ type settingsResponse struct {
 
 // generalInput est le corps JSON attendu par SaveGeneral.
 type generalInput struct {
-	JellyGateURL  string `json:"jellygate_url"`
-	DefaultLang   string `json:"default_lang"`
-	JellyfinURL   string `json:"jellyfin_url"`
-	JellyseerrURL string `json:"jellyseerr_url"`
-	JellyTrackURL string `json:"jellytrack_url"`
+	JellyGateURL       string `json:"jellygate_url"`
+	DefaultLang        string `json:"default_lang"`
+	JellyfinURL        string `json:"jellyfin_url"`
+	JellyfinServerName string `json:"jellyfin_server_name"`
+	JellyseerrURL      string `json:"jellyseerr_url"`
+	JellyTrackURL      string `json:"jellytrack_url"`
 }
 
 func normalizePublicPortalURL(raw string) (string, error) {
@@ -358,26 +359,26 @@ func normalizePublicPortalURL(raw string) (string, error) {
 	return strings.TrimRight(candidate, "/"), nil
 }
 
-func normalizeEmailTemplateBodies(cfg *config.EmailTemplatesConfig) {
+func normalizeEmailTemplateBodies(lang string, cfg *config.EmailTemplatesConfig) {
 	normalizeEmailBaseTemplates(cfg)
-	cfg.Confirmation = config.EditableNoCodeEmailTemplateBody("confirmation", cfg.Confirmation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.EmailVerification = config.EditableNoCodeEmailTemplateBody("email_verification", cfg.EmailVerification, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.ExpiryReminder = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.ExpiryReminder14 = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder14, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.ExpiryReminder7 = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder7, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.ExpiryReminder1 = config.EditableNoCodeEmailTemplateBody("expiry_reminder", cfg.ExpiryReminder1, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.Invitation = config.EditableNoCodeEmailTemplateBody("invitation", cfg.Invitation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.InviteExpiry = config.EditableNoCodeEmailTemplateBody("invite_expiry", cfg.InviteExpiry, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.PasswordReset = config.EditableNoCodeEmailTemplateBody("password_reset", cfg.PasswordReset, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.PreSignupHelp = config.EditableNoCodeEmailTemplateBody("", cfg.PreSignupHelp, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.PostSignupHelp = config.EditableNoCodeEmailTemplateBody("", cfg.PostSignupHelp, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.UserCreation = config.EditableNoCodeEmailTemplateBody("user_creation", cfg.UserCreation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.UserDeletion = config.EditableNoCodeEmailTemplateBody("user_deletion", cfg.UserDeletion, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.UserDisabled = config.EditableNoCodeEmailTemplateBody("user_disabled", cfg.UserDisabled, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.UserEnabled = config.EditableNoCodeEmailTemplateBody("user_enabled", cfg.UserEnabled, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.UserExpired = config.EditableNoCodeEmailTemplateBody("user_expired", cfg.UserExpired, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.ExpiryAdjusted = config.EditableNoCodeEmailTemplateBody("expiry_adjusted", cfg.ExpiryAdjusted, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
-	cfg.Welcome = config.EditableNoCodeEmailTemplateBody("welcome", cfg.Welcome, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.Confirmation = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "confirmation", cfg.Confirmation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.EmailVerification = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "email_verification", cfg.EmailVerification, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "expiry_reminder", cfg.ExpiryReminder, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder14 = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "expiry_reminder", cfg.ExpiryReminder14, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder7 = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "expiry_reminder", cfg.ExpiryReminder7, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryReminder1 = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "expiry_reminder", cfg.ExpiryReminder1, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.Invitation = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "invitation", cfg.Invitation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.InviteExpiry = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "invite_expiry", cfg.InviteExpiry, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.PasswordReset = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "password_reset", cfg.PasswordReset, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.PreSignupHelp = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "", cfg.PreSignupHelp, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.PostSignupHelp = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "", cfg.PostSignupHelp, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserCreation = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "user_creation", cfg.UserCreation, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserDeletion = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "user_deletion", cfg.UserDeletion, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserDisabled = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "user_disabled", cfg.UserDisabled, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserEnabled = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "user_enabled", cfg.UserEnabled, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.UserExpired = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "user_expired", cfg.UserExpired, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.ExpiryAdjusted = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "expiry_adjusted", cfg.ExpiryAdjusted, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+	cfg.Welcome = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, "welcome", cfg.Welcome, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
 }
 
 func trimEmailTemplateSubjects(cfg *config.EmailTemplatesConfig) {
@@ -396,7 +397,7 @@ func trimEmailTemplateSubjects(cfg *config.EmailTemplatesConfig) {
 	cfg.WelcomeSubject = strings.TrimSpace(cfg.WelcomeSubject)
 }
 
-func sanitizeEmailTemplatesInput(cfg *config.EmailTemplatesConfig) error {
+func sanitizeEmailTemplatesInput(lang string, cfg *config.EmailTemplatesConfig) error {
 	if cfg == nil {
 		return fmt.Errorf("configuration email vide")
 	}
@@ -404,7 +405,7 @@ func sanitizeEmailTemplatesInput(cfg *config.EmailTemplatesConfig) error {
 		cfg.ExpiryReminderDays = 3
 	}
 	normalizeEmailBaseTemplates(cfg)
-	normalizeEmailTemplateBodies(cfg)
+	normalizeEmailTemplateBodies(lang, cfg)
 	trimEmailTemplateSubjects(cfg)
 	cfg.PreSignupHelp = ""
 	cfg.DisablePreSignupHelpEmail = true
@@ -502,15 +503,15 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		emailTemplatesByLang = map[string]config.EmailTemplatesConfig{}
 	}
 	for lang, cfg := range emailTemplatesByLang {
-		normalizeEmailTemplateBodies(&cfg)
+		normalizeEmailTemplateBodies(lang, &cfg)
 		trimEmailTemplateSubjects(&cfg)
 		emailTemplatesByLang[lang] = cfg
 	}
 
 	emailTemplatesCfg, ok := emailTemplatesByLang[defaultLang]
 	if !ok {
-		emailTemplatesCfg = config.DefaultEmailTemplates()
-		normalizeEmailTemplateBodies(&emailTemplatesCfg)
+		emailTemplatesCfg = config.DefaultEmailTemplatesForLanguage(defaultLang)
+		normalizeEmailTemplateBodies(defaultLang, &emailTemplatesCfg)
 		trimEmailTemplateSubjects(&emailTemplatesCfg)
 	}
 
@@ -579,6 +580,10 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL publique JellyTrack invalide: " + err.Error()})
 		return
 	}
+	input.JellyfinServerName = strings.TrimSpace(input.JellyfinServerName)
+	if input.JellyfinServerName == "" {
+		input.JellyfinServerName = "Jellyfin"
+	}
 
 	if err := h.db.SetSetting(database.SettingDefaultLang, input.DefaultLang); err != nil {
 		slog.Error("Erreur sauvegarde default_lang", "error", err)
@@ -590,10 +595,11 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.db.SavePortalLinksConfig(config.PortalLinksConfig{
-		JellyGateURL:  input.JellyGateURL,
-		JellyfinURL:   input.JellyfinURL,
-		JellyseerrURL: input.JellyseerrURL,
-		JellyTrackURL: input.JellyTrackURL,
+		JellyGateURL:       input.JellyGateURL,
+		JellyfinURL:        input.JellyfinURL,
+		JellyfinServerName: input.JellyfinServerName,
+		JellyseerrURL:      input.JellyseerrURL,
+		JellyTrackURL:      input.JellyTrackURL,
 	}); err != nil {
 		slog.Error("Erreur sauvegarde portal_links", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
@@ -615,6 +621,7 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 type emailTemplatePreviewInput struct {
 	Template           string            `json:"template"`
 	TemplateKey        string            `json:"template_key"`
+	Language           string            `json:"language"`
 	BaseTemplateHeader string            `json:"base_template_header"`
 	BaseTemplateFooter string            `json:"base_template_footer"`
 	Context            map[string]string `json:"context"`
@@ -638,11 +645,21 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	previewCfg := config.DefaultEmailTemplates()
+	previewLang := config.NormalizeLanguageTag(input.Language)
+	if !config.IsSupportedLanguage(previewLang) {
+		if h.db != nil {
+			previewLang = h.db.GetDefaultLang()
+		}
+	}
+	if !config.IsSupportedLanguage(previewLang) {
+		previewLang = "fr"
+	}
+
+	previewCfg := config.DefaultEmailTemplatesForLanguage(previewLang)
 	previewCfg.BaseTemplateHeader = input.BaseTemplateHeader
 	previewCfg.BaseTemplateFooter = input.BaseTemplateFooter
 	normalizeEmailBaseTemplates(&previewCfg)
-	tplRaw = config.PrepareEmailTemplateBodyFor(strings.TrimSpace(input.TemplateKey), tplRaw, previewCfg.BaseTemplateHeader, previewCfg.BaseTemplateFooter)
+	tplRaw = config.PrepareEmailTemplateBodyForLanguage(previewLang, strings.TrimSpace(input.TemplateKey), tplRaw, previewCfg.BaseTemplateHeader, previewCfg.BaseTemplateFooter)
 
 	links := resolvePortalLinks(nil, h.db)
 	if strings.TrimSpace(links.JellyGateURL) == "" {
@@ -654,28 +671,32 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 	if strings.TrimSpace(links.JellyseerrURL) == "" {
 		links.JellyseerrURL = "https://jellyseerr.example.com"
 	}
+	if strings.TrimSpace(links.JellyTrackURL) == "" {
+		links.JellyTrackURL = "https://jellytrack.example.com"
+	}
 	sample := map[string]string{
-		"Username":         "demo.user",
-		"DisplayName":      "demo.user",
-		"Email":            "demo@example.com",
-		"InviteLink":       links.JellyGateURL + "/invite/ABC123",
-		"InviteURL":        links.JellyGateURL + "/invite/ABC123",
-		"InviteCode":       "ABC123",
-		"HelpURL":          links.JellyfinURL,
-		"ResetLink":        links.JellyGateURL + "/reset/XYZ789",
-		"ResetURL":         links.JellyGateURL + "/reset/XYZ789",
-		"ResetCode":        "XYZ789",
-		"VerificationLink": links.JellyGateURL + "/verify-email/MAIL123",
-		"VerificationURL":  links.JellyGateURL + "/verify-email/MAIL123",
-		"VerificationCode": "MAIL123",
-		"ExpiresIn":        "15 minutes",
-		"ExpiryDate":       time.Now().AddDate(0, 0, 7).Format("02/01/2006 15:04"),
-		"JellyGateURL":     links.JellyGateURL,
-		"JellyfinURL":      links.JellyfinURL,
-		"JellyseerrURL":    links.JellyseerrURL,
-		"JellyTrackURL":    "https://jellytrack.example.com",
-		"EmailLogoURL":     strings.TrimRight(links.JellyGateURL, "/") + "/static/img/logos/jellyfin.svg",
-		"Message":          "Ton acces Jellyfin est pret. Utilise les liens ci-dessous.",
+		"Username":           "demo.user",
+		"DisplayName":        "demo.user",
+		"Email":              "demo@example.com",
+		"InviteLink":         links.JellyGateURL + "/invite/ABC123",
+		"InviteURL":          links.JellyGateURL + "/invite/ABC123",
+		"InviteCode":         "ABC123",
+		"HelpURL":            links.JellyfinURL,
+		"ResetLink":          links.JellyGateURL + "/reset/XYZ789",
+		"ResetURL":           links.JellyGateURL + "/reset/XYZ789",
+		"ResetCode":          "XYZ789",
+		"VerificationLink":   links.JellyGateURL + "/verify-email/MAIL123",
+		"VerificationURL":    links.JellyGateURL + "/verify-email/MAIL123",
+		"VerificationCode":   "MAIL123",
+		"ExpiresIn":          config.DefaultEmailPreviewDurationForLanguage(previewLang),
+		"ExpiryDate":         time.Now().AddDate(0, 0, 7).Format("02/01/2006 15:04"),
+		"JellyGateURL":       links.JellyGateURL,
+		"JellyfinURL":        links.JellyfinURL,
+		"JellyfinServerName": links.JellyfinServerName,
+		"JellyseerrURL":      links.JellyseerrURL,
+		"JellyTrackURL":      links.JellyTrackURL,
+		"EmailLogoURL":       strings.TrimRight(links.JellyGateURL, "/") + "/static/img/logos/jellygate.svg",
+		"Message":            config.DefaultEmailPreviewMessageForLanguage(previewLang),
 	}
 	for k, v := range input.Context {
 		key := strings.TrimSpace(k)
@@ -950,7 +971,7 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 			if !config.IsSupportedLanguage(lang) {
 				continue
 			}
-			if err := sanitizeEmailTemplatesInput(&cfg); err != nil {
+			if err := sanitizeEmailTemplatesInput(lang, &cfg); err != nil {
 				writeJSON(w, http.StatusBadRequest, APIResponse{
 					Success: false,
 					Message: fmt.Sprintf("Langue %s: %s", lang, err.Error()),
@@ -988,17 +1009,16 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 
 	if payload.Template != nil {
 		cfg := *payload.Template
-		if err := sanitizeEmailTemplatesInput(&cfg); err != nil {
+		targetLang := config.NormalizeLanguageTag(payload.Language)
+		if !config.IsSupportedLanguage(targetLang) {
+			targetLang = h.db.GetDefaultLang()
+		}
+		if err := sanitizeEmailTemplatesInput(targetLang, &cfg); err != nil {
 			writeJSON(w, http.StatusBadRequest, APIResponse{
 				Success: false,
 				Message: err.Error(),
 			})
 			return
-		}
-
-		targetLang := config.NormalizeLanguageTag(payload.Language)
-		if !config.IsSupportedLanguage(targetLang) {
-			targetLang = h.db.GetDefaultLang()
 		}
 
 		if err := h.db.SaveEmailTemplatesConfigForLang(targetLang, cfg); err != nil {
@@ -1027,17 +1047,16 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		})
 		return
 	}
-	if err := sanitizeEmailTemplatesInput(&legacy); err != nil {
+	targetLang := config.NormalizeLanguageTag(payload.Language)
+	if !config.IsSupportedLanguage(targetLang) {
+		targetLang = h.db.GetDefaultLang()
+	}
+	if err := sanitizeEmailTemplatesInput(targetLang, &legacy); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
 			Message: err.Error(),
 		})
 		return
-	}
-
-	targetLang := config.NormalizeLanguageTag(payload.Language)
-	if !config.IsSupportedLanguage(targetLang) {
-		targetLang = h.db.GetDefaultLang()
 	}
 	if err := h.db.SaveEmailTemplatesConfigForLang(targetLang, legacy); err != nil {
 		slog.Error("Erreur sauvegarde config Email Templates (legacy)", "lang", targetLang, "error", err)

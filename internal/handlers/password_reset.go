@@ -61,11 +61,11 @@ type passwordResetRecord struct {
 
 // userRecord contient les champs nÃƒÂ©cessaires pour le reset.
 type userRecord struct {
-	ID         int64
-	Username   string
-	Email      string
-	JellyfinID string
-	LdapDN     string
+	ID            int64
+	Username      string
+	Email         string
+	JellyfinID    string
+	LdapDN        string
 	PreferredLang string
 	GroupName     string
 }
@@ -208,32 +208,33 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	resetURL := fmt.Sprintf("%s/reset/%s", publicBaseURL, token)
 
 	emailData := map[string]string{
-		"Username":      user.Username,
-		"ResetLink":     resetURL,
-		"ResetURL":      resetURL,
-		"ResetCode":     token,
-		"ExpiresIn":     "15 minutes",
-		"HelpURL":       publicBaseURL,
-		"JellyGateURL":  publicBaseURL,
-		"JellyfinURL":   links.JellyfinURL,
-		"JellyseerrURL": links.JellyseerrURL,
-		"JellyTrackURL": links.JellyTrackURL,
+		"Username":           user.Username,
+		"ResetLink":          resetURL,
+		"ResetURL":           resetURL,
+		"ResetCode":          token,
+		"HelpURL":            publicBaseURL,
+		"JellyGateURL":       publicBaseURL,
+		"JellyfinURL":        links.JellyfinURL,
+		"JellyfinServerName": links.JellyfinServerName,
+		"JellyseerrURL":      links.JellyseerrURL,
+		"JellyTrackURL":      links.JellyTrackURL,
 	}
 
-	emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
+	emailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
 		PreferredLang: user.PreferredLang,
 		GroupName:     user.GroupName,
 	})
 	if cfgErr != nil {
-		emailCfg = config.DefaultEmailTemplates()
+		emailCfg = config.DefaultEmailTemplatesForLanguage(usedLang)
 	}
+	emailData["ExpiresIn"] = config.DefaultEmailPreviewDurationForLanguage(usedLang)
 	tpl := emailCfg.PasswordReset
 	if tpl == "" {
 		tpl = "Bonjour {{.Username}},\n\nVoici le lien pour rÃƒÂ©initialiser votre mot de passe : {{.ResetURL}}"
 	}
-	subject := firstNonEmpty(emailCfg.PasswordResetSubject, config.DefaultEmailTemplates().PasswordResetSubject)
+	subject := firstNonEmpty(emailCfg.PasswordResetSubject, config.DefaultEmailTemplatesForLanguage(usedLang).PasswordResetSubject)
 
-	if err := sendTemplateIfConfigured(h.mailer, user.Email, subject, "password_reset", tpl, emailCfg, emailData); err != nil {
+	if err := sendTemplateIfConfigured(h.mailer, user.Email, subject, usedLang, "password_reset", tpl, emailCfg, emailData); err != nil {
 		slog.Error("Erreur d'envoi de l'email de reset",
 			"to", user.Email,
 			"error", err,

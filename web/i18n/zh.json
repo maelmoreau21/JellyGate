@@ -958,5 +958,17 @@
     "settings_email_var_logo_url": "email logo URL",
     "settings_template_variables_unknown": "Unknown variables",
     "settings_template_variables_valid": "Valid variables ({count}) and syntax OK.",
-    "settings_template_syntax_valid": "Template syntax is valid."
+    "settings_template_syntax_valid": "Template syntax is valid.",
+    "settings_jellyfin_server_name_label": "Jellyfin 服务器名称",
+    "settings_jellyfin_server_name_placeholder": "Jellyfin",
+    "settings_jellyfin_server_name_desc": "用于邮件主题、正文和实时预览。",
+    "settings_email_variables_open": "变量",
+    "settings_email_variables_close_aria": "关闭变量",
+    "settings_email_variables_modal_desc": "点击变量即可插入到当前激活的字段中。",
+    "settings_email_base_shared_desc": "Logo、外观和全局开关会在所有语言之间共享。",
+    "settings_email_base_shared_tag": "全局",
+    "settings_email_var_jellyfin_server_name": "Jellyfin 服务器名称",
+    "invitations_preferred_lang_label": "邀请语言",
+    "invitations_preferred_lang_default": "实例默认语言",
+    "invitations_preferred_lang_help": "发送优先级：用户语言 > 邀请语言 > 默认语言。"
 }

@@ -958,5 +958,17 @@
     "settings_email_var_logo_url": "email logo URL",
     "settings_template_variables_unknown": "Unknown variables",
     "settings_template_variables_valid": "Valid variables ({count}) and syntax OK.",
-    "settings_template_syntax_valid": "Template syntax is valid."
+    "settings_template_syntax_valid": "Template syntax is valid.",
+    "settings_jellyfin_server_name_label": "Naam van de Jellyfin-server",
+    "settings_jellyfin_server_name_placeholder": "Jellyfin",
+    "settings_jellyfin_server_name_desc": "Wordt gebruikt in e-mailonderwerpen, berichten en previews.",
+    "settings_email_variables_open": "Variabelen",
+    "settings_email_variables_close_aria": "Variabelen sluiten",
+    "settings_email_variables_modal_desc": "Klik op een variabele om die in het actieve veld in te voegen.",
+    "settings_email_base_shared_desc": "Logo, opmaak en globale activeringen worden door alle talen gedeeld.",
+    "settings_email_base_shared_tag": "Globaal",
+    "settings_email_var_jellyfin_server_name": "naam van de Jellyfin-server",
+    "invitations_preferred_lang_label": "Taal van de uitnodiging",
+    "invitations_preferred_lang_default": "Standaardtaal van de instantie",
+    "invitations_preferred_lang_help": "Verzendprioriteit: gebruikerstaal > uitnodigingstaal > standaardtaal."
 }

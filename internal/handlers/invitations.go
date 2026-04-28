@@ -746,13 +746,13 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	})
 
 	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
-		emailCfg, _, cfgErr := loadEmailTemplatesForLanguage(h.db, strings.TrimSpace(inv.PreferredLang), emailLanguageContext{
+		emailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(h.db, strings.TrimSpace(inv.PreferredLang), emailLanguageContext{
 			GroupName: strings.TrimSpace(provisionPlan.EffectiveProfile.GroupName),
 		})
 		if cfgErr != nil {
-			emailCfg = config.DefaultEmailTemplates()
+			emailCfg = config.DefaultEmailTemplatesForLanguage(usedLang)
 		}
-		defaults := config.DefaultEmailTemplates()
+		defaults := config.DefaultEmailTemplatesForLanguage(usedLang)
 		links := resolvePortalLinks(h.cfg, h.db)
 		publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
 		if publicBaseURL == "" {
@@ -779,19 +779,20 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 		if combinedTemplate != "" {
 			emailData := map[string]string{
-				"Username":      form.Username,
-				"DisplayName":   form.Username,
-				"Email":         form.Email,
-				"InviteCode":    inv.Code,
-				"InviteLink":    publicBaseURL + "/invite/" + inv.Code,
-				"HelpURL":       publicBaseURL,
-				"JellyGateURL":  publicBaseURL,
-				"JellyfinURL":   links.JellyfinURL,
-				"JellyseerrURL": links.JellyseerrURL,
-				"JellyTrackURL": links.JellyTrackURL,
+				"Username":           form.Username,
+				"DisplayName":        form.Username,
+				"Email":              form.Email,
+				"InviteCode":         inv.Code,
+				"InviteLink":         publicBaseURL + "/invite/" + inv.Code,
+				"HelpURL":            publicBaseURL,
+				"JellyGateURL":       publicBaseURL,
+				"JellyfinURL":        links.JellyfinURL,
+				"JellyfinServerName": links.JellyfinServerName,
+				"JellyseerrURL":      links.JellyseerrURL,
+				"JellyTrackURL":      links.JellyTrackURL,
 			}
 			subject := firstNonEmpty(append(subjectCandidates, defaults.WelcomeSubject)...)
-			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, "welcome", combinedTemplate, emailCfg, emailData); err != nil {
+			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, usedLang, "welcome", combinedTemplate, emailCfg, emailData); err != nil {
 				slog.Error("Erreur envoi email post-inscription", "email", form.Email, "error", err)
 				h.logInviteAction(r, "invite.welcome_email.failed", form.Username, inv.Code, err.Error())
 			} else {

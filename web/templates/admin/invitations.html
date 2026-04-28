@@ -132,21 +132,25 @@
 {{/* ── Create Modal ─────────────────────────────────────────────────── */}}
 <div id="create-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" data-modal-close="create-modal"></div>
-    <div class="jg-card jg-glass w-full max-w-4xl relative z-10 flex flex-col max-h-[95vh] shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div class="flex items-center justify-between p-6 border-b border-jg-border">
-            <div>
-                <h2 class="text-2xl font-bold">{{ .T "invitations_create_title" }}</h2>
-                <div id="invite-policy-summary" class="text-sm text-jg-accent font-semibold mt-1"></div>
+    <div class="jg-card jg-glass invitation-create-modal relative z-10 flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between p-6 lg:p-7 border-b border-jg-border bg-white/[0.02]">
+            <div class="space-y-2">
+                <div class="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-200">
+                    <span class="w-2 h-2 rounded-full bg-cyan-300"></span>
+                    {{ .T "invitations_new_invitation" }}
+                </div>
+                <h2 class="text-2xl lg:text-3xl font-bold tracking-tight">{{ .T "invitations_create_title" }}</h2>
+                <div id="invite-policy-summary" class="text-sm text-jg-text-muted font-medium"></div>
             </div>
             <button data-modal-close="create-modal" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted hover:text-rose-400 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
 
-        <div class="p-6 overflow-y-auto">
+        <div class="p-6 lg:p-7 overflow-y-auto">
             <form id="create-form" class="space-y-6">
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-7">
+                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]">
                         <h3 class="text-sm font-bold uppercase tracking-widest text-cyan-300">{{ .T "invitations_section_link_settings" }}</h3>
                         <div>
                             <label class="jg-label">{{ .T "invitations_max_uses_label" }}</label>
@@ -164,7 +168,7 @@
                         </label>
                     </section>
 
-                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 space-y-4">
+                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]">
                         <h3 class="text-sm font-bold uppercase tracking-widest text-emerald-300">{{ .T "invitations_section_user_profile" }}</h3>
                         <div id="inv-forced-user-wrap">
                             <label class="jg-label">{{ .T "invitations_forced_username" }}</label>
@@ -194,16 +198,16 @@
                         </div>
                     </section>
 
-                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 space-y-4">
+                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]">
                         <h3 class="text-sm font-bold uppercase tracking-widest text-rose-300">{{ .T "invitations_section_smtp_notification" }}</h3>
                         <div>
                             <label class="jg-label">{{ .T "invitations_send_to_email_label" }}</label>
                             <input type="email" id="inv-email" class="jg-input h-11" placeholder="exemple@gmail.com">
                         </div>
                         <div>
-                            <label class="jg-label" for="inv-preferred-lang">Langue de l’invitation</label>
+                            <label class="jg-label" for="inv-preferred-lang">{{ .T "invitations_preferred_lang_label" }}</label>
                             <select id="inv-preferred-lang" class="jg-input jg-select-premium h-11 bg-black/20 hover:bg-black/40 text-sm">
-                                <option value="">Langue par défaut de l’instance</option>
+                                <option value="">{{ .T "invitations_preferred_lang_default" }}</option>
                                 <option value="fr">Français</option>
                                 <option value="en">English</option>
                                 <option value="de">Deutsch</option>
@@ -215,7 +219,7 @@
                                 <option value="ru">Русский</option>
                                 <option value="zh">中文 (简体)</option>
                             </select>
-                            <div class="text-xs text-jg-text-muted mt-2">Priorité d’envoi: langue invitation &gt; langue utilisateur &gt; langue par défaut.</div>
+                            <div class="text-xs text-jg-text-muted mt-2">{{ .T "invitations_preferred_lang_help" }}</div>
                         </div>
                         <div class="text-xs text-jg-text-muted leading-relaxed">
                             Le lien est généré immédiatement. Si un e-mail est renseigné, il sera aussi envoyé automatiquement.

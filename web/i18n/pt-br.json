@@ -958,5 +958,17 @@
     "settings_email_var_logo_url": "email logo URL",
     "settings_template_variables_unknown": "Unknown variables",
     "settings_template_variables_valid": "Valid variables ({count}) and syntax OK.",
-    "settings_template_syntax_valid": "Template syntax is valid."
+    "settings_template_syntax_valid": "Template syntax is valid.",
+    "settings_jellyfin_server_name_label": "Nome do servidor Jellyfin",
+    "settings_jellyfin_server_name_placeholder": "Jellyfin",
+    "settings_jellyfin_server_name_desc": "Usado nos assuntos, nas mensagens e nas previas de e-mail.",
+    "settings_email_variables_open": "Variaveis",
+    "settings_email_variables_close_aria": "Fechar variaveis",
+    "settings_email_variables_modal_desc": "Clique em uma variavel para inseri-la no campo ativo.",
+    "settings_email_base_shared_desc": "Logo, layout e ativacoes globais compartilhados por todos os idiomas.",
+    "settings_email_base_shared_tag": "Global",
+    "settings_email_var_jellyfin_server_name": "nome do servidor Jellyfin",
+    "invitations_preferred_lang_label": "Idioma do convite",
+    "invitations_preferred_lang_default": "Idioma padrao da instancia",
+    "invitations_preferred_lang_help": "Prioridade de envio: idioma do usuario > idioma do convite > idioma padrao."
 }

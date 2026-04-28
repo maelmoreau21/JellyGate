@@ -958,5 +958,17 @@
     "settings_email_var_logo_url": "email logo URL",
     "settings_template_variables_unknown": "Unknown variables",
     "settings_template_variables_valid": "Valid variables ({count}) and syntax OK.",
-    "settings_template_syntax_valid": "Template syntax is valid."
+    "settings_template_syntax_valid": "Template syntax is valid.",
+    "settings_jellyfin_server_name_label": "Имя сервера Jellyfin",
+    "settings_jellyfin_server_name_placeholder": "Jellyfin",
+    "settings_jellyfin_server_name_desc": "Используется в темах писем, сообщениях и превью.",
+    "settings_email_variables_open": "Переменные",
+    "settings_email_variables_close_aria": "Закрыть переменные",
+    "settings_email_variables_modal_desc": "Нажмите на переменную, чтобы вставить ее в активное поле.",
+    "settings_email_base_shared_desc": "Логотип, оформление и глобальные переключатели общие для всех языков.",
+    "settings_email_base_shared_tag": "Глобально",
+    "settings_email_var_jellyfin_server_name": "имя сервера Jellyfin",
+    "invitations_preferred_lang_label": "Язык приглашения",
+    "invitations_preferred_lang_default": "Язык инстанса по умолчанию",
+    "invitations_preferred_lang_help": "Приоритет отправки: язык пользователя > язык приглашения > язык по умолчанию."
 }

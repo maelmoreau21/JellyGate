@@ -122,6 +122,10 @@ func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
 
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
 	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
+	cfg.JellyfinServerName = strings.TrimSpace(cfg.JellyfinServerName)
+	if cfg.JellyfinServerName == "" {
+		cfg.JellyfinServerName = "Jellyfin"
+	}
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
 	cfg.JellyTrackURL = strings.TrimSpace(cfg.JellyTrackURL)
 
@@ -132,6 +136,10 @@ func (db *DB) GetPortalLinksConfig() (config.PortalLinksConfig, error) {
 func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 	cfg.JellyfinURL = strings.TrimSpace(cfg.JellyfinURL)
 	cfg.JellyGateURL = strings.TrimSpace(cfg.JellyGateURL)
+	cfg.JellyfinServerName = strings.TrimSpace(cfg.JellyfinServerName)
+	if cfg.JellyfinServerName == "" {
+		cfg.JellyfinServerName = "Jellyfin"
+	}
 	cfg.JellyseerrURL = strings.TrimSpace(cfg.JellyseerrURL)
 	cfg.JellyTrackURL = strings.TrimSpace(cfg.JellyTrackURL)
 
@@ -366,8 +374,73 @@ func normalizeEmailTemplatesConfig(cfg *config.EmailTemplatesConfig) {
 	}
 }
 
+func defaultEmailTemplatesForSupportedLanguage(lang string) config.EmailTemplatesConfig {
+	normalized := config.NormalizeLanguageTag(lang)
+	if !config.IsSupportedLanguage(normalized) {
+		normalized = "fr"
+	}
+	return config.DefaultEmailTemplatesForLanguage(normalized)
+}
+
+func copySharedEmailTemplateFields(dst *config.EmailTemplatesConfig, src config.EmailTemplatesConfig) {
+	if dst == nil {
+		return
+	}
+	dst.EmailLogoURL = src.EmailLogoURL
+	dst.BaseTemplateHeader = src.BaseTemplateHeader
+	dst.BaseTemplateFooter = src.BaseTemplateFooter
+	dst.DisableConfirmationEmail = src.DisableConfirmationEmail
+	dst.DisableExpiryReminderEmails = src.DisableExpiryReminderEmails
+	dst.ExpiryReminderDays = src.ExpiryReminderDays
+	dst.DisableInviteExpiryEmail = src.DisableInviteExpiryEmail
+	dst.DisablePreSignupHelpEmail = src.DisablePreSignupHelpEmail
+	dst.DisablePostSignupHelpEmail = src.DisablePostSignupHelpEmail
+	dst.DisableUserCreationEmail = src.DisableUserCreationEmail
+	dst.DisableUserDeletionEmail = src.DisableUserDeletionEmail
+	dst.DisableUserDisabledEmail = src.DisableUserDisabledEmail
+	dst.DisableUserEnabledEmail = src.DisableUserEnabledEmail
+	dst.DisableUserExpiredEmail = src.DisableUserExpiredEmail
+	dst.DisableExpiryAdjustedEmail = src.DisableExpiryAdjustedEmail
+	dst.DisableWelcomeEmail = src.DisableWelcomeEmail
+}
+
+func syncSharedEmailTemplateFields(templates map[string]config.EmailTemplatesConfig, defaultLang string) {
+	if len(templates) == 0 {
+		return
+	}
+
+	anchorLang := config.NormalizeLanguageTag(defaultLang)
+	anchor, ok := templates[anchorLang]
+	if !ok {
+		for _, lang := range config.SupportedLanguageTags() {
+			if cfg, exists := templates[lang]; exists {
+				anchor = cfg
+				anchorLang = lang
+				ok = true
+				break
+			}
+		}
+	}
+	if !ok {
+		anchorLang = "fr"
+		anchor = defaultEmailTemplatesForSupportedLanguage(anchorLang)
+	}
+
+	for _, lang := range config.SupportedLanguageTags() {
+		cfg, exists := templates[lang]
+		if !exists {
+			cfg = defaultEmailTemplatesForSupportedLanguage(lang)
+		}
+		if lang != anchorLang {
+			copySharedEmailTemplateFields(&cfg, anchor)
+		}
+		normalizeEmailTemplatesConfig(&cfg)
+		templates[lang] = cfg
+	}
+}
+
 func (db *DB) getLegacyEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
-	cfg := config.DefaultEmailTemplates()
+	cfg := defaultEmailTemplatesForSupportedLanguage(db.GetDefaultLang())
 
 	raw, err := db.GetSetting(SettingEmailTemplates)
 	if err != nil {
@@ -410,7 +483,7 @@ func parseEmailTemplatesByLanguage(raw string) (map[string]config.EmailTemplates
 			continue
 		}
 
-		cfg := config.DefaultEmailTemplates()
+		cfg := defaultEmailTemplatesForSupportedLanguage(lang)
 		if len(payload) > 0 {
 			if err := json.Unmarshal(payload, &cfg); err != nil {
 				slog.Warn("Erreur parsing template e-mail par langue", "lang", rawLang, "error", err)
@@ -427,37 +500,41 @@ func parseEmailTemplatesByLanguage(raw string) (map[string]config.EmailTemplates
 // GetEmailTemplatesConfigByLanguage retourne tous les templates par langue
 // avec fallback compatible vers le stockage legacy.
 func (db *DB) GetEmailTemplatesConfigByLanguage() (map[string]config.EmailTemplatesConfig, error) {
-	defaultLang := db.GetDefaultLang()
+	defaultLang := config.NormalizeLanguageTag(db.GetDefaultLang())
+	if !config.IsSupportedLanguage(defaultLang) {
+		defaultLang = "fr"
+	}
 	legacyCfg, err := db.getLegacyEmailTemplatesConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	templates := map[string]config.EmailTemplatesConfig{
-		defaultLang: legacyCfg,
+	templates := make(map[string]config.EmailTemplatesConfig, len(config.SupportedLanguageTags()))
+	for _, lang := range config.SupportedLanguageTags() {
+		templates[lang] = defaultEmailTemplatesForSupportedLanguage(lang)
 	}
+	templates[defaultLang] = legacyCfg
 
 	raw, err := db.GetSetting(SettingEmailTemplatesByLang)
 	if err != nil {
 		return templates, err
 	}
 	if strings.TrimSpace(raw) == "" {
+		syncSharedEmailTemplateFields(templates, defaultLang)
 		return templates, nil
 	}
 
 	parsed, err := parseEmailTemplatesByLanguage(raw)
 	if err != nil {
 		slog.Warn("Erreur parsing email_templates_by_lang", "error", err)
+		syncSharedEmailTemplateFields(templates, defaultLang)
 		return templates, nil
 	}
 	for lang, cfg := range parsed {
 		templates[lang] = cfg
 	}
 
-	if _, ok := templates[defaultLang]; !ok {
-		templates[defaultLang] = legacyCfg
-	}
-
+	syncSharedEmailTemplateFields(templates, defaultLang)
 	return templates, nil
 }
 
@@ -465,9 +542,12 @@ func (db *DB) GetEmailTemplatesConfigByLanguage() (map[string]config.EmailTempla
 // avec fallback sur la langue par defaut.
 func (db *DB) GetEmailTemplatesConfigForLang(lang string) (config.EmailTemplatesConfig, string, error) {
 	templates, err := db.GetEmailTemplatesConfigByLanguage()
-	defaultLang := db.GetDefaultLang()
+	defaultLang := config.NormalizeLanguageTag(db.GetDefaultLang())
+	if !config.IsSupportedLanguage(defaultLang) {
+		defaultLang = "fr"
+	}
 	if err != nil {
-		return config.DefaultEmailTemplates(), defaultLang, err
+		return defaultEmailTemplatesForSupportedLanguage(defaultLang), defaultLang, err
 	}
 
 	requested := config.NormalizeLanguageTag(lang)
@@ -486,7 +566,7 @@ func (db *DB) GetEmailTemplatesConfigForLang(lang string) (config.EmailTemplates
 	if cfg, ok := templates["fr"]; ok {
 		return cfg, "fr", nil
 	}
-	return config.DefaultEmailTemplates(), defaultLang, nil
+	return defaultEmailTemplatesForSupportedLanguage(defaultLang), defaultLang, nil
 }
 
 // GetEmailTemplatesConfig retourne la configuration active de la langue par defaut.
@@ -498,7 +578,20 @@ func (db *DB) GetEmailTemplatesConfig() (config.EmailTemplatesConfig, error) {
 // SaveEmailTemplatesConfigByLanguage sauvegarde les templates par langue
 // et met a jour la cle legacy sur la langue par defaut.
 func (db *DB) SaveEmailTemplatesConfigByLanguage(values map[string]config.EmailTemplatesConfig) error {
-	normalized := make(map[string]config.EmailTemplatesConfig)
+	existing, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		existing = map[string]config.EmailTemplatesConfig{}
+	}
+
+	normalized := make(map[string]config.EmailTemplatesConfig, len(config.SupportedLanguageTags()))
+	for _, lang := range config.SupportedLanguageTags() {
+		if cfg, ok := existing[lang]; ok {
+			normalized[lang] = cfg
+			continue
+		}
+		normalized[lang] = defaultEmailTemplatesForSupportedLanguage(lang)
+	}
+
 	for rawLang, cfg := range values {
 		lang := config.NormalizeLanguageTag(rawLang)
 		if !config.IsSupportedLanguage(lang) {
@@ -508,16 +601,11 @@ func (db *DB) SaveEmailTemplatesConfigByLanguage(values map[string]config.EmailT
 		normalized[lang] = cfg
 	}
 
-	defaultLang := db.GetDefaultLang()
-	if _, ok := normalized[defaultLang]; !ok {
-		if fallback, okEn := normalized["en"]; okEn {
-			normalized[defaultLang] = fallback
-		} else if fallback, okFr := normalized["fr"]; okFr {
-			normalized[defaultLang] = fallback
-		} else {
-			normalized[defaultLang] = config.DefaultEmailTemplates()
-		}
+	defaultLang := config.NormalizeLanguageTag(db.GetDefaultLang())
+	if !config.IsSupportedLanguage(defaultLang) {
+		defaultLang = "fr"
 	}
+	syncSharedEmailTemplateFields(normalized, defaultLang)
 
 	payload, err := json.Marshal(normalized)
 	if err != nil {

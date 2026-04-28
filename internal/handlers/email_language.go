@@ -21,26 +21,16 @@ func normalizeSupportedEmailLang(raw string) string {
 	return lang
 }
 
-func isEmailMultilangDisabledForGroup(groupName string) bool {
-	// Regle metier validee: la desactivation multi-langue repose uniquement
-	// sur users.group_name.
-	return strings.TrimSpace(groupName) != ""
-}
-
 func resolveEmailLanguage(defaultLang, invitationLang, preferredLang, groupName string) string {
 	fallback := normalizeSupportedEmailLang(defaultLang)
 	if fallback == "" {
 		fallback = "fr"
 	}
 
-	if isEmailMultilangDisabledForGroup(groupName) {
-		return fallback
-	}
-
-	if candidate := normalizeSupportedEmailLang(invitationLang); candidate != "" {
+	if candidate := normalizeSupportedEmailLang(preferredLang); candidate != "" {
 		return candidate
 	}
-	if candidate := normalizeSupportedEmailLang(preferredLang); candidate != "" {
+	if candidate := normalizeSupportedEmailLang(invitationLang); candidate != "" {
 		return candidate
 	}
 	return fallback
@@ -74,12 +64,12 @@ func loadEmailTemplatesForLanguage(db *database.DB, invitationLang string, ctx e
 	resolved := resolveEmailLanguage(defaultLang, invitationLang, ctx.PreferredLang, ctx.GroupName)
 
 	if db == nil {
-		return config.DefaultEmailTemplates(), resolved, nil
+		return config.DefaultEmailTemplatesForLanguage(resolved), resolved, nil
 	}
 
 	cfg, usedLang, err := db.GetEmailTemplatesConfigForLang(resolved)
 	if err != nil {
-		return config.DefaultEmailTemplates(), resolved, err
+		return config.DefaultEmailTemplatesForLanguage(resolved), resolved, err
 	}
 	return cfg, usedLang, nil
 }
