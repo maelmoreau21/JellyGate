@@ -623,18 +623,18 @@
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-8">${JG.esc(i18n.noTasks)}</td></tr>`;
                 return;
             }
-            tbody.innerHTML = tasks.map((task) => `<tr>
-            <td>${JG.esc(task.name || '')}</td>
-            <td>${JG.esc(task.task_type || '')}</td>
-            <td>${String(task.hour).padStart(2, '0')}:${String(task.minute).padStart(2, '0')} ${task.enabled ? `<span class="badge badge-success ml-2">${JG.esc(i18n.statusOn)}</span>` : `<span class="badge badge-muted ml-2">${JG.esc(i18n.statusOff)}</span>`}</td>
-            <td class="text-xs text-slate-400">${JG.esc(task.payload || '')}</td>
-            <td class="text-sm text-slate-500">${JG.esc(task.last_run_at || '—')}</td>
-            <td class="text-right">
+            tbody.innerHTML = tasks.map((task) => `<tr class="hover:bg-white/[0.02] transition-colors border-b border-jg-border last:border-none">
+            <td class="px-6 py-4 font-bold text-jg-text">${JG.esc(task.name || '')}</td>
+            <td class="px-6 py-4"><span class="text-[10px] bg-white/5 px-2 py-1 rounded-md text-jg-text-muted border border-white/5 font-mono">${JG.esc(task.task_type || '')}</span></td>
+            <td class="px-6 py-4 text-jg-text font-medium">${String(task.hour).padStart(2, '0')}:${String(task.minute).padStart(2, '0')} ${task.enabled ? `<span class="bg-emerald-500/10 text-emerald-500 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-2">${JG.esc(i18n.statusOn)}</span>` : `<span class="bg-white/5 text-jg-text-muted text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-2">${JG.esc(i18n.statusOff)}</span>`}</td>
+            <td class="px-6 py-4"><code class="text-xs text-jg-text-muted opacity-60">${JG.esc(task.payload || '—')}</code></td>
+            <td class="px-6 py-4 text-sm text-jg-text-muted">${JG.esc(task.last_run_at || '—')}</td>
+            <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-run" data-id="${task.id}">${JG.esc(i18n.runNow)}</button>
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-edit" data-id="${task.id}">${JG.esc(i18n.editLabel)}</button>
-                    <button class="jg-btn jg-btn-sm jg-btn-ghost" data-action="task-toggle" data-id="${task.id}">${task.enabled ? JG.esc(i18n.disable) : JG.esc(i18n.enable)}</button>
-                    <button class="jg-btn jg-btn-sm jg-btn-danger" data-action="task-delete" data-id="${task.id}">${JG.esc(i18n.deleteLabel)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="task-run" data-id="${task.id}">${JG.esc(i18n.runNow)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="task-edit" data-id="${task.id}">${JG.esc(i18n.editLabel)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="task-toggle" data-id="${task.id}">${task.enabled ? JG.esc(i18n.disable) : JG.esc(i18n.enable)}</button>
+                    <button class="jg-btn jg-btn-sm jg-btn-danger/80 hover:bg-jg-danger transition-colors" data-action="task-delete" data-id="${task.id}">${JG.esc(i18n.deleteLabel)}</button>
                 </div>
             </td>
         </tr>`).join('');

@@ -27,6 +27,7 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
@@ -243,7 +244,7 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	baseURL := strings.TrimRight(strings.TrimSpace(h.jellyfinURL), "/")
+	var baseURL string
 	if baseURL == "" {
 		if links, err := h.db.GetPortalLinksConfig(); err == nil {
 			baseURL = strings.TrimRight(strings.TrimSpace(links.JellyfinURL), "/")
