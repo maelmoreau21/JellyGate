@@ -204,6 +204,7 @@
                             <label class="jg-label">{{ .T "invitations_send_to_email_label" }}</label>
                             <input type="email" id="inv-email" class="jg-input h-11" placeholder="exemple@gmail.com">
                         </div>
+                        {{ if .Data.InviteAllowLanguage }}
                         <div>
                             <label class="jg-label" for="inv-preferred-lang">{{ .T "invitations_preferred_lang_label" }}</label>
                             <select id="inv-preferred-lang" class="jg-input jg-select-premium h-11 bg-black/20 hover:bg-black/40 text-sm">
@@ -221,6 +222,7 @@
                             </select>
                             <div class="text-xs text-jg-text-muted mt-2">{{ .T "invitations_preferred_lang_help" }}</div>
                         </div>
+                        {{ end }}
                         <div class="text-xs text-jg-text-muted leading-relaxed">
                             Le lien est généré immédiatement. Si un e-mail est renseigné, il sera aussi envoyé automatiquement.
                         </div>
@@ -266,6 +268,7 @@
         allowInviterGrant: "{{ if .Data.InviteAllowInviterGrant }}true{{ else }}false{{ end }}" === "true",
         allowInviterUserExpiry: "{{ if .Data.InviteAllowInviterUserExpiry }}true{{ else }}false{{ end }}" === "true",
         allowIgnoreLimits: "{{ if .Data.InviteAllowIgnoreLimits }}true{{ else }}false{{ end }}" === "true",
+        allowLanguage: "{{ if .Data.InviteAllowLanguage }}true{{ else }}false{{ end }}" === "true",
         inviterMaxUses: parseInt("{{ .Data.InviteInviterMaxUses }}", 10) || 0,
         limitLinkValidityDays: parseInt("{{ .Data.InviteLimitLinkValidityDays }}", 10) || 0,
         inviterMaxLinkHours: parseInt("{{ .Data.InviteInviterMaxLinkHours }}", 10) || 0,

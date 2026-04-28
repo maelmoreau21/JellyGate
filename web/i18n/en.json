@@ -959,6 +959,8 @@
     "settings_jellyfin_server_name_label": "Jellyfin server name",
     "settings_jellyfin_server_name_placeholder": "Jellyfin",
     "settings_jellyfin_server_name_desc": "Used in email subjects, messages, and previews.",
+    "settings_fetch_server_name_title": "Fetch server name from Jellyfin",
+    "settings_server_name_fetched": "Server name fetched: {name}",
     "settings_email_variables_open": "Variables",
     "settings_email_variables_close_aria": "Close variables",
     "settings_email_variables_modal_desc": "Click a variable to insert it into the active field.",
@@ -967,5 +969,7 @@
     "settings_email_var_jellyfin_server_name": "Jellyfin server name",
     "invitations_preferred_lang_label": "Invitation language",
     "invitations_preferred_lang_default": "Instance default language",
-    "invitations_preferred_lang_help": "Delivery priority: user language > invitation language > default language."
+    "invitations_preferred_lang_help": "Delivery priority: user language > invitation language > default language.",
+    "automation_invite_allow_language_label": "Allow invitation language selection",
+    "automation_invite_allow_language_help": "If enabled, the sponsor can choose the language of the invitation email sent to the new invitee."
 }

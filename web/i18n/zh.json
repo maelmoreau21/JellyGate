@@ -970,5 +970,7 @@
     "settings_email_var_jellyfin_server_name": "Jellyfin 服务器名称",
     "invitations_preferred_lang_label": "邀请语言",
     "invitations_preferred_lang_default": "实例默认语言",
-    "invitations_preferred_lang_help": "发送优先级：用户语言 > 邀请语言 > 默认语言。"
+    "invitations_preferred_lang_help": "发送优先级：用户语言 > 邀请语言 > 默认语言。",
+    "automation_invite_allow_language_label": "允许选择邀请语言",
+    "automation_invite_allow_language_help": "如果启用，赞助人可以选择发送给新被邀请人的邀请邮件的语言。"
 }

@@ -964,6 +964,8 @@
     "settings_jellyfin_server_name_label": "Nom du serveur Jellyfin",
     "settings_jellyfin_server_name_placeholder": "Jellyfin",
     "settings_jellyfin_server_name_desc": "Utilise ce nom dans les sujets, messages et apercus d e-mail.",
+    "settings_fetch_server_name_title": "Récupérer le nom du serveur depuis Jellyfin",
+    "settings_server_name_fetched": "Nom du serveur récupéré : {name}",
     "settings_email_variables_open": "Variables",
     "settings_email_variables_close_aria": "Fermer les variables",
     "settings_email_variables_modal_desc": "Clique sur une variable pour l inserer dans le champ actif.",
@@ -972,5 +974,7 @@
     "settings_email_var_jellyfin_server_name": "nom du serveur Jellyfin",
     "invitations_preferred_lang_label": "Langue de l invitation",
     "invitations_preferred_lang_default": "Langue par defaut de l instance",
-    "invitations_preferred_lang_help": "Priorite d envoi: langue utilisateur > langue invitation > langue par defaut."
+    "invitations_preferred_lang_help": "Priorite d envoi: langue utilisateur > langue invitation > langue par defaut.",
+    "automation_invite_allow_language_label": "Autoriser le choix de la langue d'invitation",
+    "automation_invite_allow_language_help": "Si active, le parrain pourra choisir la langue de l'e-mail d'invitation envoye au nouvel invite."
 }

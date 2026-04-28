@@ -83,11 +83,11 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>x}0 Invitation</h1>
+            <h1>Invitation {{.JellyfinServerName}}</h1>
         </div>
         <div class="body">
             <h2>Vous êtes invité !</h2>
-            <p>{{.InviterName}} vous invite à rejoindre sa bibliothèque de médias Jellyfin.</p>
+            <p>{{.InviterName}} vous invite à rejoindre sa bibliothèque de médias {{.JellyfinServerName}}.</p>
             {{if .Label}}
             <div class="info-box">
                 <strong>{{.Label}}</strong>
@@ -101,7 +101,7 @@
             {{end}}
         </div>
         <div class="footer">
-            <p>Cet email a été envoyé automatiquement par JellyGate.</p>
+            <p>Cet email a été envoyé automatiquement par {{.JellyfinServerName}}.</p>
         </div>
     </div>
 </body>

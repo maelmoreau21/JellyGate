@@ -970,5 +970,7 @@
     "settings_email_var_jellyfin_server_name": "nazwa serwera Jellyfin",
     "invitations_preferred_lang_label": "Jezyk zaproszenia",
     "invitations_preferred_lang_default": "Domyslny jezyk instancji",
-    "invitations_preferred_lang_help": "Priorytet wysylki: jezyk uzytkownika > jezyk zaproszenia > jezyk domyslny."
+    "invitations_preferred_lang_help": "Priorytet wysylki: jezyk uzytkownika > jezyk zaproszenia > jezyk domyslny.",
+    "automation_invite_allow_language_label": "Zezwol na wybor jezyka zaproszen",
+    "automation_invite_allow_language_help": "Jesli wlaczone, sponsor moze wybrac jezyk e-maila z zaproszeniem wysylanego do nowego zaproszonego."
 }

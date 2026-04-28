@@ -35,8 +35,8 @@ import (
 
 // SettingsHandler gÃƒÂ¨re les routes de configuration.
 type SettingsHandler struct {
-	db          *database.DB
-	jellyfinURL string
+	db       *database.DB
+	jfClient *jellyfin.Client
 
 	// Callbacks de rechargement Ã¢â‚¬â€� appelÃƒÂ©s aprÃƒÂ¨s sauvegarde pour
 	// rÃƒÂ©initialiser les clients ÃƒÂ  chaud sans redÃƒÂ©marrer le conteneur.
@@ -46,8 +46,8 @@ type SettingsHandler struct {
 }
 
 // NewSettingsHandler crÃƒÂ©e un nouveau handler de paramÃƒÂ¨tres.
-func NewSettingsHandler(db *database.DB, jellyfinURL string) *SettingsHandler {
-	return &SettingsHandler{db: db, jellyfinURL: strings.TrimSpace(jellyfinURL)}
+func NewSettingsHandler(db *database.DB, jf *jellyfin.Client) *SettingsHandler {
+	return &SettingsHandler{db: db, jfClient: jf}
 }
 
 func (h *SettingsHandler) ensureAdmin(w http.ResponseWriter, r *http.Request) bool {
@@ -615,6 +615,45 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Message: "ParamÃ¨tres gÃ©nÃ©raux sauvegardÃ©s",
+	})
+}
+
+// FetchJellyfinServerName rÃƒÂ©cupÃƒÂ¨re le nom du serveur depuis l'API Jellyfin.
+func (h *SettingsHandler) FetchJellyfinServerName(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	if h.jfClient == nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Client Jellyfin non configure"})
+		return
+	}
+
+	info, err := h.jfClient.GetSystemInfo()
+	if err != nil {
+		// Fallback public info if authenticated fails
+		info, err = h.jfClient.GetPublicSystemInfo()
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Impossible de contacter Jellyfin: " + err.Error()})
+			return
+		}
+	}
+
+	serverName := ""
+	if name, ok := info["ServerName"].(string); ok {
+		serverName = name
+	} else if name, ok := info["Name"].(string); ok {
+		serverName = name
+	}
+
+	if serverName == "" {
+		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Nom du serveur non trouve dans la reponse Jellyfin"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data:    map[string]string{"server_name": serverName},
 	})
 }
 

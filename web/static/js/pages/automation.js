@@ -488,6 +488,9 @@
                 const linkDays = preset.invite_link_validity_days || (preset.invite_max_link_hours ? Math.max(1, Math.ceil(preset.invite_max_link_hours / 24)) : 0);
                 linkDaysEl.value = linkDays;
             }
+
+            const allowLanguageEl = document.getElementById('preset-invite-allow-language');
+            if (allowLanguageEl) allowLanguageEl.checked = !!preset.invite_allow_language;
             
             const targetSelect = document.getElementById('preset-target-preset');
             if (targetSelect) {
@@ -543,6 +546,9 @@
             const linkDays = linkDaysEl ? (parseInt(linkDaysEl.value, 10) || 0) : 0;
             presets[idx].invite_link_validity_days = linkDays;
             presets[idx].invite_max_link_hours = linkDays > 0 ? linkDays * 24 : 0;
+
+            const allowLanguageEl = document.getElementById('preset-invite-allow-language');
+            if (allowLanguageEl) presets[idx].invite_allow_language = allowLanguageEl.checked;
             
             // Clean payload
             const payload = presets.map(p => {
@@ -671,6 +677,7 @@
                 invite_max_uses: 1,
                 invite_link_validity_days: 0,
                 invite_max_link_hours: 0,
+                invite_allow_language: false,
                 _ldap_dn: '',
                 _ldap_dn_inviter: '',
             });

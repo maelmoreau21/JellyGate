@@ -1626,6 +1626,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	td.Data["InviteAllowInviterGrant"] = limits.AllowGrant
 	td.Data["InviteAllowInviterUserExpiry"] = limits.AllowUserExpiry
 	td.Data["InviteAllowIgnoreLimits"] = limits.AllowIgnoreLimits
+	td.Data["InviteAllowLanguage"] = limits.AllowLanguage
 	td.Data["InviteInviterMaxUses"] = limits.MaxUses
 	td.Data["InviteLimitLinkValidityDays"] = limits.LinkValidityDays
 	td.Data["InviteInviterMaxLinkHours"] = limits.LinkValidityDays * 24
@@ -3856,6 +3857,7 @@ type invitationCreatorLimits struct {
 	AllowGrant        bool
 	AllowUserExpiry   bool
 	AllowIgnoreLimits bool
+	AllowLanguage     bool
 
 	MaxUses          int
 	LinkValidityDays int
@@ -3917,6 +3919,7 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 		limits.AllowGrant = true
 		limits.AllowUserExpiry = true
 		limits.AllowIgnoreLimits = true
+		limits.AllowLanguage = true
 
 		if limits.TargetPresetID != "" {
 			if preset, err := h.getJellyfinPresetByID(limits.TargetPresetID); err == nil {
@@ -3952,6 +3955,9 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 			limits.SourcePreset = preset
 			if preset.CanInvite {
 				limits.CanInvite = true
+			}
+			if preset.InviteAllowLanguage {
+				limits.AllowLanguage = true
 			}
 			if preset.InviteMaxUses > 0 {
 				limits.MaxUses = preset.InviteMaxUses

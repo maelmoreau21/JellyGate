@@ -970,5 +970,7 @@
     "settings_email_var_jellyfin_server_name": "naam van de Jellyfin-server",
     "invitations_preferred_lang_label": "Taal van de uitnodiging",
     "invitations_preferred_lang_default": "Standaardtaal van de instantie",
-    "invitations_preferred_lang_help": "Verzendprioriteit: gebruikerstaal > uitnodigingstaal > standaardtaal."
+    "invitations_preferred_lang_help": "Verzendprioriteit: gebruikerstaal > uitnodigingstaal > standaardtaal.",
+    "automation_invite_allow_language_label": "Taalkeuze voor uitnodigingen toestaan",
+    "automation_invite_allow_language_help": "Indien ingeschakeld, kan de sponsor de taal kiezen van de uitnodigings-e-mail die naar de nieuwe genodigde wordt gestuurd."
 }

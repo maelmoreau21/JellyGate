@@ -970,5 +970,7 @@
     "settings_email_var_jellyfin_server_name": "nome del server Jellyfin",
     "invitations_preferred_lang_label": "Lingua dell invito",
     "invitations_preferred_lang_default": "Lingua predefinita dell istanza",
-    "invitations_preferred_lang_help": "Priorita di invio: lingua utente > lingua invito > lingua predefinita."
+    "invitations_preferred_lang_help": "Priorita di invio: lingua utente > lingua invito > lingua predefinita.",
+    "automation_invite_allow_language_label": "Consenti selezione lingua per gli inviti",
+    "automation_invite_allow_language_help": "Se attivo, il promotore puo scegliere la lingua dell'e-mail di invito inviata al nuovo invitato."
 }

@@ -1048,6 +1048,18 @@
         document.getElementById('general-jellygate-url').value = links.jellygate_url || '';
         document.getElementById('general-jellyfin-url').value = links.jellyfin_url || '';
         document.getElementById('general-jellyfin-server-name').value = links.jellyfin_server_name || 'Jellyfin';
+        if (!links.jellyfin_server_name || links.jellyfin_server_name === 'Jellyfin') {
+            void (async () => {
+                const res = await JG.api('/admin/api/settings/general/fetch-server-name', { method: 'POST' });
+                if (res && res.success && res.data && res.data.server_name) {
+                    const input = document.getElementById('general-jellyfin-server-name');
+                    if (input && (!input.value || input.value === 'Jellyfin')) {
+                        input.value = res.data.server_name;
+                        scheduleBaseLivePreview();
+                    }
+                }
+            })();
+        }
         document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
         document.getElementById('general-jellytrack-url').value = links.jellytrack_url || '';
         refreshPortalShortcuts(links);
@@ -1634,5 +1646,24 @@
 
         document.getElementById('backup-create-btn')?.addEventListener('click', createBackupNow);
         document.getElementById('backup-import-btn')?.addEventListener('click', importBackup);
+        document.getElementById('btn-fetch-server-name')?.addEventListener('click', async () => {
+            const btn = document.getElementById('btn-fetch-server-name');
+            if (btn) btn.disabled = true;
+            try {
+                const res = await JG.api('/admin/api/settings/general/fetch-server-name', { method: 'POST' });
+                if (res && res.success && res.data && res.data.server_name) {
+                    const input = document.getElementById('general-jellyfin-server-name');
+                    if (input) {
+                        input.value = res.data.server_name;
+                        JG.toast(t('settings_server_name_fetched', 'Server name fetched: {name}').replace('{name}', res.data.server_name), 'success');
+                        scheduleBaseLivePreview();
+                    }
+                } else {
+                    JG.toast((res && res.message) || 'Failed to fetch server name', 'error');
+                }
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        });
     });
 })();

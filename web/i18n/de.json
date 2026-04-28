@@ -970,5 +970,7 @@
     "settings_email_var_jellyfin_server_name": "Name des Jellyfin-Servers",
     "invitations_preferred_lang_label": "Sprache der Einladung",
     "invitations_preferred_lang_default": "Standardsprache der Instanz",
-    "invitations_preferred_lang_help": "Sendeprioritat: Benutzersprache > Einladungssprache > Standardsprache."
+    "invitations_preferred_lang_help": "Sendeprioritat: Benutzersprache > Einladungssprache > Standardsprache.",
+    "automation_invite_allow_language_label": "Sprachauswahl fur Einladungen erlauben",
+    "automation_invite_allow_language_help": "Wenn aktiviert, kann der Parrain die Sprache der Einladungs-E-Mail an den neuen Eingeladenen wahlen."
 }

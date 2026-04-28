@@ -12,12 +12,12 @@
     {{/* ── Mobile Header ────────────────────────────────────────────────── */}}
     <header class="jg-mobile-header lg:hidden jg-glass">
         <div class="flex items-center justify-between px-4 h-16">
-            <div class="flex items-center gap-2">
+            <a href="/admin/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <div class="w-7 h-7 flex-shrink-0">
                     {{ template "logo" . }}
                 </div>
                 <span class="font-bold text-lg tracking-tight">JellyGate</span>
-            </div>
+            </a>
             <button id="mobile-menu-toggle" class="p-2 rounded-xl bg-white/5 text-jg-text-muted hover:text-jg-text transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -29,12 +29,12 @@
     {{/* ── Sidebar (Shared) ─────────────────────────────────────────────── */}}
     <aside id="sidebar" class="jg-sidebar jg-glass border-r border-jg-border">
         <div class="jg-sidebar-inner flex flex-col h-full">
-            <div class="jg-sidebar-header px-6 py-8 hidden lg:flex items-center gap-3">
-                <div class="w-8 h-8 flex-shrink-0">
+            <a href="/admin/" class="jg-sidebar-header px-6 py-8 flex items-center gap-3 group transition-opacity hover:opacity-90">
+                <div class="w-8 h-8 flex-shrink-0 group-hover:scale-105 transition-transform">
                     {{ template "logo" . }}
                 </div>
                 <span class="font-bold text-xl tracking-tight">JellyGate</span>
-            </div>
+            </a>
 
             <nav class="jg-nav flex-1 px-3 space-y-1 overflow-y-auto">
                 {{/* Helper variable to determine active state */}}

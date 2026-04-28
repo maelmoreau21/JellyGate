@@ -742,6 +742,7 @@ type JellyfinPolicyPreset struct {
 	InviteMaxUses          int    `json:"invite_max_uses"`           // Nombre d'utilisations par lien d'invitation
 	InviteMaxLinkHours     int    `json:"invite_max_link_hours"`     // Legacy: duree de validite d'un lien en heures
 	InviteLinkValidityDays int    `json:"invite_link_validity_days"` // Duree de validite d'un lien en jours
+	InviteAllowLanguage    bool   `json:"invite_allow_language"`     // Si vrai, le parrain peut choisir la langue de l'invitation
 }
 
 // InvitationProfileConfig contient la politique appliquee a chaque nouvelle invitation.

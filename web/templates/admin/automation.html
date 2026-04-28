@@ -228,22 +228,33 @@
                         <div>
                             <label class="jg-label text-[10px]" for="preset-invite-quota-day">{{ .T "automation_invite_quota_day_label" }}</label>
                             <input id="preset-invite-quota-day" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
+                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
                         </div>
                         <div>
                             <label class="jg-label text-[10px]" for="preset-invite-quota-month">{{ .T "automation_invite_quota_month_label" }}</label>
                             <input id="preset-invite-quota-month" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
+                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
                         </div>
                         <div>
                             <label class="jg-label text-[10px]" for="preset-invite-max-uses">{{ .T "automation_invite_max_uses_label" }}</label>
-                            <input id="preset-invite-max-uses" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
+                            <input id="preset-invite-max-uses" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
+                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
                         </div>
                         <div>
                             <label class="jg-label text-[10px]" for="preset-invite-link-days">{{ .T "automation_invite_link_days_label" }}</label>
-                            <input id="preset-invite-link-days" type="number" class="jg-input h-10 bg-black/20 text-xs" min="1">
+                            <input id="preset-invite-link-days" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
+                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
                         </div>
-                        <div>
+                        <div class="col-span-1 sm:col-span-2">
+                            <label class="flex items-center gap-2 text-sm text-jg-text" for="preset-invite-allow-language">
+                                <input type="checkbox" id="preset-invite-allow-language" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
+                                {{ .T "automation_invite_allow_language_label" }}
+                            </label>
+                            <div class="text-[10px] text-jg-text-muted mt-1 ml-6 opacity-80">{{ .T "automation_invite_allow_language_help" }}</div>
+                        </div>
+                        <div class="col-span-1 sm:col-span-2">
                             <label class="jg-label text-[10px]" for="preset-target-preset">{{ .T "automation_target_preset_label" }}</label>
-                            <select id="preset-target-preset" class="jg-input jg-select-premium h-10 bg-black/20 text-xs py-0">
+                            <select id="preset-target-preset" class="jg-input jg-select-premium h-10 bg-black/20 text-xs">
                                 <option value="">{{ .T "automation_target_preset_default" }}</option>
                             </select>
                         </div>
@@ -271,7 +282,7 @@
             </div>
             <div class="jg-table-wrap overflow-x-auto">
                 <table class="jg-table w-full text-sm text-left">
-                    <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest">
+                    <thead class="bg-jg-bg-secondary/30 text-jg-text-muted uppercase text-[10px] font-bold tracking-widest border-b border-jg-border">
                         <tr>
                             <th class="px-6 py-4">{{ .T "automation_col_id" }}</th>
                             <th class="px-6 py-4">{{ .T "automation_col_name" }}</th>
@@ -302,7 +313,7 @@
             </div>
             <div class="jg-table-wrap overflow-x-auto">
                 <table class="jg-table w-full text-sm text-left">
-                    <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest">
+                    <thead class="bg-jg-bg-secondary/30 text-jg-text-muted uppercase text-[10px] font-bold tracking-widest border-b border-jg-border">
                         <tr>
                             <th class="px-6 py-4">{{ .T "automation_col_group" }}</th>
                             <th class="px-6 py-4">{{ .T "automation_col_source" }}</th>

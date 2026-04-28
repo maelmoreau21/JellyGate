@@ -970,5 +970,7 @@
     "settings_email_var_jellyfin_server_name": "имя сервера Jellyfin",
     "invitations_preferred_lang_label": "Язык приглашения",
     "invitations_preferred_lang_default": "Язык инстанса по умолчанию",
-    "invitations_preferred_lang_help": "Приоритет отправки: язык пользователя > язык приглашения > язык по умолчанию."
+    "invitations_preferred_lang_help": "Приоритет отправки: язык пользователя > язык приглашения > язык по умолчанию.",
+    "automation_invite_allow_language_label": "Разрешить выбор языка приглашений",
+    "automation_invite_allow_language_help": "Если включено, спонсор может выбрать язык письма-приглашения, отправляемого новому гостю."
 }

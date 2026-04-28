@@ -509,6 +509,25 @@ func (c *Client) GetPublicSystemInfo() (map[string]interface{}, error) {
 	return info, nil
 }
 
+// GetSystemInfo récupère les informations détaillées du serveur (authentifié).
+func (c *Client) GetSystemInfo() (map[string]interface{}, error) {
+	resp, err := c.doRequest(http.MethodGet, "/System/Info", nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	var info map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, err
+	}
+	return info, nil
+}
+
 // ResetPassword réinitialise le mot de passe d'un utilisateur Jellyfin.
 //
 // Utilisé lors de la récupération de mot de passe (en complément de l'AD).
