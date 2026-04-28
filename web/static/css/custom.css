@@ -819,6 +819,19 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     border-top: 1px solid rgba(148, 163, 184, 0.12);
 }
 
+.email-template-item.is-target {
+    border-color: rgba(34, 211, 238, 0.45);
+    box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.16), 0 18px 48px rgba(8, 47, 73, 0.24);
+}
+
+.email-template-item.is-target .email-template-summary {
+    background: rgba(14, 165, 233, 0.08);
+}
+
+.email-template-item.email-template-item-disabled {
+    opacity: 0.88;
+}
+
 .email-template-meta {
     display: flex;
     align-items: center;

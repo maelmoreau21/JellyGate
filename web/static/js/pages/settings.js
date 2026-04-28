@@ -12,6 +12,7 @@
     const templateValidationTimers = new Map();
     const templateValidationRequestIds = new Map();
     const emailLanguageOrder = ['fr', 'en', 'de', 'es', 'it', 'nl', 'pl', 'pt-br', 'ru', 'zh'];
+    let activeEmailEditorTarget = null;
 
     function t(key, fallback) {
         return i18n[key] || fallback || key;
@@ -60,6 +61,15 @@
             }
         });
         return emailLanguageOrder.map((lang) => ({ value: lang, label: byLang.get(lang) || lang }));
+    }
+
+    function getActiveEmailLanguageLabel() {
+        const select = document.getElementById('email-template-lang-select');
+        if (!select) {
+            return activeEmailTemplatesLang || t('settings_email_language_label', 'Language');
+        }
+        const option = select.options[select.selectedIndex];
+        return (option && option.textContent ? option.textContent : activeEmailTemplatesLang || t('settings_email_language_label', 'Language')).trim();
     }
 
     function cloneEmailTemplateConfig(value) {
@@ -122,54 +132,125 @@
         field.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
-    function buildVariablePicker(area) {
-        const toolbar = document.createElement('div');
-        toolbar.className = 'jg-variable-picker mt-3 flex items-center gap-2 max-w-xl group';
+    function getEmailEditorTargets() {
+        return document.querySelectorAll('#panel-email-templates textarea[id^="tpl-"], #panel-email-templates input[id$="-subject"]');
+    }
 
-        const selectWrapper = document.createElement('div');
-        selectWrapper.className = 'relative flex-1';
+    function getEmailFieldLabel(field) {
+        if (!field || !field.id) {
+            return t('settings_email_active_field_none', 'No target selected');
+        }
+        const label = document.querySelector(`label[for="${field.id}"]`);
+        if (!label) {
+            return field.id;
+        }
+        return (label.textContent || field.id).trim();
+    }
 
-        const select = document.createElement('select');
-        select.className = 'appearance-none jg-input w-full pr-10 text-xs h-9 bg-white/5 border-white/10 hover:border-jg-accent/40 transition-colors focus:ring-1 focus:ring-jg-accent/30';
-        select.setAttribute('aria-label', t('settings_email_variable_picker_label', 'Variable to insert'));
+    function updateActiveEmailFieldIndicator() {
+        const target = document.getElementById('email-variable-target');
+        if (target) {
+            target.textContent = activeEmailEditorTarget
+                ? getEmailFieldLabel(activeEmailEditorTarget)
+                : t('settings_email_active_field_none', 'No target selected');
+        }
 
-        const empty = document.createElement('option');
-        empty.value = '';
-        empty.textContent = t('settings_email_variable_picker_placeholder', 'Choose a variable...');
-        select.appendChild(empty);
+        document.querySelectorAll('.email-template-item').forEach((item) => item.classList.remove('is-target'));
+        if (!activeEmailEditorTarget) {
+            return;
+        }
+        activeEmailEditorTarget.closest('.email-template-item')?.classList.add('is-target');
+    }
 
-        getEmailVariableOptions().forEach((item) => {
-            const option = document.createElement('option');
-            option.value = item.value;
-            option.className = 'bg-jg-bg text-jg-text';
-            option.textContent = `${item.value} — ${item.label}`;
-            select.appendChild(option);
-        });
+    function setActiveEmailEditorTarget(field) {
+        activeEmailEditorTarget = field || null;
+        updateActiveEmailFieldIndicator();
+    }
 
-        const arrow = document.createElement('div');
-        arrow.className = 'absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-jg-text-muted/50';
-        arrow.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>';
-
-        selectWrapper.append(select, arrow);
-
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'jg-btn jg-btn-sm h-9 px-4 bg-jg-accent/10 hover:bg-jg-accent/20 text-jg-accent border border-jg-accent/20 hover:border-jg-accent/40 transition-all font-bold text-[10px] uppercase tracking-wider whitespace-nowrap shadow-sm';
-        button.innerHTML = `<span class="flex items-center gap-1.5"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg> ${t('settings_email_variable_insert', 'Insert')}</span>`;
-        
-        button.addEventListener('click', () => {
-            if (!select.value) {
+    function bindEmailEditorTargets() {
+        getEmailEditorTargets().forEach((field) => {
+            if (field.dataset.emailTargetBound) {
                 return;
             }
-            insertTextAtCursor(area, select.value);
-            // Non-destructive flash effect
-            area.classList.add('ring-2', 'ring-jg-accent/30');
-            setTimeout(() => area.classList.remove('ring-2', 'ring-jg-accent/30'), 500);
-            select.value = '';
+            field.dataset.emailTargetBound = '1';
+            field.addEventListener('focus', () => setActiveEmailEditorTarget(field));
+            field.addEventListener('click', () => setActiveEmailEditorTarget(field));
+        });
+        if (!activeEmailEditorTarget) {
+            const first = document.getElementById('tpl-confirmation-subject') || document.getElementById('tpl-confirmation');
+            if (first) {
+                activeEmailEditorTarget = first;
+            }
+        }
+        updateActiveEmailFieldIndicator();
+    }
+
+    async function insertVariableFromLibrary(item) {
+        if (!item || !item.value) {
+            return;
+        }
+        if (activeEmailEditorTarget && document.body.contains(activeEmailEditorTarget)) {
+            insertTextAtCursor(activeEmailEditorTarget, item.value);
+            activeEmailEditorTarget.classList.add('ring-2', 'ring-jg-accent/30');
+            setTimeout(() => activeEmailEditorTarget?.classList.remove('ring-2', 'ring-jg-accent/30'), 500);
+            JG.toast(t('settings_email_variable_inserted', 'Variable inserted'), 'success');
+            return;
+        }
+        const copied = await JG.copyText(item.value);
+        JG.toast(
+            copied
+                ? t('settings_email_variable_copied', 'Variable copied')
+                : t('settings_email_variable_pick_target', 'Select a subject or message first'),
+            copied ? 'success' : 'info',
+        );
+    }
+
+    function renderEmailVariableLibrary() {
+        const container = document.getElementById('email-variable-list');
+        const search = document.getElementById('email-variable-search');
+        if (!container || !search) {
+            return;
+        }
+
+        const query = String(search.value || '').trim().toLowerCase();
+        const items = getEmailVariableOptions().filter((item) => {
+            if (!query) {
+                return true;
+            }
+            return `${item.value} ${item.label}`.toLowerCase().includes(query);
         });
 
-        toolbar.append(selectWrapper, button);
-        return toolbar;
+        container.innerHTML = '';
+        if (items.length === 0) {
+            container.innerHTML = `<div class="rounded-xl border border-dashed border-white/10 bg-black/15 px-4 py-5 text-sm text-jg-text-muted">${JG.esc(t('settings_email_variable_no_result', 'No variable matches this search.'))}</div>`;
+            return;
+        }
+        items.forEach((item) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-left transition-all hover:border-jg-accent/40 hover:bg-black/35';
+            button.innerHTML = `
+                <div class="text-[11px] font-black uppercase tracking-[0.18em] text-jg-accent/90">${JG.esc(item.value)}</div>
+                <div class="mt-2 text-sm font-semibold text-white">${JG.esc(item.label)}</div>
+            `;
+            button.addEventListener('click', () => {
+                void insertVariableFromLibrary(item);
+            });
+            container.appendChild(button);
+        });
+    }
+
+    function initializeEmailVariableLibrary() {
+        const search = document.getElementById('email-variable-search');
+        if (!search) {
+            return;
+        }
+        if (!search.dataset.bound) {
+            search.dataset.bound = '1';
+            search.addEventListener('input', renderEmailVariableLibrary);
+        }
+        renderEmailVariableLibrary();
+        bindEmailEditorTargets();
     }
 
     function getAllowedTemplateVariableNames() {
@@ -228,6 +309,21 @@
         box.textContent = message;
     }
 
+    function buildEmailPreviewContext() {
+        const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
+        const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
+        const jellyseerrURL = (document.getElementById('general-jellyseerr-url')?.value || '').trim();
+        const jellytrackURL = (document.getElementById('general-jellytrack-url')?.value || '').trim();
+        return {
+            JellyGateURL: jellygateURL || 'https://jellygate.example.com',
+            JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
+            JellyseerrURL: jellyseerrURL || 'https://jellyseerr.example.com',
+            JellyTrackURL: jellytrackURL || 'https://jellytrack.example.com',
+            HelpURL: jellygateURL || jellyfinURL || 'https://jellygate.example.com',
+            EmailLogoURL: resolveEmailLogoPreviewURL(),
+        };
+    }
+
     async function runLiveTemplateValidation(area) {
         if (!area || !area.id) {
             return;
@@ -255,8 +351,6 @@
         const currentRequestId = (templateValidationRequestIds.get(area.id) || 0) + 1;
         templateValidationRequestIds.set(area.id, currentRequestId);
 
-        const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
-        const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
         const baseTemplateHeader = document.getElementById('tpl-base-header')?.value || '';
         const baseTemplateFooter = document.getElementById('tpl-base-footer')?.value || '';
 
@@ -268,12 +362,7 @@
                 template_key: emailTemplateKeyFromId(area.id),
                 base_template_header: baseTemplateHeader,
                 base_template_footer: baseTemplateFooter,
-                context: {
-                    JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
-                    JellyGateURL: jellygateURL || 'https://jellygate.example.com',
-                    HelpURL: jellyfinURL || 'https://jellyfin.example.com',
-                    EmailLogoURL: resolveEmailLogoPreviewURL(),
-                },
+                context: buildEmailPreviewContext(),
             }),
         });
 
@@ -309,19 +398,12 @@
     }
 
     function getBaseTemplatePreviewPayload() {
-        const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
-        const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
         return {
             template: t('email_base_preview_demo', 'You received an invitation to join the Jellyfin server.\n\nThe button and direct link appear automatically below this message.'),
             template_key: 'invitation',
             base_template_header: document.getElementById('tpl-base-header')?.value || '',
             base_template_footer: document.getElementById('tpl-base-footer')?.value || '',
-            context: {
-                JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
-                JellyGateURL: jellygateURL || 'https://jellygate.example.com',
-                HelpURL: jellyfinURL || 'https://jellyfin.example.com',
-                EmailLogoURL: resolveEmailLogoPreviewURL(),
-            },
+            context: buildEmailPreviewContext(),
         };
     }
 
@@ -370,12 +452,16 @@
     function restoreDefaultBaseTemplate() {
         const header = document.getElementById('tpl-base-header');
         const footer = document.getElementById('tpl-base-footer');
+        const logo = document.getElementById('tpl-email-logo-url');
         if (!header || !footer) {
             return;
         }
 
         header.value = emailBaseDefaults.header || '';
         footer.value = emailBaseDefaults.footer || '';
+        if (logo) {
+            logo.value = '';
+        }
         scheduleBaseLivePreview();
     }
 
@@ -385,7 +471,7 @@
             return configured;
         }
 
-        const path = configured || '/static/img/logos/jellygate.svg';
+        const path = configured || '/static/img/logos/jellyfin.svg';
         if (/^https?:\/\//i.test(path)) {
             return path;
         }
@@ -495,6 +581,8 @@
         document.getElementById('tpl-welcome').value = value.welcome || '';
         document.getElementById('tpl-welcome-subject').value = value.welcome_subject || '';
         document.getElementById('tpl-enable-welcome-email').checked = !value.disable_welcome_email;
+        document.querySelectorAll('.email-template-item').forEach((item) => syncEmailTemplateCardState(item));
+        bindEmailEditorTargets();
     }
 
     function storeActiveEmailTemplateDraft() {
@@ -519,18 +607,12 @@
 
     function syncEmailTemplateLanguageControls() {
         const select = document.getElementById('email-template-lang-select');
-        const tabs = document.querySelectorAll('#email-template-lang-tabs .email-template-lang-tab');
         if (select && activeEmailTemplatesLang) {
             select.value = activeEmailTemplatesLang;
         }
-        tabs.forEach((tab) => {
-            const active = tab.dataset.lang === activeEmailTemplatesLang;
-            tab.classList.toggle('bg-jg-accent/20', active);
-            tab.classList.toggle('text-jg-accent', active);
-            tab.classList.toggle('border-jg-accent/40', active);
-            tab.classList.toggle('bg-black/20', !active);
-            tab.classList.toggle('text-slate-300', !active);
-            tab.classList.toggle('border-white/10', !active);
+        const label = getActiveEmailLanguageLabel();
+        document.querySelectorAll('[data-email-toolbar-lang]').forEach((node) => {
+            node.textContent = label;
         });
     }
 
@@ -552,8 +634,7 @@
     function renderEmailTemplateLanguageControls(defaultLang) {
         const options = getEmailTemplateLanguageOptions();
         const select = document.getElementById('email-template-lang-select');
-        const tabsContainer = document.getElementById('email-template-lang-tabs');
-        if (!select || !tabsContainer) {
+        if (!select) {
             return;
         }
 
@@ -565,29 +646,9 @@
             select.appendChild(opt);
         });
 
-        tabsContainer.innerHTML = '';
-        options.forEach((option) => {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.dataset.lang = option.value;
-            btn.className = 'email-template-lang-tab px-3 py-1.5 rounded-lg text-xs font-bold border transition-all bg-black/20 text-slate-300 border-white/10 hover:border-jg-accent/40';
-            btn.textContent = option.label;
-            tabsContainer.appendChild(btn);
-        });
-
         if (!select.dataset.bound) {
             select.dataset.bound = '1';
             select.addEventListener('change', () => switchEmailTemplatesLanguage(select.value));
-        }
-        if (!tabsContainer.dataset.bound) {
-            tabsContainer.dataset.bound = '1';
-            tabsContainer.addEventListener('click', (event) => {
-                const tab = event.target.closest('.email-template-lang-tab');
-                if (!tab) {
-                    return;
-                }
-                switchEmailTemplatesLanguage(tab.dataset.lang || '');
-            });
         }
 
         const fallbackLang = normalizeLangTag(defaultLang) || options[0]?.value || 'fr';
@@ -839,7 +900,13 @@
         if (!res || !res.success) {
             return;
         }
-        const data = res.data;
+        const data = res.data || {};
+        const ldap = data.ldap || {};
+        const smtp = data.smtp || {};
+        const webhooks = data.webhooks || {};
+        const discordWebhook = webhooks.discord || {};
+        const telegramWebhook = webhooks.telegram || {};
+        const matrixWebhook = webhooks.matrix || {};
         setBackupMode(data.database_type || 'sqlite');
 
         document.getElementById('default-lang').value = data.default_lang || 'fr';
@@ -852,36 +919,36 @@
 
         applyInvitationProfileConfig(data.invitation_profile || {});
 
-        currentLDAPConfig = { ...(data.ldap || {}) };
-        document.getElementById('ldap-enabled').checked = data.ldap.enabled || false;
-        document.getElementById('ldap-host').value = data.ldap.host || '';
-        document.getElementById('ldap-port').value = data.ldap.port || 636;
-        document.getElementById('ldap-tls').checked = data.ldap.use_tls !== false;
-        document.getElementById('ldap-skip-verify').checked = data.ldap.skip_verify || false;
-        document.getElementById('ldap-bind-dn').value = data.ldap.bind_dn || '';
-        document.getElementById('ldap-bind-password').value = data.ldap.bind_password || '';
-        document.getElementById('ldap-base-dn').value = data.ldap.base_dn || '';
-        document.getElementById('ldap-search-filter').value = data.ldap.search_filter || '';
-        document.getElementById('ldap-search-attributes').value = data.ldap.search_attributes || 'uid,sAMAccountName,cn,userPrincipalName,mail';
-        document.getElementById('ldap-uid-attribute').value = data.ldap.uid_attribute || 'uid';
-        document.getElementById('ldap-username-attribute').value = data.ldap.username_attribute || 'auto';
-        document.getElementById('ldap-admin-filter').value = data.ldap.admin_filter || '';
-        document.getElementById('ldap-admin-filter-memberuid').checked = !!data.ldap.admin_filter_memberuid;
+        currentLDAPConfig = { ...ldap };
+        document.getElementById('ldap-enabled').checked = ldap.enabled || false;
+        document.getElementById('ldap-host').value = ldap.host || '';
+        document.getElementById('ldap-port').value = ldap.port || 636;
+        document.getElementById('ldap-tls').checked = ldap.use_tls !== false;
+        document.getElementById('ldap-skip-verify').checked = ldap.skip_verify || false;
+        document.getElementById('ldap-bind-dn').value = ldap.bind_dn || '';
+        document.getElementById('ldap-bind-password').value = ldap.bind_password || '';
+        document.getElementById('ldap-base-dn').value = ldap.base_dn || '';
+        document.getElementById('ldap-search-filter').value = ldap.search_filter || '';
+        document.getElementById('ldap-search-attributes').value = ldap.search_attributes || 'uid,sAMAccountName,cn,userPrincipalName,mail';
+        document.getElementById('ldap-uid-attribute').value = ldap.uid_attribute || 'uid';
+        document.getElementById('ldap-username-attribute').value = ldap.username_attribute || 'auto';
+        document.getElementById('ldap-admin-filter').value = ldap.admin_filter || '';
+        document.getElementById('ldap-admin-filter-memberuid').checked = !!ldap.admin_filter_memberuid;
         toggleLDAPFields();
 
-        document.getElementById('smtp-host').value = data.smtp.host || '';
-        document.getElementById('smtp-port').value = data.smtp.port || 587;
-        document.getElementById('smtp-username').value = data.smtp.username || '';
-        document.getElementById('smtp-password').value = data.smtp.password || '';
-        document.getElementById('smtp-from').value = data.smtp.from || '';
-        document.getElementById('smtp-tls').checked = data.smtp.use_tls !== false;
+        document.getElementById('smtp-host').value = smtp.host || '';
+        document.getElementById('smtp-port').value = smtp.port || 587;
+        document.getElementById('smtp-username').value = smtp.username || '';
+        document.getElementById('smtp-password').value = smtp.password || '';
+        document.getElementById('smtp-from').value = smtp.from || '';
+        document.getElementById('smtp-tls').checked = smtp.use_tls !== false;
 
-        document.getElementById('wh-discord-url').value = (data.webhooks.discord && data.webhooks.discord.url) || '';
-        document.getElementById('wh-telegram-token').value = (data.webhooks.telegram && data.webhooks.telegram.token) || '';
-        document.getElementById('wh-telegram-chat').value = (data.webhooks.telegram && data.webhooks.telegram.chat_id) || '';
-        document.getElementById('wh-matrix-url').value = (data.webhooks.matrix && data.webhooks.matrix.url) || '';
-        document.getElementById('wh-matrix-room').value = (data.webhooks.matrix && data.webhooks.matrix.room_id) || '';
-        document.getElementById('wh-matrix-token').value = (data.webhooks.matrix && data.webhooks.matrix.token) || '';
+        document.getElementById('wh-discord-url').value = discordWebhook.url || '';
+        document.getElementById('wh-telegram-token').value = telegramWebhook.token || '';
+        document.getElementById('wh-telegram-chat').value = telegramWebhook.chat_id || '';
+        document.getElementById('wh-matrix-url').value = matrixWebhook.url || '';
+        document.getElementById('wh-matrix-room').value = matrixWebhook.room_id || '';
+        document.getElementById('wh-matrix-token').value = matrixWebhook.token || '';
 
         const backupCfg = data.backup || {};
         document.getElementById('backup-enabled').checked = !!backupCfg.enabled;
@@ -1036,8 +1103,6 @@
         frame.srcdoc = `<div style="font-family:Segoe UI,Arial,sans-serif;padding:24px;color:#0f172a;">${JG.esc(t('preview_loading', 'Loading preview...'))}</div>`;
         JG.openModal('email-preview-modal');
 
-        const jellyfinURL = (document.getElementById('general-jellyfin-url')?.value || '').trim();
-        const jellygateURL = (document.getElementById('general-jellygate-url')?.value || '').trim();
         const baseTemplateHeader = document.getElementById('tpl-base-header')?.value || '';
         const baseTemplateFooter = document.getElementById('tpl-base-footer')?.value || '';
 
@@ -1049,12 +1114,7 @@
                 template_key: emailTemplateKeyFromId(templateId),
                 base_template_header: baseTemplateHeader,
                 base_template_footer: baseTemplateFooter,
-                context: {
-                    JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
-                    JellyGateURL: jellygateURL || 'https://jellygate.example.com',
-                    HelpURL: jellyfinURL || 'https://jellyfin.example.com',
-                    EmailLogoURL: resolveEmailLogoPreviewURL(),
-                },
+                context: buildEmailPreviewContext(),
             }),
         });
 
@@ -1084,26 +1144,94 @@
         if (modal) JG.closeModal('email-preview-modal');
     }
 
-    function attachTemplatePreviewButtons() {
-        const areas = document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]');
-        areas.forEach((area) => {
-            const card = area.closest('.p-4.rounded-xl');
-            const label = card ? card.querySelector('label.jg-label') : null;
-            if (!card || !label || card.querySelector('.jg-preview-btn')) {
+    function syncEmailTemplateCardState(item) {
+        if (!item) {
+            return;
+        }
+        const toggleId = item.dataset.emailToggleId || '';
+        const toggle = toggleId ? document.getElementById(toggleId) : null;
+        const badge = item.querySelector('[data-email-status]');
+        const enabled = !toggle || !!toggle.checked;
+        item.classList.toggle('email-template-item-disabled', !enabled);
+        if (badge) {
+            badge.textContent = enabled
+                ? t('settings_email_status_enabled', 'Enabled')
+                : t('settings_email_status_disabled', 'Disabled');
+            badge.className = enabled
+                ? 'rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200'
+                : 'rounded-full border border-rose-400/30 bg-rose-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-rose-200';
+        }
+    }
+
+    function initializeEmailTemplateEditors() {
+        document.querySelectorAll('.email-template-item').forEach((item) => {
+            const summary = item.querySelector('.email-template-summary');
+            const title = item.querySelector('.email-template-summary-title');
+            const panel = item.querySelector('.email-template-panel');
+            if (!summary || !title || !panel) {
                 return;
             }
 
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'jg-btn jg-btn-sm jg-btn-ghost jg-preview-btn mt-2';
-            btn.textContent = t('preview_button', 'Preview');
-            btn.addEventListener('click', () => previewEmailTemplate(area.id));
-            label.insertAdjacentElement('afterend', btn);
-
-            if (!card.querySelector('.jg-variable-picker')) {
-                area.insertAdjacentElement('afterend', buildVariablePicker(area));
+            if (!summary.querySelector('[data-email-desc]')) {
+                const desc = document.createElement('span');
+                desc.dataset.emailDesc = '1';
+                desc.className = 'mt-1 block text-xs font-medium text-jg-text-muted/75 normal-case tracking-normal';
+                desc.textContent = item.dataset.emailTemplateDesc || '';
+                title.insertAdjacentElement('afterend', desc);
             }
 
+            if (!summary.querySelector('[data-email-status]')) {
+                const status = document.createElement('span');
+                status.dataset.emailStatus = '1';
+                summary.appendChild(status);
+            }
+
+            if (!panel.querySelector('[data-email-toolbar]')) {
+                const toolbar = document.createElement('div');
+                toolbar.dataset.emailToolbar = '1';
+                toolbar.className = 'mb-4 flex flex-col gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3 xl:flex-row xl:items-center xl:justify-between';
+
+                const copy = document.createElement('div');
+                copy.className = 'space-y-1';
+                copy.innerHTML = `
+                    <div data-email-toolbar-lang class="text-[10px] font-black uppercase tracking-[0.2em] text-jg-text-muted/70">${JG.esc(getActiveEmailLanguageLabel())}</div>
+                    <div class="text-sm text-slate-300">${JG.esc(item.dataset.emailTemplateDesc || '')}</div>
+                `;
+
+                const actions = document.createElement('div');
+                actions.className = 'flex flex-wrap items-center gap-2';
+
+                const previewField = item.dataset.emailPreviewField || '';
+                if (previewField) {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'jg-btn jg-btn-sm jg-btn-ghost';
+                    btn.textContent = t('preview_button', 'Preview');
+                    btn.addEventListener('click', () => previewEmailTemplate(previewField));
+                    actions.appendChild(btn);
+                }
+
+                const toggleId = item.dataset.emailToggleId || '';
+                if (toggleId && !document.getElementById(toggleId)) {
+                    const label = document.createElement('label');
+                    label.className = 'inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-200';
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.id = toggleId;
+                    input.className = 'form-checkbox';
+                    input.addEventListener('change', () => syncEmailTemplateCardState(item));
+                    const text = document.createElement('span');
+                    text.textContent = t('settings_email_toggle_send', 'Send this email');
+                    label.append(input, text);
+                    actions.appendChild(label);
+                }
+
+                toolbar.append(copy, actions);
+                panel.prepend(toolbar);
+            }
+        });
+
+        document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]').forEach((area) => {
             getTemplateValidationBox(area);
             if (!area.dataset.validationBound) {
                 area.dataset.validationBound = '1';
@@ -1111,6 +1239,10 @@
             }
             scheduleLiveTemplateValidation(area);
         });
+
+        bindEmailEditorTargets();
+        initializeEmailVariableLibrary();
+        document.querySelectorAll('.email-template-item').forEach((item) => syncEmailTemplateCardState(item));
 
         const closeBtn = document.getElementById('email-preview-close');
         if (closeBtn && !closeBtn.dataset.bound) {
@@ -1302,8 +1434,8 @@
             });
         }
 
+        initializeEmailTemplateEditors();
         await loadSettings();
-        attachTemplatePreviewButtons();
         await loadBackups();
 
         document.getElementById('backup-list-body')?.addEventListener('click', async (event) => {

@@ -228,7 +228,19 @@ var emailTagPattern = regexp.MustCompile(`(?is)<[^>]+>`)
 var emailAnchorPattern = regexp.MustCompile(`(?is)<a\b[^>]*href=(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>(.*?)</a>`)
 var plainEmailVariablePattern = regexp.MustCompile(`{{\s*\.[A-Za-z0-9_]+\s*}}`)
 
-const defaultEmailLogoPath = "/static/img/logos/jellygate.svg"
+const defaultEmailLogoPath = "/static/img/logos/jellyfin.svg"
+
+const legacyEmailLogoPath = "/static/img/logos/jellygate.svg"
+
+const legacyGradientEmailHeader = `
+<div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
+	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dde3ec;border-radius:12px;overflow:hidden;">
+		<tr>
+			<td style="background:linear-gradient(135deg,#22d3ee,#10b981);color:#000000;padding:22px 28px;font-size:20px;font-weight:700;">JellyGate</td>
+		</tr>
+		<tr>
+			<td style="padding:24px 28px;color:#0f172a;line-height:1.6;font-size:15px;">
+`
 
 const defaultEmailCardStyle = `
 <div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
@@ -239,7 +251,7 @@ const defaultEmailCardStyle = `
 					<tr>
 						<td style="color:#e2e8f0;font-size:20px;font-weight:700;">JellyGate</td>
 						<td align="right">
-							<img src="{{.EmailLogoURL}}" alt="JellyGate" style="max-height:34px;width:auto;display:block;">
+							<img src="{{.EmailLogoURL}}" alt="Jellyfin" style="max-height:34px;width:auto;display:block;">
 						</td>
 					</tr>
 				</table>
@@ -724,7 +736,12 @@ func UpgradeLegacyEmailTemplates(cfg *EmailTemplatesConfig) {
 	replaceLegacyEmailField(&cfg.Welcome, legacy.Welcome, updated.Welcome)
 	replaceLegacyEmailField(&cfg.WelcomeSubject, legacy.WelcomeSubject, updated.WelcomeSubject)
 
-	if strings.TrimSpace(cfg.EmailLogoURL) == "" {
+	if strings.TrimSpace(cfg.BaseTemplateHeader) == strings.TrimSpace(legacyGradientEmailHeader) {
+		cfg.BaseTemplateHeader = DefaultEmailBaseHeader()
+	}
+
+	logoURL := strings.TrimSpace(cfg.EmailLogoURL)
+	if logoURL == "" || logoURL == legacyEmailLogoPath {
 		cfg.EmailLogoURL = defaultEmailLogoPath
 	}
 }
@@ -734,7 +751,7 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 	return EmailTemplatesConfig{
 		BaseTemplateHeader: DefaultEmailBaseHeader(),
 		BaseTemplateFooter: DefaultEmailBaseFooter(),
-		EmailLogoURL:      defaultEmailLogoPath,
+		EmailLogoURL:       defaultEmailLogoPath,
 		Confirmation: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Inscription confirmee</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
