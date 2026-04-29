@@ -292,7 +292,6 @@ func main() {
 
 				r.Get("/users", adminHandler.UsersPage)
 				r.Get("/automation", automationHandler.AutomationPage)
-				r.Get("/product", adminHandler.ProductPage)
 				r.Route("/api/users", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)
@@ -327,16 +326,6 @@ func main() {
 					r.Post("/email-templates", settingsHandler.SaveEmailTemplates)
 					r.Post("/email-templates/preview", settingsHandler.PreviewEmailTemplate)
 					r.Post("/invitation-profile", settingsHandler.SaveInvitationProfile)
-				})
-
-				r.Route("/api/product", func(r chi.Router) {
-					r.Use(jgmw.RequireCSRF())
-					r.Get("/config", adminHandler.ProductConfig)
-					r.Post("/config", adminHandler.SaveProductConfig)
-					r.Get("/health", adminHandler.ProductHealth)
-					r.Get("/timeline", adminHandler.ProductTimeline)
-					r.Get("/lifecycle", adminHandler.ProductLifecyclePreview)
-					r.Post("/markdown-preview", adminHandler.ProductMarkdownPreview)
 				})
 
 				r.Route("/api/backups", func(r chi.Router) {
@@ -388,6 +377,8 @@ func main() {
 				r.Use(jgmw.RequireCSRF())
 				r.Get("/", adminHandler.ListInvitations)
 				r.Get("/stats", adminHandler.InvitationStats)
+				r.Get("/security", adminHandler.InvitationSecurityConfig)
+				r.Post("/security", adminHandler.SaveInvitationSecurityConfig)
 				r.Post("/", adminHandler.CreateInvitation)
 				r.Delete("/{id}", adminHandler.DeleteInvitation)
 			})

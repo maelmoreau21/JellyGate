@@ -1113,5 +1113,16 @@
     "verify_email_title": "Email Verification",
     "verify_email_used_heading": "Link already used",
     "verify_email_used_message": "This verification link has already been used. Your email may already be confirmed.",
-    "view_all": "Посмотреть все"
+    "view_all": "Посмотреть все",
+    "invitations_security_title": "Безопасность приглашений",
+    "invitations_security_desc": "Защищает публичные формы приглашений локальной CAPTCHA и временной блокировкой.",
+    "invitations_security_enabled": "Защита включена",
+    "invitations_security_captcha": "Локальная CAPTCHA",
+    "invitations_security_max_failures": "Макс. ошибок",
+    "invitations_security_window_minutes": "Окно (минуты)",
+    "invitations_security_block_minutes": "Блокировка (минуты)",
+    "invitations_security_conditions": "CAPTCHA показывается на публичной странице /invite/{code}, когда защита и локальная CAPTCHA включены. Ошибки CAPTCHA, валидации формы, неверные приглашения или недоступные имена считаются по IP; после заданного числа ошибок в выбранном окне IP временно блокируется.",
+    "invitations_security_load_failed": "Не удалось загрузить защиту приглашений.",
+    "invitations_security_save_failed": "Не удалось сохранить защиту приглашений.",
+    "invitations_security_saved": "Защита приглашений сохранена."
 }

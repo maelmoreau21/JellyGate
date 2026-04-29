@@ -81,6 +81,92 @@
             }
         }
 
+        const inviteSecurityDefaults = {
+            enabled: true,
+            captcha: true,
+            max_failures: 5,
+            window_minutes: 15,
+            block_minutes: 20,
+        };
+
+        function positiveIntInput(id, fallback) {
+            const el = document.getElementById(id);
+            if (!el) return fallback;
+            const parsed = Number.parseInt(el.value, 10);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+        }
+
+        function setInviteSecurityField(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.value = String(value);
+        }
+
+        function setInviteSecurityChecked(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.checked = !!value;
+        }
+
+        function updateInviteSecurityState() {
+            const enabled = !!document.getElementById('invite-security-enabled')?.checked;
+            ['invite-security-captcha', 'invite-security-max-failures', 'invite-security-window', 'invite-security-block'].forEach((id) => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = !enabled;
+            });
+        }
+
+        function applyInviteSecurityConfig(raw) {
+            const cfg = { ...inviteSecurityDefaults, ...(raw || {}) };
+            setInviteSecurityChecked('invite-security-enabled', cfg.enabled);
+            setInviteSecurityChecked('invite-security-captcha', cfg.captcha);
+            setInviteSecurityField('invite-security-max-failures', cfg.max_failures);
+            setInviteSecurityField('invite-security-window', cfg.window_minutes);
+            setInviteSecurityField('invite-security-block', cfg.block_minutes);
+            updateInviteSecurityState();
+        }
+
+        function collectInviteSecurityConfig() {
+            return {
+                enabled: !!document.getElementById('invite-security-enabled')?.checked,
+                captcha: !!document.getElementById('invite-security-captcha')?.checked,
+                max_failures: positiveIntInput('invite-security-max-failures', inviteSecurityDefaults.max_failures),
+                window_minutes: positiveIntInput('invite-security-window', inviteSecurityDefaults.window_minutes),
+                block_minutes: positiveIntInput('invite-security-block', inviteSecurityDefaults.block_minutes),
+            };
+        }
+
+        async function loadInviteSecurityConfig() {
+            if (!isAdmin || !document.getElementById('invite-security-form')) return;
+            const res = await JG.api('/admin/api/invitations/security');
+            if (!res || !res.success) {
+                JG.toast((res && res.message) || i18n.securityLoadFailed, 'error');
+                applyInviteSecurityConfig(inviteSecurityDefaults);
+                return;
+            }
+            applyInviteSecurityConfig(res.data || inviteSecurityDefaults);
+        }
+
+        async function saveInviteSecurityConfig(event) {
+            event.preventDefault();
+            const form = document.getElementById('invite-security-form');
+            const btn = form?.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+
+            const payload = collectInviteSecurityConfig();
+            const res = await JG.api('/admin/api/invitations/security', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+
+            if (btn) btn.disabled = false;
+            if (!res || !res.success) {
+                JG.toast((res && res.message) || i18n.securitySaveFailed, 'error');
+                return;
+            }
+
+            applyInviteSecurityConfig(res.data || payload);
+            JG.toast(res.message || i18n.securitySaved, 'success');
+        }
+
         function applyInvitationPolicyUI() {
             const summary = document.getElementById('invite-policy-summary');
             const usesHelp = document.getElementById('inv-uses-help');
@@ -524,6 +610,12 @@
         const createForm = document.getElementById('create-form');
         if (createForm) createForm.addEventListener('submit', submitCreate);
 
+        const inviteSecurityForm = document.getElementById('invite-security-form');
+        if (inviteSecurityForm) inviteSecurityForm.addEventListener('submit', saveInviteSecurityConfig);
+
+        const inviteSecurityEnabled = document.getElementById('invite-security-enabled');
+        if (inviteSecurityEnabled) inviteSecurityEnabled.addEventListener('change', updateInviteSecurityState);
+
         const maxUsesInput = document.getElementById('inv-uses');
         if (maxUsesInput) maxUsesInput.addEventListener('input', updateForcedUsernameState);
 
@@ -548,5 +640,6 @@
 
         loadInvitations();
         loadSponsorStats();
+        loadInviteSecurityConfig();
     });
 })();

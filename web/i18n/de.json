@@ -1113,5 +1113,16 @@
     "verify_email_title": "Email Verification",
     "verify_email_used_heading": "Link already used",
     "verify_email_used_message": "This verification link has already been used. Your email may already be confirmed.",
-    "view_all": "Alles anzeigen"
+    "view_all": "Alles anzeigen",
+    "invitations_security_title": "Einladungssicherheit",
+    "invitations_security_desc": "Schützt öffentliche Einladungsformulare mit lokalem CAPTCHA und temporärer Sperre.",
+    "invitations_security_enabled": "Anti-Missbrauch aktiv",
+    "invitations_security_captcha": "Lokales CAPTCHA",
+    "invitations_security_max_failures": "Max. Fehler",
+    "invitations_security_window_minutes": "Fenster (Minuten)",
+    "invitations_security_block_minutes": "Sperre (Minuten)",
+    "invitations_security_conditions": "Das CAPTCHA erscheint auf der öffentlichen Seite /invite/{code}, wenn Anti-Missbrauch und lokales CAPTCHA aktiv sind. CAPTCHA-Fehler, Formularvalidierung, ungültige Einladungen oder nicht verfügbare Benutzernamen werden pro IP gezählt; nach der konfigurierten Anzahl von Fehlern im gewählten Fenster wird die IP temporär gesperrt.",
+    "invitations_security_load_failed": "Einladungssicherheit konnte nicht geladen werden.",
+    "invitations_security_save_failed": "Einladungssicherheit konnte nicht gespeichert werden.",
+    "invitations_security_saved": "Einladungssicherheit gespeichert."
 }

@@ -39,6 +39,49 @@
     </div>
 </div>
 
+{{ if .IsAdmin }}
+<section class="jg-card p-6 mb-8 border border-white/10 bg-white/[0.02]">
+    <form id="invite-security-form" class="space-y-5">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div>
+                <h2 class="text-lg font-bold text-jg-text">{{ .T "invitations_security_title" }}</h2>
+                <p class="text-sm text-jg-text-muted mt-1">{{ .T "invitations_security_desc" }}</p>
+            </div>
+            <button type="submit" class="jg-btn jg-btn-primary jg-btn-sm font-bold uppercase tracking-widest">
+                {{ .T "btn_save" }}
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-4">
+                <input id="invite-security-enabled" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "invitations_security_enabled" }}</span>
+            </label>
+            <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 p-4">
+                <input id="invite-security-captcha" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "invitations_security_captcha" }}</span>
+            </label>
+            <label>
+                <span class="jg-label">{{ .T "invitations_security_max_failures" }}</span>
+                <input id="invite-security-max-failures" type="number" min="1" max="50" class="jg-input h-11 bg-black/20 text-sm">
+            </label>
+            <label>
+                <span class="jg-label">{{ .T "invitations_security_window_minutes" }}</span>
+                <input id="invite-security-window" type="number" min="1" max="240" class="jg-input h-11 bg-black/20 text-sm">
+            </label>
+            <label>
+                <span class="jg-label">{{ .T "invitations_security_block_minutes" }}</span>
+                <input id="invite-security-block" type="number" min="1" max="1440" class="jg-input h-11 bg-black/20 text-sm">
+            </label>
+        </div>
+
+        <div class="rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-4 py-3 text-xs leading-relaxed text-cyan-100">
+            {{ .T "invitations_security_conditions" }}
+        </div>
+    </form>
+</section>
+{{ end }}
+
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
     <div class="lg:col-span-12 space-y-8">
         {{/* ── Sponsor Dashboard Table ───────────────────────────────────── */}}
@@ -321,6 +364,9 @@
             userExpiryFuture: '{{ .T "invitations_user_expiry_future" }}',
             created: '{{ .T "invitations_created" }}',
             unknownError: '{{ .T "invitations_unknown_error" }}',
+            securityLoadFailed: '{{ .T "invitations_security_load_failed" }}',
+            securitySaveFailed: '{{ .T "invitations_security_save_failed" }}',
+            securitySaved: '{{ .T "invitations_security_saved" }}',
         },
     };
 </script>

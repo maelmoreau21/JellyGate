@@ -129,6 +129,9 @@ web/
 - un "Nom d'utilisateur réservé" (Forced Username) ne peut être défini que pour les invitations à usage unique (`max_uses = 1`) afin d'éviter les conflits de création de compte
 - les utilisateurs non-admins ne peuvent plus créer d'invitations à usage illimité (`max_uses` doit être >= 1)
 - base technique prête pour un futur mode parrainage utilisateur depuis `Mon compte`
+- Sécurité des inscriptions : les réglages anti-abus et CAPTCHA sont dans `Admin > Invitations`, pas dans un centre produit générique. L'API admin dédiée est `GET/POST /admin/api/invitations/security`.
+- Le CAPTCHA local apparaît sur la page publique `/invite/{code}` uniquement si `Anti-abus actif` et `CAPTCHA local` sont activés. Les échecs de CAPTCHA, validation formulaire, invitation invalide ou nom indisponible sont comptés par IP; après `max_failures` dans `window_minutes`, l'IP est bloquée pendant `block_minutes`.
+- Ne pas réintroduire la page UI `Centre produit` / `/admin/product`. Si un ancien module produit devient utile, le replacer dans la page métier correspondante.
 
 ### 4.2 Utilisateurs
 
@@ -220,7 +223,7 @@ web/
 
 ### 4.10 Backlog d'améliorations inspirées de jfa-go
 
-- centre anti-abus d'invitation: CAPTCHA, rate-limit visible, blocage temporaire et score de risque
+- anti-abus invitation: CAPTCHA et blocage temporaire sont intégrés à `Admin > Invitations`; améliorations possibles seulement côté métriques/risque, sans recréer de "Centre produit"
 - studio de contenu: éditeur Markdown avec preview pour invitation, bienvenue, e-mails et compte utilisateur
 - assistant de premier lancement: configuration guidée Jellyfin, SMTP, URL publique, sécurité et sauvegardes
 - liaison Discord / Telegram / Matrix côté utilisateur avec validation
@@ -266,7 +269,7 @@ web/
 | Préfixe | Description |
 | --- | --- |
 | `/admin/api/users` | gestion utilisateurs |
-| `/admin/api/invitations` | CRUD invitations |
+| `/admin/api/invitations` | CRUD invitations, stats sponsor et sécurité anti-abus (`/security`) |
 | `/admin/api/settings` | paramètres applicatifs |
 | `/admin/api/backups` | sauvegardes |
 | `/admin/api/logs` | audit logs et exports |
@@ -418,6 +421,15 @@ Remarques:
   - Fichiers principaux touchés : `internal/jellyfin/client.go`, `internal/config/config.go`, `internal/database/settings.go`, `internal/handlers/automation.go`, `internal/handlers/admin.go`, `internal/handlers/invitations.go`, `internal/scheduler/service.go`, `web/templates/admin/automation.html`, `web/static/js/pages/automation.js`, `web/i18n/*.json`.
   - Tests ajoutés : `internal/jellyfin/client_test.go` vérifie les payloads Policy/UserConfiguration/DisplayPreferences et l'absence de clonage; `internal/database/settings_presets_test.go` vérifie les defaults et la normalisation.
   - Validations effectuées pendant l'implémentation : `go test ./...`, `go build ./...`, `npm run build:css`, `node --check web/static/js/pages/automation.js`, contrôle i18n des clés Automation sur les 10 langues, `git diff --check`.
+
+- **Version 1.3.0 / Mémoire agent** : Suppression du Centre produit et déplacement du CAPTCHA (2026-04-29)
+  - La page UI `Centre produit` et ses assets frontend sont supprimés; ne pas réintroduire `/admin/product` ni un panneau fourre-tout non professionnel.
+  - Les réglages utiles d'anti-abus invitation vivent dans `Admin > Invitations`, section admin `Sécurité des inscriptions`.
+  - API dédiée : `GET /admin/api/invitations/security` et `POST /admin/api/invitations/security`, qui lisent/sauvegardent seulement `ProductFeaturesConfig.AntiAbuse` en conservant le reste de la configuration historique.
+  - Conditions CAPTCHA : visible sur `/invite/{code}` seulement quand `enabled=true` et `captcha=true`; les erreurs sont suivies par IP et déclenchent un blocage temporaire après le seuil configuré.
+  - Fichiers principaux touchés : `cmd/jellygate/main.go`, `internal/handlers/invitation_security.go`, `web/templates/admin/invitations.html`, `web/static/js/pages/invitations.js`, `web/templates/layouts/admin_shell.html`, `web/i18n/*.json`.
+  - Tests ajoutés : `internal/handlers/invitation_security_test.go` vérifie lecture/sauvegarde et normalisation de la configuration anti-abus.
+  - Validations effectuées : `go test ./...`, `go build ./...`, `npm run build:css`, `go run ./cmd/i18ncheck`, `node --check web/static/js/pages/invitations.js`, `git diff --check`.
 
 ### 4.6 Internationalisation (i18n)
 

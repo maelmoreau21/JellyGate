@@ -20,6 +20,7 @@
     --color-emerald-300: oklch(84.5% 0.143 164.978);
     --color-emerald-400: oklch(76.5% 0.177 163.223);
     --color-emerald-500: oklch(69.6% 0.17 162.48);
+    --color-cyan-100: oklch(95.6% 0.045 203.388);
     --color-cyan-200: oklch(91.7% 0.08 205.041);
     --color-cyan-300: oklch(86.5% 0.127 207.078);
     --color-cyan-400: oklch(78.9% 0.154 211.53);
@@ -564,15 +565,6 @@
   .max-h-\[90vh\] {
     max-height: 90vh;
   }
-  .max-h-\[520px\] {
-    max-height: 520px;
-  }
-  .min-h-24 {
-    min-height: calc(var(--spacing) * 24);
-  }
-  .min-h-28 {
-    min-height: calc(var(--spacing) * 28);
-  }
   .min-h-\[500px\] {
     min-height: 500px;
   }
@@ -828,12 +820,6 @@
       margin-block-end: calc(calc(var(--spacing) * 8) * calc(1 - var(--tw-space-y-reverse)));
     }
   }
-  .gap-x-3 {
-    column-gap: calc(var(--spacing) * 3);
-  }
-  .gap-y-1 {
-    row-gap: calc(var(--spacing) * 1);
-  }
   .divide-y {
     :where(& > :not(:last-child)) {
       --tw-divide-y-reverse: 0;
@@ -1053,12 +1039,6 @@
     border-color: color-mix(in srgb, oklch(71.2% 0.194 13.428) 30%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       border-color: color-mix(in oklab, var(--color-rose-400) 30%, transparent);
-    }
-  }
-  .border-rose-500\/20 {
-    border-color: color-mix(in srgb, oklch(64.5% 0.246 16.439) 20%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      border-color: color-mix(in oklab, var(--color-rose-500) 20%, transparent);
     }
   }
   .border-rose-500\/30 {
@@ -1418,18 +1398,6 @@
       background-color: color-mix(in oklab, var(--color-white) 3%, transparent);
     }
   }
-  .bg-white\/\[0\.04\] {
-    background-color: color-mix(in srgb, #fff 4%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-white) 4%, transparent);
-    }
-  }
-  .bg-white\/\[0\.035\] {
-    background-color: color-mix(in srgb, #fff 3.5000000000000004%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-white) 3.5000000000000004%, transparent);
-    }
-  }
   .bg-gradient-to-br {
     --tw-gradient-position: to bottom right in oklab;
     background-image: linear-gradient(var(--tw-gradient-stops));
@@ -1782,6 +1750,9 @@
   }
   .text-blue-400 {
     color: var(--color-blue-400);
+  }
+  .text-cyan-100 {
+    color: var(--color-cyan-100);
   }
   .text-cyan-200 {
     color: var(--color-cyan-200);
@@ -2826,6 +2797,11 @@
       align-items: flex-end;
     }
   }
+  .lg\:items-start {
+    @media (width >= 64rem) {
+      align-items: flex-start;
+    }
+  }
   .lg\:justify-between {
     @media (width >= 64rem) {
       justify-content: space-between;
@@ -2852,16 +2828,6 @@
       line-height: var(--tw-leading, var(--text-3xl--line-height));
     }
   }
-  .xl\:col-span-5 {
-    @media (width >= 80rem) {
-      grid-column: span 5 / span 5;
-    }
-  }
-  .xl\:col-span-7 {
-    @media (width >= 80rem) {
-      grid-column: span 7 / span 7;
-    }
-  }
   .xl\:grid-cols-2 {
     @media (width >= 80rem) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2870,11 +2836,6 @@
   .xl\:grid-cols-3 {
     @media (width >= 80rem) {
       grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-  }
-  .xl\:grid-cols-12 {
-    @media (width >= 80rem) {
-      grid-template-columns: repeat(12, minmax(0, 1fr));
     }
   }
   .xl\:flex-row {

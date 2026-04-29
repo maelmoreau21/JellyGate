@@ -1113,5 +1113,16 @@
     "verify_email_title": "Email Verification",
     "verify_email_used_heading": "Link already used",
     "verify_email_used_message": "This verification link has already been used. Your email may already be confirmed.",
-    "view_all": "Alles bekijken"
+    "view_all": "Alles bekijken",
+    "invitations_security_title": "Uitnodigingsbeveiliging",
+    "invitations_security_desc": "Beschermt openbare uitnodigingsformulieren met lokale CAPTCHA en tijdelijke blokkering.",
+    "invitations_security_enabled": "Anti-misbruik actief",
+    "invitations_security_captcha": "Lokale CAPTCHA",
+    "invitations_security_max_failures": "Max. fouten",
+    "invitations_security_window_minutes": "Venster (minuten)",
+    "invitations_security_block_minutes": "Blokkade (minuten)",
+    "invitations_security_conditions": "De CAPTCHA verschijnt op de openbare pagina /invite/{code} wanneer anti-misbruik en lokale CAPTCHA actief zijn. CAPTCHA-fouten, formuliervalidatie, ongeldige uitnodigingen of niet-beschikbare gebruikersnamen worden per IP geteld; na het ingestelde aantal fouten binnen het gekozen venster wordt het IP tijdelijk geblokkeerd.",
+    "invitations_security_load_failed": "Kan uitnodigingsbeveiliging niet laden.",
+    "invitations_security_save_failed": "Kan uitnodigingsbeveiliging niet opslaan.",
+    "invitations_security_saved": "Uitnodigingsbeveiliging opgeslagen."
 }

@@ -1113,5 +1113,16 @@
     "verify_email_title": "Email Verification",
     "verify_email_used_heading": "Link already used",
     "verify_email_used_message": "This verification link has already been used. Your email may already be confirmed.",
-    "view_all": "查看全部"
+    "view_all": "查看全部",
+    "invitations_security_title": "邀请安全",
+    "invitations_security_desc": "使用本地 CAPTCHA 和临时封禁保护公开邀请表单。",
+    "invitations_security_enabled": "启用防滥用",
+    "invitations_security_captcha": "本地 CAPTCHA",
+    "invitations_security_max_failures": "最大失败次数",
+    "invitations_security_window_minutes": "窗口（分钟）",
+    "invitations_security_block_minutes": "封禁（分钟）",
+    "invitations_security_conditions": "当防滥用和本地 CAPTCHA 启用时，CAPTCHA 会显示在公开页面 /invite/{code}。CAPTCHA 错误、表单验证失败、无效邀请或不可用的用户名都会按 IP 计数；在选定窗口内达到配置的失败次数后，IP 会被临时封禁。",
+    "invitations_security_load_failed": "无法加载邀请安全设置。",
+    "invitations_security_save_failed": "无法保存邀请安全设置。",
+    "invitations_security_saved": "邀请安全设置已保存。"
 }
