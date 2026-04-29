@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -133,13 +134,13 @@ func (h *PasswordResetHandler) RequestPage(w http.ResponseWriter, r *http.Reques
 // SubmitRequest traite la demande de réinitialisation.
 func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		h.renderer.JSONError(w, http.StatusBadRequest, h.tr(r, "common_invalid_request", "Invalid request"))
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "common_invalid_request", "Invalid request")})
 		return
 	}
 
 	identifier := strings.TrimSpace(r.FormValue("identifier"))
 	if identifier == "" {
-		h.renderer.JSONError(w, http.StatusBadRequest, h.tr(r, "field_identifier_required", "Identifier is required"))
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "field_identifier_required", "Identifier is required")})
 		return
 	}
 
@@ -170,7 +171,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	token, err := generateSecureToken(resetTokenLength)
 	if err != nil {
 		slog.Error("Impossible de récupérer l'utilisateur", "error", err)
-		h.renderer.JSONError(w, http.StatusInternalServerError, h.tr(r, "common_server_error", "Server error"))
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "common_server_error", "Server error")})
 		return
 	}
 
@@ -183,7 +184,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	)
 	if err != nil {
 		slog.Error("Impossible de créer la demande de reset", "error", err)
-		h.renderer.JSONError(w, http.StatusInternalServerError, h.tr(r, "common_server_error", "Server error"))
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "common_server_error", "Server error")})
 		return
 	}
 
@@ -291,15 +292,15 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 
 	// ——————————————————————————————————————————————————————————————————————————————————————————————————
 	if password == "" {
-		h.renderer.JSONError(w, http.StatusBadRequest, h.tr(r, "field_password_required", "Password is required"))
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "field_password_required", "Password is required")})
 		return
 	}
 	if len(password) < 8 {
-		h.renderer.JSONError(w, http.StatusBadRequest, h.tr(r, "field_password_min_length", "Password must be at least 8 characters"))
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "field_password_min_length", "Password must be at least 8 characters")})
 		return
 	}
 	if password != confirm {
-		h.renderer.JSONError(w, http.StatusBadRequest, h.tr(r, "field_password_mismatch", "Passwords do not match"))
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "field_password_mismatch", "Passwords do not match")})
 		return
 	}
 
@@ -328,7 +329,7 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 
 	if user.LdapDN != "" && user.JellyfinID != "" && len(errors) == 2 {
 		slog.Error("Reset MDP échoué sur TOUS les services", "username", user.Username, "errors", errors)
-		h.renderer.JSONError(w, http.StatusInternalServerError, h.tr(r, "reset_error_generic", "Error during reset. Please try again or contact the administrator."))
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "reset_error_generic", "Error during reset. Please try again or contact the administrator.")})
 		return
 	}
 
@@ -350,12 +351,14 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 	slog.Info("Réinitialisation MDP terminée", "username", user.Username, "partial", partial)
 
 	if partial {
-		h.renderer.JSONResponse(w, http.StatusOK, map[string]string{
-			"message": h.tr(r, "reset_success_partial", "Your password has been partially reset. Contact the administrator if the problem persists."),
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: h.tr(r, "reset_success_partial", "Your password has been partially reset. Contact the administrator if the problem persists."),
 		})
 	} else {
-		h.renderer.JSONResponse(w, http.StatusOK, map[string]string{
-			"message": h.tr(r, "reset_success", "Your password has been reset successfully."),
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: h.tr(r, "reset_success", "Your password has been reset successfully."),
 		})
 	}
 }

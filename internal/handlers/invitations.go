@@ -370,7 +370,7 @@ func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.Invi
 	passwordConfirm := r.FormValue("password_confirm")
 
 	// Validations
-	if err := validateInviteUsername(username, profile); err != nil {
+	if err := h.validateInviteUsername(r, username, profile); err != nil {
 		return nil, err
 	}
 
@@ -378,7 +378,7 @@ func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.Invi
 		return nil, fmt.Errorf("le mot de passe est requis")
 	}
 
-	if err := validateInvitePassword(password, profile); err != nil {
+	if err := h.validateInvitePassword(r, password, profile); err != nil {
 		return nil, err
 	}
 

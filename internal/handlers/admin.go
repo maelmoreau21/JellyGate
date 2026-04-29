@@ -1146,7 +1146,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	message := "Profil mis ÃƒÂ  jour"
 	if shouldSendVerification {
-		if err := sendEmailVerification(h.cfg, h.db, h.mailer, userID, true); err != nil {
+		if err := sendEmailVerification(r, h.cfg, h.db, h.mailer, userID, true); err != nil {
 			slog.Error("Erreur envoi verification email apres mise a jour profil", "user_id", userID, "error", err)
 			message = "Profil mis ÃƒÂ  jour, mais l'email de vÃƒÂ©rification n'a pas pu ÃƒÂªtre envoyÃƒÂ©"
 		} else {
@@ -1540,7 +1540,7 @@ func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if err := sendEmailVerification(h.cfg, h.db, h.mailer, id, usePending); err != nil {
+	if err := sendEmailVerification(r, h.cfg, h.db, h.mailer, id, usePending); err != nil {
 		slog.Error("Erreur renvoi verification email", "user_id", id, "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lors de l'envoi de l'email"})
 		return
