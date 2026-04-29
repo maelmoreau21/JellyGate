@@ -380,6 +380,17 @@
         });
 
         document.getElementById('preset-enable-all-folders')?.addEventListener('change', updateLibraryAccessState);
+        document.getElementById('preset-library-list')?.addEventListener('click', (e) => {
+            const button = e.target.closest('.preset-library-move');
+            if (!button) return;
+            e.preventDefault();
+            moveLibraryRow(button);
+        });
+        document.getElementById('preset-library-list')?.addEventListener('change', (e) => {
+            if (e.target?.classList?.contains('preset-library-access')) {
+                updateLibraryAccessState();
+            }
+        });
 
         function mappingRow(mapping, idx) {
             const presetOptions = presets.map(p => `<option value="${JG.esc(p.id)}" ${p.id === mapping.policy_preset_id ? 'selected' : ''}>${JG.esc(p.name || p.id)}</option>`).join('');
@@ -457,10 +468,44 @@
 
         function updateLibraryAccessState() {
             const allFolders = !!document.getElementById('preset-enable-all-folders')?.checked;
-            document.querySelectorAll('.preset-library-access').forEach((input) => {
-                input.disabled = allFolders;
-                input.closest('tr')?.classList.toggle('opacity-60', allFolders);
+            document.querySelectorAll('#preset-library-list tr[data-library-id]').forEach((row) => {
+                const accessInput = row.querySelector('.preset-library-access');
+                const rowHasAccess = allFolders || !!accessInput?.checked;
+                if (accessInput) {
+                    accessInput.disabled = allFolders;
+                }
+                row.classList.toggle('opacity-60', !rowHasAccess);
+                row.querySelectorAll('.preset-library-my-media, .preset-library-latest, .preset-library-group, .preset-library-move').forEach((input) => {
+                    input.disabled = !rowHasAccess;
+                });
             });
+            updateLibraryOrderControls();
+        }
+
+        function updateLibraryOrderControls() {
+            const rows = Array.from(document.querySelectorAll('#preset-library-list tr[data-library-id]'));
+            rows.forEach((row, index) => {
+                const rowHasAccess = !row.classList.contains('opacity-60');
+                const up = row.querySelector('.preset-library-move[data-direction="-1"]');
+                const down = row.querySelector('.preset-library-move[data-direction="1"]');
+                if (up) up.disabled = !rowHasAccess || index === 0;
+                if (down) down.disabled = !rowHasAccess || index === rows.length - 1;
+            });
+        }
+
+        function moveLibraryRow(button) {
+            const row = button.closest('tr');
+            const tbody = row?.parentElement;
+            if (!row || !tbody || button.disabled) return;
+
+            const direction = Number.parseInt(button.dataset.direction, 10) || 0;
+            if (direction < 0 && row.previousElementSibling) {
+                tbody.insertBefore(row, row.previousElementSibling);
+            }
+            if (direction > 0 && row.nextElementSibling) {
+                tbody.insertBefore(row.nextElementSibling, row);
+            }
+            updateLibraryOrderControls();
         }
 
         function renderHomeSections(homeSections) {
@@ -496,9 +541,27 @@
             const grouped = new Set((userConfig.grouped_folders || []).map(String));
             const myMediaExcludes = new Set((userConfig.my_media_excludes || []).map(String));
             const latestExcludes = new Set((userConfig.latest_items_excludes || []).map(String));
-            const order = new Map((userConfig.ordered_views || []).map((id, idx) => [String(id), idx + 1]));
+            const libraryID = (library) => String(library.id || library.Id || library.ItemId || '').trim();
+            const libraryByID = new Map(libraries.map((library) => [libraryID(library), library]).filter(([id]) => id));
+            const seenOrdered = new Set();
+            const orderedLibraries = [];
+            (userConfig.ordered_views || []).forEach((id) => {
+                const normalizedID = String(id).trim();
+                const library = libraryByID.get(normalizedID);
+                if (library && !seenOrdered.has(normalizedID)) {
+                    orderedLibraries.push(library);
+                    seenOrdered.add(normalizedID);
+                }
+            });
+            libraries.forEach((library) => {
+                const id = libraryID(library);
+                if (id && !seenOrdered.has(id)) {
+                    orderedLibraries.push(library);
+                    seenOrdered.add(id);
+                }
+            });
 
-            const rows = libraries.map((library, idx) => {
+            const rows = orderedLibraries.map((library) => {
                 const id = String(library.id || library.Id || library.ItemId || '').trim();
                 const label = library.name || library.Name || id;
                 const type = library.collection_type || library.CollectionType || '';
@@ -508,10 +571,15 @@
                         <div class="text-[10px] uppercase tracking-widest text-jg-text-muted">${JG.esc(type || id)}</div>
                     </td>
                     <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-access form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${preset.enable_all_folders || selected.has(id) ? 'checked' : ''}></td>
-                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-my-media form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${!myMediaExcludes.has(id) ? 'checked' : ''}></td>
-                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-latest form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${!latestExcludes.has(id) ? 'checked' : ''}></td>
-                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-group form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${grouped.has(id) ? 'checked' : ''}></td>
-                    <td class="px-3 py-2"><input type="number" min="1" class="preset-library-order jg-input h-9 w-20 bg-black/20 text-sm" value="${order.get(id) || idx + 1}"></td>
+                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-my-media form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" title="${JG.esc(i18n.libraryHelpMyMedia || '')}" ${!myMediaExcludes.has(id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-latest form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" title="${JG.esc(i18n.libraryHelpLatest || '')}" ${!latestExcludes.has(id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-group form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" title="${JG.esc(i18n.libraryHelpGroup || '')}" ${grouped.has(id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2">
+                        <div class="flex items-center gap-1">
+                            <button type="button" class="preset-library-move jg-btn jg-btn-sm jg-btn-ghost h-8 w-8 px-0" data-direction="-1" title="${JG.esc(i18n.libraryMoveUp || '')}" aria-label="${JG.esc(i18n.libraryMoveUp || '')}">&uarr;</button>
+                            <button type="button" class="preset-library-move jg-btn jg-btn-sm jg-btn-ghost h-8 w-8 px-0" data-direction="1" title="${JG.esc(i18n.libraryMoveDown || '')}" aria-label="${JG.esc(i18n.libraryMoveDown || '')}">&darr;</button>
+                        </div>
+                    </td>
                 </tr>`;
             }).join('');
 
@@ -520,9 +588,9 @@
                     <tr>
                         <th class="px-3 py-3"></th>
                         <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColAccess)}</th>
-                        <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColMyMedia)}</th>
-                        <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColLatest)}</th>
-                        <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColGroup)}</th>
+                        <th class="px-3 py-3 text-center" title="${JG.esc(i18n.libraryHelpMyMedia || '')}">${JG.esc(i18n.libraryColMyMedia)}</th>
+                        <th class="px-3 py-3 text-center" title="${JG.esc(i18n.libraryHelpLatest || '')}">${JG.esc(i18n.libraryColLatest)}</th>
+                        <th class="px-3 py-3 text-center" title="${JG.esc(i18n.libraryHelpGroup || '')}">${JG.esc(i18n.libraryColGroup)}</th>
                         <th class="px-3 py-3">${JG.esc(i18n.libraryColOrder)}</th>
                     </tr>
                 </thead>
@@ -694,33 +762,29 @@
             presets[idx].template_user_id = '';
             presets[idx].enable_all_folders = !!document.getElementById('preset-enable-all-folders')?.checked;
             const libraryRows = Array.from(document.querySelectorAll('#preset-library-list tr[data-library-id]'));
+            const activeLibraryRows = presets[idx].enable_all_folders
+                ? libraryRows
+                : libraryRows.filter((row) => row.querySelector('.preset-library-access')?.checked);
             presets[idx].enabled_folder_ids = presets[idx].enable_all_folders
                 ? []
-                : libraryRows
-                    .filter((row) => row.querySelector('.preset-library-access')?.checked)
+                : activeLibraryRows
                     .map((row) => row.dataset.libraryId)
                     .filter(Boolean);
-            const orderedRows = libraryRows
-                .map((row, index) => ({
-                    id: row.dataset.libraryId,
-                    order: nonNegativeInt(row.querySelector('.preset-library-order')?.value, index + 1),
-                    index,
-                }))
-                .filter((row) => row.id)
-                .sort((a, b) => (a.order - b.order) || (a.index - b.index));
             presets[idx].user_configuration = {
                 display_missing_episodes: !!document.getElementById('preset-display-missing-episodes')?.checked,
                 hide_played_in_latest: !!document.getElementById('preset-hide-played-latest')?.checked,
-                ordered_views: orderedRows.map((row) => row.id),
-                grouped_folders: libraryRows
+                ordered_views: activeLibraryRows
+                    .map((row) => row.dataset.libraryId)
+                    .filter(Boolean),
+                grouped_folders: activeLibraryRows
                     .filter((row) => row.querySelector('.preset-library-group')?.checked)
                     .map((row) => row.dataset.libraryId)
                     .filter(Boolean),
-                my_media_excludes: libraryRows
+                my_media_excludes: activeLibraryRows
                     .filter((row) => !row.querySelector('.preset-library-my-media')?.checked)
                     .map((row) => row.dataset.libraryId)
                     .filter(Boolean),
-                latest_items_excludes: libraryRows
+                latest_items_excludes: activeLibraryRows
                     .filter((row) => !row.querySelector('.preset-library-latest')?.checked)
                     .map((row) => row.dataset.libraryId)
                     .filter(Boolean),

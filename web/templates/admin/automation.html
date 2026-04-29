@@ -174,96 +174,107 @@
                     </div>
                 </div>
 
-                <div class="pt-4 border-t border-white/10 space-y-4">
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_preset_section_access" }}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <label class="flex items-center gap-3 cursor-pointer group bg-white/5 p-4 rounded-xl border border-white/5">
-                            <input id="preset-enable-download" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
-                            <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted group-hover:text-white transition-colors">{{ .T "automation_col_download" }}</span>
-                        </label>
-                        <label class="flex items-center gap-3 cursor-pointer group bg-white/5 p-4 rounded-xl border border-white/5">
-                            <input id="preset-enable-remote" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
-                            <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted group-hover:text-white transition-colors">{{ .T "automation_col_remote" }}</span>
-                        </label>
-                    </div>
-
-                    <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-4 rounded-xl border border-white/5">
-                        <input id="preset-enable-all-folders" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
-                        <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_libraries_all" }}</span>
-                    </label>
-
-                    <div id="preset-library-list" class="overflow-x-auto rounded-xl border border-white/10 bg-black/20"></div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="jg-label" for="preset-max-sessions">{{ .T "automation_col_sessions" }}</label>
-                            <input id="preset-max-sessions" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                <details id="preset-access-section" class="rounded-2xl border border-white/10 bg-white/[0.02]" open>
+                    <summary class="cursor-pointer px-4 py-3 text-xs font-bold uppercase tracking-widest text-jg-text-muted">
+                        {{ .T "automation_preset_section_access" }}
+                    </summary>
+                    <div class="space-y-4 border-t border-white/5 px-4 pb-4 pt-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <label class="flex items-center gap-3 cursor-pointer group bg-white/5 p-4 rounded-xl border border-white/5">
+                                <input id="preset-enable-download" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                                <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted group-hover:text-white transition-colors">{{ .T "automation_col_download" }}</span>
+                            </label>
+                            <label class="flex items-center gap-3 cursor-pointer group bg-white/5 p-4 rounded-xl border border-white/5">
+                                <input id="preset-enable-remote" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                                <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted group-hover:text-white transition-colors">{{ .T "automation_col_remote" }}</span>
+                            </label>
                         </div>
-                        <div>
-                            <label class="jg-label" for="preset-bitrate">{{ .T "automation_col_bitrate" }} (Mbps)</label>
-                            <input id="preset-bitrate" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
-                        </div>
-                    </div>
-                </div>
 
-                <div class="pt-4 border-t border-white/10 space-y-4">
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_preset_section_home" }}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-4 rounded-xl border border-white/5">
-                            <input id="preset-hide-played-latest" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
-                            <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_home_hide_played_latest" }}</span>
+                            <input id="preset-enable-all-folders" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                            <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_libraries_all" }}</span>
                         </label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-4 rounded-xl border border-white/5">
-                            <input id="preset-display-missing-episodes" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
-                            <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_home_display_missing" }}</span>
-                        </label>
-                    </div>
-                    <div id="preset-home-sections" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
-                </div>
 
-                <div class="pt-4 border-t border-white/10 space-y-4">
-                    <h3 class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_preset_section_display" }}</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="jg-label" for="preset-screensaver">{{ .T "automation_display_screensaver" }}</label>
-                            <select id="preset-screensaver" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
-                                <option value="none">{{ .T "automation_display_screensaver_none" }}</option>
-                                <option value="backdropscreensaver">{{ .T "automation_display_screensaver_backdrops" }}</option>
-                                <option value="logoscreensaver">{{ .T "automation_display_screensaver_logo" }}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="jg-label" for="preset-screensaver-time">{{ .T "automation_display_screensaver_time" }}</label>
-                            <input id="preset-screensaver-time" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
-                        </div>
-                        <div>
-                            <label class="jg-label" for="preset-backdrop-interval">{{ .T "automation_display_backdrop_interval" }}</label>
-                            <input id="preset-backdrop-interval" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
-                        </div>
-                        <div>
-                            <label class="jg-label" for="preset-slideshow-interval">{{ .T "automation_display_slideshow_interval" }}</label>
-                            <input id="preset-slideshow-interval" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
-                        </div>
-                        <div>
-                            <label class="jg-label" for="preset-library-page-size">{{ .T "automation_display_library_page_size" }}</label>
-                            <input id="preset-library-page-size" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
-                        </div>
-                        <div>
-                            <label class="jg-label" for="preset-nextup-days">{{ .T "automation_display_nextup_days" }}</label>
-                            <input id="preset-nextup-days" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                        <div id="preset-library-list" class="overflow-x-auto rounded-xl border border-white/10 bg-black/20"></div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="jg-label" for="preset-max-sessions">{{ .T "automation_col_sessions" }}</label>
+                                <input id="preset-max-sessions" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                            </div>
+                            <div>
+                                <label class="jg-label" for="preset-bitrate">{{ .T "automation_col_bitrate" }} (Mbps)</label>
+                                <input id="preset-bitrate" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                            </div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-fast-fadein" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_fast_animations" }}</span></label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-blurhash" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_blurhash" }}</span></label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-enable-backdrops" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_backdrops" }}</span></label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-theme-songs" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_theme_songs" }}</span></label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-theme-videos" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_theme_videos" }}</span></label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-details-banner" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_details_banner" }}</span></label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-rewatch-nextup" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_rewatch_nextup" }}</span></label>
-                        <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-episode-images" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_episode_images" }}</span></label>
+                </details>
+
+                <details id="preset-personalization-section" class="rounded-2xl border border-white/10 bg-white/[0.02]" open>
+                    <summary class="cursor-pointer px-4 py-3 text-xs font-bold uppercase tracking-widest text-jg-text-muted">
+                        {{ .T "automation_preset_section_personalization" }}
+                    </summary>
+                    <div class="space-y-5 border-t border-white/5 px-4 pb-4 pt-4">
+                        <div class="space-y-4">
+                            <h3 class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_preset_section_home" }}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <input id="preset-hide-played-latest" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                                    <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_home_hide_played_latest" }}</span>
+                                </label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-4 rounded-xl border border-white/5">
+                                    <input id="preset-display-missing-episodes" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent">
+                                    <span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_home_display_missing" }}</span>
+                                </label>
+                            </div>
+                            <div id="preset-home-sections" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+                        </div>
+
+                        <div class="space-y-4 border-t border-white/10 pt-4">
+                            <h3 class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_preset_section_display" }}</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="jg-label" for="preset-screensaver">{{ .T "automation_display_screensaver" }}</label>
+                                    <select id="preset-screensaver" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
+                                        <option value="none">{{ .T "automation_display_screensaver_none" }}</option>
+                                        <option value="backdropscreensaver">{{ .T "automation_display_screensaver_backdrops" }}</option>
+                                        <option value="logoscreensaver">{{ .T "automation_display_screensaver_logo" }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="jg-label" for="preset-screensaver-time">{{ .T "automation_display_screensaver_time" }}</label>
+                                    <input id="preset-screensaver-time" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                                </div>
+                                <div>
+                                    <label class="jg-label" for="preset-backdrop-interval">{{ .T "automation_display_backdrop_interval" }}</label>
+                                    <input id="preset-backdrop-interval" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                                </div>
+                                <div>
+                                    <label class="jg-label" for="preset-slideshow-interval">{{ .T "automation_display_slideshow_interval" }}</label>
+                                    <input id="preset-slideshow-interval" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                                </div>
+                                <div>
+                                    <label class="jg-label" for="preset-library-page-size">{{ .T "automation_display_library_page_size" }}</label>
+                                    <input id="preset-library-page-size" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                                </div>
+                                <div>
+                                    <label class="jg-label" for="preset-nextup-days">{{ .T "automation_display_nextup_days" }}</label>
+                                    <input id="preset-nextup-days" type="number" class="jg-input h-11 bg-black/20 text-sm" min="0">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-fast-fadein" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_fast_animations" }}</span></label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-blurhash" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_blurhash" }}</span></label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-enable-backdrops" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_backdrops" }}</span></label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-theme-songs" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_theme_songs" }}</span></label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-theme-videos" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_theme_videos" }}</span></label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-details-banner" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_details_banner" }}</span></label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-rewatch-nextup" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_rewatch_nextup" }}</span></label>
+                                <label class="flex items-center gap-3 cursor-pointer bg-white/5 p-3 rounded-xl border border-white/5"><input id="preset-episode-images" type="checkbox" class="form-checkbox w-5 h-5 rounded border-jg-border bg-black/50 accent-jg-accent"><span class="text-xs font-bold uppercase tracking-widest text-jg-text-muted">{{ .T "automation_display_episode_images" }}</span></label>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </details>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-white/10">
                     <div>
@@ -450,6 +461,11 @@
             libraryColLatest: '{{ .T "automation_library_col_latest" }}',
             libraryColGroup: '{{ .T "automation_library_col_group" }}',
             libraryColOrder: '{{ .T "automation_library_col_order" }}',
+            libraryMoveUp: '{{ .T "automation_library_move_up" }}',
+            libraryMoveDown: '{{ .T "automation_library_move_down" }}',
+            libraryHelpMyMedia: '{{ .T "automation_library_help_my_media" }}',
+            libraryHelpLatest: '{{ .T "automation_library_help_latest" }}',
+            libraryHelpGroup: '{{ .T "automation_library_help_group" }}',
             homeSectionLabel: '{{ .T "automation_home_section_label" }}',
             homeSectionNone: '{{ .T "automation_home_section_none" }}',
             homeSectionSmallLibraryTiles: '{{ .T "automation_home_section_smalllibrarytiles" }}',

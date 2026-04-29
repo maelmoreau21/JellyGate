@@ -3,7 +3,7 @@
   <img src="../../logo.svg" width="128" height="128" alt="JellyGate Logo">
 </p>
 
-Dernière mise à jour : 2026-04-26 (Version Finale)
+Dernière mise à jour : 2026-04-29 (Version Finale)
 
 Objectif
 - Fournir des directives concises et exploitables pour un assistant Claude travaillant sur ce dépôt, et rassembler le contexte produit/technique dans un seul fichier.
@@ -50,8 +50,8 @@ Si vous souhaitez des règles supplémentaires (hooks git, conventions de commit
 
 # JellyGate — Project Context
 
-> Dernière mise à jour : 2026-04-06
-> Version : 1.1.14
+> Dernière mise à jour : 2026-04-29
+> Version : 1.3.0
 > Auteur : Mael Moreau
 
 ## 1. Vision
@@ -165,6 +165,20 @@ web/
 - mappings groupes LDAP / groupes fonctionnels
 - tâches planifiées
 - provisioning Jellyseerr optionnel
+- Les presets Jellyfin sont désormais explicites et ne reposent plus sur le clonage d'un utilisateur modèle. Un preset peut définir directement les droits, les médiathèques accessibles, l'accueil Jellyfin et les préférences d'affichage Jellyfin Web.
+- Le champ JSON historique `template_user_id` reste accepté en lecture pour compatibilité, mais ne doit plus être utilisé pour les nouveaux presets ni exposé dans l'UI.
+- Les blocs de preset Jellyfin à préserver sont :
+  - `user_configuration` : épisodes manquants, contenu vu dans ajouts récents, ordre des médiathèques, dossiers groupés, exclusions "Mes médias" et "Ajouts récents".
+  - `display_preferences` : écran de veille, délais, animations, images floues, arrière-plans, thèmes, bannière détails, taille de page, délai "À suivre", images épisode et sections d'accueil 1 à 10.
+- Endpoint admin ajouté : `GET /admin/api/automation/libraries`, qui expose les médiathèques depuis Jellyfin `/Library/VirtualFolders`.
+- Dans l'UI `Automatisation > Presets`, les réglages sont organisés en panneaux repliables `Accès` et `Personnalisation`. La table des médiathèques utilise :
+  - `Accès` : donne ou retire l'accès Jellyfin à la médiathèque.
+  - `Accueil : Mes médias` : affiche cette médiathèque dans la section d'accueil "Mes médias"; cela ne change pas l'accès.
+  - `Accueil : Ajouts récents` : autorise cette médiathèque dans les ajouts récents.
+  - `Regrouper par type` : alimente `GroupedFolders` pour regrouper les dossiers dans les vues Jellyfin par type (Films, Séries, Musique, etc.).
+  - `Position` : ordre des médiathèques via boutons Monter/Descendre; ne pas réintroduire de champ numérique libre car les doublons rendaient l'ordre ambigu.
+- Quand une médiathèque n'est pas accessible dans le preset, les options d'accueil/groupe/position doivent rester désactivées et ne pas être envoyées dans `ordered_views`, `grouped_folders`, `my_media_excludes` ou `latest_items_excludes`.
+- L'application d'un preset Jellyfin passe par trois appels côté client Jellyfin : `POST /Users/{userId}/Policy`, `POST /Users/Configuration?userId=...`, puis `GET/POST /DisplayPreferences/usersettings?userId=...&client=emby`.
 
 ### 4.6 Modeles e-mail
 
@@ -393,6 +407,17 @@ Remarques:
   - **Standardisation Docker** : `docker-compose.yml` désormais optimisé pour SQLite par défaut (plus de conteneur Postgres inutile). Introduction de `docker-compose.postgres.yml` pour les installations PostgreSQL.
   - **Configuration** : Mise à jour de `.env` avec des commentaires plus clairs et suppression des variables inutilisées.
   - **Documentation** : Actualisation de l'arborescence projet et des consignes d'agent. L'installation via Docker est désormais la méthode officiellement recommandée et mise en avant.
+
+- **Version 1.3.0 / Mémoire agent** : Presets Jellyfin complets sans clonage (2026-04-29)
+  - Ajout des blocs JSON `user_configuration` et `display_preferences` à `JellyfinPolicyPreset`, avec valeurs par défaut et normalisation dans `internal/config/config.go` et `internal/database/settings.go`.
+  - Le client Jellyfin applique désormais un preset en trois étapes : droits/bibliothèques (`Policy`), configuration utilisateur (`UserConfiguration`) et préférences Jellyfin Web (`DisplayPreferences.CustomPrefs`).
+  - Ajout de `GET /admin/api/automation/libraries`, branché sur `/Library/VirtualFolders`, pour sélectionner directement les médiathèques accessibles depuis `Automatisation > Presets`.
+  - La modale preset ne propose plus "Cloner un profil Jellyfin"; `template_user_id` reste uniquement une compatibilité JSON legacy.
+  - UI `Automatisation > Presets` : sections repliables `Accès` et `Personnalisation`; la table médiathèques utilise `Accueil : Mes médias`, `Accueil : Ajouts récents`, `Regrouper par type` et `Position` via boutons Monter/Descendre.
+  - Correction UX importante : ne pas permettre plusieurs rangs identiques pour l'ordre des médiathèques; l'ordre doit être l'ordre physique des lignes dans le tableau.
+  - Fichiers principaux touchés : `internal/jellyfin/client.go`, `internal/config/config.go`, `internal/database/settings.go`, `internal/handlers/automation.go`, `internal/handlers/admin.go`, `internal/handlers/invitations.go`, `internal/scheduler/service.go`, `web/templates/admin/automation.html`, `web/static/js/pages/automation.js`, `web/i18n/*.json`.
+  - Tests ajoutés : `internal/jellyfin/client_test.go` vérifie les payloads Policy/UserConfiguration/DisplayPreferences et l'absence de clonage; `internal/database/settings_presets_test.go` vérifie les defaults et la normalisation.
+  - Validations effectuées pendant l'implémentation : `go test ./...`, `go build ./...`, `npm run build:css`, `node --check web/static/js/pages/automation.js`, contrôle i18n des clés Automation sur les 10 langues, `git diff --check`.
 
 ### 4.6 Internationalisation (i18n)
 
