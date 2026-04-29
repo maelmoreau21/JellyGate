@@ -1,15 +1,15 @@
-// Package handlers Ã¢â‚¬â€� invitations.go
+// Package handlers — invitations.go
 //
-// GÃƒÂ¨re le systÃƒÂ¨me d'invitations de JellyGate.
-// La route POST /invite/{code} implÃƒÂ©mente un flux de crÃƒÂ©ation atomique :
+// Gère le système d'invitations de JellyGate.
+// La route POST /invite/{code} implémente un flux de création atomique :
 //
 //  1. Validation SQLite (code, expiration, quota)
-//  2. CrÃƒÂ©ation LDAP (Active Directory)
-//  3. CrÃƒÂ©ation Jellyfin + application du profil
-//     Ã¢â€ â€™ Rollback LDAP si ÃƒÂ©chec
-//  4. Enregistrement SQLite (user + incrÃƒÂ©ment used_count)
-//     Ã¢â€ â€™ Rollback Jellyfin + LDAP si ÃƒÂ©chec
-//  5. Notifications (email + webhooks) Ã¢â‚¬â€� pas de rollback
+//  2. Création LDAP (Active Directory)
+//  3. Création Jellyfin + application du profil
+//     → Rollback LDAP si échec
+//  4. Enregistrement SQLite (user + incrément used_count)
+//     → Rollback Jellyfin + LDAP si échec
+//  5. Notifications (email + webhooks) — pas de rollback
 package handlers
 
 import (

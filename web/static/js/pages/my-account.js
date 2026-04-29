@@ -206,9 +206,9 @@
 
         document.getElementById('account-role').textContent = profile.is_admin ? (i18n.roleAdmin || 'Admin') : (i18n.roleUser || 'User');
         document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at, profile.created_at);
-        document.getElementById('account-email-summary').textContent = profile.email || '-';
+        document.getElementById('account-email-summary').textContent = profile.pending_email || profile.email || '-';
 
-        document.getElementById('my-email').value = profile.email || '';
+        document.getElementById('my-email').value = profile.pending_email || profile.email || '';
         document.getElementById('my-discord').value = profile.contact_discord || '';
         document.getElementById('my-telegram').value = profile.contact_telegram || '';
 

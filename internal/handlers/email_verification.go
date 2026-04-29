@@ -198,7 +198,7 @@ func sendEmailVerification(r *http.Request, cfg *config.Config, db *database.DB,
 
 	token, err := generateSecureToken(emailVerificationTokenLength)
 	if err != nil {
-		return fmt.Errorf("gÃƒÂ©nÃƒÂ©ration du token: %w", err)
+		return fmt.Errorf("génération du token: %w", err)
 	}
 
 	now := time.Now()
@@ -214,7 +214,7 @@ func sendEmailVerification(r *http.Request, cfg *config.Config, db *database.DB,
 		userID,
 		address,
 	); err != nil {
-		return fmt.Errorf("dÃƒÂ©sactivation anciens tokens: %w", err)
+		return fmt.Errorf("désactivation anciens tokens: %w", err)
 	}
 
 	if _, err := tx.Exec(
@@ -225,7 +225,7 @@ func sendEmailVerification(r *http.Request, cfg *config.Config, db *database.DB,
 		token,
 		expiresAt.Format("2006-01-02 15:04:05"),
 	); err != nil {
-		return fmt.Errorf("crÃƒÂ©ation token verification: %w", err)
+		return fmt.Errorf("création token verification: %w", err)
 	}
 
 	if _, err := tx.Exec(
@@ -233,7 +233,7 @@ func sendEmailVerification(r *http.Request, cfg *config.Config, db *database.DB,
 		now.Format("2006-01-02 15:04:05"),
 		userID,
 	); err != nil {
-		return fmt.Errorf("mise ÃƒÂ  jour envoi verification: %w", err)
+		return fmt.Errorf("mise à jour envoi verification: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -285,10 +285,10 @@ func consumeEmailVerification(db *database.DB, code string) (*emailVerificationT
 		return nil, "invalid", fmt.Errorf("lecture token: %w", err)
 	}
 	if record.Used {
-		return nil, "used", fmt.Errorf("token dÃƒÂ©jÃƒÂ  utilisÃƒÂ©")
+		return nil, "used", fmt.Errorf("token déjà utilisé")
 	}
 	if time.Now().After(record.ExpiresAt) {
-		return nil, "expired", fmt.Errorf("token expirÃƒÂ©")
+		return nil, "expired", fmt.Errorf("token expiré")
 	}
 
 	target, err := loadEmailVerificationTarget(db, record.UserID)
@@ -377,7 +377,7 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 
 	target, status, err := consumeEmailVerification(h.db, code)
 	if err != nil {
-		slog.Warn("Verification email ÃƒÂ©chouÃƒÂ©e", "code", code, "status", status, "error", err)
+		slog.Warn("Verification email échouée", "code", code, "status", status, "error", err)
 		switch status {
 		case "expired":
 			statusCode = http.StatusGone

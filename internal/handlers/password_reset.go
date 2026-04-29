@@ -1,18 +1,18 @@
-// Package handlers Ã¢â‚¬â€� password_reset.go
+// Package handlers — password_reset.go
 //
-// GÃƒÂ¨re le flux complet de rÃƒÂ©initialisation de mot de passe :
+// Gère le flux complet de réinitialisation de mot de passe :
 //
 //  1. Demande (POST /reset/request) :
 //     - Recherche l'utilisateur par email ou username dans SQLite
-//     - GÃƒÂ©nÃƒÂ¨re un token sÃƒÂ©curisÃƒÂ© (crypto/rand, 32 bytes, hex)
-//     - InsÃƒÂ¨re dans la table password_resets (expiration 15 min)
-//     - Envoie l'email avec le lien de rÃƒÂ©initialisation
+//     - Génère un token sécurisé (crypto/rand, 32 bytes, hex)
+//     - Insère dans la table password_resets (expiration 15 min)
+//     - Envoie l'email avec le lien de réinitialisation
 //
-//  2. ExÃƒÂ©cution (POST /reset/{code}) :
-//     - VÃƒÂ©rifie le token (existence, expiration, non-utilisÃƒÂ©)
-//     - Applique le nouveau mot de passe simultanÃƒÂ©ment :
-//     Ã¢â‚¬Â¢ ldap.ResetPassword() Ã¢â‚¬â€� Active Directory
-//     Ã¢â‚¬Â¢ jellyfin.ResetPassword() Ã¢â‚¬â€� Jellyfin
+//  2. Exécution (POST /reset/{code}) :
+//     - Vérifie le token (existence, expiration, non-utilisé)
+//     - Applique le nouveau mot de passe simultanément :
+//     • ldap.ResetPassword() — Active Directory
+//     • jellyfin.ResetPassword() — Jellyfin
 //     - Marque le token comme used = true
 package handlers
 
