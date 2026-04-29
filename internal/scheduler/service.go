@@ -468,7 +468,6 @@ func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinP
 
 	profile := jellyfin.InviteProfile{
 		PresetID:               strings.TrimSpace(strings.ToLower(preset.ID)),
-		TemplateUserID:         strings.TrimSpace(preset.TemplateUserID),
 		EnableAllFolders:       preset.EnableAllFolders,
 		EnabledFolderIDs:       append([]string(nil), preset.EnabledFolderIDs...),
 		EnableDownload:         preset.EnableDownload,
@@ -487,6 +486,8 @@ func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinP
 		UserExpiryDays:         preset.DisableAfterDays,
 		DeleteAfterDays:        preset.DeleteAfterDays,
 		CanInvite:              preset.CanInvite,
+		UserConfiguration:      preset.UserConfiguration,
+		DisplayPreferences:     preset.DisplayPreferences,
 	}
 
 	return s.jf.ApplyInviteProfile(jfUserID, profile)

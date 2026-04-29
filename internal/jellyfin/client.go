@@ -18,6 +18,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -94,13 +96,32 @@ type Policy struct {
 
 // Library représente une bibliothèque de médias Jellyfin.
 type Library struct {
-	ID             string `json:"Id"`
-	Name           string `json:"Name"`
-	CollectionType string `json:"CollectionType"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	CollectionType string `json:"collection_type"`
 }
 
 // LibrariesResponse est la réponse de l'endpoint /Library/VirtualFolders.
 type LibrariesResponse []Library
+
+func (l *Library) UnmarshalJSON(data []byte) error {
+	var raw struct {
+		ID             string `json:"Id"`
+		ItemID         string `json:"ItemId"`
+		Name           string `json:"Name"`
+		CollectionType string `json:"CollectionType"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+	l.ID = strings.TrimSpace(raw.ItemID)
+	if l.ID == "" {
+		l.ID = strings.TrimSpace(raw.ID)
+	}
+	l.Name = raw.Name
+	l.CollectionType = raw.CollectionType
+	return nil
+}
 
 // InviteProfile contient les droits à appliquer lors d'une invitation.
 // Stocké en JSON dans la table invitations.jellyfin_profile.
@@ -131,9 +152,12 @@ type InviteProfile struct {
 
 	// JFA-Go Features
 	ForcedUsername string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
-	TemplateUserID string `json:"template_user_id"` // Si fourni, clonage strict des droits de ce profil
+	TemplateUserID string `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
 	CanInvite      bool   `json:"can_invite"`
 	PresetID       string `json:"preset_id"` // Identifiant du preset (Parrainage)
+
+	UserConfiguration  config.JellyfinPresetUserConfiguration  `json:"user_configuration"`
+	DisplayPreferences config.JellyfinPresetDisplayPreferences `json:"display_preferences"`
 }
 
 // ── Opérations CRUD ─────────────────────────────────────────────────────────
@@ -285,6 +309,76 @@ func (c *Client) SetUserPolicy(userID string, policy Policy) error {
 	return nil
 }
 
+// SetUserConfiguration met a jour la configuration utilisateur Jellyfin.
+func (c *Client) SetUserConfiguration(userID string, configuration map[string]interface{}) error {
+	if userID == "" {
+		return fmt.Errorf("jellyfin.SetUserConfiguration: userID vide")
+	}
+
+	reqBody, err := json.Marshal(configuration)
+	if err != nil {
+		return fmt.Errorf("jellyfin.SetUserConfiguration: erreur de serialisation: %w", err)
+	}
+
+	path := "/Users/Configuration?userId=" + url.QueryEscape(userID)
+	resp, err := c.doRequest(http.MethodPost, path, reqBody)
+	if err != nil {
+		return fmt.Errorf("jellyfin.SetUserConfiguration: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("jellyfin.SetUserConfiguration: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+func (c *Client) getDisplayPreferences(userID string) (map[string]interface{}, error) {
+	path := "/DisplayPreferences/usersettings?userId=" + url.QueryEscape(userID) + "&client=emby"
+	resp, err := c.doRequest(http.MethodGet, path, nil)
+	if err != nil {
+		return nil, fmt.Errorf("jellyfin.GetDisplayPreferences: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("jellyfin.GetDisplayPreferences: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
+	var preferences map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&preferences); err != nil {
+		return nil, fmt.Errorf("jellyfin.GetDisplayPreferences: erreur de decodage: %w", err)
+	}
+	if preferences == nil {
+		preferences = map[string]interface{}{}
+	}
+	return preferences, nil
+}
+
+func (c *Client) setDisplayPreferences(userID string, preferences map[string]interface{}) error {
+	reqBody, err := json.Marshal(preferences)
+	if err != nil {
+		return fmt.Errorf("jellyfin.SetDisplayPreferences: erreur de serialisation: %w", err)
+	}
+
+	path := "/DisplayPreferences/usersettings?userId=" + url.QueryEscape(userID) + "&client=emby"
+	resp, err := c.doRequest(http.MethodPost, path, reqBody)
+	if err != nil {
+		return fmt.Errorf("jellyfin.SetDisplayPreferences: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("jellyfin.SetDisplayPreferences: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
 // UpdateUserPassword change le mot de passe d'un utilisateur Jellyfin.
 func (c *Client) UpdateUserPassword(userID, currentPassword, newPassword string) error {
 	if userID == "" {
@@ -332,10 +426,69 @@ func (c *Client) DisableUser(userID string) error {
 	return c.SetUserPolicy(userID, user.Policy)
 }
 
-// ApplyInviteProfile applique un profil d'invitation à un utilisateur.
-//
-// Configure les bibliothèques autorisées, le téléchargement,
-// l'accès distant, les sessions max et la limite de débit.
+// buildUserConfigurationPayload merge la configuration existante avec le preset.
+func buildUserConfigurationPayload(base map[string]interface{}, cfg config.JellyfinPresetUserConfiguration) map[string]interface{} {
+	cfg = config.NormalizeJellyfinPresetUserConfiguration(cfg)
+	payload := map[string]interface{}{}
+	for key, value := range base {
+		payload[key] = value
+	}
+	payload["DisplayMissingEpisodes"] = cfg.DisplayMissingEpisodes
+	payload["HidePlayedInLatest"] = cfg.HidePlayedInLatest
+	payload["OrderedViews"] = cfg.OrderedViews
+	payload["GroupedFolders"] = cfg.GroupedFolders
+	payload["MyMediaExcludes"] = cfg.MyMediaExcludes
+	payload["LatestItemsExcludes"] = cfg.LatestItemsExcludes
+	return payload
+}
+
+func buildDisplayPreferencesCustomPrefs(cfg config.JellyfinPresetDisplayPreferences) map[string]string {
+	cfg = config.NormalizeJellyfinPresetDisplayPreferences(cfg)
+	values := map[string]string{
+		"screensaver":                       cfg.ScreenSaver,
+		"backdropScreensaverInterval":       strconv.Itoa(cfg.BackdropScreensaverInterval),
+		"slideshowInterval":                 strconv.Itoa(cfg.SlideshowInterval),
+		"screensaverTime":                   strconv.Itoa(cfg.ScreensaverTime),
+		"fastFadein":                        strconv.FormatBool(cfg.EnableFastFadeIn),
+		"blurhash":                          strconv.FormatBool(cfg.EnableBlurHash),
+		"enableBackdrops":                   strconv.FormatBool(cfg.EnableBackdrops),
+		"enableThemeSongs":                  strconv.FormatBool(cfg.EnableThemeSongs),
+		"enableThemeVideos":                 strconv.FormatBool(cfg.EnableThemeVideos),
+		"detailsBanner":                     strconv.FormatBool(cfg.DetailsBanner),
+		"libraryPageSize":                   strconv.Itoa(cfg.LibraryPageSize),
+		"maxDaysForNextUp":                  strconv.Itoa(cfg.MaxDaysForNextUp),
+		"enableRewatchingInNextUp":          strconv.FormatBool(cfg.EnableRewatchingInNextUp),
+		"useEpisodeImagesInNextUpAndResume": strconv.FormatBool(cfg.UseEpisodeImagesInNextUpResume),
+	}
+	for idx, section := range cfg.HomeSections {
+		if idx >= 10 {
+			break
+		}
+		values[fmt.Sprintf("homesection%d", idx)] = section
+	}
+	return values
+}
+
+func (c *Client) applyDisplayPreferences(userID string, cfg config.JellyfinPresetDisplayPreferences) error {
+	preferences, err := c.getDisplayPreferences(userID)
+	if err != nil {
+		return err
+	}
+	preferences["Id"] = "usersettings"
+	preferences["Client"] = "emby"
+
+	customPrefs, ok := preferences["CustomPrefs"].(map[string]interface{})
+	if !ok || customPrefs == nil {
+		customPrefs = map[string]interface{}{}
+	}
+	for key, value := range buildDisplayPreferencesCustomPrefs(cfg) {
+		customPrefs[key] = value
+	}
+	preferences["CustomPrefs"] = customPrefs
+
+	return c.setDisplayPreferences(userID, preferences)
+}
+
 func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error {
 	if userID == "" {
 		return fmt.Errorf("jellyfin.ApplyInviteProfile: userID vide")
@@ -363,35 +516,20 @@ func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error 
 	policy.EnableAudioPlaybackTranscoding = true
 	policy.EnableVideoPlaybackTranscoding = true
 
-	// Si un profil modèle est défini, ne copier que les bibliothèques autorisées
-	// et quelques préférences de layout d'accueil (pas l'état du compte).
-	if profile.TemplateUserID != "" {
-		slog.Debug("Clonage partiel depuis le modèle Jellyfin", "template", profile.TemplateUserID, "target", userID)
-		templateUser, err := c.GetUser(profile.TemplateUserID)
-		if err == nil {
-			// Bibliothèques autorisées du profil modèle.
-			policy.EnableAllFolders = templateUser.Policy.EnableAllFolders
-			policy.EnabledFolders = templateUser.Policy.EnabledFolders
-
-			layoutConfig := map[string]interface{}{}
-			for _, key := range []string{"MyMediaExcludes", "LatestItemsExcludes", "OrderedViews", "HomeSections"} {
-				if value, ok := templateUser.Configuration[key]; ok {
-					layoutConfig[key] = value
-				}
-			}
-
-			if len(layoutConfig) > 0 {
-				reqBody, configErr := json.Marshal(layoutConfig)
-				if configErr == nil {
-					_, _ = c.doRequest(http.MethodPost, fmt.Sprintf("/Users/%s/Configuration", userID), reqBody)
-				}
-			}
-		} else {
-			slog.Warn("Echec du chargement du profil modèle Jellyfin, application des droits standards", "template", profile.TemplateUserID)
-		}
+	if err := c.SetUserPolicy(userID, policy); err != nil {
+		return err
 	}
 
-	return c.SetUserPolicy(userID, policy)
+	configuration := buildUserConfigurationPayload(user.Configuration, profile.UserConfiguration)
+	if err := c.SetUserConfiguration(userID, configuration); err != nil {
+		return err
+	}
+
+	if err := c.applyDisplayPreferences(userID, profile.DisplayPreferences); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // ── Lecture ──────────────────────────────────────────────────────────────────

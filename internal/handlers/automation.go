@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/scheduler"
@@ -19,12 +20,13 @@ import (
 
 type AutomationHandler struct {
 	db        *database.DB
+	jfClient  *jellyfin.Client
 	renderer  *render.Engine
 	scheduler *scheduler.Service
 }
 
-func NewAutomationHandler(db *database.DB, renderer *render.Engine, schedulerSvc *scheduler.Service) *AutomationHandler {
-	return &AutomationHandler{db: db, renderer: renderer, scheduler: schedulerSvc}
+func NewAutomationHandler(db *database.DB, renderer *render.Engine, schedulerSvc *scheduler.Service, jf *jellyfin.Client) *AutomationHandler {
+	return &AutomationHandler{db: db, jfClient: jf, renderer: renderer, scheduler: schedulerSvc}
 }
 
 func (h *AutomationHandler) tr(r *http.Request, key, fallback string) string {
@@ -59,6 +61,21 @@ func (h *AutomationHandler) ListPresets(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: presets})
+}
+
+func (h *AutomationHandler) ListLibraries(w http.ResponseWriter, r *http.Request) {
+	if h.jfClient == nil {
+		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin indisponible")})
+		return
+	}
+
+	libraries, err := h.jfClient.GetLibraries()
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, APIResponse{Success: false, Message: h.tr(r, "automation_error_libraries", "Impossible de charger les mediatheques Jellyfin")})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: libraries})
 }
 
 func (h *AutomationHandler) SavePresets(w http.ResponseWriter, r *http.Request) {

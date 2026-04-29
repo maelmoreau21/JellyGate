@@ -8,9 +8,70 @@
         return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
     }
 
+    const DEFAULT_HOME_SECTIONS = ['smalllibrarytiles', 'resume', 'resumeaudio', 'resumebook', 'livetv', 'nextup', 'latestmedia', 'none', 'none', 'none'];
+    const HOME_SECTION_OPTIONS = [
+        ['none', 'homeSectionNone'],
+        ['smalllibrarytiles', 'homeSectionSmallLibraryTiles'],
+        ['librarybuttons', 'homeSectionLibraryButtons'],
+        ['activerecordings', 'homeSectionActiveRecordings'],
+        ['resume', 'homeSectionResume'],
+        ['resumeaudio', 'homeSectionResumeAudio'],
+        ['resumebook', 'homeSectionResumeBook'],
+        ['livetv', 'homeSectionLiveTv'],
+        ['nextup', 'homeSectionNextUp'],
+        ['latestmedia', 'homeSectionLatestMedia'],
+    ];
+
     function presetInt(preset, key, fallback = 0) {
         const value = preset ? preset[key] : undefined;
         return Number.isInteger(value) && value >= 0 ? value : fallback;
+    }
+
+    function defaultUserConfiguration() {
+        return {
+            display_missing_episodes: false,
+            hide_played_in_latest: false,
+            ordered_views: [],
+            grouped_folders: [],
+            my_media_excludes: [],
+            latest_items_excludes: [],
+        };
+    }
+
+    function defaultDisplayPreferences() {
+        return {
+            screensaver: 'none',
+            screensaver_time: 180,
+            backdrop_screensaver_interval: 5,
+            slideshow_interval: 5,
+            enable_fast_fadein: true,
+            enable_blurhash: true,
+            enable_backdrops: false,
+            enable_theme_songs: false,
+            enable_theme_videos: false,
+            details_banner: true,
+            library_page_size: 100,
+            max_days_for_next_up: 365,
+            enable_rewatching_next_up: false,
+            use_episode_images_next_up_resume: true,
+            home_sections: DEFAULT_HOME_SECTIONS.slice(),
+        };
+    }
+
+    function normalizePresetSettings(preset) {
+        const normalized = preset || {};
+        normalized.enable_all_folders = normalized.enable_all_folders !== false;
+        normalized.enabled_folder_ids = Array.isArray(normalized.enabled_folder_ids) ? normalized.enabled_folder_ids : [];
+        normalized.user_configuration = { ...defaultUserConfiguration(), ...(normalized.user_configuration || {}) };
+        normalized.display_preferences = { ...defaultDisplayPreferences(), ...(normalized.display_preferences || {}) };
+        if (!Array.isArray(normalized.display_preferences.home_sections) || !normalized.display_preferences.home_sections.length) {
+            normalized.display_preferences.home_sections = DEFAULT_HOME_SECTIONS.slice();
+        }
+        while (normalized.display_preferences.home_sections.length < 10) {
+            normalized.display_preferences.home_sections.push('none');
+        }
+        normalized.display_preferences.home_sections = normalized.display_preferences.home_sections.slice(0, 10);
+        return normalized;
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -88,7 +149,9 @@
         let presets = [];
         let groupMappings = [];
         let tasks = [];
-        let templateUsers = [];
+        let libraries = [];
+        let librariesLoaded = false;
+
 
         function updateTaskPreview() {
             const name = (document.getElementById('task-name')?.value || '').trim();
@@ -316,6 +379,8 @@
              }
         });
 
+        document.getElementById('preset-enable-all-folders')?.addEventListener('change', updateLibraryAccessState);
+
         function mappingRow(mapping, idx) {
             const presetOptions = presets.map(p => `<option value="${JG.esc(p.id)}" ${p.id === mapping.policy_preset_id ? 'selected' : ''}>${JG.esc(p.name || p.id)}</option>`).join('');
             
@@ -373,35 +438,97 @@
             return (text || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
         }
 
-        function populateTemplateUserSelect(selectedValue) {
-            const select = document.getElementById('preset-template-user');
-            if (!select) return;
-
-            const options = [`<option value="">${JG.esc(i18n.noTemplateUser)}</option>`];
-            templateUsers.forEach((user) => {
-                options.push(`<option value="${JG.esc(user.value)}">${JG.esc(user.label)}</option>`);
-            });
-            select.innerHTML = options.join('');
-            select.value = selectedValue || '';
+        async function loadLibraries() {
+            const container = document.getElementById('preset-library-list');
+            if (container) {
+                container.innerHTML = `<div class="p-4 text-sm text-jg-text-muted">${JG.esc(i18n.librariesLoading)}</div>`;
+            }
+            const res = await JG.api('/admin/api/automation/libraries');
+            librariesLoaded = true;
+            if (!res?.success) {
+                libraries = [];
+                if (container) {
+                    container.innerHTML = `<div class="p-4 text-sm text-rose-300">${JG.esc(res?.message || i18n.librariesLoadFailed)}</div>`;
+                }
+                return;
+            }
+            libraries = Array.isArray(res.data) ? res.data : [];
         }
 
-        async function loadTemplateUsers() {
-            const res = await JG.api('/admin/api/users?limit=500&include_jellyfin=0');
-            const usersList = Array.isArray(res?.data)
-                ? res.data
-                : (Array.isArray(res?.data?.users) ? res.data.users : []);
+        function updateLibraryAccessState() {
+            const allFolders = !!document.getElementById('preset-enable-all-folders')?.checked;
+            document.querySelectorAll('.preset-library-access').forEach((input) => {
+                input.disabled = allFolders;
+                input.closest('tr')?.classList.toggle('opacity-60', allFolders);
+            });
+        }
 
-            if (!res?.success || !usersList.length) {
-                templateUsers = [];
+        function renderHomeSections(homeSections) {
+            const container = document.getElementById('preset-home-sections');
+            if (!container) return;
+            const sections = Array.isArray(homeSections) ? homeSections.slice(0, 10) : DEFAULT_HOME_SECTIONS.slice();
+            while (sections.length < 10) sections.push('none');
+            container.innerHTML = sections.map((value, idx) => {
+                const options = HOME_SECTION_OPTIONS.map(([optionValue, labelKey]) => (
+                    `<option value="${JG.esc(optionValue)}" ${optionValue === value ? 'selected' : ''}>${JG.esc(i18n[labelKey] || optionValue)}</option>`
+                )).join('');
+                return `<div>
+                    <label class="jg-label" for="preset-home-section-${idx}">${JG.esc(i18n.homeSectionLabel)} ${idx + 1}</label>
+                    <select id="preset-home-section-${idx}" class="jg-input jg-select-premium h-10 bg-black/20 text-sm">${options}</select>
+                </div>`;
+            }).join('');
+        }
+
+        function renderLibraryPicker(preset) {
+            const container = document.getElementById('preset-library-list');
+            if (!container) return;
+            if (!librariesLoaded) {
+                container.innerHTML = `<div class="p-4 text-sm text-jg-text-muted">${JG.esc(i18n.librariesLoading)}</div>`;
+                return;
+            }
+            if (!libraries.length) {
+                container.innerHTML = `<div class="p-4 text-sm text-jg-text-muted">${JG.esc(i18n.librariesEmpty)}</div>`;
                 return;
             }
 
-            templateUsers = usersList
-                .filter((user) => user && user.jellyfin_id)
-                .map((user) => ({
-                    value: user.jellyfin_id,
-                    label: user.username || user.jellyfin_id,
-                }));
+            const userConfig = preset.user_configuration || defaultUserConfiguration();
+            const selected = new Set((preset.enabled_folder_ids || []).map(String));
+            const grouped = new Set((userConfig.grouped_folders || []).map(String));
+            const myMediaExcludes = new Set((userConfig.my_media_excludes || []).map(String));
+            const latestExcludes = new Set((userConfig.latest_items_excludes || []).map(String));
+            const order = new Map((userConfig.ordered_views || []).map((id, idx) => [String(id), idx + 1]));
+
+            const rows = libraries.map((library, idx) => {
+                const id = String(library.id || library.Id || library.ItemId || '').trim();
+                const label = library.name || library.Name || id;
+                const type = library.collection_type || library.CollectionType || '';
+                return `<tr data-library-id="${JG.esc(id)}" class="border-t border-white/5">
+                    <td class="px-3 py-2 min-w-[170px]">
+                        <div class="text-sm font-semibold text-jg-text">${JG.esc(label)}</div>
+                        <div class="text-[10px] uppercase tracking-widest text-jg-text-muted">${JG.esc(type || id)}</div>
+                    </td>
+                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-access form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${preset.enable_all_folders || selected.has(id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-my-media form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${!myMediaExcludes.has(id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-latest form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${!latestExcludes.has(id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2 text-center"><input type="checkbox" class="preset-library-group form-checkbox w-4 h-4 rounded border-jg-border bg-black/50 accent-jg-accent" ${grouped.has(id) ? 'checked' : ''}></td>
+                    <td class="px-3 py-2"><input type="number" min="1" class="preset-library-order jg-input h-9 w-20 bg-black/20 text-sm" value="${order.get(id) || idx + 1}"></td>
+                </tr>`;
+            }).join('');
+
+            container.innerHTML = `<table class="w-full text-left text-sm">
+                <thead class="text-[10px] uppercase tracking-widest text-jg-text-muted bg-white/[0.03]">
+                    <tr>
+                        <th class="px-3 py-3"></th>
+                        <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColAccess)}</th>
+                        <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColMyMedia)}</th>
+                        <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColLatest)}</th>
+                        <th class="px-3 py-3 text-center">${JG.esc(i18n.libraryColGroup)}</th>
+                        <th class="px-3 py-3">${JG.esc(i18n.libraryColOrder)}</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>`;
+            updateLibraryAccessState();
         }
 
         function resolvePresetLDAPGroups(preset) {
@@ -445,7 +572,8 @@
 
         function openPresetModal(idx) {
             currentPresetIndex = idx;
-            const preset = presets[idx] || {};
+            const preset = normalizePresetSettings(presets[idx] || {});
+            presets[idx] = preset;
             document.getElementById('preset-name').value = preset.name || '';
 
             const ldapGroups = resolvePresetLDAPGroups(preset);
@@ -461,7 +589,29 @@
             document.getElementById('preset-bitrate').value = preset.bitrate_limit || 0;
             document.getElementById('preset-disable-days').value = preset.disable_after_days || 0;
             document.getElementById('preset-delete-days').value = preset.delete_after_days || 0;
-            populateTemplateUserSelect(preset.template_user_id || '');
+            document.getElementById('preset-enable-all-folders').checked = preset.enable_all_folders !== false;
+            renderLibraryPicker(preset);
+            renderHomeSections(preset.display_preferences.home_sections);
+
+            const userConfig = preset.user_configuration;
+            document.getElementById('preset-hide-played-latest').checked = !!userConfig.hide_played_in_latest;
+            document.getElementById('preset-display-missing-episodes').checked = !!userConfig.display_missing_episodes;
+
+            const displayPrefs = preset.display_preferences;
+            document.getElementById('preset-screensaver').value = displayPrefs.screensaver || 'none';
+            document.getElementById('preset-screensaver-time').value = presetInt(displayPrefs, 'screensaver_time', 180);
+            document.getElementById('preset-backdrop-interval').value = presetInt(displayPrefs, 'backdrop_screensaver_interval', 5);
+            document.getElementById('preset-slideshow-interval').value = presetInt(displayPrefs, 'slideshow_interval', 5);
+            document.getElementById('preset-library-page-size').value = presetInt(displayPrefs, 'library_page_size', 100);
+            document.getElementById('preset-nextup-days').value = presetInt(displayPrefs, 'max_days_for_next_up', 365);
+            document.getElementById('preset-fast-fadein').checked = displayPrefs.enable_fast_fadein !== false;
+            document.getElementById('preset-blurhash').checked = displayPrefs.enable_blurhash !== false;
+            document.getElementById('preset-enable-backdrops').checked = !!displayPrefs.enable_backdrops;
+            document.getElementById('preset-theme-songs').checked = !!displayPrefs.enable_theme_songs;
+            document.getElementById('preset-theme-videos').checked = !!displayPrefs.enable_theme_videos;
+            document.getElementById('preset-details-banner').checked = displayPrefs.details_banner !== false;
+            document.getElementById('preset-rewatch-nextup').checked = !!displayPrefs.enable_rewatching_next_up;
+            document.getElementById('preset-episode-images').checked = displayPrefs.use_episode_images_next_up_resume !== false;
             
             // Sponsorship settings
             const canInviteEl = document.getElementById('preset-can-invite');
@@ -541,7 +691,57 @@
             presets[idx].bitrate_limit = parseInt(document.getElementById('preset-bitrate').value, 10) || 0;
             presets[idx].disable_after_days = parseInt(document.getElementById('preset-disable-days').value, 10) || 0;
             presets[idx].delete_after_days = parseInt(document.getElementById('preset-delete-days').value, 10) || 0;
-            presets[idx].template_user_id = (document.getElementById('preset-template-user')?.value || '').trim();
+            presets[idx].template_user_id = '';
+            presets[idx].enable_all_folders = !!document.getElementById('preset-enable-all-folders')?.checked;
+            const libraryRows = Array.from(document.querySelectorAll('#preset-library-list tr[data-library-id]'));
+            presets[idx].enabled_folder_ids = presets[idx].enable_all_folders
+                ? []
+                : libraryRows
+                    .filter((row) => row.querySelector('.preset-library-access')?.checked)
+                    .map((row) => row.dataset.libraryId)
+                    .filter(Boolean);
+            const orderedRows = libraryRows
+                .map((row, index) => ({
+                    id: row.dataset.libraryId,
+                    order: nonNegativeInt(row.querySelector('.preset-library-order')?.value, index + 1),
+                    index,
+                }))
+                .filter((row) => row.id)
+                .sort((a, b) => (a.order - b.order) || (a.index - b.index));
+            presets[idx].user_configuration = {
+                display_missing_episodes: !!document.getElementById('preset-display-missing-episodes')?.checked,
+                hide_played_in_latest: !!document.getElementById('preset-hide-played-latest')?.checked,
+                ordered_views: orderedRows.map((row) => row.id),
+                grouped_folders: libraryRows
+                    .filter((row) => row.querySelector('.preset-library-group')?.checked)
+                    .map((row) => row.dataset.libraryId)
+                    .filter(Boolean),
+                my_media_excludes: libraryRows
+                    .filter((row) => !row.querySelector('.preset-library-my-media')?.checked)
+                    .map((row) => row.dataset.libraryId)
+                    .filter(Boolean),
+                latest_items_excludes: libraryRows
+                    .filter((row) => !row.querySelector('.preset-library-latest')?.checked)
+                    .map((row) => row.dataset.libraryId)
+                    .filter(Boolean),
+            };
+            presets[idx].display_preferences = {
+                screensaver: document.getElementById('preset-screensaver')?.value || 'none',
+                screensaver_time: nonNegativeInt(document.getElementById('preset-screensaver-time')?.value, 180),
+                backdrop_screensaver_interval: nonNegativeInt(document.getElementById('preset-backdrop-interval')?.value, 5),
+                slideshow_interval: nonNegativeInt(document.getElementById('preset-slideshow-interval')?.value, 5),
+                enable_fast_fadein: !!document.getElementById('preset-fast-fadein')?.checked,
+                enable_blurhash: !!document.getElementById('preset-blurhash')?.checked,
+                enable_backdrops: !!document.getElementById('preset-enable-backdrops')?.checked,
+                enable_theme_songs: !!document.getElementById('preset-theme-songs')?.checked,
+                enable_theme_videos: !!document.getElementById('preset-theme-videos')?.checked,
+                details_banner: !!document.getElementById('preset-details-banner')?.checked,
+                library_page_size: nonNegativeInt(document.getElementById('preset-library-page-size')?.value, 100),
+                max_days_for_next_up: nonNegativeInt(document.getElementById('preset-nextup-days')?.value, 365),
+                enable_rewatching_next_up: !!document.getElementById('preset-rewatch-nextup')?.checked,
+                use_episode_images_next_up_resume: !!document.getElementById('preset-episode-images')?.checked,
+                home_sections: Array.from({ length: 10 }, (_, index) => document.getElementById(`preset-home-section-${index}`)?.value || 'none'),
+            };
             const canInviteEl = document.getElementById('preset-can-invite');
             if (canInviteEl) presets[idx].can_invite = canInviteEl.checked;
 
@@ -676,6 +876,8 @@
                 bitrate_limit: 0,
                 enable_all_folders: true,
                 enabled_folder_ids: [],
+                user_configuration: defaultUserConfiguration(),
+                display_preferences: defaultDisplayPreferences(),
                 password_min_length: 8,
                 require_upper: false,
                 require_lower: false,
@@ -915,7 +1117,7 @@
         (async () => {
             updateTaskPreview();
             await loadPresets();
-            await loadTemplateUsers();
+            await loadLibraries();
             await loadMappings();
             await loadTasks();
         })();

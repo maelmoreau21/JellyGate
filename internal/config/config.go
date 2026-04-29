@@ -882,29 +882,222 @@ func DefaultEmailTemplates() EmailTemplatesConfig {
 	return DefaultEmailTemplatesForLanguage("fr")
 }
 
+// JellyfinPresetUserConfiguration regroupe les reglages stockes dans
+// User.Configuration cote Jellyfin.
+type JellyfinPresetUserConfiguration struct {
+	DisplayMissingEpisodes bool     `json:"display_missing_episodes"`
+	HidePlayedInLatest     bool     `json:"hide_played_in_latest"`
+	OrderedViews           []string `json:"ordered_views"`
+	GroupedFolders         []string `json:"grouped_folders"`
+	MyMediaExcludes        []string `json:"my_media_excludes"`
+	LatestItemsExcludes    []string `json:"latest_items_excludes"`
+}
+
+// JellyfinPresetDisplayPreferences regroupe les preferences web sauvegardees
+// dans DisplayPreferences/usersettings.
+type JellyfinPresetDisplayPreferences struct {
+	ScreenSaver                    string   `json:"screensaver"`
+	ScreensaverTime                int      `json:"screensaver_time"`
+	BackdropScreensaverInterval    int      `json:"backdrop_screensaver_interval"`
+	SlideshowInterval              int      `json:"slideshow_interval"`
+	EnableFastFadeIn               bool     `json:"enable_fast_fadein"`
+	EnableBlurHash                 bool     `json:"enable_blurhash"`
+	EnableBackdrops                bool     `json:"enable_backdrops"`
+	EnableThemeSongs               bool     `json:"enable_theme_songs"`
+	EnableThemeVideos              bool     `json:"enable_theme_videos"`
+	DetailsBanner                  bool     `json:"details_banner"`
+	LibraryPageSize                int      `json:"library_page_size"`
+	MaxDaysForNextUp               int      `json:"max_days_for_next_up"`
+	EnableRewatchingInNextUp       bool     `json:"enable_rewatching_next_up"`
+	UseEpisodeImagesInNextUpResume bool     `json:"use_episode_images_next_up_resume"`
+	HomeSections                   []string `json:"home_sections"`
+}
+
+var defaultJellyfinHomeSections = []string{
+	"smalllibrarytiles",
+	"resume",
+	"resumeaudio",
+	"resumebook",
+	"livetv",
+	"nextup",
+	"latestmedia",
+	"none",
+	"none",
+	"none",
+}
+
+var allowedJellyfinHomeSections = map[string]struct{}{
+	"none":              {},
+	"smalllibrarytiles": {},
+	"librarybuttons":    {},
+	"activerecordings":  {},
+	"resume":            {},
+	"resumeaudio":       {},
+	"latestmedia":       {},
+	"nextup":            {},
+	"livetv":            {},
+	"resumebook":        {},
+}
+
+func cloneStringSlice(values []string) []string {
+	if values == nil {
+		return []string{}
+	}
+	return append([]string(nil), values...)
+}
+
+func cleanStringSlice(values []string) []string {
+	cleaned := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		cleaned = append(cleaned, trimmed)
+	}
+	if cleaned == nil {
+		return []string{}
+	}
+	return cleaned
+}
+
+// DefaultJellyfinPresetUserConfiguration retourne les defaults serveur Jellyfin
+// pour les reglages d'accueil qui ne sont pas deja des preferences web.
+func DefaultJellyfinPresetUserConfiguration() JellyfinPresetUserConfiguration {
+	return JellyfinPresetUserConfiguration{
+		OrderedViews:        []string{},
+		GroupedFolders:      []string{},
+		MyMediaExcludes:     []string{},
+		LatestItemsExcludes: []string{},
+	}
+}
+
+// DefaultJellyfinPresetDisplayPreferences retourne les defaults observes dans
+// Jellyfin Web pour usersettings.
+func DefaultJellyfinPresetDisplayPreferences() JellyfinPresetDisplayPreferences {
+	return JellyfinPresetDisplayPreferences{
+		ScreenSaver:                    "none",
+		ScreensaverTime:                180,
+		BackdropScreensaverInterval:    5,
+		SlideshowInterval:              5,
+		EnableFastFadeIn:               true,
+		EnableBlurHash:                 true,
+		DetailsBanner:                  true,
+		LibraryPageSize:                100,
+		MaxDaysForNextUp:               365,
+		UseEpisodeImagesInNextUpResume: true,
+		HomeSections:                   cloneStringSlice(defaultJellyfinHomeSections),
+	}
+}
+
+// NormalizeJellyfinPresetUserConfiguration nettoie les listes sans modifier les
+// booleens qui peuvent volontairement etre a false.
+func NormalizeJellyfinPresetUserConfiguration(cfg JellyfinPresetUserConfiguration) JellyfinPresetUserConfiguration {
+	cfg.OrderedViews = cleanStringSlice(cfg.OrderedViews)
+	cfg.GroupedFolders = cleanStringSlice(cfg.GroupedFolders)
+	cfg.MyMediaExcludes = cleanStringSlice(cfg.MyMediaExcludes)
+	cfg.LatestItemsExcludes = cleanStringSlice(cfg.LatestItemsExcludes)
+	return cfg
+}
+
+func emptyDisplayPreferences(cfg JellyfinPresetDisplayPreferences) bool {
+	return strings.TrimSpace(cfg.ScreenSaver) == "" &&
+		cfg.ScreensaverTime == 0 &&
+		cfg.BackdropScreensaverInterval == 0 &&
+		cfg.SlideshowInterval == 0 &&
+		!cfg.EnableFastFadeIn &&
+		!cfg.EnableBlurHash &&
+		!cfg.EnableBackdrops &&
+		!cfg.EnableThemeSongs &&
+		!cfg.EnableThemeVideos &&
+		!cfg.DetailsBanner &&
+		cfg.LibraryPageSize == 0 &&
+		cfg.MaxDaysForNextUp == 0 &&
+		!cfg.EnableRewatchingInNextUp &&
+		!cfg.UseEpisodeImagesInNextUpResume &&
+		len(cfg.HomeSections) == 0
+}
+
+// NormalizeJellyfinPresetDisplayPreferences complete les anciens presets et
+// borne les valeurs numeriques connues.
+func NormalizeJellyfinPresetDisplayPreferences(cfg JellyfinPresetDisplayPreferences) JellyfinPresetDisplayPreferences {
+	defaults := DefaultJellyfinPresetDisplayPreferences()
+	if emptyDisplayPreferences(cfg) {
+		return defaults
+	}
+
+	if strings.TrimSpace(cfg.ScreenSaver) == "" {
+		cfg.ScreenSaver = defaults.ScreenSaver
+	}
+	if cfg.ScreensaverTime < 0 {
+		cfg.ScreensaverTime = defaults.ScreensaverTime
+	}
+	if cfg.BackdropScreensaverInterval < 0 {
+		cfg.BackdropScreensaverInterval = defaults.BackdropScreensaverInterval
+	}
+	if cfg.SlideshowInterval < 0 {
+		cfg.SlideshowInterval = defaults.SlideshowInterval
+	}
+	if cfg.LibraryPageSize < 0 {
+		cfg.LibraryPageSize = defaults.LibraryPageSize
+	}
+	if cfg.MaxDaysForNextUp < 0 {
+		cfg.MaxDaysForNextUp = defaults.MaxDaysForNextUp
+	}
+
+	sections := make([]string, 0, 10)
+	for _, section := range cfg.HomeSections {
+		normalized := strings.ToLower(strings.TrimSpace(section))
+		if _, ok := allowedJellyfinHomeSections[normalized]; !ok {
+			normalized = "none"
+		}
+		sections = append(sections, normalized)
+		if len(sections) == 10 {
+			break
+		}
+	}
+	if len(sections) == 0 {
+		sections = cloneStringSlice(defaultJellyfinHomeSections)
+	} else {
+		for len(sections) < 10 {
+			sections = append(sections, "none")
+		}
+	}
+	cfg.HomeSections = sections
+	cfg.ScreenSaver = strings.ToLower(strings.TrimSpace(cfg.ScreenSaver))
+	return cfg
+}
+
 // JellyfinPolicyPreset décrit un preset réutilisable pour les politiques Jellyfin.
 type JellyfinPolicyPreset struct {
-	ID                 string   `json:"id"`
-	Name               string   `json:"name"`
-	Description        string   `json:"description"`
-	EnableAllFolders   bool     `json:"enable_all_folders"`
-	EnabledFolderIDs   []string `json:"enabled_folder_ids"`
-	EnableDownload     bool     `json:"enable_download"`
-	EnableRemoteAccess bool     `json:"enable_remote_access"`
-	MaxSessions        int      `json:"max_sessions"`
-	BitrateLimit       int      `json:"bitrate_limit"`
-	TemplateUserID     string   `json:"template_user_id"`
-	UsernameMinLength  int      `json:"username_min_length"`
-	UsernameMaxLength  int      `json:"username_max_length"`
-	PasswordMinLength  int      `json:"password_min_length"`
-	PasswordMaxLength  int      `json:"password_max_length"`
-	RequireUpper       bool     `json:"require_upper"`
-	RequireLower       bool     `json:"require_lower"`
-	RequireDigit       bool     `json:"require_digit"`
-	RequireSpecial     bool     `json:"require_special"`
-	DisableAfterDays   int      `json:"disable_after_days"`
-	ExpiryAction       string   `json:"expiry_action"`
-	DeleteAfterDays    int      `json:"delete_after_days"`
+	ID                 string                           `json:"id"`
+	Name               string                           `json:"name"`
+	Description        string                           `json:"description"`
+	EnableAllFolders   bool                             `json:"enable_all_folders"`
+	EnabledFolderIDs   []string                         `json:"enabled_folder_ids"`
+	EnableDownload     bool                             `json:"enable_download"`
+	EnableRemoteAccess bool                             `json:"enable_remote_access"`
+	MaxSessions        int                              `json:"max_sessions"`
+	BitrateLimit       int                              `json:"bitrate_limit"`
+	TemplateUserID     string                           `json:"template_user_id"`
+	UserConfiguration  JellyfinPresetUserConfiguration  `json:"user_configuration"`
+	DisplayPreferences JellyfinPresetDisplayPreferences `json:"display_preferences"`
+	UsernameMinLength  int                              `json:"username_min_length"`
+	UsernameMaxLength  int                              `json:"username_max_length"`
+	PasswordMinLength  int                              `json:"password_min_length"`
+	PasswordMaxLength  int                              `json:"password_max_length"`
+	RequireUpper       bool                             `json:"require_upper"`
+	RequireLower       bool                             `json:"require_lower"`
+	RequireDigit       bool                             `json:"require_digit"`
+	RequireSpecial     bool                             `json:"require_special"`
+	DisableAfterDays   int                              `json:"disable_after_days"`
+	ExpiryAction       string                           `json:"expiry_action"`
+	DeleteAfterDays    int                              `json:"delete_after_days"`
 
 	// Parrainage / Sponsorship
 	CanInvite              bool   `json:"can_invite"`
@@ -1014,6 +1207,8 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			EnableRemoteAccess: true,
 			MaxSessions:        0,
 			BitrateLimit:       0,
+			UserConfiguration:  DefaultJellyfinPresetUserConfiguration(),
+			DisplayPreferences: DefaultJellyfinPresetDisplayPreferences(),
 			UsernameMinLength:  3,
 			UsernameMaxLength:  32,
 			PasswordMinLength:  8,
@@ -1031,6 +1226,8 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			EnableRemoteAccess: true,
 			MaxSessions:        2,
 			BitrateLimit:       4000,
+			UserConfiguration:  DefaultJellyfinPresetUserConfiguration(),
+			DisplayPreferences: DefaultJellyfinPresetDisplayPreferences(),
 			UsernameMinLength:  3,
 			UsernameMaxLength:  32,
 			PasswordMinLength:  10,

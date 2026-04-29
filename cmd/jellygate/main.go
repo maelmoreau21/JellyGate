@@ -133,7 +133,7 @@ func main() {
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
 	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer, notifier)
-	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService)
+	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService, jfClient)
 
 	// Callbacks de rechargement à chaud
 	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
@@ -356,6 +356,7 @@ func main() {
 
 				r.Route("/api/automation", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
+					r.Get("/libraries", automationHandler.ListLibraries)
 					r.Route("/presets", func(r chi.Router) {
 						r.Get("/", automationHandler.ListPresets)
 						r.Post("/", automationHandler.SavePresets)

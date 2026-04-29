@@ -269,6 +269,8 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			EnableAllFolders:         true,
 			EnableDownload:           true,
 			EnableRemoteAccess:       true,
+			UserConfiguration:        config.DefaultJellyfinPresetUserConfiguration(),
+			DisplayPreferences:       config.DefaultJellyfinPresetDisplayPreferences(),
 		}
 	}
 
@@ -1029,13 +1031,14 @@ func (h *InvitationHandler) getInvitePolicyPresetByID(presetID string) (*config.
 func mergeInviteProfileWithPreset(base jellyfin.InviteProfile, preset config.JellyfinPolicyPreset) jellyfin.InviteProfile {
 	merged := base
 	merged.PresetID = strings.TrimSpace(strings.ToLower(preset.ID))
-	merged.TemplateUserID = strings.TrimSpace(preset.TemplateUserID)
 	merged.EnableAllFolders = preset.EnableAllFolders
 	merged.EnabledFolderIDs = append([]string(nil), preset.EnabledFolderIDs...)
 	merged.EnableDownload = preset.EnableDownload
 	merged.EnableRemoteAccess = preset.EnableRemoteAccess
 	merged.MaxSessions = preset.MaxSessions
 	merged.BitrateLimit = preset.BitrateLimit
+	merged.UserConfiguration = preset.UserConfiguration
+	merged.DisplayPreferences = preset.DisplayPreferences
 	merged.UsernameMinLength = preset.UsernameMinLength
 	merged.UsernameMaxLength = preset.UsernameMaxLength
 	merged.PasswordMinLength = preset.PasswordMinLength

@@ -676,7 +676,31 @@ func (db *DB) SaveEmailTemplatesConfig(cfg config.EmailTemplatesConfig) error {
 
 // ── Jellyfin Presets Config ───────────────────────────────────────────────
 
+func normalizeStringList(values []string) []string {
+	cleaned := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		cleaned = append(cleaned, trimmed)
+	}
+	if cleaned == nil {
+		return []string{}
+	}
+	return cleaned
+}
+
 func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.JellyfinPolicyPreset {
+	preset.EnabledFolderIDs = normalizeStringList(preset.EnabledFolderIDs)
+	preset.UserConfiguration = config.NormalizeJellyfinPresetUserConfiguration(preset.UserConfiguration)
+	preset.DisplayPreferences = config.NormalizeJellyfinPresetDisplayPreferences(preset.DisplayPreferences)
+
 	if preset.MaxSessions < 0 {
 		preset.MaxSessions = 0
 	}

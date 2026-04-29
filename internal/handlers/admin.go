@@ -1441,6 +1441,8 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		DisableAfterDays:         targetPreset.DisableAfterDays,
 		ExpiryAction:             normalizeExpiryAction(inviteCfg.ExpiryAction),
 		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
+		UserConfiguration:        targetPreset.UserConfiguration,
+		DisplayPreferences:       targetPreset.DisplayPreferences,
 	}
 	profileJSON, _ := json.Marshal(profile)
 
@@ -2577,7 +2579,6 @@ func inviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) jellyfin
 	}
 	return jellyfin.InviteProfile{
 		PresetID:           strings.TrimSpace(strings.ToLower(preset.ID)),
-		TemplateUserID:     strings.TrimSpace(preset.TemplateUserID),
 		EnableAllFolders:   preset.EnableAllFolders,
 		EnabledFolderIDs:   append([]string(nil), preset.EnabledFolderIDs...),
 		EnableDownload:     preset.EnableDownload,
@@ -2588,6 +2589,8 @@ func inviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) jellyfin
 		DisableAfterDays:   preset.DisableAfterDays,
 		ExpiryAction:       normalizeExpiryAction(preset.ExpiryAction),
 		DeleteAfterDays:    preset.DeleteAfterDays,
+		UserConfiguration:  preset.UserConfiguration,
+		DisplayPreferences: preset.DisplayPreferences,
 	}
 }
 
@@ -3380,7 +3383,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			if previewOnly {
 				entry["success"] = true
-				entry["message"] = "Preset Jellyfin sera force, clone inclus si configure"
+				entry["message"] = "Preset Jellyfin sera force avec droits, accueil et affichage"
 				entry["preview"] = true
 				entry["impact"] = map[string]interface{}{"preset_id": preset.ID, "preset_name": preset.Name}
 				break
@@ -3395,7 +3398,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			_ = h.db.LogAction("user.bulk.apply_preset", sess.Username, rec.Username, preset.ID)
 			entry["success"] = true
-			entry["message"] = "Preset Jellyfin force, clone inclus si configure"
+			entry["message"] = "Preset Jellyfin force avec droits, accueil et affichage"
 
 		case "set_parrainage":
 			if req.CanInvite == nil {
@@ -4634,7 +4637,8 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		GroupName:                strings.TrimSpace(req.GroupName),
 		ForcedUsername:           strings.TrimSpace(req.ForcedUsername),
 		CanInvite:                effectiveCanInvite,
-		TemplateUserID:           "",
+		UserConfiguration:        config.DefaultJellyfinPresetUserConfiguration(),
+		DisplayPreferences:       config.DefaultJellyfinPresetDisplayPreferences(),
 		UsernameMinLength:        inviteCfg.UsernameMinLength,
 		UsernameMaxLength:        inviteCfg.UsernameMaxLength,
 		PasswordMinLength:        inviteCfg.PasswordMinLength,
@@ -4666,7 +4670,8 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		jfProfile.EnableRemoteAccess = preset.EnableRemoteAccess
 		jfProfile.MaxSessions = preset.MaxSessions
 		jfProfile.BitrateLimit = preset.BitrateLimit
-		jfProfile.TemplateUserID = strings.TrimSpace(preset.TemplateUserID)
+		jfProfile.UserConfiguration = preset.UserConfiguration
+		jfProfile.DisplayPreferences = preset.DisplayPreferences
 		jfProfile.UsernameMinLength = preset.UsernameMinLength
 		jfProfile.UsernameMaxLength = preset.UsernameMaxLength
 		jfProfile.PasswordMinLength = preset.PasswordMinLength
