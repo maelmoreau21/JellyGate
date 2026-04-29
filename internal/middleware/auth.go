@@ -15,7 +15,7 @@ import (
 
 // RequireAuth est un middleware Chi qui vérifie que l'utilisateur est connecté
 // en tant qu'utilisateur légitime (Admin ou Standard).
-func RequireAuth(secretKey string) func(http.Handler) http.Handler {
+func RequireAuth(secretKey, baseURL string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(session.CookieName)
@@ -27,12 +27,15 @@ func RequireAuth(secretKey string) func(http.Handler) http.Handler {
 			sess, err := session.Verify(cookie.Value, secretKey)
 			if err != nil {
 				// Supprimer le cookie invalide
+				// #nosec G124 -- clearing uses the same Secure policy as the session cookie.
 				http.SetCookie(w, &http.Cookie{
 					Name:     session.CookieName,
 					Value:    "",
 					Path:     "/",
 					MaxAge:   -1,
 					HttpOnly: true,
+					Secure:   RequestIsHTTPS(r, baseURL),
+					SameSite: http.SameSiteStrictMode,
 				})
 				http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 				return

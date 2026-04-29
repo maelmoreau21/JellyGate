@@ -24,7 +24,8 @@ services:
       - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
       - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-fr}
       - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
-
+      - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
+      - JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY=${JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY:-false}
       # ── Base SQL (SQLite par défaut) ────────────────────────────────
       - DB_TYPE=sqlite
       # Note: Pour utiliser PostgreSQL, utilisez le fichier docker-compose.postgres.yml

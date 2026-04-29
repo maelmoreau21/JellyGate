@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"bytes"
+	"regexp"
 	"strings"
-	texttemplate "text/template"
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 )
+
+var inlineTemplateTokenPattern = regexp.MustCompile(`\{\{\s*\.([A-Za-z][A-Za-z0-9_]*)\s*\}\}`)
 
 func joinTemplateSections(sections ...string) string {
 	parts := make([]string, 0, len(sections))
@@ -58,15 +59,15 @@ func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
 	if strings.TrimSpace(tpl) == "" {
 		return "", nil
 	}
-	tmpl, err := texttemplate.New("inline").Parse(tpl)
-	if err != nil {
-		return "", err
-	}
-	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
-		return "", err
-	}
-	return buf.String(), nil
+	rendered := inlineTemplateTokenPattern.ReplaceAllStringFunc(tpl, func(token string) string {
+		matches := inlineTemplateTokenPattern.FindStringSubmatch(token)
+		if len(matches) != 2 || data == nil {
+			return ""
+		}
+		return data[matches[1]]
+	})
+	rendered = strings.NewReplacer("\r", " ", "\n", " ").Replace(rendered)
+	return strings.Join(strings.Fields(rendered), " "), nil
 }
 
 func resolveEmailLogoURL(data map[string]string, configuredLogo string) string {

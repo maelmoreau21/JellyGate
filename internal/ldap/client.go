@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"regexp"
 	"strings"
 	"unicode/utf16"
@@ -111,8 +112,12 @@ func (c *Client) connect() (*goldap.Conn, error) {
 
 	if c.cfg.UseTLS {
 		// Connexion LDAPS (TLS direct sur le port 636)
+		skipVerify := c.cfg.SkipVerify && allowInsecureLDAPSkipVerify()
+		if c.cfg.SkipVerify && !skipVerify {
+			slog.Warn("LDAP skip_verify ignore: activez JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY=true pour l'autoriser explicitement")
+		}
 		tlsConfig := &tls.Config{
-			InsecureSkipVerify: c.cfg.SkipVerify,
+			InsecureSkipVerify: skipVerify, // #nosec G402 -- gated by explicit env var for legacy/private CA break-glass use.
 			ServerName:         c.cfg.Host,
 		}
 		conn, err = goldap.DialTLS("tcp", addr, tlsConfig)
@@ -132,6 +137,10 @@ func (c *Client) connect() (*goldap.Conn, error) {
 	}
 
 	return conn, nil
+}
+
+func allowInsecureLDAPSkipVerify() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY")), "true")
 }
 
 // ── Création d'utilisateur ──────────────────────────────────────────────────

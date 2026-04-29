@@ -65,6 +65,80 @@ func NewSettingsHandler(db *database.DB, jf *jellyfin.Client, renderer *render.E
 	return &SettingsHandler{db: db, jfClient: jf, renderer: renderer}
 }
 
+const maskedSecretValue = "********"
+
+func isMaskedSecret(value string) bool {
+	trimmed := strings.TrimSpace(value)
+	return trimmed == maskedSecretValue || strings.Contains(trimmed, "\u2022")
+}
+
+func maskedWebhooksConfig(cfg config.WebhooksConfig) config.WebhooksConfig {
+	if strings.TrimSpace(cfg.Discord.URL) != "" {
+		cfg.Discord.URL = maskedSecretValue
+	}
+	if strings.TrimSpace(cfg.Telegram.Token) != "" {
+		cfg.Telegram.Token = maskedSecretValue
+	}
+	if strings.TrimSpace(cfg.Matrix.Token) != "" {
+		cfg.Matrix.Token = maskedSecretValue
+	}
+	return cfg
+}
+
+func preserveMaskedWebhooks(input *config.WebhooksConfig, existing config.WebhooksConfig) {
+	if input == nil {
+		return
+	}
+	if isMaskedSecret(input.Discord.URL) {
+		input.Discord.URL = existing.Discord.URL
+	}
+	if isMaskedSecret(input.Telegram.Token) {
+		input.Telegram.Token = existing.Telegram.Token
+	}
+	if isMaskedSecret(input.Matrix.Token) {
+		input.Matrix.Token = existing.Matrix.Token
+	}
+}
+
+func normalizeWebhooksInput(input *config.WebhooksConfig) error {
+	if input == nil {
+		return fmt.Errorf("configuration webhooks vide")
+	}
+
+	var err error
+	if input.Discord.URL, err = normalizeWebhookURL(input.Discord.URL); err != nil {
+		return fmt.Errorf("discord.url: %w", err)
+	}
+	if input.Matrix.URL, err = normalizeWebhookURL(input.Matrix.URL); err != nil {
+		return fmt.Errorf("matrix.url: %w", err)
+	}
+	input.Telegram.Token = strings.TrimSpace(input.Telegram.Token)
+	input.Telegram.ChatID = strings.TrimSpace(input.Telegram.ChatID)
+	input.Matrix.RoomID = strings.TrimSpace(input.Matrix.RoomID)
+	input.Matrix.Token = strings.TrimSpace(input.Matrix.Token)
+	return nil
+}
+
+func normalizeWebhookURL(raw string) (string, error) {
+	candidate := strings.TrimSpace(raw)
+	if candidate == "" {
+		return "", nil
+	}
+
+	parsed, err := url.ParseRequestURI(candidate)
+	if err != nil {
+		return "", fmt.Errorf("format invalide")
+	}
+	scheme := strings.ToLower(strings.TrimSpace(parsed.Scheme))
+	if scheme != "http" && scheme != "https" {
+		return "", fmt.Errorf("schema http/https requis")
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return "", fmt.Errorf("hote requis")
+	}
+	return strings.TrimRight(candidate, "/"), nil
+}
+
 func (h *SettingsHandler) ensureAdmin(w http.ResponseWriter, r *http.Request) bool {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
@@ -85,7 +159,7 @@ type jellyfinLDAPAuthTestInput struct {
 }
 
 func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
-	if input.BindPassword == "Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢" || input.BindPassword == "" {
+	if isMaskedSecret(input.BindPassword) || input.BindPassword == "" {
 		existing, _ := h.db.GetLDAPConfig()
 		input.BindPassword = existing.BindPassword
 	}
@@ -505,11 +579,11 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	// Masquer le mot de passe LDAP et SMTP dans la rÃƒÂ©ponse
 	maskedLDAP := ldapCfg
 	if maskedLDAP.BindPassword != "" {
-		maskedLDAP.BindPassword = "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+		maskedLDAP.BindPassword = maskedSecretValue
 	}
 	maskedSMTP := smtpCfg
 	if maskedSMTP.Password != "" {
-		maskedSMTP.Password = "â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+		maskedSMTP.Password = maskedSecretValue
 	}
 
 	emailTemplatesByLang, err := h.db.GetEmailTemplatesConfigByLanguage()
@@ -542,7 +616,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			InvitationProfile:      inviteProfileCfg,
 			LDAP:                   maskedLDAP,
 			SMTP:                   maskedSMTP,
-			Webhooks:               webhooksCfg,
+			Webhooks:               maskedWebhooksConfig(webhooksCfg),
 			Backup:                 backupCfg,
 			EmailTemplates:         emailTemplatesCfg,
 			EmailTemplatesByLang:   emailTemplatesByLang,
@@ -864,7 +938,7 @@ func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Si le mot de passe est masquÃƒÂ©, conserver l'ancien
-	if input.Password == "Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢Ã¢â‚¬Â¢" || input.Password == "" {
+	if isMaskedSecret(input.Password) || input.Password == "" {
 		existing, _ := h.db.GetSMTPConfig()
 		input.Password = existing.Password
 	}
@@ -911,6 +985,16 @@ func (h *SettingsHandler) SaveWebhooks(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
 			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	existing, _ := h.db.GetWebhooksConfig()
+	preserveMaskedWebhooks(&input, existing)
+	if err := normalizeWebhooksInput(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Configuration Webhooks invalide : " + err.Error(),
 		})
 		return
 	}

@@ -77,7 +77,7 @@ func (h *BackupHandler) DownloadBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	f, err := os.Open(path)
+	f, err := os.Open(path) // #nosec G304,G703 -- BackupPath sanitizes archive names and scopes them to the backup directory.
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "backup_error_read", "Impossible de lire la sauvegarde")})
 		return
@@ -99,7 +99,8 @@ func (h *BackupHandler) DownloadBackup(w http.ResponseWriter, r *http.Request) {
 func (h *BackupHandler) ImportBackup(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 
-	if err := r.ParseMultipartForm(512 << 20); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, backup.MaxArchiveBytes+(10*1024*1024))
+	if err := r.ParseMultipartForm(32 << 20); err != nil { // #nosec G120 -- request body is capped with http.MaxBytesReader above.
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Formulaire invalide"})
 		return
 	}

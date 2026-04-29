@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -117,7 +118,7 @@ func loadPendingInviteSignup(db *database.DB, code string) (*pendingInviteSignup
 
 func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invitation, form *inviteFormData) error {
 	if h.mailer == nil {
-		return fmt.Errorf(h.tr(r, "settings_save_smtp", "SMTP not configured"))
+		return errors.New(h.tr(r, "settings_save_smtp", "SMTP not configured"))
 	}
 	if err := h.ensureInviteUsernameAvailable(r, form.Username); err != nil {
 		return err

@@ -66,7 +66,7 @@ func New(dbCfg config.DatabaseConfig, dataDir, secretKey string) (*DB, error) {
 
 	switch driver {
 	case DialectSQLite:
-		if err := os.MkdirAll(dataDir, 0755); err != nil {
+		if err := os.MkdirAll(dataDir, 0700); err != nil {
 			return nil, fmt.Errorf("impossible de creer le repertoire de donnees %q: %w", dataDir, err)
 		}
 
@@ -504,7 +504,7 @@ func (db *DB) migrate() error {
 	}
 
 	slog.Info("Migrations terminees", "count", len(migrations), "driver", db.driver)
-	
+
 	if err := db.seedDefaultTasks(); err != nil {
 		slog.Warn("Insertion des taches par defaut impossible", "error", err)
 	}
@@ -998,7 +998,7 @@ type InvitationStats struct {
 // GetRegistrationHistory retourne le nombre d'inscriptions par jour sur les X derniers jours.
 func (db *DB) GetRegistrationHistory(days int) ([]RegistrationDay, error) {
 	since := time.Now().AddDate(0, 0, -days).Format("2006-01-02")
-	
+
 	// Utilisation de date() qui fonctionne en SQLite et Postgres (via prepareQuery si besoin)
 	// On s'assure d'avoir tous les jours même s'il n'y a pas d'inscriptions ?
 	// Pour l'instant on ne remplit que les jours avec data, le JS pourra compléter si besoin.
@@ -1008,7 +1008,7 @@ func (db *DB) GetRegistrationHistory(days int) ([]RegistrationDay, error) {
 		WHERE created_at >= ? 
 		GROUP BY day 
 		ORDER BY day ASC`
-		
+
 	rows, err := db.Query(query, since)
 	if err != nil {
 		return nil, fmt.Errorf("GetRegistrationHistory: %w", err)
@@ -1029,7 +1029,7 @@ func (db *DB) GetRegistrationHistory(days int) ([]RegistrationDay, error) {
 // GetInvitationStats retourne la répartition des invitations (utilisées, expirées, actives).
 func (db *DB) GetInvitationStats() (InvitationStats, error) {
 	var stats InvitationStats
-	
+
 	// On calcule les stats en une seule requête SQL
 	query := `
 		SELECT 
@@ -1038,7 +1038,7 @@ func (db *DB) GetInvitationStats() (InvitationStats, error) {
 			SUM(CASE WHEN used_count < max_uses AND expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 1 ELSE 0 END) as expired,
 			SUM(CASE WHEN used_count < max_uses AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP) THEN 1 ELSE 0 END) as active
 		FROM invitations`
-		
+
 	err := db.QueryRow(query).Scan(&stats.Total, &stats.Used, &stats.Expired, &stats.Active)
 	if err != nil {
 		// Gérer le cas où la table est vide (SUM retourne NULL)

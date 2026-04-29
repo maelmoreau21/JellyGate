@@ -24,7 +24,7 @@ func newTestSettingsHandler(t *testing.T) (*SettingsHandler, *database.DB) {
 		_ = db.Close()
 	})
 
-	return NewSettingsHandler(db, ""), db
+	return NewSettingsHandler(db, nil, nil), db
 }
 
 func newAdminRequest(method, target string, body []byte) *http.Request {

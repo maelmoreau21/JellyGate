@@ -79,6 +79,8 @@ type APIResponse struct {
 }
 
 // DashboardStatsResponse regroupe les donnÃ©es pour les graphiques et le moniteur de santÃ©.
+const maxAvatarUploadBytes int64 = 5 * 1024 * 1024
+
 type DashboardStatsResponse struct {
 	Registrations []database.RegistrationDay `json:"registrations"`
 	Invitations   database.InvitationStats   `json:"invitations"`
@@ -1161,6 +1163,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	if req.PreferredLang != nil {
 		if strings.TrimSpace(newPreferredLang) == "" {
+			// #nosec G124 -- clearing uses the same Secure policy as the language cookie.
 			http.SetCookie(w, &http.Cookie{
 				Name:     "lang",
 				Value:    "",
@@ -1171,6 +1174,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 				SameSite: http.SameSiteLaxMode,
 			})
 		} else {
+			// #nosec G124 -- language preference is intentionally readable by frontend language switching code.
 			http.SetCookie(w, &http.Cookie{
 				Name:     "lang",
 				Value:    newPreferredLang,
@@ -1442,7 +1446,8 @@ func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if err := r.ParseMultipartForm(5 * 1024 * 1024); err != nil {
+	r.Body = http.MaxBytesReader(w, r.Body, maxAvatarUploadBytes+(1024*1024))
+	if err := r.ParseMultipartForm(1 << 20); err != nil { // #nosec G120 -- request body is capped with http.MaxBytesReader above.
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Fichier trop lourd ou invalide"})
 		return
 	}
@@ -1454,13 +1459,30 @@ func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Requ
 	}
 	defer file.Close()
 
-	data, err := io.ReadAll(file)
+	if header.Size > maxAvatarUploadBytes {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Image trop lourde"})
+		return
+	}
+
+	data, err := io.ReadAll(io.LimitReader(file, maxAvatarUploadBytes+1))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture image"})
 		return
 	}
+	if int64(len(data)) > maxAvatarUploadBytes {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Image trop lourde"})
+		return
+	}
+	if len(data) == 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Image vide"})
+		return
+	}
 
-	contentType := header.Header.Get("Content-Type")
+	contentType := http.DetectContentType(data)
+	if !isAllowedAvatarContentType(contentType) {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Format image non autorise"})
+		return
+	}
 
 	if err := h.jfClient.SetUserImage(sess.UserID, contentType, data); err != nil {
 		slog.Error("Erreur mise a jour avatar Jellyfin", "username", sess.Username, "error", err)
@@ -1471,6 +1493,15 @@ func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Requ
 	_ = h.db.LogAction("user.avatar.updated", sess.Username, sess.Username, "Changement de photo de profil")
 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Photo de profil mise Ã  jour"})
+}
+
+func isAllowedAvatarContentType(contentType string) bool {
+	switch strings.ToLower(strings.TrimSpace(contentType)) {
+	case "image/png", "image/jpeg", "image/gif", "image/webp":
+		return true
+	default:
+		return false
+	}
 }
 
 // UpdateMyPassword change le mot de passe de l'utilisateur sur Jellyfin.
@@ -3804,9 +3835,7 @@ func requestBaseURL(r *http.Request) string {
 	}
 
 	scheme := "http"
-	if xfProto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); xfProto != "" {
-		scheme = strings.TrimSpace(strings.Split(xfProto, ",")[0])
-	} else if jgmw.RequestIsHTTPS(r, "") {
+	if jgmw.RequestIsHTTPS(r, "") {
 		scheme = "https"
 	}
 

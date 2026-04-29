@@ -4,4 +4,13 @@ node_modules/
 .tmp-smoke-ux/
 build.log
 *.exe
+.env
+.env.*
+!.env.example
 .env.local
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm

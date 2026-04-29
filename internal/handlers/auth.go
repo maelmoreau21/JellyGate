@@ -208,6 +208,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// #nosec G124 -- Secure is enabled whenever the configured public URL or request is HTTPS.
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
 		Value:    cookieValue,
@@ -219,6 +220,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if preferredLang := h.resolvePreferredLang(authResp.User.ID, authResp.User.Name); preferredLang != "" {
+		// #nosec G124 -- language preference is intentionally readable by frontend language switching code.
 		http.SetCookie(w, &http.Cookie{
 			Name:     "lang",
 			Value:    preferredLang,
@@ -260,6 +262,7 @@ func (h *AuthHandler) resolvePreferredLang(jellyfinID, username string) string {
 
 // Logout dÃƒÂ©connecte l'utilisateur en supprimant le cookie de session (POST /admin/logout).
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// #nosec G124 -- clearing uses the same Secure policy as the session cookie.
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
 		Value:    "",

@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -174,13 +175,15 @@ func main() {
 	// Middlewares globaux
 	r.Use(jgmw.SecurityHeaders(cfg.BaseURL)) // Headers de securite HTTP
 	r.Use(chimw.RequestID)                   // ID unique par requête
-	r.Use(chimw.RealIP)                      // IP réelle derrière proxy
-	r.Use(chimw.Logger)                      // Log de chaque requête
-	r.Use(jgmw.LogPanics())                  // Dev: log panics with stack trace
-	r.Use(chimw.Recoverer)                   // Récupération des panics
-	r.Use(chimw.Timeout(30 * time.Second))   // Timeout global 30s
-	r.Use(chimw.Compress(5))                 // Compression gzip
-	r.Use(jgmw.DetectLanguage(db))           // Détection de langue (cookie → Accept-Language → DB default_lang)
+	if cfg.TrustProxyHeaders {
+		r.Use(chimw.RealIP)
+	}
+	r.Use(chimw.Logger)                    // Log de chaque requête
+	r.Use(jgmw.LogPanics())                // Dev: log panics with stack trace
+	r.Use(chimw.Recoverer)                 // Récupération des panics
+	r.Use(chimw.Timeout(30 * time.Second)) // Timeout global 30s
+	r.Use(chimw.Compress(5))               // Compression gzip
+	r.Use(jgmw.DetectLanguage(db))         // Détection de langue (cookie → Accept-Language → DB default_lang)
 
 	// ── Routes publiques ────────────────────────────────────────────────────
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -223,7 +226,7 @@ func main() {
 		r.Use(jgmw.EnsureCSRFCookie(cfg.BaseURL))
 		// Routes publiques (login/logout) — pas de middleware auth
 		r.Get("/login", authHandler.LoginPage)
-		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/login", authHandler.LoginSubmit)
+		r.With(jgmw.RateLimitByIP(12, 10*time.Minute), jgmw.RequireCSRF()).Post("/login", authHandler.LoginSubmit)
 		r.With(jgmw.RequireCSRF()).Post("/logout", authHandler.Logout)
 
 		if cfg.EnableDebugRoutes {
@@ -247,25 +250,25 @@ func main() {
 			// DEBUG route: verify jellygate_session cookie using server secret and return error (local only)
 			r.Get("/debug/verify-session", func(w http.ResponseWriter, r *http.Request) {
 				cookie, err := r.Cookie(session.CookieName)
+				w.Header().Set("Content-Type", "application/json")
 				if err != nil {
 					w.WriteHeader(http.StatusUnauthorized)
-					fmt.Fprintln(w, `{"success":false,"error":"cookie missing"}`)
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "cookie missing"})
 					return
 				}
 				p, err := session.Verify(cookie.Value, cfg.SecretKey)
 				if err != nil {
 					w.WriteHeader(http.StatusUnauthorized)
-					fmt.Fprintf(w, "{\"success\":false,\"error\":%q}", err.Error())
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
 					return
 				}
-				w.Header().Set("Content-Type", "application/json")
-				fmt.Fprintf(w, "{\"success\":true,\"user\":%q,\"is_admin\":%t}", p.Username, p.IsAdmin)
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "user": p.Username, "is_admin": p.IsAdmin})
 			})
 		}
 
 		// Routes protégées par le middleware d'authentification global (standard + admin)
 		r.Group(func(r chi.Router) {
-			r.Use(jgmw.RequireAuth(cfg.SecretKey))
+			r.Use(jgmw.RequireAuth(cfg.SecretKey, cfg.BaseURL))
 
 			// Le tableau de bord est commun
 			r.Get("/", adminHandler.DashboardPage)
@@ -452,7 +455,6 @@ func handlePlaceholder(name string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotImplemented)
-		fmt.Fprintf(w, `{"status":"not_implemented","route":"%s","method":"%s","path":"%s"}`,
-			name, r.Method, r.URL.Path)
+		_ = json.NewEncoder(w).Encode(map[string]string{"status": "not_implemented", "route": name, "method": r.Method, "path": r.URL.Path})
 	}
 }

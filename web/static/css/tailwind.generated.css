@@ -1,4 +1,4 @@
-/*! tailwindcss v4.2.2 | MIT License | https://tailwindcss.com */
+/*! tailwindcss v4.2.4 | MIT License | https://tailwindcss.com */
 @layer properties;
 @layer theme, base, components, utilities;
 @layer theme {
@@ -356,6 +356,9 @@
   .z-\[200\] {
     z-index: 200;
   }
+  .col-span-1 {
+    grid-column: span 1 / span 1;
+  }
   .container {
     width: 100%;
     @media (width >= 40rem) {
@@ -451,6 +454,9 @@
   }
   .ml-2 {
     margin-left: calc(var(--spacing) * 2);
+  }
+  .ml-6 {
+    margin-left: calc(var(--spacing) * 6);
   }
   .block {
     display: block;
@@ -1571,9 +1577,6 @@
   .pr-8 {
     padding-right: calc(var(--spacing) * 8);
   }
-  .pb-1 {
-    padding-bottom: calc(var(--spacing) * 1);
-  }
   .pb-2 {
     padding-bottom: calc(var(--spacing) * 2);
   }
@@ -2131,6 +2134,10 @@
     -webkit-user-select: all;
     user-select: all;
   }
+  .select-none {
+    -webkit-user-select: none;
+    user-select: none;
+  }
   .group-focus-within\:text-jg-accent {
     &:is(:where(.group):focus-within *) {
       color: var(--color-jg-accent);
@@ -2141,6 +2148,16 @@
       @media (hover: hover) {
         --tw-translate-y: calc(var(--spacing) * -0.5);
         translate: var(--tw-translate-x) var(--tw-translate-y);
+      }
+    }
+  }
+  .group-hover\:scale-105 {
+    &:is(:where(.group):hover *) {
+      @media (hover: hover) {
+        --tw-scale-x: 105%;
+        --tw-scale-y: 105%;
+        --tw-scale-z: 105%;
+        scale: var(--tw-scale-x) var(--tw-scale-y);
       }
     }
   }
@@ -2522,6 +2539,13 @@
       }
     }
   }
+  .hover\:opacity-90 {
+    &:hover {
+      @media (hover: hover) {
+        opacity: 90%;
+      }
+    }
+  }
   .hover\:opacity-100 {
     &:hover {
       @media (hover: hover) {
@@ -2589,6 +2613,11 @@
   .disabled\:opacity-30 {
     &:disabled {
       opacity: 30%;
+    }
+  }
+  .sm\:col-span-2 {
+    @media (width >= 40rem) {
+      grid-column: span 2 / span 2;
     }
   }
   .sm\:w-auto {
@@ -4211,23 +4240,18 @@ html:not(.dark) .jg-nav-item svg {
   margin-bottom: 2rem;
   width: fit-content;
 }
+.jg-glass-tabs {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
 .jg-glass-tabs .tab-btn {
   position: relative;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
 }
 .jg-glass-tabs .tab-btn.active {
   color: var(--jg-accent) !important;
   border-bottom-color: var(--jg-accent) !important;
-  background: rgba(20, 184, 166, 0.05);
-}
-.jg-glass-tabs .tab-btn.active::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  background: var(--jg-accent);
-  box-shadow: 0 0 10px var(--jg-accent);
+  background: transparent !important;
 }
 .jg-tab-btn {
   padding: 0.6rem 1.25rem;

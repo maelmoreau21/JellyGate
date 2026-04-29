@@ -89,7 +89,7 @@ func collectTemplateKeys(templatesDir string) ([]string, error) {
 			return nil
 		}
 
-		data, readErr := os.ReadFile(path)
+		data, readErr := os.ReadFile(path) // #nosec G304,G122 -- path comes from filepath.Walk over the configured templates directory.
 		if readErr != nil {
 			return readErr
 		}

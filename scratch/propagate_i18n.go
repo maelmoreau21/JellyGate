@@ -10,7 +10,7 @@ import (
 
 func main() {
 	i18nDir := "web/i18n"
-	
+
 	files, err := ioutil.ReadDir(i18nDir)
 	if err != nil {
 		log.Fatalf("Failed to read i18n dir: %v", err)
@@ -58,14 +58,14 @@ func main() {
 				added++
 			}
 		}
-		
+
 		if added > 0 {
 			// Sort and write back
 			output, err := json.MarshalIndent(m, "", "    ")
 			if err != nil {
 				log.Fatalf("Failed to marshal %s: %v", fname, err)
 			}
-			if err := ioutil.WriteFile(filepath.Join(i18nDir, fname), output, 0644); err != nil {
+			if err := ioutil.WriteFile(filepath.Join(i18nDir, fname), output, 0600); err != nil {
 				log.Fatalf("Failed to write %s: %v", fname, err)
 			}
 			fmt.Printf("Fixed %s: added %d missing keys. Total keys: %d\n", fname, added, len(m))

@@ -15,6 +15,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -484,18 +485,18 @@ func (h *InvitationHandler) validateInviteUsername(r *http.Request, username str
 	minLength, maxLength := resolveInviteUsernamePolicy(usernamePolicy)
 
 	if username == "" {
-		return fmt.Errorf(h.tr(r, "field_username_required", "Username is required"))
+		return errors.New(h.tr(r, "field_username_required", "Username is required"))
 	}
 	if len(username) < minLength || len(username) > maxLength {
 		msg := h.tr(r, "field_username_min_max", "Username must be between {min} and {max} characters")
 		msg = strings.ReplaceAll(msg, "{min}", fmt.Sprintf("%d", minLength))
 		msg = strings.ReplaceAll(msg, "{max}", fmt.Sprintf("%d", maxLength))
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 
 	for _, c := range username {
 		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_') {
-			return fmt.Errorf(h.tr(r, "field_username_invalid_chars", "Username can only contain letters, numbers, dashes, and underscores"))
+			return errors.New(h.tr(r, "field_username_invalid_chars", "Username can only contain letters, numbers, dashes, and underscores"))
 		}
 	}
 
@@ -511,21 +512,21 @@ func (h *InvitationHandler) validateInvitePassword(r *http.Request, password str
 	if len(password) < policy.MinLength {
 		msg := h.tr(r, "password_rule_at_least", "at least {n} characters")
 		msg = strings.ReplaceAll(msg, "{n}", fmt.Sprintf("%d", policy.MinLength))
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 	if len(password) > policy.MaxLength {
 		msg := h.tr(r, "password_rule_at_most", "at most {n} characters")
 		msg = strings.ReplaceAll(msg, "{n}", fmt.Sprintf("%d", policy.MaxLength))
-		return fmt.Errorf(msg)
+		return errors.New(msg)
 	}
 	if policy.RequireUpper && !strings.ContainsAny(password, "ABCDEFGHIJKLMNOPQRSTUVWXYZ") {
-		return fmt.Errorf(h.tr(r, "password_rule_upper", "one uppercase letter"))
+		return errors.New(h.tr(r, "password_rule_upper", "one uppercase letter"))
 	}
 	if policy.RequireLower && !strings.ContainsAny(password, "abcdefghijklmnopqrstuvwxyz") {
-		return fmt.Errorf(h.tr(r, "password_rule_lower", "one lowercase letter"))
+		return errors.New(h.tr(r, "password_rule_lower", "one lowercase letter"))
 	}
 	if policy.RequireDigit && !strings.ContainsAny(password, "0123456789") {
-		return fmt.Errorf(h.tr(r, "password_rule_digit", "one digit"))
+		return errors.New(h.tr(r, "password_rule_digit", "one digit"))
 	}
 	if policy.RequireSpecial {
 		hasSpecial := false
@@ -539,7 +540,7 @@ func (h *InvitationHandler) validateInvitePassword(r *http.Request, password str
 			}
 		}
 		if !hasSpecial {
-			return fmt.Errorf(h.tr(r, "password_rule_special", "one special character"))
+			return errors.New(h.tr(r, "password_rule_special", "one special character"))
 		}
 	}
 
@@ -596,13 +597,13 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 
 func (h *InvitationHandler) ensureInviteUsernameAvailable(r *http.Request, username string) error {
 	if strings.TrimSpace(username) == "" {
-		return fmt.Errorf(h.tr(r, "field_username_required", "Username is required"))
+		return errors.New(h.tr(r, "field_username_required", "Username is required"))
 	}
 
 	var existingUserID int64
 	err := h.db.QueryRow(`SELECT id FROM users WHERE lower(username) = lower(?) LIMIT 1`, username).Scan(&existingUserID)
 	if err == nil {
-		return fmt.Errorf(h.tr(r, "field_username_taken", "This username is already taken"))
+		return errors.New(h.tr(r, "field_username_taken", "This username is already taken"))
 	}
 	if err != sql.ErrNoRows {
 		return fmt.Errorf("impossible de vÃƒÂ©rifier la disponibilitÃƒÂ© du nom d'utilisateur: %w", err)

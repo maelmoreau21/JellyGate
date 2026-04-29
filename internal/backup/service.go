@@ -25,6 +25,12 @@ import (
 
 var ErrSQLiteOnly = errors.New("fonction backup disponible uniquement en mode sqlite")
 
+const (
+	MaxArchiveBytes             int64  = 512 * 1024 * 1024
+	maxArchiveEntries                  = 20
+	maxArchiveUncompressedBytes uint64 = 2 * 1024 * 1024 * 1024
+)
+
 type BackupInfo struct {
 	Name      string    `json:"name"`
 	SizeBytes int64     `json:"size_bytes"`
@@ -70,10 +76,10 @@ func (s *Service) requireSQLiteArchive(action string) error {
 }
 
 func (s *Service) ensureDirs() error {
-	if err := os.MkdirAll(s.backupDir, 0755); err != nil {
+	if err := os.MkdirAll(s.backupDir, 0700); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(s.restoreDir, 0755); err != nil {
+	if err := os.MkdirAll(s.restoreDir, 0700); err != nil {
 		return err
 	}
 	return nil
@@ -153,7 +159,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 		_ = os.Setenv("PGPASSWORD", cfg.Password)
 		defer os.Unsetenv("PGPASSWORD")
 
-		cmd := exec.Command(
+		cmd := exec.Command( // #nosec G204 -- arguments are passed without a shell and come from database configuration.
 			"pg_dump",
 			"-h", cfg.Host,
 			"-p", strconv.Itoa(port),
@@ -175,7 +181,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 		return info, fmt.Errorf("driver de base non supporte pour backup: %q", s.db.Driver())
 	}
 
-	f, err := os.Create(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return info, fmt.Errorf("création archive: %w", err)
 	}
@@ -254,6 +260,12 @@ func extractBackupEntry(archivePath, entryName, outputPath string) error {
 		if !strings.EqualFold(filepath.Base(file.Name), entryName) {
 			continue
 		}
+		if file.FileInfo().IsDir() {
+			return fmt.Errorf("archive invalide: %s est un dossier", entryName)
+		}
+		if file.UncompressedSize64 > maxArchiveUncompressedBytes {
+			return fmt.Errorf("archive invalide: fichier %s trop volumineux", entryName)
+		}
 
 		rc, err := file.Open()
 		if err != nil {
@@ -261,11 +273,11 @@ func extractBackupEntry(archivePath, entryName, outputPath string) error {
 		}
 		defer rc.Close()
 
-		out, err := os.Create(outputPath)
+		out, err := os.OpenFile(outputPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 		if err != nil {
 			return fmt.Errorf("création %s: %w", outputPath, err)
 		}
-		if _, err := io.Copy(out, rc); err != nil {
+		if _, err := copyLimited(out, rc, int64(maxArchiveUncompressedBytes)); err != nil {
 			out.Close()
 			return fmt.Errorf("copie %s: %w", entryName, err)
 		}
@@ -315,7 +327,7 @@ func (s *Service) RestorePostgresBackup(name string) error {
 	_ = os.Setenv("PGPASSWORD", cfg.Password)
 	defer os.Unsetenv("PGPASSWORD")
 
-	cmd := exec.Command(
+	cmd := exec.Command( // #nosec G204 -- arguments are passed without a shell and come from database configuration.
 		"psql",
 		"-h", cfg.Host,
 		"-p", strconv.Itoa(port),
@@ -406,11 +418,11 @@ func (s *Service) ImportBackup(filename string, r io.Reader) (BackupInfo, error)
 	name := fmt.Sprintf("jellygate-imported-%s%s", now.Format("20060102-150405"), ext)
 	path := filepath.Join(s.backupDir, name)
 
-	f, err := os.Create(path)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return info, fmt.Errorf("création archive importée: %w", err)
 	}
-	if _, err := io.Copy(f, io.LimitReader(r, 512*1024*1024)); err != nil {
+	if _, err := copyLimited(f, r, MaxArchiveBytes); err != nil {
 		f.Close()
 		_ = os.Remove(path)
 		return info, fmt.Errorf("écriture archive importée: %w", err)
@@ -449,6 +461,14 @@ func (s *Service) ImportBackup(filename string, r io.Reader) (BackupInfo, error)
 }
 
 func validateBackupArchive(path string) error {
+	st, err := os.Stat(path)
+	if err != nil {
+		return fmt.Errorf("archive invalide: %w", err)
+	}
+	if st.Size() > MaxArchiveBytes {
+		return fmt.Errorf("archive invalide: taille maximale %d MiB depassee", MaxArchiveBytes/(1024*1024))
+	}
+
 	zr, err := zip.OpenReader(path)
 	if err != nil {
 		return fmt.Errorf("archive invalide: %w", err)
@@ -457,7 +477,19 @@ func validateBackupArchive(path string) error {
 
 	hasSQLiteDump := false
 	hasPostgresDump := false
+	var totalUncompressed uint64
 	for _, f := range zr.File {
+		if len(zr.File) > maxArchiveEntries {
+			return fmt.Errorf("archive invalide: trop de fichiers")
+		}
+		if f.FileInfo().IsDir() {
+			continue
+		}
+		totalUncompressed += f.UncompressedSize64
+		if totalUncompressed > maxArchiveUncompressedBytes {
+			return fmt.Errorf("archive invalide: contenu decompresse trop volumineux")
+		}
+
 		base := strings.ToLower(filepath.Base(f.Name))
 		if base == "jellygate.db" {
 			hasSQLiteDump = true
@@ -519,7 +551,7 @@ func (s *Service) PrepareRestore(name string) error {
 		"prepared_at": time.Now().Format(time.RFC3339),
 	}
 	payload, _ := json.Marshal(marker)
-	if err := os.WriteFile(pendingMeta, payload, 0644); err != nil {
+	if err := os.WriteFile(pendingMeta, payload, 0600); err != nil {
 		return fmt.Errorf("écriture restore marker: %w", err)
 	}
 
@@ -567,7 +599,7 @@ func copyFile(src, dst string) error {
 	}
 	defer in.Close()
 
-	out, err := os.Create(dst)
+	out, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -577,6 +609,22 @@ func copyFile(src, dst string) error {
 		return err
 	}
 	return out.Sync()
+}
+
+func copyLimited(dst io.Writer, src io.Reader, maxBytes int64) (int64, error) {
+	if maxBytes <= 0 {
+		return 0, fmt.Errorf("limite de taille invalide")
+	}
+
+	lr := &io.LimitedReader{R: src, N: maxBytes + 1}
+	n, err := io.Copy(dst, lr)
+	if err != nil {
+		return n, err
+	}
+	if n > maxBytes {
+		return n, fmt.Errorf("taille maximale %d MiB depassee", maxBytes/(1024*1024))
+	}
+	return n, nil
 }
 
 func (s *Service) ApplyRetention(keep int) error {

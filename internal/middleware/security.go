@@ -81,6 +81,7 @@ func EnsureCSRFCookie(baseURL string) func(http.Handler) http.Handler {
 				freshToken, tokenErr := generateCSRFToken()
 				if tokenErr == nil {
 					token = freshToken
+					// #nosec G124 -- CSRF token is intentionally readable by frontend JS for X-CSRF-Token headers.
 					http.SetCookie(w, &http.Cookie{
 						Name:     csrfCookieName,
 						Value:    token,
@@ -131,10 +132,7 @@ func RequireCSRF() func(http.Handler) http.Handler {
 }
 
 // RequestIsHTTPS determines whether the incoming request should be
-// considered HTTPS. It returns true if any of the following are true:
-// - the configured baseURL starts with https://
-// - the request has TLS information (r.TLS != nil)
-// - the X-Forwarded-Proto header is set to "https"
+// considered HTTPS from trusted server-side state.
 func RequestIsHTTPS(r *http.Request, baseURL string) bool {
 	if r == nil {
 		return false
@@ -145,8 +143,7 @@ func RequestIsHTTPS(r *http.Request, baseURL string) bool {
 	if r.TLS != nil {
 		return true
 	}
-	proto := strings.ToLower(strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")))
-	return proto == "https"
+	return false
 }
 
 func generateCSRFToken() (string, error) {

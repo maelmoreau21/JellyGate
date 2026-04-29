@@ -34,6 +34,7 @@
                 {{ end }}
 
                 <form method="POST" action="/admin/login" class="space-y-5">
+                    <input type="hidden" name="_csrf" value='{{ index .Data "CSRFToken" }}'>
                     <div>
                         <label class="jg-label" for="username">{{ .T "field_username" }}</label>
                         <input type="text" id="username" name="username" class="jg-input h-11 bg-black/5 dark:bg-black/10 text-sm" value='{{ index .Data "SubmittedUsername" }}' placeholder='{{ .T "field_username_placeholder" }}' required autocomplete="username" autofocus>
@@ -137,19 +138,19 @@
 
             <div class="flex flex-wrap items-center justify-center gap-3 pt-8 w-full">
                 {{ if .Data.JellyfinURL }}
-                <a href="{{ .Data.JellyfinURL }}" target="_blank" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
+                <a href="{{ .Data.JellyfinURL }}" target="_blank" rel="noopener noreferrer" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
                     <img src="/static/img/logos/jellyfin.svg" class="w-5 h-5 object-contain group-hover:-translate-y-0.5 transition-transform" alt="Jellyfin">
                     Jellyfin
                 </a>
                 {{ end }}
                 {{ if .Data.JellyseerrURL }}
-                <a href="{{ .Data.JellyseerrURL }}" target="_blank" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
+                <a href="{{ .Data.JellyseerrURL }}" target="_blank" rel="noopener noreferrer" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
                     <img src="/static/img/logos/jellyseerr.svg" class="w-5 h-5 object-contain group-hover:-translate-y-0.5 transition-transform" alt="Jellyseerr">
                     Jellyseerr
                 </a>
                 {{ end }}
                 {{ if .Data.JellyTrackURL }}
-                <a href="{{ .Data.JellyTrackURL }}" target="_blank" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
+                <a href="{{ .Data.JellyTrackURL }}" target="_blank" rel="noopener noreferrer" class="flex-1 min-w-[120px] flex items-center justify-center gap-2 px-5 py-3 bg-white/80 dark:bg-white/5 hover:bg-white dark:hover:bg-white/10 border border-black/5 dark:border-white/10 rounded-xl text-xs font-bold uppercase tracking-wider text-jg-text-muted hover:text-jg-text transition-all shadow-md backdrop-blur-sm group">
                     <img src="/static/img/logos/jellytrack.svg" class="w-5 h-5 object-contain group-hover:-translate-y-0.5 transition-transform" alt="JellyTrack">
                     JellyTrack
                 </a>

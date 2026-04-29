@@ -12,6 +12,7 @@ package config
 import (
 	"fmt"
 	"html"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -73,6 +74,7 @@ type Config struct {
 	TLSKey            string // Chemin vers la clé privée TLS
 	DefaultLang       string // Langue par défaut de l'interface (défaut: fr)
 	EnableDebugRoutes bool   // Active les routes /admin/debug (dev uniquement)
+	TrustProxyHeaders bool   // Autorise X-Forwarded-For/X-Real-IP via reverse proxy de confiance
 
 	// Base de donnees (sqlite ou postgres)
 	Database DatabaseConfig
@@ -911,6 +913,7 @@ func Load() (*Config, error) {
 		TLSKey:            getEnv("JELLYGATE_TLS_KEY", ""),
 		DefaultLang:       NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
 		EnableDebugRoutes: getEnvBool("JELLYGATE_ENABLE_DEBUG_ROUTES", false),
+		TrustProxyHeaders: getEnvBool("JELLYGATE_TRUST_PROXY_HEADERS", false),
 
 		Database: DatabaseConfig{
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", "sqlite"))),
@@ -952,6 +955,9 @@ func (c *Config) validate() error {
 	} else if len(c.SecretKey) < 32 {
 		errs = append(errs, "JELLYGATE_SECRET_KEY doit faire au minimum 32 caractères")
 	}
+	if err := validateHTTPURL(c.BaseURL); err != nil {
+		errs = append(errs, "JELLYGATE_BASE_URL doit etre une URL http/https valide: "+err.Error())
+	}
 
 	// Jellyfin
 	if c.Jellyfin.URL == "" {
@@ -991,6 +997,27 @@ func (c *Config) validate() error {
 		return fmt.Errorf("%d erreur(s):\n  - %s", len(errs), strings.Join(errs, "\n  - "))
 	}
 
+	return nil
+}
+
+func validateHTTPURL(raw string) error {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return fmt.Errorf("valeur vide")
+	}
+
+	parsed, err := url.ParseRequestURI(trimmed)
+	if err != nil {
+		return err
+	}
+
+	scheme := strings.ToLower(strings.TrimSpace(parsed.Scheme))
+	if scheme != "http" && scheme != "https" {
+		return fmt.Errorf("schema http/https requis")
+	}
+	if strings.TrimSpace(parsed.Host) == "" {
+		return fmt.Errorf("hote requis")
+	}
 	return nil
 }
 
