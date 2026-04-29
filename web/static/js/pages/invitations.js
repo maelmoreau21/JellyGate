@@ -11,7 +11,6 @@
     const limitLinkValidityDays = Number(config.limitLinkValidityDays || 0) || Math.max(0, Math.ceil(Number(config.inviterMaxLinkHours || 0) / 24));
     const inviterMaxLinkHours = Number(config.inviterMaxLinkHours || 0);
     const inviterQuotaDay = Number(config.inviterQuotaDay || 0);
-    const inviterQuotaWeek = Number(config.inviterQuotaWeek || 0);
     const inviterQuotaMonth = Number(config.inviterQuotaMonth || 0);
     const limitUserExpiryDays = Number(config.limitUserExpiryDays || 0);
     const defaultDisableAfterDays = Number(config.defaultDisableAfterDays || 0);
@@ -112,7 +111,6 @@
                 if (!isAdmin && inviterMaxUses > 0) parts.push(fmt(i18n.maxUsesPerLink, { n: inviterMaxUses }));
                 if (!isAdmin && inviterMaxLinkHours > 0) parts.push(fmt(i18n.maxTtl, { n: inviterMaxLinkHours }));
                 if (!isAdmin && inviterQuotaDay > 0) parts.push(fmt(i18n.quotaDay, { n: inviterQuotaDay }));
-                if (!isAdmin && inviterQuotaWeek > 0) parts.push(fmt(i18n.quotaWeek, { n: inviterQuotaWeek }));
                 if (!isAdmin && inviterQuotaMonth > 0) parts.push(fmt(i18n.quotaMonth, { n: inviterQuotaMonth }));
                 if (!isAdmin && !allowInviterGrant) parts.push(i18n.grantLocked);
                 if (!isAdmin && !allowInviterUserExpiry) parts.push(i18n.expiryLocked);
@@ -380,10 +378,10 @@
             const ignorePresetUserExpiry = !!(ignoreUserInput && !ignoreUserInput.disabled && ignoreUserInput.checked);
             const preferredLang = normalizeLangTag(preferredLangInput?.value || '');
 
-            if (!isAdmin && maxUses <= 0) {
+            if (!isAdmin && inviterMaxUses > 0 && (maxUses <= 0 || maxUses > inviterMaxUses)) {
                 btn.disabled = false;
                 btn.innerHTML = createBtnLabel();
-                JG.toast(i18n.invalidMaxUses, 'error');
+                JG.toast(fmt(i18n.invalidMaxUses, { n: inviterMaxUses }), 'error');
                 return;
             }
 

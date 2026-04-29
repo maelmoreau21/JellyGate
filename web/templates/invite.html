@@ -44,6 +44,11 @@
             </div>
             <h1 class="text-xl font-bold mb-3">{{ .T "success" }}</h1>
             <p class="text-slate-600 dark:text-slate-300">{{ .SuccessMessage }}</p>
+            {{ if .Data.InviteSuccessHTML }}
+            <div class="jg-markdown-panel mt-6 text-left">
+                {{ .Data.InviteSuccessHTML }}
+            </div>
+            {{ end }}
             {{ if .Data.AccountCreated }}
             <div class="mt-8 space-y-4">
                 <a href="{{ .Data.JellyfinURL }}" class="jg-btn jg-btn-primary w-full shadow-lg shadow-purple-500/20">
@@ -65,6 +70,11 @@
         {{ else }}
         {{/* Carte formulaire */}}
         <div class="glass-card p-8 glow-accent">
+            {{ if .Data.InviteIntroHTML }}
+            <div class="jg-markdown-panel mb-6">
+                {{ .Data.InviteIntroHTML }}
+            </div>
+            {{ end }}
             <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate
                 data-username-min-length="{{ or .Data.UsernameMinLength 3 }}"
                 data-username-max-length="{{ or .Data.UsernameMaxLength 32 }}"
@@ -112,6 +122,19 @@
                         autocomplete="new-password">
                     <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
                 </div>
+
+                {{ if .Data.CaptchaEnabled }}
+                <div class="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <label class="jg-label" for="captcha_answer">Protection anti-abus</label>
+                    <div class="flex items-center gap-3">
+                        <div class="rounded-xl border border-jg-accent/30 bg-jg-accent/10 px-4 py-3 font-mono text-sm font-bold text-jg-accent">
+                            {{ .Data.CaptchaQuestion }}
+                        </div>
+                        <input type="number" id="captcha_answer" name="captcha_answer" class="jg-input flex-1" inputmode="numeric" autocomplete="off" required placeholder="Résultat">
+                    </div>
+                    <input type="hidden" name="captcha_token" value="{{ .Data.CaptchaToken }}">
+                </div>
+                {{ end }}
 
                 {{/* Submit */}}
                 <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-3" id="submit-btn">

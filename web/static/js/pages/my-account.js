@@ -211,6 +211,8 @@
         document.getElementById('my-email').value = profile.pending_email || profile.email || '';
         document.getElementById('my-discord').value = profile.contact_discord || '';
         document.getElementById('my-telegram').value = profile.contact_telegram || '';
+        const matrixInput = document.getElementById('my-matrix');
+        if (matrixInput) matrixInput.value = profile.contact_matrix || '';
 
         const notifyExpiry = document.getElementById('my-notify-expiry');
         if (notifyExpiry) notifyExpiry.checked = profile.notify_expiry_reminder !== false;
@@ -357,11 +359,13 @@
         const optEmail = document.getElementById('my-opt-email');
         const optDiscord = document.getElementById('my-opt-discord');
         const optTelegram = document.getElementById('my-opt-telegram');
+        const optMatrix = document.getElementById('my-opt-matrix');
 
         const payload = {
             email: document.getElementById('my-email').value.trim(),
             contact_discord: document.getElementById('my-discord').value.trim(),
             contact_telegram: document.getElementById('my-telegram').value.trim(),
+            contact_matrix: document.getElementById('my-matrix')?.value.trim() || '',
             notify_expiry_reminder: document.getElementById('my-notify-expiry').checked,
             notify_account_events: document.getElementById('my-notify-events').checked,
         };
@@ -369,6 +373,7 @@
         if (optEmail) payload.opt_in_email = optEmail.checked;
         if (optDiscord) payload.opt_in_discord = optDiscord.checked;
         if (optTelegram) payload.opt_in_telegram = optTelegram.checked;
+        if (optMatrix) payload.opt_in_matrix = optMatrix.checked;
 
         const res = await JG.api('/admin/api/users/me', {
             method: 'PATCH',

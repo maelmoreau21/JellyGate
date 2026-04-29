@@ -26,6 +26,7 @@ const (
 	SettingEmailTemplates              = "email_templates"                // JSON: config.EmailTemplatesConfig
 	SettingEmailTemplatesByLang        = "email_templates_by_lang"        // JSON: map[lang]config.EmailTemplatesConfig
 	SettingBackupConfig                = "backup_config"                  // JSON: config.BackupConfig
+	SettingProductFeatures             = "product_features"               // JSON: config.ProductFeaturesConfig
 	SettingJellyfinPresets             = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
 	SettingGroupMappings               = "group_mappings"                 // JSON: []config.GroupPolicyMapping
 	SettingInviteProfile               = "invite_profile"                 // JSON: config.InvitationProfileConfig
@@ -345,6 +346,36 @@ func (db *DB) SaveBackupConfig(cfg config.BackupConfig) error {
 		return fmt.Errorf("SaveBackupConfig marshal: %w", err)
 	}
 	return db.SetSetting(SettingBackupConfig, string(data))
+}
+
+// GetProductFeaturesConfig récupère la configuration des modules produit avances.
+func (db *DB) GetProductFeaturesConfig() (config.ProductFeaturesConfig, error) {
+	cfg := config.DefaultProductFeaturesConfig()
+
+	raw, err := db.GetSetting(SettingProductFeatures)
+	if err != nil {
+		return cfg, err
+	}
+	if strings.TrimSpace(raw) == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config ProductFeatures", "error", err)
+		return config.DefaultProductFeaturesConfig(), nil
+	}
+
+	return config.NormalizeProductFeaturesConfig(cfg), nil
+}
+
+// SaveProductFeaturesConfig sauvegarde la configuration des modules produit avances.
+func (db *DB) SaveProductFeaturesConfig(cfg config.ProductFeaturesConfig) error {
+	cfg = config.NormalizeProductFeaturesConfig(cfg)
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SaveProductFeaturesConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingProductFeatures, string(data))
 }
 
 // GetBackupLastRun retourne la date locale YYYY-MM-DD du dernier backup auto.

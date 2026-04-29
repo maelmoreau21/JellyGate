@@ -116,11 +116,14 @@
         </div>
 
                 <div class="jg-table-container mt-4 overflow-x-auto w-full border border-jg-border rounded">
-                    <table class="min-w-full w-full text-sm text-left align-middle whitespace-nowrap">
-                        <thead class="bg-jg-bg-secondary/30 text-jg-text-muted uppercase text-[10px] font-bold tracking-widest border-b border-jg-border">
+                    <table class="jg-table jg-users-table min-w-full w-full text-sm text-left align-middle whitespace-nowrap">
+                        <thead>
                             <tr>
-                                <th class="px-6 py-4 w-12 text-center">
-                                    <input type="checkbox" id="check-all" class="form-checkbox">
+                                <th class="px-6 py-4 w-16 text-center">
+                                    <label class="inline-flex items-center justify-center gap-2 cursor-pointer" for="check-all" title='{{ .T "users_bulk_step_select" }}'>
+                                        <input type="checkbox" id="check-all" class="form-checkbox" aria-label='{{ .T "users_bulk_step_select" }}'>
+                                        <span class="jg-th-label">{{ .T "users_col_select" }}</span>
+                                    </label>
                                 </th>
                                 <th class="px-4 py-4">{{ .T "col_username" }}</th>
                                 <th class="px-4 py-4">{{ .T "col_status" }}</th>
@@ -148,12 +151,11 @@
                     <div class="flex items-center gap-3 text-xs text-jg-text-muted">
                         <span>{{ .T "pagination_show" }}</span>
                         <div class="relative flex items-center">
-                            <select id="items-per-page" class="appearance-none h-9 pl-3 pr-8 text-[11px] bg-white/5 border border-white/10 rounded-xl focus:border-jg-accent/50 focus:ring-0 transition-all cursor-pointer outline-none text-jg-text">
-                                <option value="25" class="bg-jg-bg">25</option>
-                                <option value="50" class="bg-jg-bg">50</option>
-                                <option value="100" class="bg-jg-bg">100</option>
+                            <select id="items-per-page" class="jg-input jg-select-premium h-9 text-[11px]">
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
                             </select>
-                            <svg class="w-3 h-3 absolute right-2.5 pointer-events-none text-jg-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                         </div>
                         <span>{{ .T "logs_per_page_suffix" }}</span>
                     </div>
@@ -263,6 +265,10 @@
                 <select id="edit-preset-id" class="jg-input jg-select-premium h-12 font-bold">
                     {{/* Injected via JS */}}
                 </select>
+                <p class="text-xs text-jg-text-muted leading-relaxed mt-2">{{ .T "users_edit_preset_help" }}</p>
+                <button type="button" id="edit-force-preset-btn" class="jg-btn jg-btn-ghost jg-btn-sm mt-3">
+                    {{ .T "users_force_preset_now" }}
+                </button>
             </div>
             <div id="edit-group-wrapper" class="hidden">
                 <label class="jg-label text-xs opacity-50">{{ .T "users_col_group" }} ({{ .T "users_read_only" }})</label>
@@ -312,6 +318,7 @@
                 <select id="create-preset-id" class="jg-input jg-select-premium h-12 font-bold">
                     <option value="">{{ .T "users_create_no_preset" }}</option>
                 </select>
+                <p class="text-xs text-jg-text-muted leading-relaxed mt-2">{{ .T "users_create_preset_help" }}</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
@@ -379,6 +386,13 @@
     window.JGPageUsers = {
         i18n: {
             usersDisplayed: '{{ .T "users_displayed_count" }}',
+            tableSelect: '{{ .T "users_col_select" }}',
+            tableUsername: '{{ .T "col_username" }}',
+            tableStatus: '{{ .T "col_status" }}',
+            tableJellyfin: '{{ .T "col_jellyfin" }}',
+            tablePreset: '{{ .T "users_col_preset" }}',
+            tableExpiry: '{{ .T "users_col_expiry" }}',
+            tableActions: '{{ .T "col_actions" }}',
             usersNoLocal: '{{ .T "users_no_local" }}',
             usersNoFilterMatch: '{{ .T "users_no_filter_match" }}',
             loading: '{{ .T "logs_loading" }}',
@@ -460,6 +474,9 @@
             createFailed: '{{ .T "users_create_failed" }}',
             createTempPassword: '{{ .T "users_create_temp_password" }}',
             createSuccess: '{{ .T "users_create_success" }}',
+            forcePresetNow: '{{ .T "users_force_preset_now" }}',
+            forcePresetConfirm: '{{ .T "users_force_preset_confirm" }}',
+            forcePresetDone: '{{ .T "users_force_preset_done" }}',
         },
         bulkActionMeta: {
             send_email: { label: '{{ .T "users_action_send_email" }}', help: '{{ .T "users_action_send_email_help" }}' },

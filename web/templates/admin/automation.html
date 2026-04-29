@@ -224,26 +224,26 @@
                         </div>
                     </label>
 
-                    <div id="preset-sponsorship-options" class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in slide-in-from-top-1 duration-200" style="display: none;">
-                        <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-quota-day">{{ .T "automation_invite_quota_day_label" }}</label>
-                            <input id="preset-invite-quota-day" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
-                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
+                    <div id="preset-sponsorship-options" class="jg-sponsorship-options grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 animate-in fade-in slide-in-from-top-1 duration-200" style="display: none;">
+                        <div class="jg-sponsor-limit-field">
+                            <label class="jg-label text-xs" for="preset-invite-quota-day">{{ .T "automation_invite_quota_day_label" }}</label>
+                            <input id="preset-invite-quota-day" type="number" class="jg-input jg-sponsor-input bg-black/20 text-sm" min="0">
+                            <div class="jg-sponsor-limit-help">{{ .T "automation_invite_quota_day_help" }}</div>
                         </div>
-                        <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-quota-month">{{ .T "automation_invite_quota_month_label" }}</label>
-                            <input id="preset-invite-quota-month" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
-                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
+                        <div class="jg-sponsor-limit-field">
+                            <label class="jg-label text-xs" for="preset-invite-quota-month">{{ .T "automation_invite_quota_month_label" }}</label>
+                            <input id="preset-invite-quota-month" type="number" class="jg-input jg-sponsor-input bg-black/20 text-sm" min="0">
+                            <div class="jg-sponsor-limit-help">{{ .T "automation_invite_quota_month_help" }}</div>
                         </div>
-                        <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-max-uses">{{ .T "automation_invite_max_uses_label" }}</label>
-                            <input id="preset-invite-max-uses" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
-                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
+                        <div class="jg-sponsor-limit-field">
+                            <label class="jg-label text-xs" for="preset-invite-max-uses">{{ .T "automation_invite_max_uses_label" }}</label>
+                            <input id="preset-invite-max-uses" type="number" class="jg-input jg-sponsor-input bg-black/20 text-sm" min="0">
+                            <div class="jg-sponsor-limit-help">{{ .T "automation_invite_max_uses_help" }}</div>
                         </div>
-                        <div>
-                            <label class="jg-label text-[10px]" for="preset-invite-link-days">{{ .T "automation_invite_link_days_label" }}</label>
-                            <input id="preset-invite-link-days" type="number" class="jg-input h-10 bg-black/20 text-xs" min="0">
-                            <div class="text-[9px] text-jg-text-muted mt-1 opacity-70">0 = {{ .T "invitations_unlimited" }}</div>
+                        <div class="jg-sponsor-limit-field">
+                            <label class="jg-label text-xs" for="preset-invite-link-days">{{ .T "automation_invite_link_days_label" }}</label>
+                            <input id="preset-invite-link-days" type="number" class="jg-input jg-sponsor-input bg-black/20 text-sm" min="0">
+                            <div class="jg-sponsor-limit-help">{{ .T "automation_invite_link_days_help" }}</div>
                         </div>
                         <div class="col-span-1 sm:col-span-2">
                             <label class="flex items-center gap-2 text-sm text-jg-text" for="preset-invite-allow-language">
@@ -253,8 +253,8 @@
                             <div class="text-[10px] text-jg-text-muted mt-1 ml-6 opacity-80">{{ .T "automation_invite_allow_language_help" }}</div>
                         </div>
                         <div class="col-span-1 sm:col-span-2">
-                            <label class="jg-label text-[10px]" for="preset-target-preset">{{ .T "automation_target_preset_label" }}</label>
-                            <select id="preset-target-preset" class="jg-input jg-select-premium h-10 bg-black/20 text-xs">
+                            <label class="jg-label text-xs" for="preset-target-preset">{{ .T "automation_target_preset_label" }}</label>
+                            <select id="preset-target-preset" class="jg-input jg-select-premium jg-sponsor-select bg-black/20 text-sm">
                                 <option value="">{{ .T "automation_target_preset_default" }}</option>
                             </select>
                         </div>

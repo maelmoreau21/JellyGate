@@ -84,6 +84,7 @@ type InvitationHandler struct {
 	mailer      *mail.Mailer
 	notifier    *notify.Notifier
 	renderer    *render.Engine
+	abuse       *inviteAbuseTracker
 }
 
 // NewInvitationHandler crÃƒÂ©e un nouveau handler d'invitations.
@@ -97,6 +98,7 @@ func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Clie
 		mailer:      m,
 		notifier:    n,
 		renderer:    renderer,
+		abuse:       newInviteAbuseTracker(),
 	}
 }
 
@@ -154,6 +156,14 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
 	td.Data["JellyTrackURL"] = links.JellyTrackURL
+	productCfg, _ := h.db.GetProductFeaturesConfig()
+	td.Data["InviteIntroHTML"] = renderProductMarkdownHTML(productCfg.Content.InviteIntroMarkdown)
+	if productCfg.AntiAbuse.Enabled && productCfg.AntiAbuse.Captcha {
+		question, token := h.newInviteCaptchaChallenge()
+		td.Data["CaptchaEnabled"] = true
+		td.Data["CaptchaQuestion"] = question
+		td.Data["CaptchaToken"] = token
+	}
 	profile := jellyfin.InviteProfile{UsernameMinLength: 3, UsernameMaxLength: 32, PasswordMinLength: 8, PasswordMaxLength: 128, RequireEmail: true, RequireEmailVerification: true}
 
 	// Analyser le profil pour vÃƒÂ©rifier si un username est forcÃƒÂ© (Flux B)
@@ -212,6 +222,18 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	}
 
 	submittedUsername := strings.TrimSpace(r.FormValue("username"))
+	antiAbuseCfg := h.inviteAntiAbuseConfig()
+	if blocked, retryAfter := h.isInviteBlocked(r, antiAbuseCfg); blocked {
+		h.logInviteAction(r, "invite.anti_abuse.blocked", submittedUsername, code, fmt.Sprintf("retry_after=%s", retryAfter.Round(time.Second)))
+		http.Error(w, h.tr(r, "invite_error_too_many_attempts", "Trop de tentatives. Reessayez plus tard."), http.StatusTooManyRequests)
+		return
+	}
+	if err := h.verifyInviteCaptcha(r, antiAbuseCfg); err != nil {
+		h.recordInviteFailure(r, antiAbuseCfg)
+		h.logInviteAction(r, "invite.captcha.failed", submittedUsername, code, err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	// Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�
 	// Ãƒâ€°TAPE 1 : Validation SQLite
@@ -225,6 +247,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		if targetUsername == "" {
 			targetUsername = "unknown"
 		}
+		h.recordInviteFailure(r, antiAbuseCfg)
 		h.logInviteAction(r, "invite.validation.failed", targetUsername, code, err.Error())
 		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirÃƒÂ©e"), http.StatusForbidden)
 		return
@@ -256,6 +279,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		if targetUsername == "" {
 			targetUsername = "unknown"
 		}
+		h.recordInviteFailure(r, antiAbuseCfg)
 		h.logInviteAction(r, "invite.validation.failed", targetUsername, code, err.Error())
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -273,6 +297,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 	if err := h.ensureInviteUsernameAvailable(r, form.Username); err != nil {
 		slog.Warn("Nom d'utilisateur indisponible pour invitation", "code", code, "username", form.Username, "error", err)
+		h.recordInviteFailure(r, antiAbuseCfg)
 		h.logInviteAction(r, "invite.validation.failed", form.Username, code, err.Error())
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
@@ -307,6 +332,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			),
 			false,
 		)
+		h.recordInviteSuccess(r)
 		return
 	}
 
@@ -328,6 +354,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			),
 			true,
 		)
+		h.recordInviteSuccess(r)
 		return
 	}
 
@@ -342,6 +369,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		),
 		true,
 	)
+	h.recordInviteSuccess(r)
 }
 
 func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *http.Request, inv *invitation, message string, accountCreated bool) {
@@ -354,6 +382,8 @@ func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *ht
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
 	td.Data["JellyTrackURL"] = links.JellyTrackURL
+	productCfg, _ := h.db.GetProductFeaturesConfig()
+	td.Data["InviteSuccessHTML"] = renderProductMarkdownHTML(productCfg.Content.InviteSuccessMarkdown)
 
 	if err := h.renderer.Render(w, "invite.html", td); err != nil {
 		slog.Error("Erreur rendu invite success page", "error", err)

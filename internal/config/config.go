@@ -175,6 +175,178 @@ func DefaultBackupConfig() BackupConfig {
 	}
 }
 
+// ProductFeaturesConfig regroupe les options produit avancees pilotees depuis l'admin.
+type ProductFeaturesConfig struct {
+	AntiAbuse     AntiAbuseConfig      `json:"anti_abuse"`
+	Content       ProductContentConfig `json:"content"`
+	Setup         SetupWizardConfig    `json:"setup"`
+	Contacts      ContactLinkingConfig `json:"contacts"`
+	AdminTimeline AdminTimelineConfig  `json:"admin_timeline"`
+	Simulation    SimulationConfig     `json:"simulation"`
+	PortalHealth  PortalHealthConfig   `json:"portal_health"`
+	Sponsorship   SponsorshipConfig    `json:"sponsorship"`
+	Lifecycle     LifecycleConfig      `json:"lifecycle"`
+	Audit         AuditConfig          `json:"audit"`
+}
+
+type AntiAbuseConfig struct {
+	Enabled       bool `json:"enabled"`
+	Captcha       bool `json:"captcha"`
+	MaxFailures   int  `json:"max_failures"`
+	WindowMinutes int  `json:"window_minutes"`
+	BlockMinutes  int  `json:"block_minutes"`
+}
+
+type ProductContentConfig struct {
+	InviteIntroMarkdown   string `json:"invite_intro_markdown"`
+	InviteSuccessMarkdown string `json:"invite_success_markdown"`
+	AccountMarkdown       string `json:"account_markdown"`
+}
+
+type SetupWizardConfig struct {
+	Enabled     bool   `json:"enabled"`
+	Completed   bool   `json:"completed"`
+	CompletedAt string `json:"completed_at"`
+}
+
+type ContactLinkingConfig struct {
+	Enabled       bool `json:"enabled"`
+	AllowDiscord  bool `json:"allow_discord"`
+	AllowTelegram bool `json:"allow_telegram"`
+	AllowMatrix   bool `json:"allow_matrix"`
+	RequireProof  bool `json:"require_proof"`
+}
+
+type AdminTimelineConfig struct {
+	Enabled bool `json:"enabled"`
+	Limit   int  `json:"limit"`
+}
+
+type SimulationConfig struct {
+	Enabled                  bool `json:"enabled"`
+	RequirePreviewBeforeBulk bool `json:"require_preview_before_bulk"`
+}
+
+type PortalHealthConfig struct {
+	Enabled bool `json:"enabled"`
+}
+
+type SponsorshipConfig struct {
+	Enabled bool `json:"enabled"`
+}
+
+type LifecycleConfig struct {
+	Enabled                 bool  `json:"enabled"`
+	ExpiryReminderDays      []int `json:"expiry_reminder_days"`
+	DisableInactiveDays     int   `json:"disable_inactive_days"`
+	DeleteDisabledAfterDays int   `json:"delete_disabled_after_days"`
+}
+
+type AuditConfig struct {
+	Enabled       bool `json:"enabled"`
+	BeforeAfter   bool `json:"before_after"`
+	RetentionDays int  `json:"retention_days"`
+}
+
+// DefaultProductFeaturesConfig retourne les defaults prudents des modules produit.
+func DefaultProductFeaturesConfig() ProductFeaturesConfig {
+	return ProductFeaturesConfig{
+		AntiAbuse: AntiAbuseConfig{
+			Enabled:       true,
+			Captcha:       true,
+			MaxFailures:   5,
+			WindowMinutes: 15,
+			BlockMinutes:  20,
+		},
+		Content: ProductContentConfig{},
+		Setup: SetupWizardConfig{
+			Enabled: true,
+		},
+		Contacts: ContactLinkingConfig{
+			Enabled:       true,
+			AllowDiscord:  true,
+			AllowTelegram: true,
+			AllowMatrix:   true,
+			RequireProof:  false,
+		},
+		AdminTimeline: AdminTimelineConfig{
+			Enabled: true,
+			Limit:   80,
+		},
+		Simulation: SimulationConfig{
+			Enabled:                  true,
+			RequirePreviewBeforeBulk: false,
+		},
+		PortalHealth: PortalHealthConfig{
+			Enabled: true,
+		},
+		Sponsorship: SponsorshipConfig{
+			Enabled: true,
+		},
+		Lifecycle: LifecycleConfig{
+			Enabled:                 true,
+			ExpiryReminderDays:      []int{14, 7, 1},
+			DisableInactiveDays:     0,
+			DeleteDisabledAfterDays: 0,
+		},
+		Audit: AuditConfig{
+			Enabled:       true,
+			BeforeAfter:   true,
+			RetentionDays: 365,
+		},
+	}
+}
+
+// NormalizeProductFeaturesConfig corrige les valeurs hors bornes sans casser les anciennes configs.
+func NormalizeProductFeaturesConfig(cfg ProductFeaturesConfig) ProductFeaturesConfig {
+	defaults := DefaultProductFeaturesConfig()
+
+	if cfg.AntiAbuse.MaxFailures <= 0 {
+		cfg.AntiAbuse.MaxFailures = defaults.AntiAbuse.MaxFailures
+	}
+	if cfg.AntiAbuse.WindowMinutes <= 0 {
+		cfg.AntiAbuse.WindowMinutes = defaults.AntiAbuse.WindowMinutes
+	}
+	if cfg.AntiAbuse.BlockMinutes <= 0 {
+		cfg.AntiAbuse.BlockMinutes = defaults.AntiAbuse.BlockMinutes
+	}
+	if cfg.AdminTimeline.Limit <= 0 {
+		cfg.AdminTimeline.Limit = defaults.AdminTimeline.Limit
+	}
+	if cfg.AdminTimeline.Limit > 300 {
+		cfg.AdminTimeline.Limit = 300
+	}
+	if len(cfg.Lifecycle.ExpiryReminderDays) == 0 {
+		cfg.Lifecycle.ExpiryReminderDays = defaults.Lifecycle.ExpiryReminderDays
+	}
+	normalizedReminderDays := make([]int, 0, len(cfg.Lifecycle.ExpiryReminderDays))
+	seenReminderDays := map[int]struct{}{}
+	for _, day := range cfg.Lifecycle.ExpiryReminderDays {
+		if day < 1 || day > 365 {
+			continue
+		}
+		if _, exists := seenReminderDays[day]; exists {
+			continue
+		}
+		seenReminderDays[day] = struct{}{}
+		normalizedReminderDays = append(normalizedReminderDays, day)
+	}
+	if len(normalizedReminderDays) == 0 {
+		normalizedReminderDays = defaults.Lifecycle.ExpiryReminderDays
+	}
+	cfg.Lifecycle.ExpiryReminderDays = normalizedReminderDays
+	if cfg.Lifecycle.DisableInactiveDays < 0 {
+		cfg.Lifecycle.DisableInactiveDays = 0
+	}
+	if cfg.Lifecycle.DeleteDisabledAfterDays < 0 {
+		cfg.Lifecycle.DeleteDisabledAfterDays = 0
+	}
+	if cfg.Audit.RetentionDays < 0 {
+		cfg.Audit.RetentionDays = 0
+	}
+	return cfg
+}
+
 // EmailTemplatesConfig contient les modèles de courriels personnalisés configurables (JFA-Go).
 type EmailTemplatesConfig struct {
 	BaseTemplateHeader          string `json:"base_template_header"`

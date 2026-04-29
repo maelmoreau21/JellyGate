@@ -245,11 +245,8 @@ func (s *Service) executeTask(task TaskRecord) error {
 					totalCreated++
 				} else if err == nil {
 					if dbUser.PresetID != preset.ID || dbUser.LDAPDN != member.DN {
-						if dbUser.JFID != "" {
-							if err := s.applyPresetToJellyfin(dbUser.JFID, preset); err != nil {
-								slog.Warn("Scheduler: echec mise a jour permissions", "user", member.Username, "error", err)
-							}
-						}
+						// Pour un compte existant, la sync LDAP ne force plus les droits Jellyfin.
+						// Elle garde seulement l'association locale; le forçage passe par l'action admin explicite.
 						_, _ = s.db.Exec(`UPDATE users SET preset_id = ?, ldap_dn = ?, group_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, preset.ID, member.DN, m.GroupName, dbUser.ID)
 						totalUpdated++
 					}

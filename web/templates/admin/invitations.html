@@ -158,13 +158,13 @@
                             <div id="inv-uses-help" class="text-xs text-jg-text-muted mt-2"></div>
                         </div>
                         <div>
-                            <label class="jg-label">Validité du lien (jours)</label>
+                            <label class="jg-label">{{ .T "automation_invite_link_days_label" }}</label>
                             <input type="number" id="inv-expiry-days" class="jg-input h-11" min="0" value="0">
                             <div id="inv-link-expiry-help" class="text-xs text-jg-text-muted mt-2"></div>
                         </div>
                         <label id="inv-ignore-link-limit-wrap" class="hidden items-center gap-2 text-xs text-amber-200">
                             <input type="checkbox" id="inv-ignore-link-limit" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
-                            Ignorer la limite de validité du preset
+                            {{ .T "invitations_ignore_link_limit" }}
                         </label>
                     </section>
 
@@ -181,12 +181,12 @@
                                 {{ .T "invitations_user_expiry_enable" }}
                             </label>
                             <div>
-                                <label class="jg-label text-[10px] uppercase tracking-wider">Jours après création</label>
+                                <label class="jg-label text-[10px] uppercase tracking-wider">{{ .T "invitations_user_expiry_days_label" }}</label>
                                 <input type="number" id="inv-user-expiry-days" class="jg-input h-10" min="1" value="30" disabled>
                             </div>
                             <label id="inv-ignore-user-expiry-limit-wrap" class="hidden items-center gap-2 text-xs text-amber-200">
                                 <input type="checkbox" id="inv-ignore-user-expiry-limit" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
-                                Ignorer la limite d'expiration utilisateur du preset
+                                {{ .T "invitations_ignore_user_expiry_limit" }}
                             </label>
                         </div>
                         <div class="rounded-xl border border-jg-border bg-black/20 p-4">
@@ -224,7 +224,7 @@
                         </div>
                         {{ end }}
                         <div class="text-xs text-jg-text-muted leading-relaxed">
-                            Le lien est généré immédiatement. Si un e-mail est renseigné, il sera aussi envoyé automatiquement.
+                            {{ .T "invitations_email_auto_note" }}
                         </div>
                     </section>
                 </div>
@@ -273,7 +273,6 @@
         limitLinkValidityDays: parseInt("{{ .Data.InviteLimitLinkValidityDays }}", 10) || 0,
         inviterMaxLinkHours: parseInt("{{ .Data.InviteInviterMaxLinkHours }}", 10) || 0,
         inviterQuotaDay: parseInt("{{ .Data.InviteInviterQuotaDay }}", 10) || 0,
-        inviterQuotaWeek: parseInt("{{ .Data.InviteInviterQuotaWeek }}", 10) || 0,
         inviterQuotaMonth: parseInt("{{ .Data.InviteInviterQuotaMonth }}", 10) || 0,
         limitUserExpiryDays: parseInt("{{ .Data.InviteDefaultDisableAfterDays }}", 10) || 0,
         defaultDisableAfterDays: parseInt("{{ .Data.InviteDefaultDisableAfterDays }}", 10) || 0,
@@ -284,7 +283,6 @@
             maxUsesPerLink: '{{ .T "invitations_policy_max_uses" }}',
             maxTtl: '{{ .T "invitations_policy_max_ttl" }}',
             quotaDay: '{{ .T "invitations_policy_quota_day" }}',
-            quotaWeek: '{{ .T "invitations_policy_quota_week" }}',
             quotaMonth: '{{ .T "invitations_policy_quota_month" }}',
             grantLocked: '{{ .T "invitations_policy_grant_locked" }}',
             expiryLocked: '{{ .T "invitations_policy_expiry_locked" }}',

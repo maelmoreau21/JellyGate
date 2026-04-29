@@ -17,6 +17,10 @@
         let loadUsersAbortController = null;
         let loadUsersSeq = 0;
 
+        function escAttr(value) {
+            return JG.esc(String(value ?? '')).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
         function fmtDate(value) {
             if (!value) return '\u2014';
             const date = new Date(value);
@@ -205,6 +209,16 @@
             const sf = document.getElementById('users-stat-filtered'); if (sf) sf.textContent = paginationMeta.total || 0;
             const si = document.getElementById('users-stat-inviters'); if (si) si.textContent = paginationMeta.inviters_count || 0;
             const se = document.getElementById('users-stat-expiring'); if (se) se.textContent = paginationMeta.expiring_count || 0;
+
+            const columnLabels = {
+                select: i18n.tableSelect || 'Selection',
+                username: i18n.tableUsername || 'User',
+                status: i18n.tableStatus || 'Status',
+                jellyfin: i18n.tableJellyfin || 'Jellyfin',
+                preset: i18n.tablePreset || 'Preset',
+                expiry: i18n.tableExpiry || 'Expiry',
+                actions: i18n.tableActions || 'Actions',
+            };
             
             if (users.length === 0) {
                 const help = paginationMeta.total === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
@@ -215,33 +229,45 @@
                 const userID = String(user.id);
                 const checked = selectedIds.has(userID) ? 'checked' : '';
                 const isSelected = selectedIds.has(userID);
-                const bgClass = isSelected ? 'bg-jg-accent/10' : 'hover:bg-white/[0.03]';
+                const bgClass = isSelected ? 'is-selected bg-jg-accent/10' : 'hover:bg-white/[0.03]';
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
+                const displayUsername = user.username || ('#' + user.id);
+                const rowSelectLabel = `${columnLabels.select}: ${displayUsername}`;
+                const timelineTitle = `${i18n.timeline || 'Timeline'}: ${displayUsername}`;
+                const editTitle = `${i18n.edit || 'Edit'}: ${displayUsername}`;
+                const toggleTitle = `${user.is_active ? (i18n.deactivate || 'Deactivate') : (i18n.activate || 'Activate')}: ${displayUsername}`;
+                const deleteTitle = `${i18n.delete || 'Delete'}: ${displayUsername}`;
                 
-                let avatarHtml = `<div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold text-jg-accent text-xs">${JG.esc(user.username.charAt(0).toUpperCase())}</div>`;
+                let avatarHtml = `<div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold text-jg-accent text-xs">${JG.esc(displayUsername.charAt(0).toUpperCase())}</div>`;
                 if (user.jellyfin_id && user.jellyfin_primary_image_tag) {
                     const avatarUrl = `/admin/api/users/${user.id}/avatar?tag=${user.jellyfin_primary_image_tag}`;
-                    avatarHtml = `<img src="${avatarUrl}" class="w-8 h-8 rounded-full object-cover border border-white/10" alt="${JG.esc(user.username)}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">`
-                               + `<div class="w-8 h-8 rounded-full bg-jg-accent/20 items-center justify-center font-bold text-jg-accent text-xs hidden">${JG.esc(user.username.charAt(0).toUpperCase())}</div>`;
+                    avatarHtml = `<img src="${avatarUrl}" class="w-8 h-8 rounded-full object-cover border border-white/10" alt="${escAttr(displayUsername)}" data-avatar-fallback="true">`
+                               + `<div class="w-8 h-8 rounded-full bg-jg-accent/20 items-center justify-center font-bold text-jg-accent text-xs hidden">${JG.esc(displayUsername.charAt(0).toUpperCase())}</div>`;
                 }
 
                 return '<tr class="group ' + bgClass + ' border-b border-white/5">'
-                    + '<td class="px-6 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox" data-id="' + user.id + '" ' + checked + '></td>'
-                    + '<td class="px-4 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col"><span class="font-bold">' + JG.esc(user.username) + '</span><span class="text-xs text-jg-text-muted">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
-                    + '<td class="px-4 py-4">' + userStatusBadge(user) + '</td>'
-                    + '<td class="px-4 py-4">' + jellyfinStatusBadge(user) + '</td>'
-                    + '<td class="px-4 py-4">' + (function() {
+                    + '<td data-label="' + escAttr(columnLabels.select) + '" class="px-6 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox" data-id="' + user.id + '" aria-label="' + escAttr(rowSelectLabel) + '" ' + checked + '></td>'
+                    + '<td data-label="' + escAttr(columnLabels.username) + '" class="px-4 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col"><span class="font-bold">' + JG.esc(displayUsername) + '</span><span class="text-xs text-jg-text-muted">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
+                    + '<td data-label="' + escAttr(columnLabels.status) + '" class="px-4 py-4">' + userStatusBadge(user) + '</td>'
+                    + '<td data-label="' + escAttr(columnLabels.jellyfin) + '" class="px-4 py-4">' + jellyfinStatusBadge(user) + '</td>'
+                    + '<td data-label="' + escAttr(columnLabels.preset) + '" class="px-4 py-4">' + (function() {
                         const p = jellyfinPresets.find(pr => pr.id === user.preset_id);
                         return JG.esc(p ? p.name : (user.preset_id || '\u2014'));
                     })() + '</td>'
-                    + '<td class="px-4 py-4">' + JG.esc(expiry) + '</td>'
-                    + '<td class="px-6 py-4 text-right"><div class="flex justify-end gap-2">'
-                    + '<button class="action-timeline jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">\uD83D\uDCCA</button>'
-                    + '<button class="action-edit jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">\u270F\uFE0F</button>'
-                    + '<button class="action-toggle jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '">' + (user.is_active ? '\uD83D\uDD13' : '\uD83D\uDD12') + '</button>'
-                    + '<button class="action-delete jg-btn jg-btn-sm jg-btn-danger" data-id="' + user.id + '">\uD83D\uDDD1\uFE0F</button>'
+                    + '<td data-label="' + escAttr(columnLabels.expiry) + '" class="px-4 py-4">' + JG.esc(expiry) + '</td>'
+                    + '<td data-label="' + escAttr(columnLabels.actions) + '" class="px-6 py-4 text-right jg-users-actions"><div class="jg-row-actions flex justify-end gap-2">'
+                    + '<button class="action-timeline jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '" title="' + escAttr(timelineTitle) + '" aria-label="' + escAttr(timelineTitle) + '">\uD83D\uDCCA</button>'
+                    + '<button class="action-edit jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '" title="' + escAttr(editTitle) + '" aria-label="' + escAttr(editTitle) + '">\u270F\uFE0F</button>'
+                    + '<button class="action-toggle jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '" title="' + escAttr(toggleTitle) + '" aria-label="' + escAttr(toggleTitle) + '">' + (user.is_active ? '\uD83D\uDD13' : '\uD83D\uDD12') + '</button>'
+                    + '<button class="action-delete jg-btn jg-btn-sm jg-btn-danger" data-id="' + user.id + '" title="' + escAttr(deleteTitle) + '" aria-label="' + escAttr(deleteTitle) + '">\uD83D\uDDD1\uFE0F</button>'
                     + '</div></td></tr>';
             }).join('');
+            tbody.querySelectorAll('[data-avatar-fallback]').forEach((img) => {
+                img.addEventListener('error', () => {
+                    img.style.display = 'none';
+                    if (img.nextElementSibling) img.nextElementSibling.style.display = 'flex';
+                }, { once: true });
+            });
             updateSelectionUI();
             renderPagination();
         }
@@ -330,10 +356,10 @@
             } else if (action === 'set_parrainage') {
                 c.innerHTML = '<div class="space-y-4"><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="true" class="form-radio"><span>' + JG.esc(text.bulkInviteEnabled||'Enable') + '</span></label><label class="flex items-center gap-3"><input type="radio" name="bulk-invite-value" value="false" checked class="form-radio"><span>' + JG.esc(text.bulkInviteDisabled||'Disable') + '</span></label></div>';
             } else if (action === 'jellyfin_policy') {
-                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkJfDownloadLabel || 'Download') + '</label><select id="bulk-jf-download" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfDownloadUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfDownloadAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfDownloadBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfRemoteLabel || 'Remote') + '</label><select id="bulk-jf-remote" class="jg-input h-12"><option value="">' + JG.esc(text.bulkJfRemoteUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfRemoteAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfRemoteBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfSessionsLabel || 'Sessions') + '</label><input type="number" id="bulk-jf-sessions" class="jg-input h-12" min="0"></div><div><label class="jg-label">' + JG.esc(text.bulkJfBitrateLabel || 'Bitrate') + '</label><input type="number" id="bulk-jf-bitrate" class="jg-input h-12" min="0"></div></div>';
+                c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkJfDownloadLabel || 'Download') + '</label><select id="bulk-jf-download" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkJfDownloadUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfDownloadAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfDownloadBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfRemoteLabel || 'Remote') + '</label><select id="bulk-jf-remote" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkJfRemoteUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfRemoteAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfRemoteBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfSessionsLabel || 'Sessions') + '</label><input type="number" id="bulk-jf-sessions" class="jg-input h-12" min="0"></div><div><label class="jg-label">' + JG.esc(text.bulkJfBitrateLabel || 'Bitrate') + '</label><input type="number" id="bulk-jf-bitrate" class="jg-input h-12" min="0"></div></div>';
             } else if (action === 'apply_preset') {
                 const opts = jellyfinPresets.map(p => '<option value="' + JG.esc(p.id) + '">' + JG.esc(p.name||p.id) + '</option>').join('');
-                c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Preset') + '</label><select id="bulk-preset" class="jg-input h-12"><option value="">' + JG.esc(text.bulkSelectPresetPlaceholder||'Select...') + '</option>' + opts + '</select></div>';
+                c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Preset') + '</label><select id="bulk-preset" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkSelectPresetPlaceholder||'Select...') + '</option>' + opts + '</select></div>';
             } else if (['activate','deactivate','delete','send_password_reset'].includes(action)) {
                 c.innerHTML = '<div class="text-center py-8 text-jg-text-muted">' + JG.esc(text.bulkNoExtraParams||'No additional parameters required.') + '</div>';
             } else {
@@ -678,6 +704,28 @@
             const res = await JG.api('/admin/api/users/' + uid, { method: 'PATCH', body: JSON.stringify(p) });
             if (res.success) { JG.toast(i18n.editUpdated||'OK', 'success'); JG.closeModal('edit-modal'); await loadUsers(); }
             else { JG.toast(res.message||i18n.editUpdateError||'Error', 'error'); }
+        });
+        document.getElementById('edit-force-preset-btn')?.addEventListener('click', async () => {
+            const uid = parseInt(document.getElementById('edit-user-id')?.value || '0', 10);
+            const presetID = document.getElementById('edit-preset-id')?.value || '';
+            if (!uid || !presetID) {
+                JG.toast(i18n.bulkNeedPreset || 'Select a preset', 'error');
+                return;
+            }
+            if (!confirm(i18n.forcePresetConfirm || 'Force this preset on Jellyfin now?')) return;
+
+            const res = await JG.api('/admin/api/users/bulk', {
+                method: 'POST',
+                body: JSON.stringify({ action: 'apply_preset', user_ids: [uid], policy_preset_id: presetID })
+            });
+            const forcedCount = Number(res?.data?.success || 0);
+            if (res.success && forcedCount > 0) {
+                JG.toast(i18n.forcePresetDone || res.message || 'Preset applied', 'success');
+                await loadUsers();
+            } else {
+                const firstResult = Array.isArray(res?.data?.results) ? res.data.results[0] : null;
+                JG.toast(firstResult?.message || res.message || i18n.bulkActionFailed || 'Error', 'error');
+            }
         });
         document.getElementById('edit-modal')?.addEventListener('click', (e) => { if (e.target.id === 'edit-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('edit-modal'); });
 

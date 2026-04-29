@@ -70,6 +70,11 @@
                     <span class="jg-nav-label">{{ .T "nav_automation" }}</span>
                 </a>
 
+                <a href="/admin/product" class="jg-nav-item {{ if eq $current "product" }}active{{ end }}">
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7.5 4.5v9L12 21l-7.5-4.5v-9L12 3zm0 6v6m-3-3h6" /></svg>
+                    <span class="jg-nav-label">Produit</span>
+                </a>
+
                 <a href="/admin/logs" class="jg-nav-item {{ if eq $current "logs" }}active{{ end }}">
                     <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                     <span class="jg-nav-label">{{ .T "nav_logs" }}</span>

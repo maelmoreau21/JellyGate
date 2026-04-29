@@ -150,12 +150,14 @@ type UpdateMyAccountRequest struct {
 	Email                *string `json:"email"`
 	ContactDiscord       *string `json:"contact_discord"`
 	ContactTelegram      *string `json:"contact_telegram"`
+	ContactMatrix        *string `json:"contact_matrix"`
 	PreferredLang        *string `json:"preferred_lang"`
 	NotifyExpiryReminder *bool   `json:"notify_expiry_reminder"`
 	NotifyAccountEvents  *bool   `json:"notify_account_events"`
 	OptInEmail           *bool   `json:"opt_in_email"`
 	OptInDiscord         *bool   `json:"opt_in_discord"`
 	OptInTelegram        *bool   `json:"opt_in_telegram"`
+	OptInMatrix          *bool   `json:"opt_in_matrix"`
 }
 
 type BulkJellyfinPolicyPatch struct {
@@ -459,12 +461,17 @@ func (h *AdminHandler) StartExpirationJob(ctx context.Context) {
 func (h *AdminHandler) runExpirationCheck() {
 	slog.Debug("Lancement du job d'expiration automatique des utilisateurs...")
 	now := time.Now()
+	productCfg, _ := h.db.GetProductFeaturesConfig()
+	productCfg = config.NormalizeProductFeaturesConfig(productCfg)
 
 	emailCfg, _ := h.db.GetEmailTemplatesConfig()
 	if emailCfg.DisableExpiryReminderEmails {
 		return
 	}
 	reminderStages := []int{14, 7, 1}
+	if productCfg.Lifecycle.Enabled && len(productCfg.Lifecycle.ExpiryReminderDays) > 0 {
+		reminderStages = append([]int(nil), productCfg.Lifecycle.ExpiryReminderDays...)
+	}
 	if emailCfg.ExpiryReminderDays > 0 && !containsInt(reminderStages, emailCfg.ExpiryReminderDays) {
 		reminderStages = append(reminderStages, emailCfg.ExpiryReminderDays)
 	}
@@ -712,6 +719,9 @@ func (h *AdminHandler) runExpirationCheck() {
 			continue
 		}
 
+		if deleteAfterDays <= 0 && productCfg.Lifecycle.Enabled {
+			deleteAfterDays = productCfg.Lifecycle.DeleteDisabledAfterDays
+		}
 		readyAt := expiredAt.AddDate(0, 0, deleteAfterDays)
 		if deleteAfterDays > 0 && now.Before(readyAt) {
 			continue
@@ -741,6 +751,8 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
+	productCfg, _ := h.db.GetProductFeaturesConfig()
+	td.Data["AccountMarkdownHTML"] = renderProductMarkdownHTML(productCfg.Content.AccountMarkdown)
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
@@ -923,21 +935,23 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		emailVerified   bool
 		contactDiscord  sql.NullString
 		contactTelegram sql.NullString
+		contactMatrix   sql.NullString
 		preferredLang   string
 		notifyExpiry    bool
 		notifyEvents    bool
 		optInEmail      bool
 		optInDiscord    bool
 		optInTelegram   bool
+		optInMatrix     bool
 		accessExpiresAt sql.NullString
 		createdAt       sql.NullString
 	)
 
 	err := h.db.QueryRow(
-		`SELECT id, email, contact_discord, contact_telegram,
+		`SELECT id, email, contact_discord, contact_telegram, contact_matrix,
 		        pending_email, email_verified,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
-		        opt_in_email, opt_in_discord, opt_in_telegram,
+		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix,
 		        access_expires_at, created_at
 		 FROM users WHERE jellyfin_id = ?`,
 		sess.UserID,
@@ -946,6 +960,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		&email,
 		&contactDiscord,
 		&contactTelegram,
+		&contactMatrix,
 		&pendingEmail,
 		&emailVerified,
 		&preferredLang,
@@ -954,6 +969,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		&optInEmail,
 		&optInDiscord,
 		&optInTelegram,
+		&optInMatrix,
 		&accessExpiresAt,
 		&createdAt,
 	)
@@ -982,12 +998,14 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 			"email_verified":             emailVerified,
 			"contact_discord":            contactDiscord.String,
 			"contact_telegram":           contactTelegram.String,
+			"contact_matrix":             contactMatrix.String,
 			"preferred_lang":             preferredLang,
 			"notify_expiry_reminder":     notifyExpiry,
 			"notify_account_events":      notifyEvents,
 			"opt_in_email":               optInEmail,
 			"opt_in_discord":             optInDiscord,
 			"opt_in_telegram":            optInTelegram,
+			"opt_in_matrix":              optInMatrix,
 			"is_admin":                   sess.IsAdmin,
 			"access_expires_at":          accessExpiresAt.String,
 			"can_invite":                 h.resolveCanInviteForSession(sess),
@@ -1017,17 +1035,19 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		emailVerified   bool
 		currentDiscord  sql.NullString
 		currentTelegram sql.NullString
+		currentMatrix   sql.NullString
 		preferredLang   string
 		notifyExpiry    bool
 		notifyEvents    bool
 		optInEmail      bool
 		optInDiscord    bool
 		optInTelegram   bool
+		optInMatrix     bool
 	)
 	err := h.db.QueryRow(
-		`SELECT id, email, pending_email, email_verified, contact_discord, contact_telegram,
+		`SELECT id, email, pending_email, email_verified, contact_discord, contact_telegram, contact_matrix,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
-		        opt_in_email, opt_in_discord, opt_in_telegram
+		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix
 		 FROM users WHERE jellyfin_id = ?`,
 		sess.UserID,
 	).Scan(
@@ -1037,12 +1057,14 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		&emailVerified,
 		&currentDiscord,
 		&currentTelegram,
+		&currentMatrix,
 		&preferredLang,
 		&notifyExpiry,
 		&notifyEvents,
 		&optInEmail,
 		&optInDiscord,
 		&optInTelegram,
+		&optInMatrix,
 	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_profile_read_failed", "Erreur de lecture des préférences")})
@@ -1085,6 +1107,10 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	if req.ContactTelegram != nil {
 		newTelegram = strings.TrimSpace(*req.ContactTelegram)
 	}
+	newMatrix := strings.TrimSpace(currentMatrix.String)
+	if req.ContactMatrix != nil {
+		newMatrix = strings.TrimSpace(*req.ContactMatrix)
+	}
 
 	newPreferredLang := strings.TrimSpace(preferredLang)
 	if req.PreferredLang != nil {
@@ -1118,12 +1144,16 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	if req.OptInTelegram != nil {
 		newOptInTelegram = *req.OptInTelegram
 	}
+	newOptInMatrix := optInMatrix
+	if req.OptInMatrix != nil {
+		newOptInMatrix = *req.OptInMatrix
+	}
 
 	_, err = h.db.Exec(
 		`UPDATE users
-		 SET email = ?, pending_email = ?, email_verified = ?, contact_discord = ?, contact_telegram = ?,
+		 SET email = ?, pending_email = ?, email_verified = ?, contact_discord = ?, contact_telegram = ?, contact_matrix = ?,
 		     preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
-		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?,
+		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?, opt_in_matrix = ?,
 		     email_verification_sent_at = CASE WHEN ? THEN NULL ELSE email_verification_sent_at END,
 		     updated_at = datetime('now')
 		 WHERE jellyfin_id = ?`,
@@ -1132,12 +1162,14 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		newEmailVerified,
 		newDiscord,
 		newTelegram,
+		newMatrix,
 		newPreferredLang,
 		newNotifyExpiry,
 		newNotifyEvents,
 		newOptInEmail,
 		newOptInDiscord,
 		newOptInTelegram,
+		newOptInMatrix,
 		req.Email != nil,
 		sess.UserID,
 	)
@@ -1212,7 +1244,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 			"notify_expiry_reminder": newNotifyExpiry,
 			"notify_account_events":  newNotifyEvents,
 			"opt_in_email":           newOptInEmail,
-			"opt_in_discord":             newOptInDiscord,
+			"opt_in_discord":         newOptInDiscord,
 			"opt_in_telegram":        newOptInTelegram,
 		},
 	})
@@ -1379,22 +1411,22 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	}
 
 	maxUses := limits.MaxUses
-	if maxUses <= 0 {
+	if maxUses <= 0 && limits.SourcePreset == nil {
 		maxUses = targetPreset.InviteMaxUses
-	}
-	if maxUses <= 0 {
-		maxUses = 1
 	}
 
 	validityDays := limits.LinkValidityDays
-	if validityDays <= 0 {
+	if validityDays <= 0 && limits.SourcePreset == nil {
 		validityDays = presetInviteLinkValidityDays(targetPreset)
 	}
-	if validityDays <= 0 {
-		validityDays = 30
-	}
 
-	expiresAt := now.AddDate(0, 0, validityDays)
+	var expiresAt interface{}
+	var expiresAtResponse interface{}
+	if validityDays > 0 {
+		resolvedExpiry := now.AddDate(0, 0, validityDays)
+		expiresAt = resolvedExpiry
+		expiresAtResponse = resolvedExpiry.Format(time.RFC3339)
+	}
 
 	profile := jellyfin.InviteProfile{
 		PresetID:                 targetPreset.ID,
@@ -1428,7 +1460,7 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_invite_created", "Lien de parrainage créé"), Data: map[string]interface{}{
 		"code":               code,
 		"max_uses":           maxUses,
-		"expires_at":         expiresAt.Format(time.RFC3339),
+		"expires_at":         expiresAtResponse,
 		"target_preset_id":   targetPreset.ID,
 		"target_preset_name": targetPreset.Name,
 		"link_validity_days": validityDays,
@@ -2539,7 +2571,39 @@ func (h *AdminHandler) getJellyfinPresetByID(presetID string) (*config.JellyfinP
 	return nil, fmt.Errorf("preset introuvable")
 }
 
-// applyPresetToUser récupère les réglages d'un preset et les applique à Jellyfin pour l'utilisateur.
+func inviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) jellyfin.InviteProfile {
+	if preset == nil {
+		return jellyfin.InviteProfile{}
+	}
+	return jellyfin.InviteProfile{
+		PresetID:           strings.TrimSpace(strings.ToLower(preset.ID)),
+		TemplateUserID:     strings.TrimSpace(preset.TemplateUserID),
+		EnableAllFolders:   preset.EnableAllFolders,
+		EnabledFolderIDs:   append([]string(nil), preset.EnabledFolderIDs...),
+		EnableDownload:     preset.EnableDownload,
+		EnableRemoteAccess: preset.EnableRemoteAccess,
+		MaxSessions:        preset.MaxSessions,
+		BitrateLimit:       preset.BitrateLimit,
+		CanInvite:          preset.CanInvite,
+		DisableAfterDays:   preset.DisableAfterDays,
+		ExpiryAction:       normalizeExpiryAction(preset.ExpiryAction),
+		DeleteAfterDays:    preset.DeleteAfterDays,
+	}
+}
+
+func (h *AdminHandler) applyPresetProfileToJellyfin(userID string, preset *config.JellyfinPolicyPreset) error {
+	if h.jfClient == nil {
+		return fmt.Errorf("client Jellyfin indisponible")
+	}
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return fmt.Errorf("identifiant Jellyfin manquant")
+	}
+	return h.jfClient.ApplyInviteProfile(userID, inviteProfileFromPolicyPreset(preset))
+}
+
+// applyPresetToUser force les reglages Jellyfin du preset sur un compte existant.
+// L'association simple d'un preset a un utilisateur ne doit pas appeler ce helper.
 func (h *AdminHandler) applyPresetToUser(rec *adminUserRecord, presetID string) error {
 	if rec == nil {
 		return nil
@@ -2554,20 +2618,13 @@ func (h *AdminHandler) applyPresetToUser(rec *adminUserRecord, presetID string) 
 		return fmt.Errorf("lecture preset %q: %w", presetID, err)
 	}
 
-	patch := &BulkJellyfinPolicyPatch{
-		EnableDownloads:  &preset.EnableDownload,
-		EnableRemote:     &preset.EnableRemoteAccess,
-		MaxActiveSession: &preset.MaxSessions,
-		BitrateLimit:     &preset.BitrateLimit,
-	}
-
 	if rec.JellyfinID != "" {
-		if err := h.applyJellyfinPolicyPatch(rec.JellyfinID, patch); err != nil {
-			return fmt.Errorf("application policy jellyfin: %w", err)
+		if err := h.applyPresetProfileToJellyfin(rec.JellyfinID, preset); err != nil {
+			return fmt.Errorf("application preset Jellyfin: %w", err)
 		}
 	}
 
-	// Persister le choix du preset dans SQLite
+	// Persister le choix du preset dans SQLite.
 	_, err = h.db.Exec(`UPDATE users SET preset_id = ? WHERE id = ?`, preset.ID, rec.ID)
 	if err != nil {
 		return fmt.Errorf("maj preset_id sqlite: %w", err)
@@ -2601,9 +2658,14 @@ func (h *AdminHandler) applyGroupMappingToUser(rec *adminUserRecord, groupName s
 		return nil
 	}
 
-	// Application du preset associé au groupe
-	if err := h.applyPresetToUser(rec, mapping.PolicyPresetID); err != nil {
-		return fmt.Errorf("applyPresetToUser via mapping: %w", err)
+	// Le mapping de groupe associe le preset localement. Il ne force pas les
+	// droits Jellyfin d'un compte existant; l'action bulk "Forcer un preset"
+	// reste le bouton explicite pour cela.
+	if strings.TrimSpace(mapping.PolicyPresetID) != "" {
+		_, err = h.db.Exec(`UPDATE users SET preset_id = ?, updated_at = datetime('now') WHERE id = ?`, strings.TrimSpace(mapping.PolicyPresetID), rec.ID)
+		if err != nil {
+			return fmt.Errorf("maj preset_id via mapping: %w", err)
+		}
 	}
 
 	// Si c'est un groupe LDAP et que LDAP est activé, on ajoute l'utilisateur au groupe LDAP s'il en manque
@@ -2859,13 +2921,7 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if preset != nil {
-		patch := &BulkJellyfinPolicyPatch{
-			EnableDownloads:  &preset.EnableDownload,
-			EnableRemote:     &preset.EnableRemoteAccess,
-			MaxActiveSession: &preset.MaxSessions,
-			BitrateLimit:     &preset.BitrateLimit,
-		}
-		if err := h.applyJellyfinPolicyPatch(created.ID, patch); err != nil {
+		if err := h.applyPresetProfileToJellyfin(created.ID, preset); err != nil {
 			_ = h.jfClient.DeleteUser(created.ID)
 			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Application du preset impossible: " + err.Error()})
 			return
@@ -3055,13 +3111,9 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	_ = h.db.LogAction("user.updated", sess.Username, rec.Username,
 		fmt.Sprintf(`{"user_id":%d,"email":"%s","group_name":"%s","preset_id":"%s","can_invite":%t}`, userID, email, groupName, presetID, canInvite))
 
-	// Application du preset si modifié (ou si le groupe est modifié via mapping)
-	if req.PresetID != nil && presetID != "" {
-		if err := h.applyPresetToUser(rec, presetID); err != nil {
-			slog.Warn("Application preset echouee", "user", rec.Username, "preset", presetID, "error", err)
-			_ = h.db.LogAction("user.preset.failed", sess.Username, rec.Username, err.Error())
-		}
-	} else if req.GroupName != nil && groupName != "" {
+	// Le preset_id est une association locale. Pour forcer Jellyfin, utiliser
+	// l'action explicite "Forcer un preset Jellyfin" depuis les actions bulk.
+	if req.GroupName != nil && groupName != "" {
 		rec.GroupName = groupName
 		if err := h.applyGroupMappingToUser(rec, groupName); err != nil {
 			slog.Warn("Application mapping groupe echouee", "user", rec.Username, "group", groupName, "error", err)
@@ -3328,20 +3380,13 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			if previewOnly {
 				entry["success"] = true
-				entry["message"] = "Preset Jellyfin sera applique"
+				entry["message"] = "Preset Jellyfin sera force, clone inclus si configure"
 				entry["preview"] = true
 				entry["impact"] = map[string]interface{}{"preset_id": preset.ID, "preset_name": preset.Name}
 				break
 			}
 
-			patch := &BulkJellyfinPolicyPatch{
-				EnableDownloads:  &preset.EnableDownload,
-				EnableRemote:     &preset.EnableRemoteAccess,
-				MaxActiveSession: &preset.MaxSessions,
-				BitrateLimit:     &preset.BitrateLimit,
-			}
-
-			err = h.applyJellyfinPolicyPatch(rec.JellyfinID, patch)
+			err = h.applyPresetToUser(rec, preset.ID)
 			if err != nil {
 				entry["success"] = false
 				entry["message"] = err.Error()
@@ -3350,7 +3395,7 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 
 			_ = h.db.LogAction("user.bulk.apply_preset", sess.Username, rec.Username, preset.ID)
 			entry["success"] = true
-			entry["message"] = "Preset Jellyfin appliquÃƒÂ©"
+			entry["message"] = "Preset Jellyfin force, clone inclus si configure"
 
 		case "set_parrainage":
 			if req.CanInvite == nil {
@@ -3978,18 +4023,10 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 			if preset.InviteAllowLanguage {
 				limits.AllowLanguage = true
 			}
-			if preset.InviteMaxUses > 0 {
-				limits.MaxUses = preset.InviteMaxUses
-			}
-			if days := presetInviteLinkValidityDays(preset); days > 0 {
-				limits.LinkValidityDays = days
-			}
-			if preset.InviteQuotaDay > 0 {
-				limits.QuotaDay = preset.InviteQuotaDay
-			}
-			if quotaMonth := presetInviteQuotaMonth(preset); quotaMonth > 0 {
-				limits.QuotaMonth = quotaMonth
-			}
+			limits.MaxUses = preset.InviteMaxUses
+			limits.LinkValidityDays = presetInviteLinkValidityDays(preset)
+			limits.QuotaDay = preset.InviteQuotaDay
+			limits.QuotaMonth = presetInviteQuotaMonth(preset)
 			if strings.TrimSpace(preset.TargetPresetID) != "" {
 				limits.TargetPresetID = strings.TrimSpace(preset.TargetPresetID)
 			}
@@ -4403,11 +4440,17 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	if req.MaxUses < 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "La limite d'utilisations ne peut pas etre negative"})
+		return
+	}
+
 	if !sess.IsAdmin {
-		if req.MaxUses <= 0 {
-			req.MaxUses = 1
-		}
 		if limits.MaxUses > 0 && req.MaxUses > limits.MaxUses {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Limite par lien: entre 1 et %d utilisations pour les parrains", limits.MaxUses)})
+			return
+		}
+		if limits.MaxUses > 0 && req.MaxUses <= 0 {
 			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Limite par lien: entre 1 et %d utilisations pour les parrains", limits.MaxUses)})
 			return
 		}

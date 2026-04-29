@@ -3,6 +3,16 @@
     const i18n = config.i18n || {};
     const taskTypeDescriptions = config.taskTypeDescriptions || {};
 
+    function nonNegativeInt(value, fallback = 0) {
+        const parsed = Number.parseInt(value, 10);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+    }
+
+    function presetInt(preset, key, fallback = 0) {
+        const value = preset ? preset[key] : undefined;
+        return Number.isInteger(value) && value >= 0 ? value : fallback;
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         // --- CSP Compliant Modal Handlers ---
         document.addEventListener("click", (e) => {
@@ -475,17 +485,23 @@
             }
 
             const quotaDayEl = document.getElementById('preset-invite-quota-day');
-            if (quotaDayEl) quotaDayEl.value = preset.invite_quota_day || 0;
+            if (quotaDayEl) quotaDayEl.value = presetInt(preset, 'invite_quota_day', 0);
 
             const quotaMonthEl = document.getElementById('preset-invite-quota-month');
-            if (quotaMonthEl) quotaMonthEl.value = preset.invite_quota_month || preset.invite_quota || 0;
+            if (quotaMonthEl) {
+                quotaMonthEl.value = Number.isInteger(preset.invite_quota_month)
+                    ? Math.max(0, preset.invite_quota_month)
+                    : presetInt(preset, 'invite_quota', 0);
+            }
 
             const maxUsesEl = document.getElementById('preset-invite-max-uses');
-            if (maxUsesEl) maxUsesEl.value = preset.invite_max_uses || 1;
+            if (maxUsesEl) maxUsesEl.value = presetInt(preset, 'invite_max_uses', 0);
 
             const linkDaysEl = document.getElementById('preset-invite-link-days');
             if (linkDaysEl) {
-                const linkDays = preset.invite_link_validity_days || (preset.invite_max_link_hours ? Math.max(1, Math.ceil(preset.invite_max_link_hours / 24)) : 0);
+                const linkDays = Number.isInteger(preset.invite_link_validity_days)
+                    ? Math.max(0, preset.invite_link_validity_days)
+                    : (preset.invite_max_link_hours ? Math.max(1, Math.ceil(preset.invite_max_link_hours / 24)) : 0);
                 linkDaysEl.value = linkDays;
             }
 
@@ -528,22 +544,22 @@
             presets[idx].template_user_id = (document.getElementById('preset-template-user')?.value || '').trim();
             const canInviteEl = document.getElementById('preset-can-invite');
             if (canInviteEl) presets[idx].can_invite = canInviteEl.checked;
-            
+
             const targetPresetEl = document.getElementById('preset-target-preset');
             if (targetPresetEl) presets[idx].target_preset_id = targetPresetEl.value || '';
-            
+
             const quotaDayEl = document.getElementById('preset-invite-quota-day');
             presets[idx].invite_quota_day = quotaDayEl ? (parseInt(quotaDayEl.value, 10) || 0) : 0;
 
             const quotaMonthEl = document.getElementById('preset-invite-quota-month');
             presets[idx].invite_quota_month = quotaMonthEl ? (parseInt(quotaMonthEl.value, 10) || 0) : 0;
             presets[idx].invite_quota = presets[idx].invite_quota_month;
-            
+
             const maxUsesEl = document.getElementById('preset-invite-max-uses');
-            if (maxUsesEl) presets[idx].invite_max_uses = parseInt(maxUsesEl.value, 10) || 1;
-            
+            if (maxUsesEl) presets[idx].invite_max_uses = nonNegativeInt(maxUsesEl.value, 0);
+
             const linkDaysEl = document.getElementById('preset-invite-link-days');
-            const linkDays = linkDaysEl ? (parseInt(linkDaysEl.value, 10) || 0) : 0;
+            const linkDays = linkDaysEl ? nonNegativeInt(linkDaysEl.value, 0) : 0;
             presets[idx].invite_link_validity_days = linkDays;
             presets[idx].invite_max_link_hours = linkDays > 0 ? linkDays * 24 : 0;
 
@@ -674,7 +690,7 @@
                 invite_quota_day: 0,
                 invite_quota_month: 0,
                 invite_quota: 0,
-                invite_max_uses: 1,
+                invite_max_uses: 0,
                 invite_link_validity_days: 0,
                 invite_max_link_hours: 0,
                 invite_allow_language: false,

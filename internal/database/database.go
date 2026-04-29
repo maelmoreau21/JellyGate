@@ -451,9 +451,11 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN notify_account_events BOOLEAN NOT NULL DEFAULT 1`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN contact_discord TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN contact_telegram TEXT NOT NULL DEFAULT ''`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN contact_matrix TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_email BOOLEAN NOT NULL DEFAULT 1`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_discord BOOLEAN NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_telegram BOOLEAN NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN opt_in_matrix BOOLEAN NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN pending_email TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN email_verification_sent_at DATETIME`)
@@ -475,9 +477,11 @@ func (db *DB) migrate() error {
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_account_events BOOLEAN NOT NULL DEFAULT TRUE`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_discord TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_telegram TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS contact_matrix TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_email BOOLEAN NOT NULL DEFAULT TRUE`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_discord BOOLEAN NOT NULL DEFAULT FALSE`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_telegram BOOLEAN NOT NULL DEFAULT FALSE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS opt_in_matrix BOOLEAN NOT NULL DEFAULT FALSE`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS pending_email TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_sent_at TIMESTAMPTZ`,
@@ -601,6 +605,13 @@ func (db *DB) sqliteMigrations() []migration {
 				email_verification_sent_at DATETIME,
 				ldap_dn           TEXT,
 				group_name        TEXT    NOT NULL DEFAULT '',
+				contact_discord   TEXT    NOT NULL DEFAULT '',
+				contact_telegram  TEXT    NOT NULL DEFAULT '',
+				contact_matrix    TEXT    NOT NULL DEFAULT '',
+				opt_in_email      BOOLEAN NOT NULL DEFAULT 1,
+				opt_in_discord    BOOLEAN NOT NULL DEFAULT 0,
+				opt_in_telegram   BOOLEAN NOT NULL DEFAULT 0,
+				opt_in_matrix     BOOLEAN NOT NULL DEFAULT 0,
 				preset_id         TEXT,
 				invited_by        TEXT,
 				is_active         BOOLEAN NOT NULL DEFAULT 1,
@@ -789,6 +800,13 @@ func (db *DB) postgresMigrations() []migration {
 				email_verification_sent_at TIMESTAMPTZ,
 				ldap_dn           TEXT,
 				group_name        TEXT NOT NULL DEFAULT '',
+				contact_discord   TEXT NOT NULL DEFAULT '',
+				contact_telegram  TEXT NOT NULL DEFAULT '',
+				contact_matrix    TEXT NOT NULL DEFAULT '',
+				opt_in_email      BOOLEAN NOT NULL DEFAULT TRUE,
+				opt_in_discord    BOOLEAN NOT NULL DEFAULT FALSE,
+				opt_in_telegram   BOOLEAN NOT NULL DEFAULT FALSE,
+				opt_in_matrix     BOOLEAN NOT NULL DEFAULT FALSE,
 				preset_id         TEXT,
 				invited_by        TEXT,
 				is_active         BOOLEAN NOT NULL DEFAULT TRUE,
@@ -1034,9 +1052,9 @@ func (db *DB) GetInvitationStats() (InvitationStats, error) {
 	query := `
 		SELECT 
 			COUNT(*) as total,
-			SUM(CASE WHEN used_count >= max_uses THEN 1 ELSE 0 END) as used,
-			SUM(CASE WHEN used_count < max_uses AND expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 1 ELSE 0 END) as expired,
-			SUM(CASE WHEN used_count < max_uses AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP) THEN 1 ELSE 0 END) as active
+			SUM(CASE WHEN max_uses > 0 AND used_count >= max_uses THEN 1 ELSE 0 END) as used,
+			SUM(CASE WHEN (max_uses <= 0 OR used_count < max_uses) AND expires_at IS NOT NULL AND expires_at < CURRENT_TIMESTAMP THEN 1 ELSE 0 END) as expired,
+			SUM(CASE WHEN (max_uses <= 0 OR used_count < max_uses) AND (expires_at IS NULL OR expires_at >= CURRENT_TIMESTAMP) THEN 1 ELSE 0 END) as active
 		FROM invitations`
 
 	err := db.QueryRow(query).Scan(&stats.Total, &stats.Used, &stats.Expired, &stats.Active)

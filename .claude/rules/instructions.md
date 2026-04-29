@@ -204,6 +204,20 @@ web/
 - contenu produit personnalisable depuis l'admin pour onboarding, aide post-inscription et messages réutilisables
 - timeline utilisateur enrichie basée sur l'audit log existant
 
+### 4.10 Backlog d'améliorations inspirées de jfa-go
+
+- centre anti-abus d'invitation: CAPTCHA, rate-limit visible, blocage temporaire et score de risque
+- studio de contenu: éditeur Markdown avec preview pour invitation, bienvenue, e-mails et compte utilisateur
+- assistant de premier lancement: configuration guidée Jellyfin, SMTP, URL publique, sécurité et sauvegardes
+- liaison Discord / Telegram / Matrix côté utilisateur avec validation
+- timeline admin enrichie: invitations, inscriptions, presets, expirations et actions admin
+- simulateur avant application: prévisualisation des changements avant preset ou action bulk
+- page santé du portail: diagnostics Jellyfin, SMTP, Jellyseerr, webhooks, sauvegardes, URL publique et i18n
+- parrainage avancé: stats sponsor, liens personnels, quotas, expiration et suivi sponsor -> invité
+- règles de cycle de vie: inactivité, désactivation, suppression différée et relances automatiques
+- historique et audit propre: journal filtrable, export CSV/JSON et détails avant/après
+- Ombi reste exclu du backlog demandé
+
 ## 5. Routes importantes
 
 ### Public
@@ -349,11 +363,11 @@ Remarques:
 
 ## 12. Priorités produit court terme
 
-1. Parrainage utilisateur depuis `Mon compte`
-2. Création directe d'utilisateur côté admin
-3. Centre de tâches manuelles
-4. Intégration Jellyseerr enrichie
-5. Politique avancée de vérification d'e-mail
+1. CAPTCHA / anti-abus invitation
+2. Studio de contenu Markdown
+3. Assistant premier lancement
+4. Timeline admin enrichie
+5. Liaison Discord / Telegram / Matrix
 
 ## 13. Mise à jour récente
 
