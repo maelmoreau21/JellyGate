@@ -8,6 +8,14 @@
 
 window.JG = window.JG || {};
 
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch((err) => {
+            console.warn('[JG.serviceWorker]', err);
+        });
+    });
+}
+
 // ── API helper ──────────────────────────────────────────────────────────────
 
 /**

@@ -200,6 +200,18 @@ func main() {
 		http.ServeFile(w, r, "web/static/favicon.svg")
 	})
 
+	r.Get("/manifest.webmanifest", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/manifest+json; charset=utf-8")
+		http.ServeFile(w, r, "web/static/manifest.webmanifest")
+	})
+
+	r.Get("/service-worker.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Service-Worker-Allowed", "/")
+		http.ServeFile(w, r, "web/static/service-worker.js")
+	})
+
 	// Fichiers statiques
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 

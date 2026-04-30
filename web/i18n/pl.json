@@ -441,6 +441,8 @@
     "login_error_invalid": "Nieprawidlowe dane logowania",
     "login_error_required": "Wpisz nazwe uzytkownika i haslo.",
     "login_forgot_password": "Zapomniales hasla?",
+    "login_remember_me": "Zapamietaj mnie",
+    "login_remember_me_help": "Pozostan zalogowany przez 30 dni na tym urzadzeniu.",
     "login_jellyfin_desc": "Dostęp do biblioteki",
     "login_jellyseerr_desc": "Prośby o treść",
     "login_jellytrack_desc": "Statystyki",

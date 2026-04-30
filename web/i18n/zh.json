@@ -441,6 +441,8 @@
     "login_error_invalid": "凭证无效",
     "login_error_required": "输入您的用户名和密码。",
     "login_forgot_password": "忘记密码？",
+    "login_remember_me": "记住我",
+    "login_remember_me_help": "在此设备上保持登录 30 天。",
     "login_jellyfin_desc": "媒体库访问",
     "login_jellyseerr_desc": "请求内容",
     "login_jellytrack_desc": "观看统计",

@@ -441,6 +441,8 @@
     "login_error_invalid": "Credenciales no válidas",
     "login_error_required": "Introduce el nombre de usuario y la contraseña.",
     "login_forgot_password": "Has olvidado tu contrasena?",
+    "login_remember_me": "Recordarme",
+    "login_remember_me_help": "Mantener la sesion 30 dias en este dispositivo.",
     "login_jellyfin_desc": "Acceso a la biblioteca",
     "login_jellyseerr_desc": "Solicitar contenido",
     "login_jellytrack_desc": "Estadísticas",

@@ -30,7 +30,6 @@
                     <button id="btn-task-quick-sync-users" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_users" }}</button>
                     <button id="btn-task-quick-sync-ldap" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_ldap" }}</button>
                     <button id="btn-task-quick-cleanup" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_cleanup_resets" }}</button>
-                    <button id="btn-task-quick-backup" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_backup_now" }}</button>
                 </div>
             </div>
             <div id="quick-task-status" class="mt-3 hidden rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-[11px] text-sky-200"></div>
@@ -100,9 +99,7 @@
                         <option value="sync_users">{{ .T "automation_task_type_sync_users" }}</option>
                         <option value="sync_ldap_users">{{ .T "automation_task_type_sync_ldap_users" }}</option>
                         <option value="cleanup_resets">{{ .T "automation_task_type_cleanup_resets" }}</option>
-                        <option value="create_backup">{{ .T "automation_task_type_create_backup_advanced" }}</option>
                     </select>
-                    <p class="mt-2 text-[11px] leading-5 text-jg-text-muted">{{ .T "automation_backup_advanced_hint" }}</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -487,11 +484,9 @@
             manualSyncUsers: '{{ .T "automation_manual_sync_users" }}',
             manualSyncLdap: '{{ .T "automation_manual_sync_ldap" }}',
             manualCleanupResets: '{{ .T "automation_manual_cleanup_resets" }}',
-            manualBackupNow: '{{ .T "automation_manual_backup_now" }}',
             taskTypeSyncUsers: '{{ .T "automation_task_type_sync_users" }}',
             taskTypeSyncLdapUsers: '{{ .T "automation_task_type_sync_ldap_users" }}',
             taskTypeCleanupResets: '{{ .T "automation_task_type_cleanup_resets" }}',
-            taskTypeCreateBackupAdvanced: '{{ .T "automation_task_type_create_backup_advanced" }}',
             taskTypeAdvancedBadge: '{{ .T "automation_task_type_advanced_badge" }}',
             quickTaskMissing: '{{ .T "automation_manual_task_missing" }}',
             quickTaskRunning: '{{ .T "automation_manual_task_running" }}',
@@ -502,7 +497,6 @@
             sync_users: '{{ .T "automation_type_sync_users_desc" }}',
             sync_ldap_users: '{{ .T "automation_type_sync_ldap_users_desc" }}',
             cleanup_resets: '{{ .T "automation_type_cleanup_resets_desc" }}',
-            create_backup: '{{ .T "automation_type_create_backup_desc" }}',
         },
     };
 </script>

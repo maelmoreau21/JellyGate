@@ -216,19 +216,6 @@
             }
 
             if (!target) {
-                if (String(taskType || '').trim().toLowerCase() === 'create_backup') {
-                    const runningMsg = taskMessage(i18n.quickTaskRunning, label);
-                    showQuickTaskStatus(runningMsg, 'info');
-                    const res = await JG.api('/admin/api/backups/create', { method: 'POST' });
-                    if (!res.success) {
-                        const failedMsg = taskMessage(i18n.quickTaskFailed, label);
-                        showQuickTaskStatus(res.message || failedMsg, 'error');
-                        return;
-                    }
-                    const successMsg = taskMessage(i18n.quickTaskSuccess, label);
-                    showQuickTaskStatus(successMsg, 'success');
-                    return;
-                }
                 const msg = taskMessage(i18n.quickTaskMissing, label);
                 showQuickTaskStatus(msg, 'error');
                 return;
@@ -891,14 +878,11 @@
                 sync_users: i18n.taskTypeSyncUsers || i18n.manualSyncUsers || 'Sync users',
                 sync_ldap_users: i18n.taskTypeSyncLdapUsers || i18n.manualSyncLdap || 'Sync LDAP users',
                 cleanup_resets: i18n.taskTypeCleanupResets || i18n.manualCleanupResets || 'Clean reset links',
-                create_backup: i18n.taskTypeCreateBackupAdvanced || i18n.manualBackupNow || 'Backup (advanced)',
             };
             const renderTaskTypeCell = (task) => {
                 const taskType = String(task.task_type || '').trim();
                 const label = taskTypeLabels[taskType] || taskType || '-';
-                const badge = taskType === 'create_backup'
-                    ? `<span class="ml-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-amber-200">${JG.esc(i18n.taskTypeAdvancedBadge || 'Advanced')}</span>`
-                    : '';
+                const badge = '';
                 return `<div class="flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold text-jg-text">${JG.esc(label)}</span>${badge}</div><code class="mt-1 block text-[10px] text-jg-text-muted/70">${JG.esc(taskType)}</code>`;
             };
             tbody.innerHTML = tasks.map((task) => `<tr class="hover:bg-white/[0.02] transition-colors border-b border-jg-border last:border-none">
@@ -1154,9 +1138,6 @@
         });
         document.getElementById('btn-task-quick-cleanup')?.addEventListener('click', async () => {
             await runQuickTask('cleanup_resets', i18n.manualCleanupResets);
-        });
-        document.getElementById('btn-task-quick-backup')?.addEventListener('click', async () => {
-            await runQuickTask('create_backup', i18n.manualBackupNow);
         });
 
         // Sidebar toggle

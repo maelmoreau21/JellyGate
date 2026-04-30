@@ -441,6 +441,8 @@
     "login_error_invalid": "Invalid credentials",
     "login_error_required": "Enter both your username and password.",
     "login_forgot_password": "Forgot password?",
+    "login_remember_me": "Remember me",
+    "login_remember_me_help": "Stay signed in for 30 days on this device.",
     "login_jellyfin_desc": "Media library access",
     "login_jellyseerr_desc": "Browse and request content",
     "login_jellytrack_desc": "Playback statistics tracking",

@@ -114,6 +114,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 
 	username := strings.TrimSpace(r.FormValue("username"))
 	password := r.FormValue("password")
+	rememberMe := r.FormValue("remember_me") == "1"
 
 	if username == "" || password == "" {
 		slog.Warn("Tentative de login avec champs vides", "remote", r.RemoteAddr)
@@ -194,11 +195,17 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 4. CrÃƒÂ©er le cookie de session signÃƒÂ© Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+	sessionDuration := session.Duration
+	if rememberMe {
+		sessionDuration = session.RememberDuration
+	}
+	sessionExpiresAt := time.Now().Add(sessionDuration)
+
 	sess := session.Payload{
 		UserID:   authResp.User.ID,
 		Username: authResp.User.Name,
 		IsAdmin:  isAdmin,
-		Exp:      time.Now().Add(session.Duration).Unix(),
+		Exp:      sessionExpiresAt.Unix(),
 	}
 
 	cookieValue, err := session.Sign(sess, h.cfg.SecretKey)
@@ -213,7 +220,8 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		Name:     session.CookieName,
 		Value:    cookieValue,
 		Path:     "/",
-		MaxAge:   int(session.Duration.Seconds()),
+		MaxAge:   int(sessionDuration.Seconds()),
+		Expires:  sessionExpiresAt,
 		HttpOnly: true,                                  // Pas accessible en JavaScript
 		Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL), // Secure si HTTPS
 		SameSite: http.SameSiteLaxMode,                  // Plus compatible que Strict pour le dev/local

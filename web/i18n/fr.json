@@ -441,6 +441,8 @@
     "login_error_invalid": "Identifiants invalides",
     "login_error_required": "Renseignez votre nom d utilisateur et votre mot de passe.",
     "login_forgot_password": "Mot de passe oublie ?",
+    "login_remember_me": "Se souvenir de moi",
+    "login_remember_me_help": "Rester connecte 30 jours sur cet appareil.",
     "login_jellyfin_desc": "Accès à la bibliothèque",
     "login_jellyseerr_desc": "Demander du contenu",
     "login_jellytrack_desc": "Statistiques de lecture",

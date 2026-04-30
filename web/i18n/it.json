@@ -441,6 +441,8 @@
     "login_error_invalid": "Credenziali non valide",
     "login_error_required": "Inserisci sia il nome utente sia la password.",
     "login_forgot_password": "Password dimenticata?",
+    "login_remember_me": "Ricordami",
+    "login_remember_me_help": "Resta connesso per 30 giorni su questo dispositivo.",
     "login_jellyfin_desc": "Accesso libreria",
     "login_jellyseerr_desc": "Richiedi contenuto",
     "login_jellytrack_desc": "Statistiche",

@@ -441,6 +441,8 @@
     "login_error_invalid": "Credenciais invalidas",
     "login_error_required": "Informe o nome de usuario e a senha.",
     "login_forgot_password": "Esqueceu a senha?",
+    "login_remember_me": "Lembrar de mim",
+    "login_remember_me_help": "Permanecer conectado por 30 dias neste dispositivo.",
     "login_jellyfin_desc": "Acesso à biblioteca",
     "login_jellyseerr_desc": "Solicitar conteúdo",
     "login_jellytrack_desc": "Estatísticas",

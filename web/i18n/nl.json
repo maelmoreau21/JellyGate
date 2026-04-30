@@ -441,6 +441,8 @@
     "login_error_invalid": "Ongeldige inloggegevens",
     "login_error_required": "Voer zowel je gebruikersnaam als wachtwoord in.",
     "login_forgot_password": "Wachtwoord vergeten?",
+    "login_remember_me": "Onthoud mij",
+    "login_remember_me_help": "Blijf 30 dagen aangemeld op dit apparaat.",
     "login_jellyfin_desc": "Bibliotheek toegang",
     "login_jellyseerr_desc": "Content aanvragen",
     "login_jellytrack_desc": "Statistieken",

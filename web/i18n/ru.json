@@ -441,6 +441,8 @@
     "login_error_invalid": "Неверные учетные данные",
     "login_error_required": "Введите имя пользователя и пароль.",
     "login_forgot_password": "Забыли пароль?",
+    "login_remember_me": "Запомнить меня",
+    "login_remember_me_help": "Оставаться в системе 30 дней на этом устройстве.",
     "login_jellyfin_desc": "Доступ к библиотеке",
     "login_jellyseerr_desc": "Запросы контента",
     "login_jellytrack_desc": "Статистика",

@@ -27,6 +27,10 @@ const (
 
 	// Duration est la durée de validité d'une session (24 heures).
 	Duration = 24 * time.Hour
+
+	// RememberDuration est la duree de validite quand l'utilisateur choisit
+	// de rester connecte sur ce navigateur.
+	RememberDuration = 30 * 24 * time.Hour
 )
 
 // ── Clés de contexte ────────────────────────────────────────────────────────

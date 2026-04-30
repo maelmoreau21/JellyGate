@@ -441,6 +441,8 @@
     "login_error_invalid": "Ungültige Zugangsdaten",
     "login_error_required": "Bitte geben Sie Benutzername und Passwort ein.",
     "login_forgot_password": "Passwort vergessen?",
+    "login_remember_me": "Angemeldet bleiben",
+    "login_remember_me_help": "30 Tage auf diesem Geraet angemeldet bleiben.",
     "login_jellyfin_desc": "Bibliothekszugriff",
     "login_jellyseerr_desc": "Inhalte anfordern",
     "login_jellytrack_desc": "Statistiken",
