@@ -150,7 +150,7 @@ func TestSettingsHandlerPreviewEmailTemplateUsesJellyGateBranding(t *testing.T) 
 	}
 
 	payload := emailTemplatePreviewInput{
-		Template:    "Hello {{.JellyfinServerName}}",
+		Template:    "Hello {{.serveurname}}",
 		TemplateKey: "confirmation",
 		Language:    "en",
 	}

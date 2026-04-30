@@ -107,43 +107,10 @@
 
         // --- Custom Confirm Logic ---
         function confirmAction(title, message) {
-            return new Promise((resolve) => {
-                const modal = document.getElementById('modal-confirm');
-                if (!modal) {
-                    resolve(window.confirm(message));
-                    return;
-                }
-                const titleEl = document.getElementById('confirm-modal-title');
-                const messageEl = document.getElementById('confirm-modal-message');
-                if (titleEl) titleEl.textContent = title;
-                if (messageEl) messageEl.textContent = message;
-
-                JG.openModal('modal-confirm');
-
-                const btnConfirm = document.getElementById('btn-confirm-action');
-                const btnCancel = document.getElementById('btn-confirm-cancel');
-
-                const cleanup = () => {
-                    btnConfirm.removeEventListener('click', onConfirm);
-                    btnCancel.removeEventListener('click', onCancel);
-                    /* Also close if backdrop or X is clicked (handled globally by closeModal)
-                       But to be robust, we wait a bit in interval to check if modal is hidden */
-                };
-
-                const onConfirm = () => {
-                    JG.closeModal('modal-confirm');
-                    cleanup();
-                    resolve(true);
-                };
-                const onCancel = () => {
-                    JG.closeModal('modal-confirm');
-                    cleanup();
-                    resolve(false);
-                };
-
-                btnConfirm.addEventListener('click', onConfirm);
-                btnCancel.addEventListener('click', onCancel);
-            });
+            if (typeof JG.confirm === 'function') {
+                return JG.confirm(title, message);
+            }
+            return Promise.resolve(false);
         }
 
         let presets = [];
@@ -173,7 +140,7 @@
                 previewName.textContent = name || i18n.taskPreviewEmpty;
             }
             if (previewType) {
-                previewType.textContent = type || '—';
+                previewType.textContent = type || '-';
             }
             if (previewSchedule) {
                 if (hour === '' || minute === '') {
@@ -223,6 +190,12 @@
             box.textContent = message;
         }
 
+        function taskMessage(template, label, taskName) {
+            return String(template || '')
+                .split('{label}').join(label)
+                .split('{task}').join(taskName || label);
+        }
+
         function findTaskByType(taskType) {
             const normalized = String(taskType || '').trim().toLowerCase();
             if (!normalized) {
@@ -243,23 +216,34 @@
             }
 
             if (!target) {
-                const msg = String(i18n.quickTaskMissing || '').replace('{label}', label);
+                if (String(taskType || '').trim().toLowerCase() === 'create_backup') {
+                    const runningMsg = taskMessage(i18n.quickTaskRunning, label);
+                    showQuickTaskStatus(runningMsg, 'info');
+                    const res = await JG.api('/admin/api/backups/create', { method: 'POST' });
+                    if (!res.success) {
+                        const failedMsg = taskMessage(i18n.quickTaskFailed, label);
+                        showQuickTaskStatus(res.message || failedMsg, 'error');
+                        return;
+                    }
+                    const successMsg = taskMessage(i18n.quickTaskSuccess, label);
+                    showQuickTaskStatus(successMsg, 'success');
+                    return;
+                }
+                const msg = taskMessage(i18n.quickTaskMissing, label);
                 showQuickTaskStatus(msg, 'error');
                 return;
             }
 
-            const runningMsg = String(i18n.quickTaskRunning || '').replace('{label}', label);
+            const runningMsg = taskMessage(i18n.quickTaskRunning, label, String(target.name || target.id));
             showQuickTaskStatus(runningMsg, 'info');
             const res = await JG.api(`/admin/api/automation/tasks/${target.id}/run`, { method: 'POST' });
             if (!res.success) {
-                const failedMsg = String(i18n.quickTaskFailed || '').replace('{label}', label);
+                const failedMsg = taskMessage(i18n.quickTaskFailed, label, String(target.name || target.id));
                 showQuickTaskStatus(res.message || failedMsg, 'error');
                 return;
             }
 
-            const successMsg = String(i18n.quickTaskSuccess || '')
-                .replace('{label}', label)
-                .replace('{task}', String(target.name || target.id));
+            const successMsg = taskMessage(i18n.quickTaskSuccess, label, String(target.name || target.id));
             showQuickTaskStatus(successMsg, 'success');
             await loadTasks();
         }
@@ -903,12 +887,26 @@
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-8">${JG.esc(i18n.noTasks)}</td></tr>`;
                 return;
             }
+            const taskTypeLabels = {
+                sync_users: i18n.taskTypeSyncUsers || i18n.manualSyncUsers || 'Sync users',
+                sync_ldap_users: i18n.taskTypeSyncLdapUsers || i18n.manualSyncLdap || 'Sync LDAP users',
+                cleanup_resets: i18n.taskTypeCleanupResets || i18n.manualCleanupResets || 'Clean reset links',
+                create_backup: i18n.taskTypeCreateBackupAdvanced || i18n.manualBackupNow || 'Backup (advanced)',
+            };
+            const renderTaskTypeCell = (task) => {
+                const taskType = String(task.task_type || '').trim();
+                const label = taskTypeLabels[taskType] || taskType || '-';
+                const badge = taskType === 'create_backup'
+                    ? `<span class="ml-2 rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-amber-200">${JG.esc(i18n.taskTypeAdvancedBadge || 'Advanced')}</span>`
+                    : '';
+                return `<div class="flex flex-wrap items-center gap-1.5"><span class="text-xs font-semibold text-jg-text">${JG.esc(label)}</span>${badge}</div><code class="mt-1 block text-[10px] text-jg-text-muted/70">${JG.esc(taskType)}</code>`;
+            };
             tbody.innerHTML = tasks.map((task) => `<tr class="hover:bg-white/[0.02] transition-colors border-b border-jg-border last:border-none">
             <td class="px-6 py-4 font-bold text-jg-text">${JG.esc(task.name || '')}</td>
-            <td class="px-6 py-4"><span class="text-[10px] bg-white/5 px-2 py-1 rounded-md text-jg-text-muted border border-white/5 font-mono">${JG.esc(task.task_type || '')}</span></td>
+            <td class="px-6 py-4">${renderTaskTypeCell(task)}</td>
             <td class="px-6 py-4 text-jg-text font-medium">${String(task.hour).padStart(2, '0')}:${String(task.minute).padStart(2, '0')} ${task.enabled ? `<span class="bg-emerald-500/10 text-emerald-500 text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-2">${JG.esc(i18n.statusOn)}</span>` : `<span class="bg-white/5 text-jg-text-muted text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ml-2">${JG.esc(i18n.statusOff)}</span>`}</td>
-            <td class="px-6 py-4"><code class="text-xs text-jg-text-muted opacity-60">${JG.esc(task.payload || '—')}</code></td>
-            <td class="px-6 py-4 text-sm text-jg-text-muted">${JG.esc(task.last_run_at || '—')}</td>
+            <td class="px-6 py-4"><code class="text-xs text-jg-text-muted opacity-60">${JG.esc(task.payload || '-')}</code></td>
+            <td class="px-6 py-4 text-sm text-jg-text-muted">${JG.esc(task.last_run_at || '-')}</td>
             <td class="px-6 py-4 text-right">
                 <div class="flex justify-end gap-2">
                     <button class="jg-btn jg-btn-sm jg-btn-ghost hover:bg-white/10" data-action="task-run" data-id="${task.id}">${JG.esc(i18n.runNow)}</button>

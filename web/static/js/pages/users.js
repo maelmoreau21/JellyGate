@@ -492,7 +492,7 @@
             const confirmMsg = (text.bulkConfirmTemplate || '{action} on {count} users?')
                 .replace('{action}', (m ? m.label : action))
                 .replace('{count}', String(ids.length));
-            if (!confirm(confirmMsg)) return;
+            if (!(await JG.confirm(i18n.bulkConfirmTitle || 'Confirm action', confirmMsg))) return;
 
             const res = await JG.api('/admin/api/users/bulk', { method: 'POST', body: JSON.stringify(built.payload) });
             if (res.success) { JG.toast(i18n.bulkDone||'OK', 'success'); selectedIds.clear(); closeBulkDrawer(); await loadUsers(); }
@@ -501,7 +501,7 @@
 
         // Event Listeners
         document.getElementById('btn-sync-users')?.addEventListener('click', async () => {
-            if (!confirm(i18n.syncConfirm)) return;
+            if (!(await JG.confirm(i18n.syncTitle || 'Sync users', i18n.syncConfirm))) return;
             const res = await JG.api('/admin/api/users/sync', { method: 'POST' });
             if (res.success) { JG.toast(i18n.syncDone||'OK', 'success'); loadUsers(); }
             else { JG.toast(res.message||i18n.syncError||'Error', 'error'); }
@@ -712,7 +712,7 @@
                 JG.toast(i18n.bulkNeedPreset || 'Select a preset', 'error');
                 return;
             }
-            if (!confirm(i18n.forcePresetConfirm || 'Force this preset on Jellyfin now?')) return;
+            if (!(await JG.confirm(i18n.forcePresetTitle || 'Apply preset', i18n.forcePresetConfirm || 'Force this preset on Jellyfin now?'))) return;
 
             const res = await JG.api('/admin/api/users/bulk', {
                 method: 'POST',

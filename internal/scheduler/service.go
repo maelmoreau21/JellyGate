@@ -271,7 +271,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 		if s.backup == nil {
 			return fmt.Errorf("service backup indisponible")
 		}
-		if _, err := s.backup.CreateBackup("scheduled-task"); err != nil {
+		if _, err := s.backup.CreateBackup("automation"); err != nil {
 			return err
 		}
 		backupCfg, _ := s.db.GetBackupConfig()

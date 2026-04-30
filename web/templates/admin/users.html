@@ -68,7 +68,7 @@
         <div id="filter-panel" class="hidden mt-4 pt-4 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "col_status" }}</label>
-                <select id="filter-status" class="jg-select-premium h-11 text-xs">
+                <select id="filter-status" class="jg-input jg-select-premium h-11 text-xs">
                     <option value="all">{{ .T "users_filter_status_all" }}</option>
                     <option value="active">{{ .T "status_active" }}</option>
                     <option value="inactive">{{ .T "status_inactive" }}</option>
@@ -77,7 +77,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "col_jellyfin" }}</label>
-                <select id="filter-jellyfin" class="jg-select-premium h-11 text-xs">
+                <select id="filter-jellyfin" class="jg-input jg-select-premium h-11 text-xs">
                     <option value="all">{{ .T "users_filter_jellyfin_all" }}</option>
                     <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
                     <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
@@ -86,7 +86,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "users_col_invite" }}</label>
-                <select id="filter-invite" class="jg-select-premium h-11 text-xs">
+                <select id="filter-invite" class="jg-input jg-select-premium h-11 text-xs">
                     <option value="all">{{ .T "users_filter_invite_all" }}</option>
                     <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
                     <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
@@ -94,7 +94,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "users_filter_extra_label" }}</label>
-                <select id="filter-extra" class="jg-select-premium h-11 text-xs">
+                <select id="filter-extra" class="jg-input jg-select-premium h-11 text-xs">
                     <option value="all">{{ .T "users_filter_extra_all" }}</option>
                     <option value="with-email">{{ .T "users_filter_with_email" }}</option>
                     <option value="without-email">{{ .T "users_filter_without_email" }}</option>

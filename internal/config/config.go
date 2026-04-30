@@ -786,9 +786,9 @@ func legacyEmailTemplates() EmailTemplatesConfig {
 		UserCreation: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte cree</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
-<p>Ton compte a ete cree avec succes par un administrateur.</p>
+<p>Un administrateur vient de creer ton compte {{.serveurname}}.</p>
 `),
-		UserCreationSubject: `Compte cree - JellyGate`,
+		UserCreationSubject: `Compte {{.serveurname}} cree`,
 		UserDeletion: defaultEmailBody(`
 <h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Compte supprime</h2>
 <p>Bonjour <strong>{{.Username}}</strong>,</p>
@@ -835,6 +835,18 @@ func replaceLegacyEmailField(current *string, legacy, updated string) {
 	}
 }
 
+func replaceHardcodedEmailServerName(current *string) {
+	replacer := strings.NewReplacer(
+		"Compte Jellyfin", "Compte {{.serveurname}}",
+		"ton compte Jellyfin", "ton compte {{.serveurname}}",
+		"votre compte Jellyfin", "votre compte {{.serveurname}}",
+		"compte Jellyfin", "compte {{.serveurname}}",
+		"Jellyfin Account", "{{.serveurname}} Account",
+		"Jellyfin account", "{{.serveurname}} account",
+	)
+	*current = replacer.Replace(*current)
+}
+
 // UpgradeLegacyEmailTemplates remplace uniquement les anciens textes par defaut
 // enregistres en base afin d'aligner le wording avec un compte/acces Jellyfin.
 func UpgradeLegacyEmailTemplates(cfg *EmailTemplatesConfig) {
@@ -866,6 +878,9 @@ func UpgradeLegacyEmailTemplates(cfg *EmailTemplatesConfig) {
 	replaceLegacyEmailField(&cfg.ExpiryAdjustedSubject, legacy.ExpiryAdjustedSubject, updated.ExpiryAdjustedSubject)
 	replaceLegacyEmailField(&cfg.Welcome, legacy.Welcome, updated.Welcome)
 	replaceLegacyEmailField(&cfg.WelcomeSubject, legacy.WelcomeSubject, updated.WelcomeSubject)
+
+	replaceHardcodedEmailServerName(&cfg.UserCreation)
+	replaceHardcodedEmailServerName(&cfg.UserCreationSubject)
 
 	if strings.TrimSpace(cfg.BaseTemplateHeader) == strings.TrimSpace(legacyGradientEmailHeader) {
 		cfg.BaseTemplateHeader = DefaultEmailBaseHeader()

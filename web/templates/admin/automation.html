@@ -97,10 +97,12 @@
                 <div class="mt-4">
                     <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
                     <select id="task-type" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
-                        <option value="sync_ldap_users">{{ .T "automation_manual_sync_ldap" }}</option>
-                        <option value="cleanup_resets">{{ .T "automation_manual_cleanup_resets" }}</option>
-                        <option value="create_backup">{{ .T "automation_manual_backup_now" }}</option>
+                        <option value="sync_users">{{ .T "automation_task_type_sync_users" }}</option>
+                        <option value="sync_ldap_users">{{ .T "automation_task_type_sync_ldap_users" }}</option>
+                        <option value="cleanup_resets">{{ .T "automation_task_type_cleanup_resets" }}</option>
+                        <option value="create_backup">{{ .T "automation_task_type_create_backup_advanced" }}</option>
                     </select>
+                    <p class="mt-2 text-[11px] leading-5 text-jg-text-muted">{{ .T "automation_backup_advanced_hint" }}</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
@@ -486,6 +488,11 @@
             manualSyncLdap: '{{ .T "automation_manual_sync_ldap" }}',
             manualCleanupResets: '{{ .T "automation_manual_cleanup_resets" }}',
             manualBackupNow: '{{ .T "automation_manual_backup_now" }}',
+            taskTypeSyncUsers: '{{ .T "automation_task_type_sync_users" }}',
+            taskTypeSyncLdapUsers: '{{ .T "automation_task_type_sync_ldap_users" }}',
+            taskTypeCleanupResets: '{{ .T "automation_task_type_cleanup_resets" }}',
+            taskTypeCreateBackupAdvanced: '{{ .T "automation_task_type_create_backup_advanced" }}',
+            taskTypeAdvancedBadge: '{{ .T "automation_task_type_advanced_badge" }}',
             quickTaskMissing: '{{ .T "automation_manual_task_missing" }}',
             quickTaskRunning: '{{ .T "automation_manual_task_running" }}',
             quickTaskFailed: '{{ .T "automation_manual_task_failed" }}',

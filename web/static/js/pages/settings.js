@@ -204,6 +204,7 @@
             { value: '{{.JellyGateURL}}', label: t('settings_email_var_jellygate_url', 'public JellyGate URL') },
             { value: '{{.JellyfinURL}}', label: t('settings_email_var_jellyfin_url', 'Jellyfin login URL') },
             { value: '{{.JellyfinServerName}}', label: t('settings_email_var_jellyfin_server_name', 'Jellyfin server name') },
+            { value: '{{.serveurname}}', label: t('settings_email_var_jellyfin_server_name', 'Jellyfin server name') },
             { value: '{{.JellyseerrURL}}', label: t('settings_email_var_jellyseerr_url', 'Jellyseerr URL') },
             { value: '{{.JellyTrackURL}}', label: t('settings_email_var_jellytrack_url', 'JellyTrack URL') },
             { value: '{{.Message}}', label: t('settings_email_var_message', 'custom message (admin invitation)') },
@@ -1463,6 +1464,26 @@
         return date.toLocaleString();
     }
 
+    function backupSourceLabel(backup) {
+        const source = String((backup && backup.source) || 'unknown').trim().toLowerCase() || 'unknown';
+        return t(`backup_source_${source}`, (backup && backup.display_label) || source);
+    }
+
+    function renderBackupArchiveCell(backup) {
+        const legacy = backup && backup.is_legacy_name
+            ? `<span class="rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.16em] text-amber-200">${JG.esc(t('backup_legacy_name', 'Legacy name'))}</span>`
+            : '';
+        return `
+            <div class="flex flex-col gap-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-semibold text-slate-100">${JG.esc(backupSourceLabel(backup))}</span>
+                    ${legacy}
+                </div>
+                <span class="font-mono text-[11px] text-slate-400">${JG.esc(backup.name)}</span>
+            </div>
+        `;
+    }
+
     async function loadBackups() {
         const tbody = document.getElementById('backup-list-body');
         if (!tbody) {
@@ -1483,7 +1504,7 @@
 
         tbody.innerHTML = backups.map((backup) => `
       <tr>
-        <td class="font-mono text-xs text-slate-200">${JG.esc(backup.name)}</td>
+        <td>${renderBackupArchiveCell(backup)}</td>
         <td class="text-slate-400">${JG.esc(formatSize(backup.size_bytes))}</td>
         <td class="text-slate-400">${JG.esc(fmtDateTime(backup.created_at))}</td>
         <td class="text-right">
@@ -1536,7 +1557,12 @@
             ? t('backup_restore_confirm_suffix', 'A restart is required.')
             : t('backup_restore_confirm_suffix_pg', 'The restore will be applied immediately.');
 
-        if (!confirm(`${t('backup_restore_confirm_prefix', 'Prepare restoration for')} ${name}? ${confirmSuffix}`)) {
+        const agreed = await JG.confirm(
+            t('backup_action_restore', 'Restore'),
+            `${t('backup_restore_confirm_prefix', 'Prepare restoration for')} ${name}? ${confirmSuffix}`,
+            { confirmLabel: t('backup_action_restore', 'Restore') },
+        );
+        if (!agreed) {
             return;
         }
         const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}/restore`, { method: 'POST' });
@@ -1548,7 +1574,12 @@
     }
 
     async function deleteBackup(name) {
-        if (!confirm(`${t('backup_delete_confirm_prefix', 'Delete permanently')} ${name}?`)) {
+        const agreed = await JG.confirm(
+            t('backup_action_delete', 'Delete'),
+            `${t('backup_delete_confirm_prefix', 'Delete permanently')} ${name}?`,
+            { confirmLabel: t('backup_action_delete', 'Delete'), danger: true },
+        );
+        if (!agreed) {
             return;
         }
         const res = await JG.api(`/admin/api/backups/${encodeURIComponent(name)}`, { method: 'DELETE' });

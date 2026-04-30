@@ -70,6 +70,25 @@ func renderInlineTemplate(tpl string, data map[string]string) (string, error) {
 	return strings.Join(strings.Fields(rendered), " "), nil
 }
 
+func normalizeEmailServerNameData(data map[string]string) {
+	if data == nil {
+		return
+	}
+	serverName := firstNonEmpty(
+		data["JellyfinServerName"],
+		data["ServerName"],
+		data["serverName"],
+		data["serveurname"],
+	)
+	if serverName == "" {
+		serverName = "Jellyfin"
+	}
+	data["JellyfinServerName"] = serverName
+	data["ServerName"] = serverName
+	data["serverName"] = serverName
+	data["serveurname"] = serverName
+}
+
 func resolveEmailLogoURL(data map[string]string, configuredLogo string) string {
 	logoPath := strings.TrimSpace(configuredLogo)
 	if logoPath == "" {
@@ -113,9 +132,7 @@ func sendTemplateIfConfigured(mailer *mail.Mailer, to, subject, lang, templateKe
 	if data == nil {
 		data = map[string]string{}
 	}
-	if strings.TrimSpace(data["JellyfinServerName"]) == "" {
-		data["JellyfinServerName"] = "Jellyfin"
-	}
+	normalizeEmailServerNameData(data)
 	if strings.TrimSpace(data["AutomaticFooter"]) == "" {
 		data["AutomaticFooter"] = config.DefaultEmailAutomaticFooterForLanguage(lang)
 	}

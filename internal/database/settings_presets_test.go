@@ -106,3 +106,55 @@ func TestSaveJellyfinPolicyPresetsNormalizesNewBlocks(t *testing.T) {
 		t.Fatalf("LatestItemsExcludes not cleaned: %#v", got.UserConfiguration.LatestItemsExcludes)
 	}
 }
+
+func TestSeedDefaultTasksDoesNotCreateBackupAutomationDuplicate(t *testing.T) {
+	db := newPresetTestDB(t)
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM scheduled_tasks WHERE task_type = ?`, "create_backup").Scan(&count); err != nil {
+		t.Fatalf("count create_backup tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("create_backup default task count = %d, want 0", count)
+	}
+}
+
+func TestDisableDefaultBackupAutomationTaskOnceOnlyTouchesSystemDuplicate(t *testing.T) {
+	db := newPresetTestDB(t)
+	if _, err := db.Exec(`DELETE FROM settings WHERE key = ?`, SettingDefaultBackupTaskCleanupV1); err != nil {
+		t.Fatalf("delete cleanup flag: %v", err)
+	}
+	now := "2026-04-30 12:00:00"
+	if _, err := db.Exec(
+		`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"Sauvegarde Automatique", "create_backup", true, 5, 0, "system", now, now,
+	); err != nil {
+		t.Fatalf("insert system duplicate: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		"Sauvegarde personnelle", "create_backup", true, 6, 0, "admin", now, now,
+	); err != nil {
+		t.Fatalf("insert user task: %v", err)
+	}
+
+	if err := db.disableDefaultBackupAutomationTaskOnce(); err != nil {
+		t.Fatalf("disableDefaultBackupAutomationTaskOnce() error = %v", err)
+	}
+
+	var systemEnabled, userEnabled int
+	if err := db.QueryRow(`SELECT enabled FROM scheduled_tasks WHERE name = ? AND created_by = ?`, "Sauvegarde Automatique", "system").Scan(&systemEnabled); err != nil {
+		t.Fatalf("read system duplicate: %v", err)
+	}
+	if err := db.QueryRow(`SELECT enabled FROM scheduled_tasks WHERE name = ? AND created_by = ?`, "Sauvegarde personnelle", "admin").Scan(&userEnabled); err != nil {
+		t.Fatalf("read user task: %v", err)
+	}
+	if systemEnabled != 0 {
+		t.Fatalf("system default backup task should be disabled")
+	}
+	if userEnabled == 0 {
+		t.Fatalf("user-created backup task should stay enabled")
+	}
+}

@@ -11,18 +11,18 @@
     </script>
     {{/* ── Mobile Header ────────────────────────────────────────────────── */}}
     <header class="jg-mobile-header lg:hidden jg-glass">
-        <div class="flex items-center justify-between px-4 h-16">
+        <div class="flex items-center gap-3 px-4 h-16">
+            <button id="mobile-menu-toggle" class="jg-mobile-menu-button p-2 rounded-xl bg-white/5 text-jg-text-muted hover:text-jg-text transition-colors" aria-label="{{ .T "nav_expand" }}" aria-controls="sidebar" aria-expanded="false">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
             <a href="/admin/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
                 <div class="w-7 h-7 flex-shrink-0">
                     {{ template "logo" . }}
                 </div>
                 <span class="font-bold text-lg tracking-tight">JellyGate</span>
             </a>
-            <button id="mobile-menu-toggle" class="p-2 rounded-xl bg-white/5 text-jg-text-muted hover:text-jg-text transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-            </button>
         </div>
     </header>
 

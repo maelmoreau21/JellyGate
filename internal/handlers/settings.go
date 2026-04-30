@@ -821,7 +821,6 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		"Message":            config.DefaultEmailPreviewMessageForLanguage(previewLang),
 		"AutomaticFooter":    config.DefaultEmailAutomaticFooterForLanguage(previewLang),
 	}
-	sample["EmailLogoURL"] = resolveEmailLogoURL(sample, previewCfg.EmailLogoURL)
 	for k, v := range input.Context {
 		key := strings.TrimSpace(k)
 		if key == "" {
@@ -829,6 +828,8 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		}
 		sample[key] = v
 	}
+	normalizeEmailServerNameData(sample)
+	sample["EmailLogoURL"] = resolveEmailLogoURL(sample, previewCfg.EmailLogoURL)
 
 	tpl, err := template.New("email_preview").Option("missingkey=zero").Parse(tplRaw)
 	if err != nil {

@@ -212,6 +212,53 @@ JG.openModal = function (id) {
     }
 };
 
+JG.confirm = function (title, message, options = {}) {
+    const modal = document.getElementById('jg-confirm-modal');
+    if (!modal) {
+        return Promise.resolve(window.confirm(message || title || 'Confirm?'));
+    }
+
+    const titleEl = document.getElementById('jg-confirm-title');
+    const messageEl = document.getElementById('jg-confirm-message');
+    const okBtn = document.getElementById('jg-confirm-ok');
+    const cancelBtn = document.getElementById('jg-confirm-cancel');
+    if (!titleEl || !messageEl || !okBtn || !cancelBtn) {
+        return Promise.resolve(window.confirm(message || title || 'Confirm?'));
+    }
+
+    okBtn.dataset.defaultLabel = okBtn.dataset.defaultLabel || okBtn.textContent || 'Confirm';
+    cancelBtn.dataset.defaultLabel = cancelBtn.dataset.defaultLabel || cancelBtn.textContent || 'Cancel';
+    titleEl.textContent = title || 'Confirm';
+    messageEl.textContent = message || '';
+    okBtn.textContent = options.confirmLabel || okBtn.dataset.defaultLabel;
+    cancelBtn.textContent = options.cancelLabel || cancelBtn.dataset.defaultLabel;
+    okBtn.classList.toggle('jg-btn-danger', !!options.danger);
+    okBtn.classList.toggle('jg-btn-primary', !options.danger);
+
+    return new Promise((resolve) => {
+        const finish = (value) => {
+            modal.removeEventListener('click', onBackdrop);
+            okBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            JG.closeModal('jg-confirm-modal');
+            resolve(value);
+        };
+        const onConfirm = () => finish(true);
+        const onCancel = () => finish(false);
+        const onBackdrop = (event) => {
+            if (event.target && event.target.hasAttribute('data-jg-confirm-cancel')) {
+                finish(false);
+            }
+        };
+
+        okBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('click', onBackdrop);
+        JG.openModal('jg-confirm-modal');
+        okBtn.focus();
+    });
+};
+
 // ── Language switcher ───────────────────────────────────────────────────────
 
 /**
@@ -244,19 +291,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const backdrop = document.getElementById('sidebar-backdrop');
 
     if (mobileMenuBtn && sidebar && backdrop) {
+        const setSidebarOpen = (open) => {
+            sidebar.classList.toggle('open', open);
+            backdrop.classList.toggle('hidden', !open);
+            document.body.classList.toggle('overflow-hidden', open);
+            mobileMenuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        };
+
         const toggleSidebar = () => {
-            sidebar.classList.toggle('open');
-            backdrop.classList.toggle('hidden');
-            document.body.classList.toggle('overflow-hidden');
+            setSidebarOpen(!sidebar.classList.contains('open'));
         };
 
         mobileMenuBtn.addEventListener('click', toggleSidebar);
-        backdrop.addEventListener('click', toggleSidebar);
+        backdrop.addEventListener('click', () => setSidebarOpen(false));
 
         // Close on navigation (if same page anchor)
         sidebar.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
-                if (window.innerWidth < 1024) toggleSidebar();
+                if (window.innerWidth < 1024) setSidebarOpen(false);
             });
         });
     }

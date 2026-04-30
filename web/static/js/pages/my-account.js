@@ -292,7 +292,7 @@
             tbody.querySelectorAll('.btn-delete-sponsor').forEach(btn => {
                 btn.onclick = async () => {
                     const code = btn.dataset.code;
-                    if (!confirm(i18n.sponsorshipDeleteConfirm || 'Delete this invitation link?')) return;
+                    if (!(await JG.confirm(i18n.sponsorshipDeleteTitle || 'Delete link', i18n.sponsorshipDeleteConfirm || 'Delete this invitation link?', { danger: true }))) return;
                     const delRes = await JG.api(`/admin/api/invitations/${code}`, { method: 'DELETE' });
                     if (delRes.success) {
                         JG.toast(i18n.sponsorshipDeleted || 'Link deleted', 'success');

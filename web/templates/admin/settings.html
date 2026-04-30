@@ -460,9 +460,16 @@
 
         <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
           <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div class="w-full lg:max-w-sm">
+            <div class="email-template-language-picker w-full lg:max-w-sm">
               <label class="jg-label" for="email-template-lang-select">{{ .T "settings_email_language_label" }}</label>
-              <select id="email-template-lang-select" class="jg-input jg-select-premium bg-black/20 hover:bg-black/40 text-sm h-11"></select>
+              <div class="email-template-select-shell">
+                <span class="email-template-select-icon" aria-hidden="true">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 0A18.02 18.02 0 019 14.5m5 4.5l3-7 3 7m-1.1-2.5h-3.8" />
+                  </svg>
+                </span>
+                <select id="email-template-lang-select" class="jg-input jg-select-premium email-template-lang-select bg-black/20 hover:bg-black/40 text-sm h-12"></select>
+              </div>
               <p class="text-xs text-slate-400 mt-3">{{ .T "settings_email_language_desc" }}</p>
             </div>
             <div class="flex-1 rounded-xl border border-black/5 dark:border-white/10 bg-black/20 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -792,7 +799,7 @@
       <div class="glass-card p-4 md:p-5">
         <div class="mb-3 pb-2 border-b border-black/5 dark:border-white/10">
           <h2 class="text-lg font-semibold text-white">{{ .T "settings_backup_title" }}</h2>
-          
+          <p class="mt-2 text-sm text-jg-text-muted">{{ .T "settings_backup_advanced_note" }}</p>
         </div>
 
 
@@ -809,8 +816,11 @@
             </div>
             <div>
               <label class="jg-label" for="backup-retention">{{ .T "settings_backup_retention_fixed" }}</label>
-              <input id="backup-retention" type="number" min="7" max="7" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" value="7" readonly>
-              
+              <input id="backup-retention" type="hidden" value="7">
+              <div class="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm font-semibold text-slate-200">
+                {{ .T "settings_backup_retention_display" }}
+              </div>
+              <p class="mt-2 text-[11px] leading-5 text-jg-text-muted">{{ .T "settings_backup_retention_help" }}</p>
             </div>
             <div class="flex items-end">
               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5 w-full">{{ .T "settings_backup_save_schedule" }}</button>
@@ -884,6 +894,12 @@
       backup_action_export: '{{ .T "settings_backup_action_export" }}',
       backup_action_restore: '{{ .T "settings_backup_action_restore" }}',
       backup_action_delete: '{{ .T "settings_backup_action_delete" }}',
+      backup_source_settings: '{{ .T "settings_backup_source_settings" }}',
+      backup_source_automation: '{{ .T "settings_backup_source_automation" }}',
+      backup_source_manual: '{{ .T "settings_backup_source_manual" }}',
+      backup_source_imported: '{{ .T "settings_backup_source_imported" }}',
+      backup_source_unknown: '{{ .T "settings_backup_source_unknown" }}',
+      backup_legacy_name: '{{ .T "settings_backup_legacy_name" }}',
       backup_created: '{{ .T "settings_backup_created" }}',
       backup_error: '{{ .T "settings_backup_error" }}',
       backup_select_zip: '{{ .T "settings_backup_select_zip" }}',

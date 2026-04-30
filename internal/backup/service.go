@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -31,10 +32,16 @@ const (
 	maxArchiveUncompressedBytes uint64 = 2 * 1024 * 1024 * 1024
 )
 
+var backupStampPattern = regexp.MustCompile(`^\d{8}-\d{6}$`)
+
 type BackupInfo struct {
-	Name      string    `json:"name"`
-	SizeBytes int64     `json:"size_bytes"`
-	CreatedAt time.Time `json:"created_at"`
+	Name         string    `json:"name"`
+	SizeBytes    int64     `json:"size_bytes"`
+	CreatedAt    time.Time `json:"created_at"`
+	Reason       string    `json:"reason"`
+	Source       string    `json:"source"`
+	DisplayLabel string    `json:"display_label"`
+	IsLegacyName bool      `json:"is_legacy_name"`
 }
 
 type Service struct {
@@ -101,6 +108,96 @@ func sanitizeReason(reason string) string {
 		return "manual"
 	}
 	return reason
+}
+
+func classifyBackupReason(reason string) (source, label string, legacy bool) {
+	switch sanitizeReason(reason) {
+	case "auto":
+		return "settings", "Daily automatic", false
+	case "automation":
+		return "automation", "Advanced automation", false
+	case "scheduled-task":
+		return "automation", "Advanced automation", true
+	case "manual":
+		return "manual", "Manual", false
+	case "imported", "import":
+		return "imported", "Imported", false
+	default:
+		return "unknown", "Backup", false
+	}
+}
+
+func inferBackupReasonFromName(name string) (string, bool) {
+	lower := strings.TrimSuffix(strings.ToLower(filepath.Base(strings.TrimSpace(name))), ".zip")
+	if strings.HasPrefix(lower, "jellygate-imported-") {
+		return "imported", false
+	}
+	if !strings.HasPrefix(lower, "jellygate-") || len(lower) <= len("jellygate-")+16 {
+		return "manual", false
+	}
+
+	stamp := lower[len(lower)-15:]
+	if !backupStampPattern.MatchString(stamp) || lower[len(lower)-16] != '-' {
+		return "manual", false
+	}
+
+	reason := lower[len("jellygate-") : len(lower)-16]
+	if reason == "" {
+		return "manual", false
+	}
+	return sanitizeReason(reason), reason == "scheduled-task"
+}
+
+func readBackupMetadata(path string) map[string]string {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return nil
+	}
+	defer zr.Close()
+
+	for _, file := range zr.File {
+		if !strings.EqualFold(filepath.Base(file.Name), "metadata.json") || file.FileInfo().IsDir() {
+			continue
+		}
+		rc, err := file.Open()
+		if err != nil {
+			return nil
+		}
+		defer rc.Close()
+
+		payload, err := io.ReadAll(io.LimitReader(rc, 64*1024))
+		if err != nil {
+			return nil
+		}
+		var meta map[string]string
+		if err := json.Unmarshal(payload, &meta); err != nil {
+			return nil
+		}
+		return meta
+	}
+	return nil
+}
+
+func backupInfoFromFile(path, name string, st os.FileInfo) BackupInfo {
+	reason, legacyFromName := inferBackupReasonFromName(name)
+	if strings.HasPrefix(strings.ToLower(name), "jellygate-imported-") {
+		reason = "imported"
+	} else if meta := readBackupMetadata(path); meta != nil {
+		if metaReason := strings.TrimSpace(meta["reason"]); metaReason != "" {
+			reason = sanitizeReason(metaReason)
+		}
+	}
+
+	source, label, legacyFromReason := classifyBackupReason(reason)
+	return BackupInfo{
+		Name:         name,
+		SizeBytes:    st.Size(),
+		CreatedAt:    st.ModTime(),
+		Reason:       sanitizeReason(reason),
+		Source:       source,
+		DisplayLabel: label,
+		IsLegacyName: legacyFromName || legacyFromReason,
+	}
 }
 
 func safeArchiveName(name string) (string, error) {
@@ -232,7 +329,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 		return info, fmt.Errorf("stat archive: %w", err)
 	}
 
-	info = BackupInfo{Name: name, SizeBytes: st.Size(), CreatedAt: st.ModTime()}
+	info = backupInfoFromFile(path, name, st)
 	if s.notifier != nil {
 		s.notifier.NotifyBackupCreated(info.Name, info.SizeBytes)
 	}
@@ -367,7 +464,7 @@ func (s *Service) ListBackups() ([]BackupInfo, error) {
 		if err != nil {
 			continue
 		}
-		list = append(list, BackupInfo{Name: name, SizeBytes: st.Size(), CreatedAt: st.ModTime()})
+		list = append(list, backupInfoFromFile(filepath.Join(s.backupDir, name), name, st))
 	}
 
 	sort.Slice(list, func(i, j int) bool { return list[i].CreatedAt.After(list[j].CreatedAt) })
@@ -457,7 +554,7 @@ func (s *Service) ImportBackup(filename string, r io.Reader) (BackupInfo, error)
 		return info, err
 	}
 
-	return BackupInfo{Name: name, SizeBytes: st.Size(), CreatedAt: st.ModTime()}, nil
+	return backupInfoFromFile(path, name, st), nil
 }
 
 func validateBackupArchive(path string) error {

@@ -33,6 +33,7 @@ const (
 	SettingBackupLastRun               = "backup_last_run"                // Date locale YYYY-MM-DD
 	SettingDefaultLang                 = "default_lang"                   // Langue par defaut du serveur (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
 	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
+	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
 )
 
 // GetDefaultLang retourne la langue par défaut du serveur.

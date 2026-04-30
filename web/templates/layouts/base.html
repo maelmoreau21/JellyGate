@@ -45,6 +45,18 @@
     {{/* Toast container */}}
     <div id="toast-container" class="toast-container"></div>
 
+    <div id="jg-confirm-modal" class="modal-overlay hidden fixed inset-0 z-[120] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="jg-confirm-title" aria-describedby="jg-confirm-message">
+        <div class="fixed inset-0 bg-black/75 backdrop-blur-sm" data-jg-confirm-cancel aria-hidden="true"></div>
+        <div class="jg-card jg-glass modal-content relative z-10 text-left shadow-2xl">
+            <h2 id="jg-confirm-title" class="text-lg font-semibold text-white">{{ .T "confirm_title" }}</h2>
+            <p id="jg-confirm-message" class="mt-3 text-sm leading-6 text-jg-text-muted"></p>
+            <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                <button type="button" id="jg-confirm-cancel" class="jg-btn jg-btn-ghost h-11">{{ .T "cancel" }}</button>
+                <button type="button" id="jg-confirm-ok" class="jg-btn jg-btn-primary h-11">{{ .T "confirm_action" }}</button>
+            </div>
+        </div>
+    </div>
+
     {{ block "body" . }}{{ end }}
 
     {{/* Language selector — moved into admin sidebar footer by app.js when available */}}

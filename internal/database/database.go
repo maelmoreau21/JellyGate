@@ -506,6 +506,9 @@ func (db *DB) migrate() error {
 	if err := db.backfillExistingEmailVerificationState(); err != nil {
 		return fmt.Errorf("backfill email verification historique: %w", err)
 	}
+	if err := db.disableDefaultBackupAutomationTaskOnce(); err != nil {
+		return fmt.Errorf("nettoyage tache backup automation historique: %w", err)
+	}
 
 	slog.Info("Migrations terminees", "count", len(migrations), "driver", db.driver)
 
@@ -514,6 +517,29 @@ func (db *DB) migrate() error {
 	}
 
 	return nil
+}
+
+func (db *DB) disableDefaultBackupAutomationTaskOnce() error {
+	status, err := db.GetSetting(SettingDefaultBackupTaskCleanupV1)
+	if err != nil {
+		return err
+	}
+	if strings.EqualFold(strings.TrimSpace(status), "done") {
+		return nil
+	}
+
+	if _, err := db.Exec(
+		`UPDATE scheduled_tasks
+		 SET enabled = FALSE, updated_at = CURRENT_TIMESTAMP
+		 WHERE created_by = ? AND task_type = ? AND name = ?`,
+		"system",
+		"create_backup",
+		"Sauvegarde Automatique",
+	); err != nil {
+		return err
+	}
+
+	return db.SetSetting(SettingDefaultBackupTaskCleanupV1, "done")
 }
 
 func (db *DB) seedDefaultTasks() error {
@@ -534,7 +560,6 @@ func (db *DB) seedDefaultTasks() error {
 	}{
 		{"Synchro Utilisateurs", "sync_users", 4, 0},
 		{"Nettoyage Jetons", "cleanup_resets", 3, 0},
-		{"Sauvegarde Automatique", "create_backup", 5, 0},
 	}
 
 	now := time.Now().Format("2006-01-02 15:04:05")
