@@ -408,6 +408,7 @@ type settingsResponse struct {
 	DefaultEmailBaseFooter string                                 `json:"default_email_base_footer"`
 	PortalLinks            config.PortalLinksConfig               `json:"portal_links"`
 	InvitationProfile      config.InvitationProfileConfig         `json:"invitation_profile"`
+	AuthSession            database.AuthSessionConfig             `json:"auth_session"`
 	LDAP                   config.LDAPConfig                      `json:"ldap"`
 	SMTP                   config.SMTPConfig                      `json:"smtp"`
 	Webhooks               config.WebhooksConfig                  `json:"webhooks"`
@@ -424,6 +425,10 @@ type generalInput struct {
 	JellyfinServerName string `json:"jellyfin_server_name"`
 	JellyseerrURL      string `json:"jellyseerr_url"`
 	JellyTrackURL      string `json:"jellytrack_url"`
+}
+
+type authSessionInput struct {
+	Remember30Days bool `json:"remember_30_days"`
 }
 
 func normalizePublicPortalURL(raw string) (string, error) {
@@ -576,6 +581,16 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	authSessionCfg, err := h.db.GetAuthSessionConfig()
+	if err != nil {
+		slog.Error("Erreur lecture config AuthSession", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_auth_session_read_error", "Erreur lecture de la politique de session"),
+		})
+		return
+	}
+
 	// Masquer le mot de passe LDAP et SMTP dans la rÃƒÂ©ponse
 	maskedLDAP := ldapCfg
 	if maskedLDAP.BindPassword != "" {
@@ -614,6 +629,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			DefaultEmailBaseFooter: config.DefaultEmailBaseFooter(),
 			PortalLinks:            portalLinks,
 			InvitationProfile:      inviteProfileCfg,
+			AuthSession:            authSessionCfg,
 			LDAP:                   maskedLDAP,
 			SMTP:                   maskedSMTP,
 			Webhooks:               maskedWebhooksConfig(webhooksCfg),
@@ -707,7 +723,78 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// FetchJellyfinServerName rÃƒÂ©cupÃƒÂ¨re le nom du serveur depuis l'API Jellyfin.
+// SaveAuthSession sauvegarde la politique de sessions persistantes.
+func (h *SettingsHandler) SaveAuthSession(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	var input authSessionInput
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	cfg, err := h.db.GetAuthSessionConfig()
+	if err != nil {
+		slog.Error("Erreur lecture config AuthSession", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_auth_session_save_error", "Erreur de sauvegarde de la politique de session"),
+		})
+		return
+	}
+
+	cfg.Remember30Days = input.Remember30Days
+	if err := h.db.SaveAuthSessionConfig(cfg); err != nil {
+		slog.Error("Erreur sauvegarde config AuthSession", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_auth_session_save_error", "Erreur de sauvegarde de la politique de session"),
+		})
+		return
+	}
+
+	_ = h.db.LogAction("settings.auth_session.saved", "", "", fmt.Sprintf("remember_30_days=%t", cfg.Remember30Days))
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: h.tr(r, "settings_auth_session_saved", "Politique de session sauvegardee"),
+		Data:    cfg,
+	})
+}
+
+// RevokeAuthSessions invalide toutes les sessions admin actives.
+func (h *SettingsHandler) RevokeAuthSessions(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	cfg, err := h.db.RevokeAuthSessionsBefore(time.Now().Unix())
+	if err != nil {
+		slog.Error("Erreur revocation sessions", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_auth_session_revoke_error", "Impossible de deconnecter les sessions"),
+		})
+		return
+	}
+
+	actor := ""
+	if sess := session.FromContext(r.Context()); sess != nil {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("settings.auth_session.revoked", actor, "", fmt.Sprintf("revoked_before=%d", cfg.RevokedBefore))
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: h.tr(r, "settings_auth_session_revoked", "Toutes les sessions ont ete deconnectees"),
+		Data:    cfg,
+	})
+}
+
+// FetchJellyfinServerName recupere le nom du serveur depuis l'API Jellyfin.
 func (h *SettingsHandler) FetchJellyfinServerName(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return

@@ -61,6 +61,49 @@ func TestSettingsHandlerGetAllReturnsAllSupportedEmailLanguages(t *testing.T) {
 	if resp.Data.PortalLinks.JellyfinServerName != "Jellyfin" {
 		t.Fatalf("default Jellyfin server name = %q, want %q", resp.Data.PortalLinks.JellyfinServerName, "Jellyfin")
 	}
+	if !resp.Data.AuthSession.Remember30Days {
+		t.Fatalf("default auth session Remember30Days = false, want true")
+	}
+}
+
+func TestSettingsHandlerSaveAndRevokeAuthSession(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	body, err := json.Marshal(authSessionInput{Remember30Days: false})
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.SaveAuthSession(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/auth-session", body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("SaveAuthSession status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	cfg, err := db.GetAuthSessionConfig()
+	if err != nil {
+		t.Fatalf("GetAuthSessionConfig() error = %v", err)
+	}
+	if cfg.Remember30Days {
+		t.Fatalf("Remember30Days = true, want false")
+	}
+
+	rec = httptest.NewRecorder()
+	handler.RevokeAuthSessions(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/auth-session/revoke", []byte(`{}`)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("RevokeAuthSessions status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	cfg, err = db.GetAuthSessionConfig()
+	if err != nil {
+		t.Fatalf("GetAuthSessionConfig() after revoke error = %v", err)
+	}
+	if cfg.RevokedBefore <= 0 {
+		t.Fatalf("RevokedBefore = %d, want > 0", cfg.RevokedBefore)
+	}
+	if cfg.Remember30Days {
+		t.Fatalf("RevokeAuthSessions should preserve Remember30Days=false, got true")
+	}
 }
 
 func TestSettingsHandlerSaveEmailTemplatesSyncsSharedFields(t *testing.T) {

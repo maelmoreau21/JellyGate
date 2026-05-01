@@ -15,4 +15,7 @@ func TestRememberDuration(t *testing.T) {
 	if RememberDuration <= Duration {
 		t.Fatalf("RememberDuration = %s, want longer than Duration = %s", RememberDuration, Duration)
 	}
+	if IndefiniteDuration <= RememberDuration {
+		t.Fatalf("IndefiniteDuration = %s, want longer than RememberDuration = %s", IndefiniteDuration, RememberDuration)
+	}
 }

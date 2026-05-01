@@ -130,6 +130,36 @@
 
         <div class="mt-8 pt-6 border-t border-black/5 dark:border-white/10">
           <div class="mb-4">
+            <h3 class="text-lg font-semibold text-white">{{ .T "settings_auth_session_title" }}</h3>
+            <p class="text-sm text-jg-text-muted mt-1">{{ .T "settings_auth_session_desc" }}</p>
+          </div>
+
+          <form id="form-auth-session" class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <label class="flex cursor-pointer select-none items-start gap-3">
+                <input type="checkbox" id="auth-session-remember-30-days" class="form-checkbox mt-1">
+                <span>
+                  <span class="block text-sm font-semibold text-slate-700 dark:text-slate-200">{{ .T "settings_auth_session_remember_30_days" }}</span>
+                  <span class="block text-xs leading-5 text-jg-text-muted">{{ .T "settings_auth_session_remember_30_days_help" }}</span>
+                </span>
+              </label>
+              <button type="submit" class="jg-btn jg-btn-primary px-5 py-2.5 md:flex-shrink-0">{{ .T "btn_save" }}</button>
+            </div>
+          </form>
+
+          <div class="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h4 class="text-sm font-semibold text-red-100">{{ .T "settings_auth_session_revoke_title" }}</h4>
+                <p class="mt-1 text-xs leading-5 text-red-100/75">{{ .T "settings_auth_session_revoke_desc" }}</p>
+              </div>
+              <button type="button" id="btn-auth-session-revoke-all" class="jg-btn jg-btn-danger px-5 py-2.5 md:flex-shrink-0">{{ .T "settings_auth_session_revoke_button" }}</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-8 pt-6 border-t border-black/5 dark:border-white/10">
+          <div class="mb-4">
             <h3 class="text-lg font-semibold text-white">{{ .T "settings_invite_profile_title" }}</h3>
             
           </div>
@@ -882,6 +912,10 @@
       backup_pg_plan_unavailable: '{{ .T "settings_backup_pg_plan_unavailable" }}',
       settings_saved: '{{ .T "settings_saved" }}',
       settings_save_error: '{{ .T "settings_save_error" }}',
+      settings_auth_session_revoke_confirm_title: '{{ .T "settings_auth_session_revoke_confirm_title" }}',
+      settings_auth_session_revoke_confirm_message: '{{ .T "settings_auth_session_revoke_confirm_message" }}',
+      settings_auth_session_revoke_confirm_button: '{{ .T "settings_auth_session_revoke_confirm_button" }}',
+      settings_auth_session_revoke_redirect: '{{ .T "settings_auth_session_revoke_redirect" }}',
       email_base_preview_demo: '{{ .T "settings_email_base_preview_demo" }}',
       template_empty: '{{ .T "settings_template_empty" }}',
       preview_loading: '{{ .T "settings_preview_loading" }}',

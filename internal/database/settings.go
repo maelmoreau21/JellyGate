@@ -30,11 +30,90 @@ const (
 	SettingJellyfinPresets             = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
 	SettingGroupMappings               = "group_mappings"                 // JSON: []config.GroupPolicyMapping
 	SettingInviteProfile               = "invite_profile"                 // JSON: config.InvitationProfileConfig
+	SettingAuthSessionConfig           = "auth_session_config"            // JSON: AuthSessionConfig
 	SettingBackupLastRun               = "backup_last_run"                // Date locale YYYY-MM-DD
 	SettingDefaultLang                 = "default_lang"                   // Langue par defaut du serveur (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
 	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
 	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
 )
+
+// AuthSessionConfig controle la duree des sessions persistantes et la
+// revocation globale des cookies deja signes.
+type AuthSessionConfig struct {
+	Remember30Days bool  `json:"remember_30_days"`
+	RevokedBefore  int64 `json:"revoked_before"`
+}
+
+// DefaultAuthSessionConfig conserve le comportement existant par defaut.
+func DefaultAuthSessionConfig() AuthSessionConfig {
+	return AuthSessionConfig{Remember30Days: true}
+}
+
+func normalizeAuthSessionConfig(cfg AuthSessionConfig) AuthSessionConfig {
+	if cfg.RevokedBefore < 0 {
+		cfg.RevokedBefore = 0
+	}
+	return cfg
+}
+
+// AcceptsIssuedAt indique si une session creee a cette date reste valide.
+func (cfg AuthSessionConfig) AcceptsIssuedAt(issuedAt int64) bool {
+	return cfg.RevokedBefore <= 0 || issuedAt > cfg.RevokedBefore
+}
+
+// GetAuthSessionConfig retourne la politique de session admin.
+func (db *DB) GetAuthSessionConfig() (AuthSessionConfig, error) {
+	cfg := DefaultAuthSessionConfig()
+
+	raw, err := db.GetSetting(SettingAuthSessionConfig)
+	if err != nil {
+		return cfg, err
+	}
+	if strings.TrimSpace(raw) == "" {
+		return cfg, nil
+	}
+
+	var stored struct {
+		Remember30Days *bool `json:"remember_30_days"`
+		RevokedBefore  int64 `json:"revoked_before"`
+	}
+	if err := json.Unmarshal([]byte(raw), &stored); err != nil {
+		slog.Warn("Erreur de parsing de la config AuthSession", "error", err)
+		return cfg, nil
+	}
+	if stored.Remember30Days != nil {
+		cfg.Remember30Days = *stored.Remember30Days
+	}
+	cfg.RevokedBefore = stored.RevokedBefore
+
+	return normalizeAuthSessionConfig(cfg), nil
+}
+
+// SaveAuthSessionConfig sauvegarde la politique de session admin.
+func (db *DB) SaveAuthSessionConfig(cfg AuthSessionConfig) error {
+	cfg = normalizeAuthSessionConfig(cfg)
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SaveAuthSessionConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingAuthSessionConfig, string(data))
+}
+
+// RevokeAuthSessionsBefore invalide toutes les sessions creees avant ou a ce timestamp.
+func (db *DB) RevokeAuthSessionsBefore(timestamp int64) (AuthSessionConfig, error) {
+	cfg, err := db.GetAuthSessionConfig()
+	if err != nil {
+		return cfg, err
+	}
+	if timestamp < 1 {
+		timestamp = time.Now().Unix()
+	}
+	cfg.RevokedBefore = timestamp
+	if err := db.SaveAuthSessionConfig(cfg); err != nil {
+		return cfg, err
+	}
+	return cfg, nil
+}
 
 // GetDefaultLang retourne la langue par défaut du serveur.
 // Retourne "fr" si la clé n'existe pas ou en cas d'erreur.

@@ -134,6 +134,9 @@ func main() {
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
 	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer, notifier)
 	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService, jfClient)
+	authSessionValidator := func(sess *session.Payload) bool {
+		return authSessionAllowed(db, sess)
+	}
 
 	// Callbacks de rechargement à chaud
 	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
@@ -187,7 +190,7 @@ func main() {
 
 	// ── Routes publiques ────────────────────────────────────────────────────
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/admin/login", http.StatusFound)
+		http.Redirect(w, r, adminLandingPath(r, cfg.SecretKey, authSessionValidator), http.StatusFound)
 	})
 	// Répondre aux requêtes HEAD sur la racine pour satisfaire les healthchecks
 	r.Head("/", handleHealthCheck)
@@ -280,7 +283,7 @@ func main() {
 
 		// Routes protégées par le middleware d'authentification global (standard + admin)
 		r.Group(func(r chi.Router) {
-			r.Use(jgmw.RequireAuth(cfg.SecretKey, cfg.BaseURL))
+			r.Use(jgmw.RequireAuth(cfg.SecretKey, cfg.BaseURL, authSessionValidator))
 
 			// Le tableau de bord est commun
 			r.Get("/", adminHandler.DashboardPage)
@@ -328,6 +331,8 @@ func main() {
 					r.Get("/", settingsHandler.GetAll)
 					r.Post("/general", settingsHandler.SaveGeneral)
 					r.Post("/general/fetch-server-name", settingsHandler.FetchJellyfinServerName)
+					r.Post("/auth-session", settingsHandler.SaveAuthSession)
+					r.Post("/auth-session/revoke", settingsHandler.RevokeAuthSessions)
 					r.Post("/ldap", settingsHandler.SaveLDAP)
 					r.Post("/ldap/test-connection", settingsHandler.TestLDAPConnection)
 					r.Post("/ldap/test-user", settingsHandler.TestLDAPUserLookup)
@@ -461,6 +466,39 @@ func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"status":"ok","app":"JellyGate","version":"%s"}`,
 		config.AppVersion)
+}
+
+// authSessionAllowed applique la politique de revocation globale stockee en base.
+func authSessionAllowed(db *database.DB, sess *session.Payload) bool {
+	if sess == nil {
+		return false
+	}
+	if db == nil {
+		return true
+	}
+	cfg, err := db.GetAuthSessionConfig()
+	if err != nil {
+		slog.Warn("Impossible de lire la politique de session", "error", err)
+		return true
+	}
+	return cfg.AcceptsIssuedAt(sess.Iat)
+}
+
+// adminLandingPath conserve l'ouverture de l'app sur le dashboard quand une
+// session persistante est encore valide.
+func adminLandingPath(r *http.Request, secretKey string, validators ...jgmw.SessionValidator) string {
+	if r == nil {
+		return "/admin/login"
+	}
+	cookie, err := r.Cookie(session.CookieName)
+	if err != nil {
+		return "/admin/login"
+	}
+	sess, err := session.Verify(cookie.Value, secretKey)
+	if err != nil || !jgmw.SessionAllowed(sess, validators...) {
+		return "/admin/login"
+	}
+	return "/admin/"
 }
 
 // handlePlaceholder génère un handler temporaire qui renvoie un message

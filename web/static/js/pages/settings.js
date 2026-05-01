@@ -1065,6 +1065,12 @@
         document.getElementById('general-jellytrack-url').value = links.jellytrack_url || '';
         refreshPortalShortcuts(links);
 
+        const authSession = data.auth_session || {};
+        const remember30Days = document.getElementById('auth-session-remember-30-days');
+        if (remember30Days) {
+            remember30Days.checked = authSession.remember_30_days !== false;
+        }
+
         applyInvitationProfileConfig(data.invitation_profile || {});
 
         currentLDAPConfig = { ...ldap };
@@ -1153,6 +1159,10 @@
                 jellyseerr_url: document.getElementById('general-jellyseerr-url').value.trim(),
                 jellytrack_url: document.getElementById('general-jellytrack-url').value.trim(),
             };
+        } else if (section === 'auth-session') {
+            body = {
+                remember_30_days: document.getElementById('auth-session-remember-30-days')?.checked !== false,
+            };
         } else if (section === 'invitation-profile') {
             body = {
                 ...currentInvitationProfile,
@@ -1231,6 +1241,12 @@
             if (section === 'invitation-profile') {
                 currentInvitationProfile = { ...body };
             }
+            if (section === 'auth-session' && res.data) {
+                const remember30Days = document.getElementById('auth-session-remember-30-days');
+                if (remember30Days) {
+                    remember30Days.checked = res.data.remember_30_days !== false;
+                }
+            }
             if (section === 'general') {
                 refreshPortalShortcuts(body);
                 const lang = (body.default_lang || '').trim().toLowerCase();
@@ -1241,6 +1257,44 @@
             }
         } else {
             JG.toast((res && res.message) || t('settings_save_error', 'Save failed'), 'error');
+        }
+    }
+
+    async function revokeAuthSessions() {
+        const confirmed = await JG.confirm(
+            t('settings_auth_session_revoke_confirm_title', 'Disconnect everyone?'),
+            t('settings_auth_session_revoke_confirm_message', 'All active JellyGate sessions will be disconnected, including this browser.'),
+            {
+                danger: true,
+                confirmLabel: t('settings_auth_session_revoke_confirm_button', 'Disconnect everyone'),
+            },
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        const btn = document.getElementById('btn-auth-session-revoke-all');
+        if (btn) {
+            btn.disabled = true;
+        }
+        try {
+            const res = await JG.api('/admin/api/settings/auth-session/revoke', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            if (res && res.success) {
+                JG.toast(res.message || t('settings_auth_session_revoke_redirect', 'Sessions disconnected. Please sign in again.'), 'success');
+                window.setTimeout(() => {
+                    window.location.href = '/admin/login';
+                }, 600);
+                return;
+            }
+            JG.toast((res && res.message) || t('settings_save_error', 'Save failed'), 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+            }
         }
     }
 
@@ -1598,6 +1652,7 @@
 
         [
             ['form-general', 'general'],
+            ['form-auth-session', 'auth-session'],
             ['form-invitation-profile', 'invitation-profile'],
             ['form-ldap', 'ldap'],
             ['form-smtp', 'smtp'],
@@ -1677,6 +1732,7 @@
 
         document.getElementById('backup-create-btn')?.addEventListener('click', createBackupNow);
         document.getElementById('backup-import-btn')?.addEventListener('click', importBackup);
+        document.getElementById('btn-auth-session-revoke-all')?.addEventListener('click', revokeAuthSessions);
         document.getElementById('btn-fetch-server-name')?.addEventListener('click', async () => {
             const btn = document.getElementById('btn-fetch-server-name');
             if (btn) btn.disabled = true;

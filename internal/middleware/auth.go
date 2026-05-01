@@ -13,9 +13,26 @@ import (
 
 // ── Middleware d'authentification ────────────────────────────────────────────
 
-// RequireAuth est un middleware Chi qui vérifie que l'utilisateur est connecté
-// en tant qu'utilisateur légitime (Admin ou Standard).
-func RequireAuth(secretKey, baseURL string) func(http.Handler) http.Handler {
+// SessionValidator peut refuser une session pourtant correctement signee
+// (par exemple apres une revocation globale).
+type SessionValidator func(*session.Payload) bool
+
+// SessionAllowed applique les validateurs optionnels a une session.
+func SessionAllowed(sess *session.Payload, validators ...SessionValidator) bool {
+	if sess == nil {
+		return false
+	}
+	for _, validator := range validators {
+		if validator != nil && !validator(sess) {
+			return false
+		}
+	}
+	return true
+}
+
+// RequireAuth est un middleware Chi qui verifie que l'utilisateur est connecte
+// en tant qu'utilisateur legitime (Admin ou Standard).
+func RequireAuth(secretKey, baseURL string, validators ...SessionValidator) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			cookie, err := r.Cookie(session.CookieName)
@@ -25,7 +42,7 @@ func RequireAuth(secretKey, baseURL string) func(http.Handler) http.Handler {
 			}
 
 			sess, err := session.Verify(cookie.Value, secretKey)
-			if err != nil {
+			if err != nil || !SessionAllowed(sess, validators...) {
 				// Supprimer le cookie invalide
 				// #nosec G124 -- clearing uses the same Secure policy as the session cookie.
 				http.SetCookie(w, &http.Cookie{

@@ -72,6 +72,11 @@ func (h *AuthHandler) tr(r *http.Request, key, fallback string) string {
 
 // LoginPage affiche la page de connexion admin (GET /admin/login).
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	if h.hasValidSession(r) {
+		http.Redirect(w, r, "/admin/", http.StatusSeeOther)
+		return
+	}
+
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.Error = r.URL.Query().Get("error")
 	td.Data["SubmittedUsername"] = strings.TrimSpace(r.URL.Query().Get("username"))
@@ -85,6 +90,48 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		slog.Error("Erreur rendu login", "error", err)
 		http.Error(w, h.tr(r, "common_server_error_page", "Server error: unable to load page"), http.StatusInternalServerError)
 	}
+}
+
+func (h *AuthHandler) hasValidSession(r *http.Request) bool {
+	if h == nil || h.cfg == nil || r == nil {
+		return false
+	}
+	cookie, err := r.Cookie(session.CookieName)
+	if err != nil {
+		return false
+	}
+	sess, err := session.Verify(cookie.Value, h.cfg.SecretKey)
+	return err == nil && h.sessionAccepted(sess)
+}
+
+func (h *AuthHandler) sessionAccepted(sess *session.Payload) bool {
+	if sess == nil {
+		return false
+	}
+	if h == nil || h.db == nil {
+		return true
+	}
+	cfg, err := h.db.GetAuthSessionConfig()
+	if err != nil {
+		slog.Warn("Impossible de lire la politique de session", "error", err)
+		return true
+	}
+	return cfg.AcceptsIssuedAt(sess.Iat)
+}
+
+func (h *AuthHandler) rememberSessionDuration() time.Duration {
+	if h == nil || h.db == nil {
+		return session.RememberDuration
+	}
+	cfg, err := h.db.GetAuthSessionConfig()
+	if err != nil {
+		slog.Warn("Impossible de lire la duree de session persistante", "error", err)
+		return session.RememberDuration
+	}
+	if cfg.Remember30Days {
+		return session.RememberDuration
+	}
+	return session.IndefiniteDuration
 }
 
 func (h *AuthHandler) redirectLoginError(w http.ResponseWriter, r *http.Request, code, username string) {
@@ -197,15 +244,17 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 4. CrÃƒÂ©er le cookie de session signÃƒÂ© Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	sessionDuration := session.Duration
 	if rememberMe {
-		sessionDuration = session.RememberDuration
+		sessionDuration = h.rememberSessionDuration()
 	}
-	sessionExpiresAt := time.Now().Add(sessionDuration)
+	now := time.Now()
+	sessionExpiresAt := now.Add(sessionDuration)
 
 	sess := session.Payload{
 		UserID:   authResp.User.ID,
 		Username: authResp.User.Name,
 		IsAdmin:  isAdmin,
 		Exp:      sessionExpiresAt.Unix(),
+		Iat:      now.Unix(),
 	}
 
 	cookieValue, err := session.Sign(sess, h.cfg.SecretKey)

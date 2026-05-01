@@ -31,6 +31,11 @@ const (
 	// RememberDuration est la duree de validite quand l'utilisateur choisit
 	// de rester connecte sur ce navigateur.
 	RememberDuration = 30 * 24 * time.Hour
+
+	// IndefiniteDuration garde une session persistante tres longtemps.
+	// Les navigateurs peuvent appliquer leur propre limite, mais le serveur ne
+	// l'expire pas avant cette duree sauf deconnexion ou revocation globale.
+	IndefiniteDuration = 10 * 365 * 24 * time.Hour
 )
 
 // ── Clés de contexte ────────────────────────────────────────────────────────
@@ -53,6 +58,7 @@ type Payload struct {
 	Username string `json:"usr"` // Nom d'utilisateur
 	IsAdmin  bool   `json:"adm"` // Est administrateur Jellyfin
 	Exp      int64  `json:"exp"` // Timestamp d'expiration (Unix)
+	Iat      int64  `json:"iat"` // Timestamp de creation (Unix)
 }
 
 // ── Signature et vérification ───────────────────────────────────────────────
