@@ -180,17 +180,26 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 			ldapClient := jgldap.New(ldapCfg)
 			entry, ldapIsAdmin, accessErr := ldapClient.ResolveUserAccess(lookupUsername)
 			if accessErr != nil {
-				slog.Warn("Verification LDAP refusee pendant le login",
-					"username", lookupUsername,
-					"remote", r.RemoteAddr,
-					"error", accessErr,
-				)
-				h.logAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, controle LDAP impossible: %v", r.RemoteAddr, accessErr))
-				h.redirectLoginError(w, r, "invalid", lookupUsername)
-				return
+				if isAdmin {
+					slog.Warn("Verification LDAP impossible, acces accorde par fallback administrateur Jellyfin",
+						"username", lookupUsername,
+						"remote", r.RemoteAddr,
+						"error", accessErr,
+					)
+					h.logAction("admin.login.ldap_fallback", lookupUsername, authUserID, fmt.Sprintf("IP: %s, controle LDAP impossible: %v", r.RemoteAddr, accessErr))
+				} else {
+					slog.Warn("Verification LDAP refusee pendant le login",
+						"username", lookupUsername,
+						"remote", r.RemoteAddr,
+						"error", accessErr,
+					)
+					h.logAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, controle LDAP impossible: %v", r.RemoteAddr, accessErr))
+					h.redirectLoginError(w, r, "invalid", lookupUsername)
+					return
+				}
 			}
 
-			if entry == nil {
+			if accessErr == nil && entry == nil {
 				if !isAdmin {
 					slog.Info("Acces refuse par le filtre de recherche LDAP",
 						"username", lookupUsername,
@@ -201,13 +210,15 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 					return
 				}
 
-				slog.Warn("Utilisateur introuvable en LDAP mais administrateur Jellyfin : acces accorde (mode fallback)",
+				slog.Warn("Utilisateur introuvable en LDAP, acces accorde par fallback administrateur Jellyfin",
 					"username", lookupUsername,
 					"remote", r.RemoteAddr,
 				)
 			}
 
-			isAdmin = isAdmin || ldapIsAdmin
+			if accessErr == nil {
+				isAdmin = isAdmin || ldapIsAdmin
+			}
 		}
 	}
 

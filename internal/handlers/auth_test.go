@@ -264,6 +264,56 @@ func TestLoginSubmitAllowsSessionWithoutAdminWhenAPIKeyInvalid(t *testing.T) {
 	}
 }
 
+func TestLoginSubmitAllowsJellyfinAdminWhenLDAPUnavailable(t *testing.T) {
+	db := newAuthTestDB(t)
+	saveUnavailableLDAPConfig(t, db)
+	server := newAuthJellyfinServer(t, http.StatusOK, http.StatusOK, true)
+	defer server.Close()
+
+	handler := newAuthTestHandler(db, server.URL)
+	rec := httptest.NewRecorder()
+	handler.LoginSubmit(rec, newLoginSubmitRequest("admin", "secret", true))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if got := rec.Header().Get("Location"); got != "/admin/" {
+		t.Fatalf("Location = %q, want /admin/", got)
+	}
+	cookie := responseCookie(rec, session.CookieName)
+	if cookie == nil {
+		t.Fatalf("session cookie missing")
+	}
+	payload, err := session.Verify(cookie.Value, testAuthSecret)
+	if err != nil {
+		t.Fatalf("Verify() error = %v", err)
+	}
+	if !payload.IsAdmin {
+		t.Fatalf("Jellyfin admin should keep admin access when LDAP is unavailable: %+v", payload)
+	}
+}
+
+func TestLoginSubmitRejectsStandardUserWhenLDAPUnavailable(t *testing.T) {
+	db := newAuthTestDB(t)
+	saveUnavailableLDAPConfig(t, db)
+	server := newAuthJellyfinServer(t, http.StatusOK, http.StatusOK, false)
+	defer server.Close()
+
+	handler := newAuthTestHandler(db, server.URL)
+	rec := httptest.NewRecorder()
+	handler.LoginSubmit(rec, newLoginSubmitRequest("admin", "secret", true))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if got := rec.Header().Get("Location"); !strings.Contains(got, "/admin/login?") || !strings.Contains(got, "error=invalid") {
+		t.Fatalf("Location = %q, want login invalid redirect", got)
+	}
+	if cookie := responseCookie(rec, session.CookieName); cookie != nil && cookie.MaxAge >= 0 {
+		t.Fatalf("session cookie should not be set on LDAP failure for standard user: %+v", cookie)
+	}
+}
+
 func TestLoginSubmitLogsRedactJellyfinSecrets(t *testing.T) {
 	var logs bytes.Buffer
 	previous := slog.Default()
@@ -293,6 +343,29 @@ func TestLoginSubmitLogsRedactJellyfinSecrets(t *testing.T) {
 }
 
 const testAuthSecret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+func saveUnavailableLDAPConfig(t *testing.T, db *database.DB) {
+	t.Helper()
+
+	err := db.SaveLDAPConfig(config.LDAPConfig{
+		Enabled:         true,
+		Host:            "127.0.0.1",
+		Port:            1,
+		UseTLS:          false,
+		BindDN:          "cn=readonly,dc=example,dc=com",
+		BindPassword:    "secret",
+		BaseDN:          "dc=example,dc=com",
+		SearchFilter:    "(uid={username})",
+		ProvisionMode:   "hybrid",
+		JellyfinGroup:   "jellyfin",
+		InviterGroup:    "jellyfin-Parrainage",
+		UserObjectClass: "auto",
+		GroupMemberAttr: "auto",
+	})
+	if err != nil {
+		t.Fatalf("SaveLDAPConfig() error = %v", err)
+	}
+}
 
 func newAuthTestDB(t *testing.T) *database.DB {
 	t.Helper()
