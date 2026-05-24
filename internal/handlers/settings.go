@@ -332,55 +332,17 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	var baseURL string
-	if baseURL == "" {
-		if links, err := h.db.GetPortalLinksConfig(); err == nil {
-			baseURL = strings.TrimRight(strings.TrimSpace(links.JellyfinURL), "/")
-		}
-	}
-	if baseURL == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_jellyfin_url_missing", "URL Jellyfin indisponible")})
+	if h.jfClient == nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Client Jellyfin non configure"})
 		return
 	}
 
-	body, _ := json.Marshal(map[string]string{
-		"Username": username,
-		"Pw":       password,
-	})
-
-	req, err := http.NewRequest(http.MethodPost, baseURL+"/Users/AuthenticateByName", bytes.NewReader(body))
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Creation requete impossible"})
-		return
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", jellyfin.AuthorizationHeader(""))
-
-	client := &http.Client{Timeout: 12 * time.Second}
-	resp, err := client.Do(req)
+	authUser, err := h.jfClient.AuthenticateByName(username, password)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Connexion Jellyfin impossible: " + err.Error()})
 		return
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Authentification refusee (identifiants invalides ou plugin LDAP Jellyfin non fonctionnel)"})
-		return
-	}
-	if resp.StatusCode != http.StatusOK {
-		raw, _ := io.ReadAll(resp.Body)
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Jellyfin a retourne HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(raw)))})
-		return
-	}
-
-	var authResp struct {
-		User struct {
-			ID   string `json:"Id"`
-			Name string `json:"Name"`
-		} `json:"User"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+	if authUser == nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "settings_error_jellyfin_response_invalid", "Reponse Jellyfin invalide")})
 		return
 	}
@@ -389,8 +351,8 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 		Success: true,
 		Message: h.tr(r, "settings_success_jellyfin_auth", "Authentification Jellyfin via LDAP plugin OK"),
 		Data: map[string]interface{}{
-			"jellyfin_user_id": authResp.User.ID,
-			"jellyfin_name":    authResp.User.Name,
+			"jellyfin_user_id": authUser.ID,
+			"jellyfin_name":    authUser.Name,
 		},
 	})
 }

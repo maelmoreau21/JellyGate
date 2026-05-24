@@ -1,14 +1,7 @@
-// Package handlers contient les gestionnaires HTTP de JellyGate.
-//
-// Ce fichier implÃƒÂ©mente l'authentification admin dÃƒÂ©lÃƒÂ©guÃƒÂ©e ÃƒÂ  Jellyfin :
-//   - Login via POST /Users/AuthenticateByName sur Jellyfin
-//   - VÃƒÂ©rification que l'utilisateur est administrateur (Policy.IsAdministrator)
-//   - Session maintenue via un cookie signÃƒÂ© (HMAC-SHA256)
+// Package handlers contains JellyGate HTTP handlers.
 package handlers
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -25,38 +18,17 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Structures de donnÃƒÂ©es Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-
-// jellyfinAuthRequest est le corps de la requÃƒÂªte POST /Users/AuthenticateByName.
-type jellyfinAuthRequest struct {
-	Username string `json:"Username"`
-	Pw       string `json:"Pw"`
-}
-
-// jellyfinAuthResponse contient les champs pertinents de la rÃƒÂ©ponse Jellyfin.
-type jellyfinAuthResponse struct {
-	User struct {
-		ID     string `json:"Id"`
-		Name   string `json:"Name"`
-		Policy struct {
-			IsAdministrator bool `json:"IsAdministrator"`
-		} `json:"Policy"`
-	} `json:"User"`
-	AccessToken string `json:"AccessToken"`
-}
-
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Auth Handler Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-
-// AuthHandler gÃƒÂ¨re les routes d'authentification admin.
+// AuthHandler gere les routes d'authentification admin.
 type AuthHandler struct {
 	cfg      *config.Config
 	db       *database.DB
+	jfClient *jellyfin.Client
 	renderer *render.Engine
 }
 
-// NewAuthHandler crÃƒÂ©e un nouveau AuthHandler.
-func NewAuthHandler(cfg *config.Config, db *database.DB, renderer *render.Engine) *AuthHandler {
-	return &AuthHandler{cfg: cfg, db: db, renderer: renderer}
+// NewAuthHandler cree un nouveau AuthHandler.
+func NewAuthHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, renderer *render.Engine) *AuthHandler {
+	return &AuthHandler{cfg: cfg, db: db, jfClient: jf, renderer: renderer}
 }
 
 func (h *AuthHandler) tr(r *http.Request, key, fallback string) string {
@@ -144,16 +116,15 @@ func (h *AuthHandler) redirectLoginError(w http.ResponseWriter, r *http.Request,
 	http.Redirect(w, r, "/admin/login?"+query.Encode(), http.StatusSeeOther)
 }
 
+func (h *AuthHandler) logAction(action, actor, target, details string) {
+	if h == nil || h.db == nil {
+		return
+	}
+	_ = h.db.LogAction(action, actor, target, details)
+}
+
 // LoginSubmit traite la soumission du formulaire de connexion (POST /admin/login).
-//
-// Flux :
-//  1. RÃƒÂ©cupÃƒÂ©rer les identifiants du formulaire
-//  2. Appeler POST /Users/AuthenticateByName sur Jellyfin
-//  3. VÃƒÂ©rifier que Policy.IsAdministrator == true
-//  4. CrÃƒÂ©er un cookie de session signÃƒÂ© (HMAC-SHA256)
-//  5. Rediriger vers /admin/
 func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
-	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 1. RÃƒÂ©cupÃƒÂ©rer les identifiants Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	if err := r.ParseForm(); err != nil {
 		slog.Error("Erreur parsing formulaire login", "error", err)
 		h.redirectLoginError(w, r, "invalid", "")
@@ -170,79 +141,83 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 2. Authentifier via l'API Jellyfin Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-	authResp, err := h.authenticateWithJellyfin(username, password)
+	authUser, err := h.authenticateWithJellyfin(username, password)
 	if err != nil {
-		slog.Warn("Ãƒâ€°chec d'authentification Jellyfin",
+		slog.Warn("Echec d'authentification Jellyfin",
 			"username", username,
 			"remote", r.RemoteAddr,
 			"error", err,
 		)
-		_ = h.db.LogAction("admin.login.failed", username, "", fmt.Sprintf("IP: %s, erreur: %s", r.RemoteAddr, err))
-
+		h.logAction("admin.login.failed", username, "", fmt.Sprintf("IP: %s, erreur: %s", r.RemoteAddr, err))
+		h.redirectLoginError(w, r, "invalid", username)
+		return
+	}
+	if authUser == nil {
+		h.logAction("admin.login.failed", username, "", fmt.Sprintf("IP: %s, erreur: reponse Jellyfin vide", r.RemoteAddr))
 		h.redirectLoginError(w, r, "invalid", username)
 		return
 	}
 
-	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 3. Le statut d'administrateur dÃƒÂ©termine les permissions Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-	isAdmin := authResp.User.Policy.IsAdministrator
-
-	ldapCfg, ldapErr := h.db.GetLDAPConfig()
-	if ldapErr != nil {
-		slog.Warn("Impossible de charger la configuration LDAP pendant le login", "error", ldapErr)
+	authUsername := strings.TrimSpace(authUser.Name)
+	if authUsername == "" {
+		authUsername = username
 	}
+	authUserID := strings.TrimSpace(authUser.ID)
+	isAdmin := authUser.Policy.IsAdministrator
 
-	if ldapErr == nil && ldapCfg.Enabled {
-		lookupUsername := strings.TrimSpace(username)
-		if lookupUsername == "" {
-			lookupUsername = strings.TrimSpace(authResp.User.Name)
+	if h.db != nil {
+		ldapCfg, ldapErr := h.db.GetLDAPConfig()
+		if ldapErr != nil {
+			slog.Warn("Impossible de charger la configuration LDAP pendant le login", "error", ldapErr)
 		}
 
-		ldapClient := jgldap.New(ldapCfg)
-		entry, ldapIsAdmin, accessErr := ldapClient.ResolveUserAccess(lookupUsername)
-		if accessErr != nil {
-			slog.Warn("Verification LDAP refusee pendant le login",
-				"username", lookupUsername,
-				"remote", r.RemoteAddr,
-				"error", accessErr,
-			)
-			_ = h.db.LogAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, controle LDAP impossible: %v", r.RemoteAddr, accessErr))
-			h.redirectLoginError(w, r, "invalid", lookupUsername)
-			return
-		}
+		if ldapErr == nil && ldapCfg.Enabled {
+			lookupUsername := username
+			if lookupUsername == "" {
+				lookupUsername = authUsername
+			}
 
-		if entry == nil {
-			// If the user is not found in LDAP but is an administrator in Jellyfin,
-			// allow the login and keep a warning. Otherwise deny access.
-			if !isAdmin {
-				slog.Info("Acces refuse par le filtre de recherche LDAP",
+			ldapClient := jgldap.New(ldapCfg)
+			entry, ldapIsAdmin, accessErr := ldapClient.ResolveUserAccess(lookupUsername)
+			if accessErr != nil {
+				slog.Warn("Verification LDAP refusee pendant le login",
 					"username", lookupUsername,
 					"remote", r.RemoteAddr,
+					"error", accessErr,
 				)
-				_ = h.db.LogAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, filtre LDAP: acces refuse", r.RemoteAddr))
+				h.logAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, controle LDAP impossible: %v", r.RemoteAddr, accessErr))
 				h.redirectLoginError(w, r, "invalid", lookupUsername)
 				return
 			}
 
-			slog.Warn("Utilisateur introuvable en LDAP mais administrateur Jellyfin : accès accordé (mode fallback)",
-				"username", lookupUsername,
-				"remote", r.RemoteAddr,
-			)
-		}
+			if entry == nil {
+				if !isAdmin {
+					slog.Info("Acces refuse par le filtre de recherche LDAP",
+						"username", lookupUsername,
+						"remote", r.RemoteAddr,
+					)
+					h.logAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, filtre LDAP: acces refuse", r.RemoteAddr))
+					h.redirectLoginError(w, r, "invalid", lookupUsername)
+					return
+				}
 
-		// When LDAP is active, consider the user an admin if they are either
-		// an admin in Jellyfin or match the LDAP admin filter.
-		isAdmin = isAdmin || ldapIsAdmin
+				slog.Warn("Utilisateur introuvable en LDAP mais administrateur Jellyfin : acces accorde (mode fallback)",
+					"username", lookupUsername,
+					"remote", r.RemoteAddr,
+				)
+			}
+
+			isAdmin = isAdmin || ldapIsAdmin
+		}
 	}
 
 	if !isAdmin {
-		slog.Info("Utilisateur standard connectÃƒÂ©",
+		slog.Info("Utilisateur standard connecte",
 			"username", username,
-			"jellyfin_id", authResp.User.ID,
+			"jellyfin_id", authUserID,
 		)
 	}
 
-	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 4. CrÃƒÂ©er le cookie de session signÃƒÂ© Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	sessionDuration := session.Duration
 	if rememberMe {
 		sessionDuration = h.rememberSessionDuration()
@@ -251,8 +226,8 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	sessionExpiresAt := now.Add(sessionDuration)
 
 	sess := session.Payload{
-		UserID:   authResp.User.ID,
-		Username: authResp.User.Name,
+		UserID:   authUserID,
+		Username: authUsername,
 		IsAdmin:  isAdmin,
 		Exp:      sessionExpiresAt.Unix(),
 		Iat:      now.Unix(),
@@ -272,12 +247,12 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   int(sessionDuration.Seconds()),
 		Expires:  sessionExpiresAt,
-		HttpOnly: true,                                  // Pas accessible en JavaScript
-		Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL), // Secure si HTTPS
-		SameSite: http.SameSiteLaxMode,                  // Plus compatible que Strict pour le dev/local
+		HttpOnly: true,
+		Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL),
+		SameSite: http.SameSiteLaxMode,
 	})
 
-	if preferredLang := h.resolvePreferredLang(authResp.User.ID, authResp.User.Name); preferredLang != "" {
+	if preferredLang := h.resolvePreferredLang(authUserID, authUsername); preferredLang != "" {
 		// #nosec G124 -- language preference is intentionally readable by frontend language switching code.
 		http.SetCookie(w, &http.Cookie{
 			Name:     "lang",
@@ -290,18 +265,20 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	slog.Info("Connexion admin rÃƒÂ©ussie",
-		"username", authResp.User.Name,
-		"jellyfin_id", authResp.User.ID,
+	slog.Info("Connexion admin reussie",
+		"username", authUsername,
+		"jellyfin_id", authUserID,
 		"remote", r.RemoteAddr,
 	)
-	_ = h.db.LogAction("admin.login.success", authResp.User.Name, authResp.User.ID, fmt.Sprintf("IP: %s", r.RemoteAddr))
+	h.logAction("admin.login.success", authUsername, authUserID, fmt.Sprintf("IP: %s", r.RemoteAddr))
 
-	// Ã¢â€�â‚¬Ã¢â€�â‚¬ 5. Rediriger vers le dashboard Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 	http.Redirect(w, r, "/admin/", http.StatusSeeOther)
 }
 
 func (h *AuthHandler) resolvePreferredLang(jellyfinID, username string) string {
+	if h == nil || h.db == nil {
+		return ""
+	}
 	var preferred string
 	err := h.db.QueryRow(
 		`SELECT preferred_lang FROM users WHERE jellyfin_id = ? OR username = ? LIMIT 1`,
@@ -318,7 +295,7 @@ func (h *AuthHandler) resolvePreferredLang(jellyfinID, username string) string {
 	return lang
 }
 
-// Logout dÃƒÂ©connecte l'utilisateur en supprimant le cookie de session (POST /admin/logout).
+// Logout deconnecte l'utilisateur en supprimant le cookie de session.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	// #nosec G124 -- clearing uses the same Secure policy as the session cookie.
 	http.SetCookie(w, &http.Cookie{
@@ -331,52 +308,14 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	slog.Info("DÃƒÂ©connexion admin", "remote", r.RemoteAddr)
+	slog.Info("Deconnexion admin", "remote", r.RemoteAddr)
 
 	http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Communication avec l'API Jellyfin Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-
-// authenticateWithJellyfin envoie les identifiants ÃƒÂ  l'API Jellyfin
-// et retourne la rÃƒÂ©ponse d'authentification.
-func (h *AuthHandler) authenticateWithJellyfin(username, password string) (*jellyfinAuthResponse, error) {
-	reqBody, err := json.Marshal(jellyfinAuthRequest{
-		Username: username,
-		Pw:       password,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("erreur de sÃƒÂ©rialisation: %w", err)
+func (h *AuthHandler) authenticateWithJellyfin(username, password string) (*jellyfin.User, error) {
+	if h == nil || h.jfClient == nil {
+		return nil, fmt.Errorf("client Jellyfin indisponible")
 	}
-
-	url := fmt.Sprintf("%s/Users/AuthenticateByName", strings.TrimRight(h.cfg.Jellyfin.URL, "/"))
-
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewReader(reqBody))
-	if err != nil {
-		return nil, fmt.Errorf("erreur de crÃƒÂ©ation de la requÃƒÂªte: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", jellyfin.AuthorizationHeader(""))
-
-	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("erreur de connexion ÃƒÂ  Jellyfin (%s): %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusUnauthorized {
-		return nil, fmt.Errorf("identifiants incorrects (401)")
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("rÃƒÂ©ponse inattendue de Jellyfin: HTTP %d", resp.StatusCode)
-	}
-
-	var authResp jellyfinAuthResponse
-	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
-		return nil, fmt.Errorf("erreur de dÃƒÂ©codage de la rÃƒÂ©ponse Jellyfin: %w", err)
-	}
-
-	return &authResp, nil
+	return h.jfClient.AuthenticateByName(username, password)
 }

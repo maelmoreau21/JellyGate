@@ -125,7 +125,7 @@ func main() {
 	slog.Info("Moteur de rendu HTML initialisé")
 
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
-	authHandler := handlers.NewAuthHandler(cfg, db, renderEngine)
+	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, renderEngine)
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, provisioner, mailer, notifier, renderEngine)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)

@@ -4,7 +4,8 @@ const path = require('path');
 const glob = require('glob');
 
 const i18nDir = path.join(__dirname, '..', 'web', 'i18n');
-const files = glob.sync(path.join(i18nDir, '*.json'));
+const toGlobPath = (p) => p.replace(/\\/g, '/');
+const files = glob.sync(toGlobPath(path.join(i18nDir, '*.json')));
 if (!files.length) {
   console.log('No i18n files found in', i18nDir);
   process.exit(0);

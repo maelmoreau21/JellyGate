@@ -1030,6 +1030,22 @@
         backupDatabaseType = normalized;
     }
 
+    function setAuthSessionDuration(remember30Days) {
+        const thirtyDays = document.getElementById('auth-session-duration-30-days');
+        const indefinite = document.getElementById('auth-session-duration-indefinite');
+        if (thirtyDays) {
+            thirtyDays.checked = remember30Days !== false;
+        }
+        if (indefinite) {
+            indefinite.checked = remember30Days === false;
+        }
+    }
+
+    function getAuthSessionRemember30Days() {
+        const selected = document.querySelector('input[name="auth_session_duration"]:checked');
+        return !selected || selected.value !== 'indefinite';
+    }
+
     async function loadSettings() {
         const res = await JG.api('/admin/api/settings');
         if (!res || !res.success) {
@@ -1066,10 +1082,7 @@
         refreshPortalShortcuts(links);
 
         const authSession = data.auth_session || {};
-        const remember30Days = document.getElementById('auth-session-remember-30-days');
-        if (remember30Days) {
-            remember30Days.checked = authSession.remember_30_days !== false;
-        }
+        setAuthSessionDuration(authSession.remember_30_days !== false);
 
         applyInvitationProfileConfig(data.invitation_profile || {});
 
@@ -1161,7 +1174,7 @@
             };
         } else if (section === 'auth-session') {
             body = {
-                remember_30_days: document.getElementById('auth-session-remember-30-days')?.checked !== false,
+                remember_30_days: getAuthSessionRemember30Days(),
             };
         } else if (section === 'invitation-profile') {
             body = {
@@ -1242,10 +1255,7 @@
                 currentInvitationProfile = { ...body };
             }
             if (section === 'auth-session' && res.data) {
-                const remember30Days = document.getElementById('auth-session-remember-30-days');
-                if (remember30Days) {
-                    remember30Days.checked = res.data.remember_30_days !== false;
-                }
+                setAuthSessionDuration(res.data.remember_30_days !== false);
             }
             if (section === 'general') {
                 refreshPortalShortcuts(body);

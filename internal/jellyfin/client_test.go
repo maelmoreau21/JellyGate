@@ -30,12 +30,89 @@ func assertModernJellyfinAuth(t *testing.T, r *http.Request, token string) {
 		`Device="Server"`,
 		`DeviceId="jellygate-server"`,
 		`Version="1.4.0"`,
-		`Token="` + token + `"`,
+	}
+	if token != "" {
+		required = append(required, `Token="`+token+`"`)
+	} else if strings.Contains(auth, `Token=`) {
+		t.Fatalf("Authorization header %q should not include a token", auth)
 	}
 	for _, part := range required {
 		if !strings.Contains(auth, part) {
 			t.Fatalf("Authorization header %q missing %q", auth, part)
 		}
+	}
+}
+
+func TestAuthenticateByNameUsesModernHeaderAndRefreshesPolicy(t *testing.T) {
+	requests := map[string]int{}
+	var authPayload authenticateByNameRequest
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.Method + " " + r.URL.Path
+		requests[key]++
+
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
+			assertModernJellyfinAuth(t, r, "")
+			if err := json.NewDecoder(r.Body).Decode(&authPayload); err != nil {
+				t.Fatalf("decode auth payload: %v", err)
+			}
+			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
+				User:        User{ID: "admin-id", Name: "admin"},
+				AccessToken: "session-token",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id":
+			assertModernJellyfinAuth(t, r, "session-token")
+			_ = json.NewEncoder(w).Encode(User{
+				ID:   "admin-id",
+				Name: "admin",
+				Policy: Policy{
+					IsAdministrator: true,
+				},
+			})
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
+	user, err := client.AuthenticateByName("admin", "secret")
+	if err != nil {
+		t.Fatalf("AuthenticateByName() error = %v", err)
+	}
+	if authPayload.Username != "admin" || authPayload.Pw != "secret" {
+		t.Fatalf("auth payload = %+v, want username and password", authPayload)
+	}
+	if user.ID != "admin-id" || user.Name != "admin" || !user.Policy.IsAdministrator {
+		t.Fatalf("authenticated user = %+v, want refreshed admin policy", user)
+	}
+	if requests[http.MethodPost+" /Users/AuthenticateByName"] != 1 || requests[http.MethodGet+" /Users/admin-id"] != 1 {
+		t.Fatalf("unexpected request counts: %#v", requests)
+	}
+}
+
+func TestAuthenticateByNameFailsWhenPolicyRefreshFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
+			assertModernJellyfinAuth(t, r, "")
+			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
+				User:        User{ID: "admin-id", Name: "admin"},
+				AccessToken: "session-token",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id":
+			assertModernJellyfinAuth(t, r, "session-token")
+			http.Error(w, "policy unavailable", http.StatusInternalServerError)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
+	if _, err := client.AuthenticateByName("admin", "secret"); err == nil {
+		t.Fatalf("AuthenticateByName() error = nil, want policy refresh failure")
 	}
 }
 

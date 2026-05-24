@@ -10,6 +10,7 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -103,6 +104,78 @@ func TestSettingsHandlerSaveAndRevokeAuthSession(t *testing.T) {
 	}
 	if cfg.Remember30Days {
 		t.Fatalf("RevokeAuthSessions should preserve Remember30Days=false, got true")
+	}
+}
+
+func TestSettingsHandlerTestJellyfinLDAPAuthUsesSharedAuthFlow(t *testing.T) {
+	handler, _ := newTestSettingsHandler(t)
+	requests := map[string]int{}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests[r.Method+" "+r.URL.Path]++
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
+			if strings.Contains(r.Header.Get("Authorization"), "Token=") {
+				t.Fatalf("authenticate request should not include a token: %q", r.Header.Get("Authorization"))
+			}
+			var payload struct {
+				Username string `json:"Username"`
+				Pw       string `json:"Pw"`
+			}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode auth payload: %v", err)
+			}
+			if payload.Username != "ldap-user" || payload.Pw != "secret" {
+				t.Fatalf("auth payload = %+v, want ldap-user/secret", payload)
+			}
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"User": map[string]string{
+					"Id":   "jf-user",
+					"Name": "ldap-user",
+				},
+				"AccessToken": "session-token",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/jf-user":
+			if !strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`) {
+				t.Fatalf("policy refresh Authorization = %q, want session token", r.Header.Get("Authorization"))
+			}
+			_ = json.NewEncoder(w).Encode(jellyfin.User{
+				ID:   "jf-user",
+				Name: "ldap-user",
+			})
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	handler.jfClient = jellyfin.New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
+	body, err := json.Marshal(jellyfinLDAPAuthTestInput{Username: "ldap-user", Password: "secret"})
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.TestJellyfinLDAPAuth(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/ldap/test-jellyfin-auth", body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("TestJellyfinLDAPAuth status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp struct {
+		Success bool                   `json:"success"`
+		Data    map[string]interface{} `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("response success = false")
+	}
+	if resp.Data["jellyfin_user_id"] != "jf-user" || resp.Data["jellyfin_name"] != "ldap-user" {
+		t.Fatalf("response data = %#v, want Jellyfin user details", resp.Data)
+	}
+	if requests[http.MethodPost+" /Users/AuthenticateByName"] != 1 || requests[http.MethodGet+" /Users/jf-user"] != 1 {
+		t.Fatalf("unexpected request counts: %#v", requests)
 	}
 }
 
