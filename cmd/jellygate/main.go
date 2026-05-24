@@ -235,7 +235,7 @@ func main() {
 
 	r.Route("/verify-email", func(r chi.Router) {
 		r.Get("/{code}", inviteHandler.VerifyEmailPage)
-		r.Post("/{code}", inviteHandler.VerifyEmailSubmit)
+		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", inviteHandler.VerifyEmailSubmit)
 	})
 
 	// ── Routes admin (authentification requise) ─────────────────────────────

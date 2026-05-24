@@ -55,7 +55,7 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 			if strings.TrimSpace(nonce) != "" {
 				csp += " 'nonce-" + nonce + "'"
 			}
-			csp += "; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://flagcdn.com; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+			csp += "; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://flagcdn.com; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 			w.Header().Set("Content-Security-Policy", csp)
 
 			if RequestIsHTTPS(r, baseURL) {

@@ -8,12 +8,14 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
+	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
@@ -174,5 +176,127 @@ func TestConsumeResetTokenIsSingleUse(t *testing.T) {
 	}
 	if err := handler.consumeResetToken(resetID); err == nil {
 		t.Fatalf("second consumeResetToken() error = nil, want replay failure")
+	}
+}
+
+func TestResetTokenValidationErrorsDoNotLeakRawToken(t *testing.T) {
+	_, db := newTestSettingsHandler(t)
+	if _, err := db.Exec(
+		`INSERT INTO users (jellyfin_id, username, email, is_active)
+		 VALUES (?, ?, ?, TRUE)`,
+		"reset-jf", "resetuser", "reset@example.com",
+	); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+	var userID int64
+	if err := db.QueryRow(`SELECT id FROM users WHERE username = ?`, "resetuser").Scan(&userID); err != nil {
+		t.Fatalf("read user id: %v", err)
+	}
+
+	if _, err := db.Exec(
+		`INSERT INTO password_resets (user_id, code, used, expires_at)
+		 VALUES (?, ?, TRUE, ?)`,
+		userID, "used-raw-reset-token", time.Now().Add(time.Hour).Format("2006-01-02 15:04:05"),
+	); err != nil {
+		t.Fatalf("insert used token: %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO password_resets (user_id, code, used, expires_at)
+		 VALUES (?, ?, FALSE, ?)`,
+		userID, "expired-raw-reset-token", time.Now().Add(-time.Hour).Format("2006-01-02 15:04:05"),
+	); err != nil {
+		t.Fatalf("insert expired token: %v", err)
+	}
+
+	handler := NewPasswordResetHandler(&config.Config{}, db, nil, nil, nil, nil)
+	for _, token := range []string{"missing-raw-reset-token", "used-raw-reset-token", "expired-raw-reset-token"} {
+		_, _, err := handler.getValidResetToken(token)
+		if err == nil {
+			t.Fatalf("getValidResetToken(%q) error = nil, want failure", token)
+		}
+		if strings.Contains(err.Error(), token) {
+			t.Fatalf("getValidResetToken(%q) leaked raw token in error: %v", token, err)
+		}
+	}
+}
+
+func TestVerifyEmailGetDoesNotConsumeAccountVerification(t *testing.T) {
+	_, db := newTestSettingsHandler(t)
+	userID := insertEmailVerificationUser(t, db, "account-get@example.com")
+	insertEmailVerificationToken(t, db, userID, "account-get-token", "account-get@example.com", time.Now().Add(time.Hour), false)
+
+	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil, nil, nil)
+	req := requestWithRouteCode(http.MethodGet, "/verify-email/account-get-token", "account-get-token")
+	rec := httptest.NewRecorder()
+
+	handler.VerifyEmailPage(rec, req)
+
+	var used, verified bool
+	if err := db.QueryRow(`SELECT used FROM email_verifications WHERE code = ?`, "account-get-token").Scan(&used); err != nil {
+		t.Fatalf("read verification token: %v", err)
+	}
+	if err := db.QueryRow(`SELECT email_verified FROM users WHERE id = ?`, userID).Scan(&verified); err != nil {
+		t.Fatalf("read email_verified: %v", err)
+	}
+	if used || verified {
+		t.Fatalf("GET verification side effects: used=%v verified=%v, want false/false", used, verified)
+	}
+}
+
+func TestVerifyEmailPostConsumesAccountVerification(t *testing.T) {
+	_, db := newTestSettingsHandler(t)
+	userID := insertEmailVerificationUser(t, db, "account-post@example.com")
+	insertEmailVerificationToken(t, db, userID, "account-post-token", "account-post@example.com", time.Now().Add(time.Hour), false)
+
+	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil, nil, nil)
+	req := requestWithRouteCode(http.MethodPost, "/verify-email/account-post-token", "account-post-token")
+	rec := httptest.NewRecorder()
+
+	handler.VerifyEmailSubmit(rec, req)
+
+	var used, verified bool
+	if err := db.QueryRow(`SELECT used FROM email_verifications WHERE code = ?`, "account-post-token").Scan(&used); err != nil {
+		t.Fatalf("read verification token: %v", err)
+	}
+	if err := db.QueryRow(`SELECT email_verified FROM users WHERE id = ?`, userID).Scan(&verified); err != nil {
+		t.Fatalf("read email_verified: %v", err)
+	}
+	if !used || !verified {
+		t.Fatalf("POST verification side effects: used=%v verified=%v, want true/true", used, verified)
+	}
+}
+
+func requestWithRouteCode(method, target, code string) *http.Request {
+	req := httptest.NewRequest(method, target, nil)
+	routeCtx := chi.NewRouteContext()
+	routeCtx.URLParams.Add("code", code)
+	return req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
+}
+
+func insertEmailVerificationUser(t *testing.T, db *database.DB, email string) int64 {
+	t.Helper()
+	res, err := db.Exec(
+		`INSERT INTO users (jellyfin_id, username, email, email_verified, is_active)
+		 VALUES (?, ?, ?, FALSE, TRUE)`,
+		"email-jf-"+email, "emailuser-"+email, email,
+	)
+	if err != nil {
+		t.Fatalf("insert email verification user: %v", err)
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		t.Fatalf("LastInsertId: %v", err)
+	}
+	return id
+}
+
+func insertEmailVerificationToken(t *testing.T, db *database.DB, userID int64, code, email string, expiresAt time.Time, used bool) {
+	t.Helper()
+	if _, err := db.Exec(
+		`INSERT INTO email_verifications (user_id, email, code, used, expires_at)
+		 VALUES (?, ?, ?, ?, ?)`,
+		userID, email, code, used, expiresAt.Format("2006-01-02 15:04:05"),
+	); err != nil {
+		t.Fatalf("insert email verification token: %v", err)
 	}
 }

@@ -166,7 +166,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	// VÃƒÂ©rifier que l'invitation existe et est valide
 	inv, err := h.getValidInvitation(code)
 	if err != nil {
-		slog.Warn("Invitation invalide consultÃƒÂ©e", "code", code, "error", err)
+		slog.Warn("Invitation invalide consultÃƒÂ©e", "code_fingerprint", tokenLogFingerprint(code), "error", err)
 		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirÃƒÂ©e"), http.StatusNotFound)
 		return
 	}
@@ -265,7 +265,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 
 	inv, err := h.getValidInvitation(code)
 	if err != nil {
-		slog.Warn("Invitation invalide", "code", code, "error", err)
+		slog.Warn("Invitation invalide", "code_fingerprint", tokenLogFingerprint(code), "error", err)
 		targetUsername := strings.TrimSpace(submittedUsername)
 		if targetUsername == "" {
 			targetUsername = "unknown"
@@ -661,7 +661,7 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 		&jellyfinProfile, &preferredLang, &inv.ExpiresAt, &createdBy, &inv.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("invitation %q introuvable", code)
+		return nil, fmt.Errorf("invitation introuvable")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("erreur de lecture de l'invitation: %w", err)
@@ -675,12 +675,12 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 
 	// VÃƒÂ©rifier l'expiration
 	if inv.ExpiresAt.Valid && time.Now().After(inv.ExpiresAt.Time) {
-		return nil, fmt.Errorf("invitation %q expirÃƒÂ©e depuis %s", code, inv.ExpiresAt.Time.Format("02/01/2006 15:04"))
+		return nil, fmt.Errorf("invitation expiree depuis %s", inv.ExpiresAt.Time.Format("02/01/2006 15:04"))
 	}
 
 	// VÃƒÂ©rifier le quota d'utilisation (0 = illimitÃƒÂ©)
 	if inv.MaxUses > 0 && inv.UsedCount >= inv.MaxUses {
-		return nil, fmt.Errorf("invitation %q a atteint sa limite d'utilisation (%d/%d)", code, inv.UsedCount, inv.MaxUses)
+		return nil, fmt.Errorf("invitation a atteint sa limite d'utilisation (%d/%d)", inv.UsedCount, inv.MaxUses)
 	}
 
 	return &inv, nil
@@ -701,7 +701,7 @@ func (h *InvitationHandler) reserveInvitationUse(inv *invitation) error {
 	}
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
-		return fmt.Errorf("invitation %q a atteint sa limite d'utilisation", inv.Code)
+		return fmt.Errorf("invitation a atteint sa limite d'utilisation")
 	}
 	inv.UsedCount++
 	return nil
@@ -874,16 +874,6 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	slog.Info("Ã¢Å“â€¦ Ãƒâ€°tape 4/5 terminÃƒÂ©e", "username", form.Username)
 	slog.Info("Ã°Å¸â€œÂ¨ Ãƒâ€°tape 5/5 : Notifications", "username", form.Username)
 
-	h.notifier.NotifyUserRegistered(notify.UserRegisteredEvent{
-		Username:    form.Username,
-		DisplayName: form.Username,
-		Email:       form.Email,
-		InviteCode:  inv.Code,
-		InvitedBy:   inv.CreatedBy,
-		JellyfinID:  jellyfinID,
-		LdapDN:      userDN,
-	})
-
 	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
 		emailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(h.db, strings.TrimSpace(inv.PreferredLang), emailLanguageContext{
 			GroupName: strings.TrimSpace(provisionPlan.EffectiveProfile.GroupName),
@@ -957,7 +947,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 			map[bool]string{true: "ldap_only", false: "hybrid"}[ldapOnlyMode],
 		))
 
-	slog.Info("Ã°Å¸Å½â€° Inscription terminÃƒÂ©e avec succÃƒÂ¨s", "username", form.Username, "jellyfin_id", jellyfinID, "ldap_dn", userDN, "invitation", inv.Code)
+	slog.Info("Ã°Å¸Å½â€° Inscription terminÃƒÂ©e avec succÃƒÂ¨s", "username", form.Username, "jellyfin_id", jellyfinID, "ldap_dn", userDN, "invitation_fingerprint", tokenLogFingerprint(inv.Code))
 
 	if h.notifier != nil {
 		h.notifier.NotifyUserRegistered(notify.UserRegisteredEvent{

@@ -295,7 +295,7 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	_, status, err = consumeEmailVerification(h.db, code)
+	_, status, err = validateEmailVerification(h.db, code)
 	if err != nil {
 		slog.Warn("Verification email echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
 		switch status {
@@ -316,9 +316,18 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 			heading = h.tr(r, "verify_email_invalid_heading", "Invalid verification link")
 			message = h.tr(r, "verify_email_invalid_message", "This verification link is invalid or no longer available.")
 		}
+	} else {
+		heading = h.tr(r, "verify_email_confirm_heading", "Confirm email address")
+		message = h.tr(r, "verify_email_confirm_message", "Confirm this email address to finish securing your account.")
 	}
 
-	renderEmailVerificationPage(r, w, h.renderer, jgmw.LangFromContext(r.Context()), statusCode, title, heading, message, h.tr(r, "back_to_login", "Back to login"), resolvePortalLinks(h.cfg, h.db))
+	extraData := map[string]interface{}{}
+	if err == nil {
+		extraData["ShowEmailVerificationConfirm"] = true
+		extraData["VerificationCode"] = code
+		extraData["ConfirmLabel"] = h.tr(r, "verify_email_confirm_button", "Confirm email")
+	}
+	renderEmailVerificationPage(r, w, h.renderer, jgmw.LangFromContext(r.Context()), statusCode, title, heading, message, h.tr(r, "back_to_login", "Back to login"), resolvePortalLinks(h.cfg, h.db), extraData)
 }
 
 func (h *InvitationHandler) VerifyEmailSubmit(w http.ResponseWriter, r *http.Request) {
@@ -330,9 +339,31 @@ func (h *InvitationHandler) VerifyEmailSubmit(w http.ResponseWriter, r *http.Req
 
 	status, handled, err := h.completePendingInviteSignup(r, code)
 	if !handled {
-		statusCode = http.StatusNotFound
-		heading = h.tr(r, "verify_email_invalid_heading", "Invalid verification link")
-		message = h.tr(r, "verify_email_invalid_message", "This verification link is invalid or no longer available.")
+		_, status, err = consumeEmailVerification(h.db, code)
+		if err != nil {
+			slog.Warn("Verification email echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
+			switch status {
+			case "expired":
+				statusCode = http.StatusGone
+				heading = h.tr(r, "verify_email_expired_heading", "Verification link expired")
+				message = h.tr(r, "verify_email_expired_message", "This verification link has expired. Request a new email from your account page.")
+			case "used":
+				statusCode = http.StatusGone
+				heading = h.tr(r, "verify_email_used_heading", "Link already used")
+				message = h.tr(r, "verify_email_used_message", "This verification link has already been used. Your email may already be confirmed.")
+			case "obsolete":
+				statusCode = http.StatusGone
+				heading = h.tr(r, "verify_email_obsolete_heading", "Verification link outdated")
+				message = h.tr(r, "verify_email_obsolete_message", "This verification link is no longer valid because a newer email address is pending.")
+			default:
+				statusCode = http.StatusNotFound
+				heading = h.tr(r, "verify_email_invalid_heading", "Invalid verification link")
+				message = h.tr(r, "verify_email_invalid_message", "This verification link is invalid or no longer available.")
+			}
+		} else {
+			heading = h.tr(r, "verify_email_success_heading", "Email verified")
+			message = h.tr(r, "verify_email_success_message", "Your email address has been confirmed. You can now sign in normally.")
+		}
 	} else if err != nil {
 		slog.Warn("Validation email invitation echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
 		switch status {

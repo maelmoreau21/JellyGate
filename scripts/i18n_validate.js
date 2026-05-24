@@ -4,6 +4,7 @@ const path = require('path');
 const glob = require('glob');
 
 const i18nDir = path.join(__dirname, '..', 'web', 'i18n');
+const reportDir = process.env.I18N_VALIDATE_REPORT_DIR || path.join(__dirname, '..', '.tmp-i18n');
 const toGlobPath = (p) => p.replace(/\\/g, '/');
 const files = glob.sync(toGlobPath(path.join(i18nDir, '*.json')));
 if (!files.length) {
@@ -72,7 +73,8 @@ files.forEach((f) => {
   results[name] = info;
 });
 
-const outName = path.join(i18nDir, 'suspect_keys_' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');
+fs.mkdirSync(reportDir, { recursive: true });
+const outName = path.join(reportDir, 'suspect_keys_' + new Date().toISOString().replace(/[:.]/g, '-') + '.json');
 fs.writeFileSync(outName, JSON.stringify(results, null, 2), 'utf8');
 console.log('i18n validation written to', outName);
 if (anyIssues) {

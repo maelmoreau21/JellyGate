@@ -42,6 +42,10 @@
                 </div>
                 <button type="submit" class="jg-btn jg-btn-primary w-full px-6 py-3">{{ .T "invite_submit" }}</button>
             </form>
+            {{ else if .Data.ShowEmailVerificationConfirm }}
+            <form method="POST" action="/verify-email/{{ .Data.VerificationCode }}">
+                <button type="submit" class="jg-btn jg-btn-primary w-full px-6 py-3">{{ .Data.ConfirmLabel }}</button>
+            </form>
             {{ else }}
             <div class="flex justify-center">
                 <a href="/admin/login" class="jg-btn jg-btn-primary px-6 py-3">{{ .Data.LoginLabel }}</a>

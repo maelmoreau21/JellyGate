@@ -144,7 +144,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	slog.Info("Demande de réinitialisation MDP", "identifier", identifier, "remote", r.RemoteAddr)
+	slog.Info("Demande de réinitialisation MDP", "identifier_fingerprint", tokenLogFingerprint(identifier), "remote", r.RemoteAddr)
 
 	successMsg := h.tr(r, "reset_request_success", "If a matching account exists, a reset email has been sent.")
 
@@ -152,7 +152,7 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 	user, err := h.findUserByIdentifier(identifier)
 	if err != nil {
 		slog.Warn("Utilisateur introuvable pour reset (pas d'erreur visible)",
-			"identifier", identifier,
+			"identifier_fingerprint", tokenLogFingerprint(identifier),
 			"error", err,
 		)
 		h.renderSuccessPage(w, r, successMsg)
@@ -382,7 +382,7 @@ func (h *PasswordResetHandler) findUserByIdentifier(identifier string) (*userRec
 	).Scan(&user.ID, &user.Username, &email, &jellyfinID, &ldapDN, &preferredLang, &groupName)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("aucun utilisateur trouvÃƒÂ© pour %q", identifier)
+		return nil, fmt.Errorf("aucun utilisateur trouvé")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("erreur de recherche: %w", err)
@@ -415,27 +415,26 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 	).Scan(&rec.ID, &rec.UserID, &rec.Code, &rec.Used, &expiresAtStr, &rec.CreatedAt)
 
 	if err == sql.ErrNoRows {
-		return nil, nil, fmt.Errorf("token %q introuvable", code)
+		return nil, nil, fmt.Errorf("token introuvable")
 	}
 	if err != nil {
 		return nil, nil, fmt.Errorf("erreur de lecture du token: %w", err)
 	}
 
 	// Parser l'expiration
-	rec.ExpiresAt, err = time.Parse("2006-01-02 15:04:05", expiresAtStr)
+	rec.ExpiresAt, err = parseResetTokenExpiry(expiresAtStr)
 	if err != nil {
 		return nil, nil, fmt.Errorf("format d'expiration invalide: %w", err)
 	}
 
 	// VÃƒÂ©rifier non-utilisÃƒÂ©
 	if rec.Used {
-		return nil, nil, fmt.Errorf("token %q dÃƒÂ©jÃƒÂ  utilisÃƒÂ©", code)
+		return nil, nil, fmt.Errorf("token deja utilise")
 	}
 
 	// VÃƒÂ©rifier expiration
 	if time.Now().After(rec.ExpiresAt) {
-		return nil, nil, fmt.Errorf("token %q expirÃƒÂ© depuis %s",
-			code, rec.ExpiresAt.Format("02/01/2006 15:04"))
+		return nil, nil, fmt.Errorf("token expire depuis %s", rec.ExpiresAt.Format("02/01/2006 15:04"))
 	}
 
 	// RÃƒÂ©cupÃƒÂ©rer l'utilisateur associÃƒÂ©
@@ -487,6 +486,17 @@ func generateSecureToken(length int) (string, error) {
 		return "", fmt.Errorf("erreur de gÃƒÂ©nÃƒÂ©ration du token: %w", err)
 	}
 	return hex.EncodeToString(bytes), nil
+}
+
+func parseResetTokenExpiry(raw string) (time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}, fmt.Errorf("expiration vide")
+	}
+	if t, err := time.Parse(time.RFC3339, raw); err == nil {
+		return t, nil
+	}
+	return time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local)
 }
 
 func (h *PasswordResetHandler) renderSuccessPage(w http.ResponseWriter, r *http.Request, message string) {

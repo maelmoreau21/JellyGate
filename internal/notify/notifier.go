@@ -81,6 +81,9 @@ type UserRegisteredEvent struct {
 // les plateformes configurÃ©es. L'exÃ©cution est entiÃ¨rement asynchrone â€”
 // cette mÃ©thode retourne immÃ©diatement.
 func (n *Notifier) NotifyUserRegistered(event UserRegisteredEvent) {
+	if n == nil {
+		return
+	}
 	if event.Timestamp.IsZero() {
 		event.Timestamp = time.Now()
 	}
@@ -103,6 +106,9 @@ func (n *Notifier) NotifyUserRegistered(event UserRegisteredEvent) {
 
 // NotifyTaskExecuted envoie une notification sur le statut d'exÃ©cution d'une tÃ¢che.
 func (n *Notifier) NotifyTaskExecuted(taskName string, success bool, err error) {
+	if n == nil {
+		return
+	}
 	title := "âœ… TÃ¢che terminÃ©e"
 	desc := fmt.Sprintf("La tÃ¢che **%s** s'est terminÃ©e avec succÃ¨s.", taskName)
 	color := 3066993 // Vert
@@ -147,6 +153,9 @@ func (n *Notifier) NotifyTaskExecuted(taskName string, success bool, err error) 
 
 // NotifyBackupCreated alerte qu'une nouvelle sauvegarde a Ã©tÃ© gÃ©nÃ©rÃ©e.
 func (n *Notifier) NotifyBackupCreated(fileName string, sizeBytes int64) {
+	if n == nil {
+		return
+	}
 	sizeMB := float64(sizeBytes) / (1024 * 1024)
 	title := "ðŸ’¾ Sauvegarde terminÃ©e"
 	desc := fmt.Sprintf("Une nouvelle sauvegarde de la base de donnÃ©es a Ã©tÃ© gÃ©nÃ©rÃ©e : **%s**", fileName)
@@ -167,6 +176,9 @@ func (n *Notifier) NotifyBackupCreated(fileName string, sizeBytes int64) {
 
 // NotifyAccessExpiry signale Ã  l'admin qu'un utilisateur va bientÃ´t expirer.
 func (n *Notifier) NotifyAccessExpiry(username string, daysLeft int) {
+	if n == nil {
+		return
+	}
 	title := "â�³ Expiration imminente"
 	desc := fmt.Sprintf("L'accÃ¨s de l'utilisateur **%s** arrive Ã  expiration dans **%d jours**.", username, daysLeft)
 

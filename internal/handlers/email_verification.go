@@ -272,6 +272,39 @@ func loadEmailVerificationRecord(db *database.DB, code string) (*emailVerificati
 	return &record, nil
 }
 
+func validateEmailVerification(db *database.DB, code string) (*emailVerificationTarget, string, error) {
+	if strings.TrimSpace(code) == "" {
+		return nil, "invalid", fmt.Errorf("code vide")
+	}
+
+	record, err := loadEmailVerificationRecord(db, code)
+	if err == sql.ErrNoRows {
+		return nil, "invalid", fmt.Errorf("token introuvable")
+	}
+	if err != nil {
+		return nil, "invalid", fmt.Errorf("lecture token: %w", err)
+	}
+	if record.Used {
+		return nil, "used", fmt.Errorf("token deja utilise")
+	}
+	if time.Now().After(record.ExpiresAt) {
+		return nil, "expired", fmt.Errorf("token expire")
+	}
+
+	target, err := loadEmailVerificationTarget(db, record.UserID)
+	if err != nil {
+		return nil, "invalid", fmt.Errorf("lecture utilisateur: %w", err)
+	}
+
+	resolvedPending := strings.EqualFold(strings.TrimSpace(target.PendingEmail), strings.TrimSpace(record.Email))
+	resolvedCurrent := strings.EqualFold(strings.TrimSpace(target.Email), strings.TrimSpace(record.Email))
+	if !resolvedPending && !resolvedCurrent {
+		return nil, "obsolete", fmt.Errorf("token obsolete")
+	}
+
+	return target, "valid", nil
+}
+
 func consumeEmailVerification(db *database.DB, code string) (*emailVerificationTarget, string, error) {
 	if strings.TrimSpace(code) == "" {
 		return nil, "invalid", fmt.Errorf("code vide")
@@ -348,7 +381,7 @@ func consumeEmailVerification(db *database.DB, code string) (*emailVerificationT
 	return updated, "success", nil
 }
 
-func renderEmailVerificationPage(r *http.Request, w http.ResponseWriter, renderer *render.Engine, lang string, statusCode int, title, heading, message, loginLabel string, links config.PortalLinksConfig) {
+func renderEmailVerificationPage(r *http.Request, w http.ResponseWriter, renderer *render.Engine, lang string, statusCode int, title, heading, message, loginLabel string, links config.PortalLinksConfig, extraData ...map[string]interface{}) {
 	if renderer == nil {
 		http.Error(w, message, statusCode)
 		return
@@ -362,6 +395,11 @@ func renderEmailVerificationPage(r *http.Request, w http.ResponseWriter, rendere
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
 	td.Data["JellyTrackURL"] = links.JellyTrackURL
+	for _, data := range extraData {
+		for key, value := range data {
+			td.Data[key] = value
+		}
+	}
 	w.WriteHeader(statusCode)
 	if err := renderer.Render(w, "verify_email.html", td); err != nil {
 		http.Error(w, message, statusCode)

@@ -2,6 +2,7 @@ node_modules/
 .vscode/
 .tmp-smoke/
 .tmp-smoke-ux/
+.tmp-i18n/
 build.log
 *.exe
 .env
@@ -14,3 +15,4 @@ data/
 *.sqlite3
 *.db-wal
 *.db-shm
+web/i18n/suspect_keys_*.json

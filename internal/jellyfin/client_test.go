@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -324,6 +325,146 @@ func TestSetUserImageUsesModernAuthorizationHeader(t *testing.T) {
 	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
 	if err := client.SetUserImage("user", "image/png", []byte("png")); err != nil {
 		t.Fatalf("SetUserImage() error = %v", err)
+	}
+}
+
+func TestResetPasswordPrefersJellyfin12PasswordPayload(t *testing.T) {
+	var resetSeen bool
+	var setPayload map[string]string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertModernJellyfinAuth(t, r, "secret")
+		if r.Method != http.MethodPost || r.URL.Path != "/Users/user/Password" {
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+
+		if !resetSeen {
+			var payload map[string]bool
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode reset payload: %v", err)
+			}
+			if !payload["ResetPassword"] {
+				t.Fatalf("reset payload = %#v, want ResetPassword=true", payload)
+			}
+			resetSeen = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		if err := json.NewDecoder(r.Body).Decode(&setPayload); err != nil {
+			t.Fatalf("decode set payload: %v", err)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
+	if err := client.ResetPassword("user", "new-secret"); err != nil {
+		t.Fatalf("ResetPassword() error = %v", err)
+	}
+	if setPayload["CurrentPassword"] != "" || setPayload["NewPassword"] != "new-secret" {
+		t.Fatalf("set payload = %#v, want Jellyfin 12 CurrentPassword/NewPassword shape", setPayload)
+	}
+	if _, legacy := setPayload["NewPw"]; legacy {
+		t.Fatalf("set payload should not use legacy NewPw when Jellyfin 12 shape succeeds: %#v", setPayload)
+	}
+}
+
+func TestResetPasswordFallsBackToLegacyPayload(t *testing.T) {
+	var resetSeen bool
+	var setAttempts []map[string]string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertModernJellyfinAuth(t, r, "secret")
+		if r.Method != http.MethodPost || r.URL.Path != "/Users/user/Password" {
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+
+		if !resetSeen {
+			var payload map[string]bool
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode reset payload: %v", err)
+			}
+			resetSeen = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		var payload map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Fatalf("decode set payload: %v", err)
+		}
+		setAttempts = append(setAttempts, payload)
+		if len(setAttempts) == 1 {
+			http.Error(w, `{"NewPassword":"new-secret","AccessToken":"admin-api-key"}`, http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
+	if err := client.ResetPassword("user", "new-secret"); err != nil {
+		t.Fatalf("ResetPassword() error = %v", err)
+	}
+	if len(setAttempts) != 2 {
+		t.Fatalf("set attempts = %d, want 2: %#v", len(setAttempts), setAttempts)
+	}
+	if setAttempts[0]["NewPassword"] != "new-secret" {
+		t.Fatalf("first set payload = %#v, want Jellyfin 12 shape", setAttempts[0])
+	}
+	if setAttempts[1]["CurrentPw"] != "" || setAttempts[1]["NewPw"] != "new-secret" {
+		t.Fatalf("fallback set payload = %#v, want legacy CurrentPw/NewPw shape", setAttempts[1])
+	}
+}
+
+func TestResetPasswordErrorRedactsJellyfinDetail(t *testing.T) {
+	var resetSeen bool
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !resetSeen {
+			resetSeen = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		http.Error(w, `{"NewPassword":"new-secret","AccessToken":"admin-api-key"}`, http.StatusUnauthorized)
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
+	err := client.ResetPassword("user", "new-secret")
+	if err == nil {
+		t.Fatalf("ResetPassword() error = nil, want Jellyfin failure")
+	}
+	if strings.Contains(err.Error(), "new-secret") || strings.Contains(err.Error(), "admin-api-key") {
+		t.Fatalf("ResetPassword() leaked secret detail: %v", err)
+	}
+	if !strings.Contains(err.Error(), "[REDACTED]") {
+		t.Fatalf("ResetPassword() error = %v, want redacted detail", err)
+	}
+}
+
+func TestLiveJellyfinSmokeFromEnvironment(t *testing.T) {
+	jellyfinURL := strings.TrimSpace(os.Getenv("JELLYFIN_URL"))
+	apiKey := strings.TrimSpace(os.Getenv("JELLYFIN_API_KEY"))
+	if jellyfinURL == "" || apiKey == "" {
+		t.Skip("set JELLYFIN_URL and JELLYFIN_API_KEY to run the live Jellyfin smoke test")
+	}
+
+	client := New(config.JellyfinConfig{URL: jellyfinURL, APIKey: apiKey})
+	if info, err := client.GetPublicSystemInfo(); err != nil {
+		t.Fatalf("GetPublicSystemInfo() error = %v", err)
+	} else {
+		t.Logf("Jellyfin public info: Version=%v ServerName=%v", info["Version"], info["ServerName"])
+	}
+	if _, err := client.GetSystemInfo(); err != nil {
+		t.Fatalf("GetSystemInfo() error = %v", err)
+	}
+	if _, err := client.GetUsers(); err != nil {
+		t.Fatalf("GetUsers() error = %v", err)
+	}
+	if _, err := client.GetLibraries(); err != nil {
+		t.Fatalf("GetLibraries() error = %v", err)
 	}
 }
 
