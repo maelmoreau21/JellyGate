@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
@@ -33,6 +34,8 @@ type Client struct {
 	baseURL    string       // URL de base de l'instance Jellyfin (sans trailing slash)
 	apiKey     string       // Clé API d'administration
 	httpClient *http.Client // Client HTTP avec timeout
+	authMu     sync.RWMutex
+	lastAuth   AuthAttemptSummary
 }
 
 // New crée un nouveau client Jellyfin à partir de la configuration.
@@ -724,6 +727,7 @@ func (c *Client) doRequest(method, path string, body []byte) (*http.Response, er
 	}
 
 	req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
+	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

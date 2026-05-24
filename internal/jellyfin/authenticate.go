@@ -36,8 +36,10 @@ type authenticateByNameResponse struct {
 }
 
 type authenticateByNameAttempt struct {
-	Path    string
-	Payload any
+	Path     string
+	Shape    string
+	Official bool
+	Payload  any
 }
 
 // AuthenticateByName authenticates a Jellyfin user and reloads their full
@@ -55,12 +57,12 @@ func (c *Client) AuthenticateByName(username, password string) (*User, error) {
 	}
 
 	attempts := []authenticateByNameAttempt{
-		{Path: "/Users/AuthenticateByName", Payload: authenticateByNameRequest{Username: username, Pw: password}},
-		{Path: "/Users/AuthenticateByName", Payload: authenticateByNamePasswordRequest{Username: username, Password: password}},
-		{Path: "/Users/AuthenticateByName", Payload: authenticateByNameLowerRequest{Username: username, Password: password}},
-		{Path: "/Users/authenticatebyname", Payload: authenticateByNameRequest{Username: username, Pw: password}},
-		{Path: "/Users/authenticatebyname", Payload: authenticateByNamePasswordRequest{Username: username, Password: password}},
-		{Path: "/Users/authenticatebyname", Payload: authenticateByNameLowerRequest{Username: username, Password: password}},
+		{Path: "/Users/AuthenticateByName", Shape: "Username/Pw", Official: true, Payload: authenticateByNameRequest{Username: username, Pw: password}},
+		{Path: "/Users/AuthenticateByName", Shape: "Username/Password", Payload: authenticateByNamePasswordRequest{Username: username, Password: password}},
+		{Path: "/Users/AuthenticateByName", Shape: "username/password", Payload: authenticateByNameLowerRequest{Username: username, Password: password}},
+		{Path: "/Users/authenticatebyname", Shape: "Username/Pw", Payload: authenticateByNameRequest{Username: username, Pw: password}},
+		{Path: "/Users/authenticatebyname", Shape: "Username/Password", Payload: authenticateByNamePasswordRequest{Username: username, Password: password}},
+		{Path: "/Users/authenticatebyname", Shape: "username/password", Payload: authenticateByNameLowerRequest{Username: username, Password: password}},
 	}
 
 	var lastErr error
@@ -69,7 +71,7 @@ func (c *Client) AuthenticateByName(username, password string) (*User, error) {
 		if err == nil {
 			return user, nil
 		}
-		if isAuthRejected(err) {
+		if isAuthRejected(err) && attempt.Official {
 			return nil, err
 		}
 		lastErr = err
@@ -89,26 +91,84 @@ func (c *Client) authenticateByNameAttempt(attempt authenticateByNameAttempt) (*
 
 	resp, err := c.doRequestWithToken(http.MethodPost, attempt.Path, reqBody, "")
 	if err != nil {
+		c.recordAuthAttempt(AuthAttemptSummary{
+			Endpoint:     attempt.Path,
+			PayloadShape: attempt.Shape,
+			Error:        err.Error(),
+		})
+		slog.Warn("Tentative auth Jellyfin echouee",
+			"endpoint", attempt.Path,
+			"payload_shape", attempt.Shape,
+			"error", sanitizeHTTPDetail(err.Error()),
+		)
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return nil, authRejectedError{err: jellyfinHTTPError("jellyfin.AuthenticateByName", resp)}
+		detail := readHTTPDetail(resp.Body)
+		err := authRejectedError{err: authRejectedStatusError(resp.StatusCode, detail)}
+		c.recordAuthAttempt(AuthAttemptSummary{
+			Endpoint:     attempt.Path,
+			PayloadShape: attempt.Shape,
+			Status:       resp.StatusCode,
+			Error:        err.Error(),
+			Response:     detail,
+		})
+		slog.Warn("Tentative auth Jellyfin refusee",
+			"endpoint", attempt.Path,
+			"payload_shape", attempt.Shape,
+			"status", resp.StatusCode,
+			"response", sanitizeHTTPDetail(detail),
+		)
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, jellyfinHTTPError("jellyfin.AuthenticateByName", resp)
+		detail := readHTTPDetail(resp.Body)
+		err := jellyfinHTTPStatusError("jellyfin.AuthenticateByName", resp.StatusCode, detail)
+		c.recordAuthAttempt(AuthAttemptSummary{
+			Endpoint:     attempt.Path,
+			PayloadShape: attempt.Shape,
+			Status:       resp.StatusCode,
+			Error:        err.Error(),
+			Response:     detail,
+		})
+		slog.Warn("Tentative auth Jellyfin echouee",
+			"endpoint", attempt.Path,
+			"payload_shape", attempt.Shape,
+			"status", resp.StatusCode,
+			"response", sanitizeHTTPDetail(detail),
+		)
+		return nil, err
 	}
 
 	var authResp authenticateByNameResponse
 	if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
+		c.recordAuthAttempt(AuthAttemptSummary{
+			Endpoint:     attempt.Path,
+			PayloadShape: attempt.Shape,
+			Status:       resp.StatusCode,
+			Error:        err.Error(),
+		})
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: erreur de decodage: %w", err)
 	}
 
 	userID := strings.TrimSpace(authResp.User.ID)
 	if userID == "" {
+		c.recordAuthAttempt(AuthAttemptSummary{
+			Endpoint:     attempt.Path,
+			PayloadShape: attempt.Shape,
+			Status:       resp.StatusCode,
+			Error:        "reponse Jellyfin sans User.Id",
+		})
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: reponse Jellyfin sans User.Id")
 	}
+
+	c.recordAuthAttempt(AuthAttemptSummary{
+		Endpoint:     attempt.Path,
+		PayloadShape: attempt.Shape,
+		Status:       resp.StatusCode,
+	})
 
 	return c.confirmAuthenticatedUser(authResp)
 }
@@ -221,12 +281,23 @@ func (c *Client) doRequestWithToken(method, path string, body []byte, token stri
 }
 
 func jellyfinHTTPError(operation string, resp *http.Response) error {
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	detail := strings.TrimSpace(string(body))
+	return jellyfinHTTPStatusError(operation, resp.StatusCode, readHTTPDetail(resp.Body))
+}
+
+func jellyfinHTTPStatusError(operation string, status int, detail string) error {
+	detail = strings.TrimSpace(detail)
 	if detail == "" {
-		return fmt.Errorf("%s: HTTP %d", operation, resp.StatusCode)
+		return fmt.Errorf("%s: HTTP %d", operation, status)
 	}
-	return fmt.Errorf("%s: HTTP %d: %s", operation, resp.StatusCode, sanitizeHTTPDetail(detail))
+	return fmt.Errorf("%s: HTTP %d: %s", operation, status, sanitizeHTTPDetail(detail))
+}
+
+func authRejectedStatusError(status int, detail string) error {
+	detail = strings.TrimSpace(detail)
+	if detail == "" {
+		return fmt.Errorf("jellyfin.AuthenticateByName: identifiants refuses (HTTP %d)", status)
+	}
+	return fmt.Errorf("jellyfin.AuthenticateByName: identifiants refuses (HTTP %d): %s", status, sanitizeHTTPDetail(detail))
 }
 
 func sanitizeHTTPDetail(detail string) string {

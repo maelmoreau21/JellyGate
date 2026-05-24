@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -214,6 +216,79 @@ func TestLoginSubmitAllowsSessionWithoutAdminWhenPolicyRefreshUnavailable(t *tes
 	}
 	if payload.IsAdmin {
 		t.Fatalf("session should not grant admin when policy is unconfirmed: %+v", payload)
+	}
+}
+
+func TestLoginSubmitAllowsSessionWithoutAdminWhenAPIKeyInvalid(t *testing.T) {
+	db := newAuthTestDB(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"User": map[string]interface{}{
+					"Id":   "admin-id",
+					"Name": "admin",
+					"Policy": map[string]bool{
+						"IsAdministrator": true,
+					},
+				},
+				"AccessToken": "session-token",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`):
+			http.Error(w, "token cannot read policy", http.StatusForbidden)
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="admin-api-key"`):
+			http.Error(w, "api key invalid", http.StatusUnauthorized)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	handler := newAuthTestHandler(db, server.URL)
+	rec := httptest.NewRecorder()
+	handler.LoginSubmit(rec, newLoginSubmitRequest("admin", "secret", true))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	cookie := responseCookie(rec, session.CookieName)
+	if cookie == nil {
+		t.Fatalf("session cookie missing")
+	}
+	payload, err := session.Verify(cookie.Value, testAuthSecret)
+	if err != nil {
+		t.Fatalf("Verify() error = %v", err)
+	}
+	if payload.IsAdmin {
+		t.Fatalf("invalid API key should not grant admin: %+v", payload)
+	}
+}
+
+func TestLoginSubmitLogsRedactJellyfinSecrets(t *testing.T) {
+	var logs bytes.Buffer
+	previous := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	t.Cleanup(func() { slog.SetDefault(previous) })
+
+	db := newAuthTestDB(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, `{"AccessToken":"leaky-token","Password":"secret"}`, http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	handler := newAuthTestHandler(db, server.URL)
+	rec := httptest.NewRecorder()
+	handler.LoginSubmit(rec, newLoginSubmitRequest("admin", "secret", true))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	output := logs.String()
+	if strings.Contains(output, "leaky-token") || strings.Contains(output, "Password\":\"secret") || strings.Contains(output, "password\":\"secret") {
+		t.Fatalf("logs leaked Jellyfin secret: %s", output)
+	}
+	if !strings.Contains(output, "[REDACTED]") {
+		t.Fatalf("logs = %s, want redacted Jellyfin detail", output)
 	}
 }
 

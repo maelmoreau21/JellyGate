@@ -165,6 +165,37 @@ func TestAuthenticateByNameAllowsLoginWithoutAdminWhenPolicyRefreshFails(t *test
 	}
 }
 
+func TestAuthenticateByNameAllowsLoginWithoutAdminWhenAPIKeyInvalid(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
+			assertModernJellyfinAuth(t, r, "")
+			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
+				User:        User{ID: "admin-id", Name: "admin", Policy: Policy{IsAdministrator: true}},
+				AccessToken: "session-token",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`):
+			assertModernJellyfinAuth(t, r, "session-token")
+			http.Error(w, "token cannot read policy", http.StatusForbidden)
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="bad-api-key"`):
+			assertModernJellyfinAuth(t, r, "bad-api-key")
+			http.Error(w, "api key invalid", http.StatusUnauthorized)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "bad-api-key"})
+	user, err := client.AuthenticateByName("admin", "secret")
+	if err != nil {
+		t.Fatalf("AuthenticateByName() error = %v", err)
+	}
+	if user.Policy.IsAdministrator {
+		t.Fatalf("AuthenticateByName() granted admin with invalid API-key confirmation")
+	}
+}
+
 func TestAuthenticateByNameTriesJellyTrackCompatibleVariants(t *testing.T) {
 	var lowerPayloadSeen bool
 
@@ -202,6 +233,65 @@ func TestAuthenticateByNameTriesJellyTrackCompatibleVariants(t *testing.T) {
 	}
 	if user.ID != "admin-id" || user.Name != "admin" || user.Policy.IsAdministrator {
 		t.Fatalf("authenticated user = %+v, want non-admin fallback user", user)
+	}
+}
+
+func TestDiagnosticsReportsPublicInfoAndAPIKeyValidity(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/System/Info/Public":
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"ServerName": "Jellyfin Beta",
+				"Version":    "12.0.0-beta",
+			})
+		case r.Method == http.MethodGet && r.URL.Path == "/System/Info":
+			assertModernJellyfinAuth(t, r, "admin-api-key")
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"ServerName": "Jellyfin Beta",
+				"Version":    "12.0.0-beta",
+			})
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
+	diag := client.Diagnostics()
+	if diag.BaseURL != server.URL || diag.PublicStatus != http.StatusOK || diag.AuthStatus != http.StatusOK {
+		t.Fatalf("Diagnostics() = %+v, want successful statuses", diag)
+	}
+	if !diag.APIKeyValid || diag.Version != "12.0.0-beta" || diag.ServerName != "Jellyfin Beta" {
+		t.Fatalf("Diagnostics() = %+v, want server info and valid key", diag)
+	}
+	if diag.APIKeyFingerprint == "" || strings.Contains(diag.APIKeyFingerprint, "admin-api-key") {
+		t.Fatalf("API key fingerprint = %q, want short non-secret fingerprint", diag.APIKeyFingerprint)
+	}
+}
+
+func TestDiagnosticsReportsInvalidAPIKeyWithoutSecret(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/System/Info/Public":
+			_ = json.NewEncoder(w).Encode(map[string]string{"Version": "12.0.0-beta"})
+		case r.Method == http.MethodGet && r.URL.Path == "/System/Info":
+			http.Error(w, `{"AccessToken":"bad-api-key","Password":"secret"}`, http.StatusUnauthorized)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "bad-api-key"})
+	diag := client.Diagnostics()
+	if diag.APIKeyValid || diag.AuthStatus != http.StatusUnauthorized {
+		t.Fatalf("Diagnostics() = %+v, want invalid API key", diag)
+	}
+	if strings.Contains(diag.AuthError, "bad-api-key") || strings.Contains(diag.AuthError, "secret") {
+		t.Fatalf("AuthError leaked secret: %q", diag.AuthError)
+	}
+	if !strings.Contains(diag.AuthError, "[REDACTED]") {
+		t.Fatalf("AuthError = %q, want redacted detail", diag.AuthError)
 	}
 }
 

@@ -84,6 +84,7 @@ func main() {
 	// ── 3b. Initialiser les clients de service à partir des settings DB ──
 	jfClient := jellyfin.New(cfg.Jellyfin)
 	slog.Info("Client Jellyfin initialisé")
+	jfClient.LogDiagnostics()
 
 	// LDAP (optionnel — chargé depuis la base)
 	ldapCfg, _ := db.GetLDAPConfig()
@@ -268,6 +269,15 @@ func main() {
 						return
 					}
 					_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "user": p.Username, "is_admin": p.IsAdmin})
+				})
+
+				// DEBUG route: inspect Jellyfin auth/config without exposing secrets.
+				r.Get("/debug/jellyfin-auth-config", func(w http.ResponseWriter, r *http.Request) {
+					w.Header().Set("Content-Type", "application/json")
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{
+						"success": true,
+						"data":    jfClient.Diagnostics(),
+					})
 				})
 			})
 		}

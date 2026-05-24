@@ -47,6 +47,15 @@ JELLYFIN_API_KEY=votre_clé_api_admin
 docker compose up -d
 ```
 
+> [!IMPORTANT]
+> Docker Compose lit le fichier `.env` du dossier de déploiement, pas `.env.local`.
+> Après modification de `JELLYFIN_API_KEY` ou `JELLYFIN_URL`, recréez le conteneur pour appliquer la configuration :
+> ```bash
+> docker compose config
+> docker compose up -d --force-recreate
+> docker logs jellygate --tail 100
+> ```
+
 > [!TIP]
 > Si vous préférez utiliser **PostgreSQL** au lieu de SQLite, utilisez :
 > `docker compose -f docker-compose.postgres.yml up -d`
@@ -107,4 +116,4 @@ go run ./cmd/i18ncheck # Vérifier les traductions
 
 ## 📄 Licence
 
-Distribué sous licence **MIT**.
+Distribué sous licence **MIT**.
