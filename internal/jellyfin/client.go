@@ -265,7 +265,7 @@ func (c *Client) SetUserImage(userID string, contentType string, data []byte) er
 		return err
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("X-Emby-Token", c.apiKey)
+	req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -723,9 +723,7 @@ func (c *Client) doRequest(method, path string, body []byte) (*http.Response, er
 		return nil, fmt.Errorf("erreur de création de la requête %s %s: %w", method, path, err)
 	}
 
-	// Authentification par clé API
-	req.Header.Set("X-Emby-Token", c.apiKey)
-	req.Header.Set("Authorization", "MediaBrowser Token=\""+c.apiKey+"\"")
+	req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}

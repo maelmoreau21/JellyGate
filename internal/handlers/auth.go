@@ -18,6 +18,7 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
+	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
@@ -356,9 +357,7 @@ func (h *AuthHandler) authenticateWithJellyfin(username, password string) (*jell
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	embyAuth := fmt.Sprintf(`MediaBrowser Client="JellyGate", Device="Server", DeviceId="jellygate", Version="%s"`, config.AppVersion)
-	req.Header.Set("Authorization", embyAuth)
-	req.Header.Set("X-Emby-Authorization", embyAuth)
+	req.Header.Set("Authorization", jellyfin.AuthorizationHeader(""))
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)

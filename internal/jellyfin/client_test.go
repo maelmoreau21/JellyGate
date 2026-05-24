@@ -4,10 +4,72 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 )
+
+func assertModernJellyfinAuth(t *testing.T, r *http.Request, token string) {
+	t.Helper()
+
+	if got := r.Header.Get("X-Emby-Token"); got != "" {
+		t.Fatalf("X-Emby-Token should not be sent, got %q", got)
+	}
+	if got := r.Header.Get("X-MediaBrowser-Token"); got != "" {
+		t.Fatalf("X-MediaBrowser-Token should not be sent, got %q", got)
+	}
+	if got := r.Header.Get("X-Emby-Authorization"); got != "" {
+		t.Fatalf("X-Emby-Authorization should not be sent, got %q", got)
+	}
+
+	auth := r.Header.Get("Authorization")
+	required := []string{
+		`MediaBrowser `,
+		`Client="JellyGate"`,
+		`Device="Server"`,
+		`DeviceId="jellygate-server"`,
+		`Version="1.4.0"`,
+		`Token="` + token + `"`,
+	}
+	for _, part := range required {
+		if !strings.Contains(auth, part) {
+			t.Fatalf("Authorization header %q missing %q", auth, part)
+		}
+	}
+}
+
+func TestClientUsesModernAuthorizationHeader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertModernJellyfinAuth(t, r, "secret")
+		if r.Method != http.MethodGet || r.URL.Path != "/Users" {
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+		_ = json.NewEncoder(w).Encode([]User{})
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
+	if _, err := client.GetUsers(); err != nil {
+		t.Fatalf("GetUsers() error = %v", err)
+	}
+}
+
+func TestSetUserImageUsesModernAuthorizationHeader(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assertModernJellyfinAuth(t, r, "secret")
+		if r.Method != http.MethodPost || r.URL.Path != "/Users/user/Images/Primary" {
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
+	if err := client.SetUserImage("user", "image/png", []byte("png")); err != nil {
+		t.Fatalf("SetUserImage() error = %v", err)
+	}
+}
 
 func TestApplyInviteProfileAppliesPolicyConfigurationAndDisplayPreferences(t *testing.T) {
 	var policyPayload Policy
