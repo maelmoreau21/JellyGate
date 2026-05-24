@@ -163,7 +163,6 @@ func TestLoginSubmitJellyfinFailuresDoNotSetSessionCookie(t *testing.T) {
 		{name: "unauthorized", authStatus: http.StatusUnauthorized, userStatus: http.StatusOK},
 		{name: "forbidden", authStatus: http.StatusForbidden, userStatus: http.StatusOK},
 		{name: "auth server error", authStatus: http.StatusInternalServerError, userStatus: http.StatusOK},
-		{name: "policy refresh server error", authStatus: http.StatusOK, userStatus: http.StatusInternalServerError},
 	}
 
 	for _, tt := range tests {
@@ -186,6 +185,35 @@ func TestLoginSubmitJellyfinFailuresDoNotSetSessionCookie(t *testing.T) {
 				t.Fatalf("session cookie should not be set on failure: %+v", cookie)
 			}
 		})
+	}
+}
+
+func TestLoginSubmitAllowsSessionWithoutAdminWhenPolicyRefreshUnavailable(t *testing.T) {
+	db := newAuthTestDB(t)
+	server := newAuthJellyfinServer(t, http.StatusOK, http.StatusInternalServerError, true)
+	defer server.Close()
+
+	handler := newAuthTestHandler(db, server.URL)
+	rec := httptest.NewRecorder()
+	handler.LoginSubmit(rec, newLoginSubmitRequest("admin", "secret", true))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if got := rec.Header().Get("Location"); got != "/admin/" {
+		t.Fatalf("Location = %q, want /admin/", got)
+	}
+
+	cookie := responseCookie(rec, session.CookieName)
+	if cookie == nil {
+		t.Fatalf("session cookie missing")
+	}
+	payload, err := session.Verify(cookie.Value, testAuthSecret)
+	if err != nil {
+		t.Fatalf("Verify() error = %v", err)
+	}
+	if payload.IsAdmin {
+		t.Fatalf("session should not grant admin when policy is unconfirmed: %+v", payload)
 	}
 }
 
@@ -238,7 +266,11 @@ func newAuthJellyfinServer(t *testing.T, authStatus, userStatus int, isAdmin boo
 
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
+		case r.Method == http.MethodPost && (r.URL.Path == "/Users/AuthenticateByName" || r.URL.Path == "/Users/authenticatebyname"):
+			if authStatus != http.StatusOK {
+				http.Error(w, "auth failed", authStatus)
+				return
+			}
 			var payload struct {
 				Username string `json:"Username"`
 				Pw       string `json:"Pw"`
@@ -249,10 +281,6 @@ func newAuthJellyfinServer(t *testing.T, authStatus, userStatus int, isAdmin boo
 			if payload.Username != "admin" || payload.Pw != "secret" {
 				t.Fatalf("auth payload = %+v, want admin/secret", payload)
 			}
-			if authStatus != http.StatusOK {
-				http.Error(w, "auth failed", authStatus)
-				return
-			}
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"User": map[string]string{
 					"Id":   "admin-id",
@@ -261,8 +289,9 @@ func newAuthJellyfinServer(t *testing.T, authStatus, userStatus int, isAdmin boo
 				"AccessToken": "session-token",
 			})
 		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id":
-			if !strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`) {
-				t.Fatalf("Authorization header %q missing session token", r.Header.Get("Authorization"))
+			auth := r.Header.Get("Authorization")
+			if !strings.Contains(auth, `Token="session-token"`) && !strings.Contains(auth, `Token="admin-api-key"`) {
+				t.Fatalf("Authorization header %q missing expected token", auth)
 			}
 			if userStatus != http.StatusOK {
 				http.Error(w, "policy unavailable", userStatus)

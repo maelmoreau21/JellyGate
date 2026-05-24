@@ -3,8 +3,10 @@ package jellyfin
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -18,9 +20,24 @@ type authenticateByNameRequest struct {
 	Pw       string `json:"Pw"`
 }
 
+type authenticateByNamePasswordRequest struct {
+	Username string `json:"Username"`
+	Password string `json:"Password"`
+}
+
+type authenticateByNameLowerRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
 type authenticateByNameResponse struct {
 	User        User   `json:"User"`
 	AccessToken string `json:"AccessToken"`
+}
+
+type authenticateByNameAttempt struct {
+	Path    string
+	Payload any
 }
 
 // AuthenticateByName authenticates a Jellyfin user and reloads their full
@@ -37,22 +54,47 @@ func (c *Client) AuthenticateByName(username, password string) (*User, error) {
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: mot de passe vide")
 	}
 
-	reqBody, err := json.Marshal(authenticateByNameRequest{ // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
-		Username: username,
-		Pw:       password,
-	})
+	attempts := []authenticateByNameAttempt{
+		{Path: "/Users/AuthenticateByName", Payload: authenticateByNameRequest{Username: username, Pw: password}},
+		{Path: "/Users/AuthenticateByName", Payload: authenticateByNamePasswordRequest{Username: username, Password: password}},
+		{Path: "/Users/AuthenticateByName", Payload: authenticateByNameLowerRequest{Username: username, Password: password}},
+		{Path: "/Users/authenticatebyname", Payload: authenticateByNameRequest{Username: username, Pw: password}},
+		{Path: "/Users/authenticatebyname", Payload: authenticateByNamePasswordRequest{Username: username, Password: password}},
+		{Path: "/Users/authenticatebyname", Payload: authenticateByNameLowerRequest{Username: username, Password: password}},
+	}
+
+	var lastErr error
+	for _, attempt := range attempts {
+		user, err := c.authenticateByNameAttempt(attempt)
+		if err == nil {
+			return user, nil
+		}
+		if isAuthRejected(err) {
+			return nil, err
+		}
+		lastErr = err
+	}
+
+	if lastErr != nil {
+		return nil, lastErr
+	}
+	return nil, fmt.Errorf("jellyfin.AuthenticateByName: authentification impossible")
+}
+
+func (c *Client) authenticateByNameAttempt(attempt authenticateByNameAttempt) (*User, error) {
+	reqBody, err := json.Marshal(attempt.Payload) // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
 	if err != nil {
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: erreur de serialisation: %w", err)
 	}
 
-	resp, err := c.doRequestWithToken(http.MethodPost, "/Users/AuthenticateByName", reqBody, "")
+	resp, err := c.doRequestWithToken(http.MethodPost, attempt.Path, reqBody, "")
 	if err != nil {
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return nil, jellyfinHTTPError("jellyfin.AuthenticateByName", resp)
+		return nil, authRejectedError{err: jellyfinHTTPError("jellyfin.AuthenticateByName", resp)}
 	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, jellyfinHTTPError("jellyfin.AuthenticateByName", resp)
@@ -67,23 +109,62 @@ func (c *Client) AuthenticateByName(username, password string) (*User, error) {
 	if userID == "" {
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: reponse Jellyfin sans User.Id")
 	}
+
+	return c.confirmAuthenticatedUser(authResp)
+}
+
+func (c *Client) confirmAuthenticatedUser(authResp authenticateByNameResponse) (*User, error) {
+	userID := strings.TrimSpace(authResp.User.ID)
+	if userID == "" {
+		return nil, fmt.Errorf("jellyfin.AuthenticateByName: reponse Jellyfin sans User.Id")
+	}
 	accessToken := strings.TrimSpace(authResp.AccessToken)
-	if accessToken == "" {
-		return nil, fmt.Errorf("jellyfin.AuthenticateByName: reponse Jellyfin sans AccessToken")
+
+	var confirmErr error
+	if accessToken != "" {
+		user, err := c.getUserWithToken(userID, accessToken)
+		if err == nil {
+			mergeAuthenticatedUserDefaults(user, authResp.User)
+			return user, nil
+		}
+		confirmErr = err
 	}
 
-	user, err := c.getUserWithToken(userID, accessToken)
-	if err != nil {
-		return nil, fmt.Errorf("jellyfin.AuthenticateByName: confirmation policy impossible: %w", err)
+	if strings.TrimSpace(c.apiKey) != "" {
+		user, err := c.GetUser(userID)
+		if err == nil {
+			mergeAuthenticatedUserDefaults(user, authResp.User)
+			return user, nil
+		}
+		if confirmErr == nil {
+			confirmErr = err
+		}
 	}
+
+	user := authResp.User
+	user.Policy.IsAdministrator = false
+	var safeErr any
+	if confirmErr != nil {
+		safeErr = sanitizeHTTPDetail(confirmErr.Error())
+	}
+	slog.Warn("Policy Jellyfin impossible a confirmer apres authentification; session accordee sans droits admin",
+		"jellyfin_id", userID,
+		"error", safeErr,
+	)
+	return &user, nil
+}
+
+func mergeAuthenticatedUserDefaults(user *User, fallback User) {
+	if user == nil {
+		return
+	}
+	userID := strings.TrimSpace(fallback.ID)
 	if strings.TrimSpace(user.ID) == "" {
 		user.ID = userID
 	}
 	if strings.TrimSpace(user.Name) == "" {
-		user.Name = authResp.User.Name
+		user.Name = fallback.Name
 	}
-
-	return user, nil
 }
 
 func (c *Client) getUserWithToken(userID, token string) (*User, error) {
@@ -123,6 +204,7 @@ func (c *Client) doRequestWithToken(method, path string, body []byte, token stri
 	}
 
 	req.Header.Set("Authorization", AuthorizationHeader(token))
+	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
@@ -149,4 +231,21 @@ func jellyfinHTTPError(operation string, resp *http.Response) error {
 
 func sanitizeHTTPDetail(detail string) string {
 	return sensitiveHTTPDetailPattern.ReplaceAllString(detail, `${1}${2}[REDACTED]`)
+}
+
+type authRejectedError struct {
+	err error
+}
+
+func (e authRejectedError) Error() string {
+	return e.err.Error()
+}
+
+func (e authRejectedError) Unwrap() error {
+	return e.err
+}
+
+func isAuthRejected(err error) bool {
+	var rejected authRejectedError
+	return errors.As(err, &rejected)
 }
