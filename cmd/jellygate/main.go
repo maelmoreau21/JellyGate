@@ -234,6 +234,7 @@ func main() {
 
 	r.Route("/verify-email", func(r chi.Router) {
 		r.Get("/{code}", inviteHandler.VerifyEmailPage)
+		r.Post("/{code}", inviteHandler.VerifyEmailSubmit)
 	})
 
 	// ── Routes admin (authentification requise) ─────────────────────────────
@@ -247,37 +248,27 @@ func main() {
 		if cfg.EnableDebugRoutes {
 			slog.Warn("Routes debug admin activées: à ne jamais utiliser en production")
 
-			// DEBUG ROUTE (local only): bypass auth and call ListInvitations with a fake admin session
-			// Use only for local debugging to reproduce API errors.
-			r.Get("/debug/invitations-bypass", func(w http.ResponseWriter, r *http.Request) {
-				sess := &session.Payload{UserID: "1", Username: "debug-admin", IsAdmin: true, Exp: time.Now().Add(24 * time.Hour).Unix()}
-				r = r.WithContext(session.NewContext(r.Context(), sess))
-				adminHandler.ListInvitations(w, r)
-			})
+			r.Group(func(r chi.Router) {
+				r.Use(jgmw.RequireAuth(cfg.SecretKey, cfg.BaseURL, authSessionValidator))
+				r.Use(jgmw.RequireAdminAuth())
 
-			// DEBUG route for InvitationStats
-			r.Get("/debug/invitations-stats-bypass", func(w http.ResponseWriter, r *http.Request) {
-				sess := &session.Payload{UserID: "1", Username: "debug-admin", IsAdmin: true, Exp: time.Now().Add(24 * time.Hour).Unix()}
-				r = r.WithContext(session.NewContext(r.Context(), sess))
-				adminHandler.InvitationStats(w, r)
-			})
-
-			// DEBUG route: verify jellygate_session cookie using server secret and return error (local only)
-			r.Get("/debug/verify-session", func(w http.ResponseWriter, r *http.Request) {
-				cookie, err := r.Cookie(session.CookieName)
-				w.Header().Set("Content-Type", "application/json")
-				if err != nil {
-					w.WriteHeader(http.StatusUnauthorized)
-					_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "cookie missing"})
-					return
-				}
-				p, err := session.Verify(cookie.Value, cfg.SecretKey)
-				if err != nil {
-					w.WriteHeader(http.StatusUnauthorized)
-					_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
-					return
-				}
-				_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "user": p.Username, "is_admin": p.IsAdmin})
+				// DEBUG route: verify jellygate_session cookie using server secret.
+				r.Get("/debug/verify-session", func(w http.ResponseWriter, r *http.Request) {
+					cookie, err := r.Cookie(session.CookieName)
+					w.Header().Set("Content-Type", "application/json")
+					if err != nil {
+						w.WriteHeader(http.StatusUnauthorized)
+						_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": "cookie missing"})
+						return
+					}
+					p, err := session.Verify(cookie.Value, cfg.SecretKey)
+					if err != nil {
+						w.WriteHeader(http.StatusUnauthorized)
+						_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": false, "error": err.Error()})
+						return
+					}
+					_ = json.NewEncoder(w).Encode(map[string]interface{}{"success": true, "user": p.Username, "is_admin": p.IsAdmin})
+				})
 			})
 		}
 

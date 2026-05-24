@@ -167,7 +167,7 @@ type InviteProfile struct {
 // Retourne l'utilisateur créé avec son ID Jellyfin.
 // En cas d'erreur, le rollback doit supprimer le compte AD correspondant.
 func (c *Client) CreateUser(name, password string) (*User, error) {
-	reqBody, err := json.Marshal(CreateUserRequest{
+	reqBody, err := json.Marshal(CreateUserRequest{ // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
 		Name:     name,
 		Password: password,
 	})
@@ -680,7 +680,7 @@ func (c *Client) ResetPassword(userID, newPassword string) error {
 	if err != nil {
 		return fmt.Errorf("jellyfin.ResetPassword: reset — %w", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
 		return fmt.Errorf("jellyfin.ResetPassword: reset — HTTP %d", resp.StatusCode)

@@ -624,7 +624,7 @@
     "settings_backup_manual_desc": "Creez une archive ZIP exportable (base SQLite + parametres + modeles).",
     "settings_backup_manual_title": "Sauvegarde manuelle",
     "settings_backup_pg_mode_desc_1": "Les sauvegardes et restaurations sont disponibles en mode PostgreSQL.",
-    "settings_backup_pg_mode_desc_2": "En mode Docker, pg_dump et psql sont inclus dans l image JellyGate. Reconstruisez l image si les versions majeures PostgreSQL ne correspondent pas. Hors Docker, installez pg_dump et psql sur l hote.",
+    "settings_backup_pg_mode_desc_2": "En mode Docker, pg_dump et pg_restore sont inclus dans l image JellyGate. Reconstruisez l image si les versions majeures PostgreSQL ne correspondent pas. Hors Docker, installez pg_dump et pg_restore sur l hote.",
     "settings_backup_pg_mode_title": "Sauvegardes PostgreSQL",
     "settings_backup_pg_not_supported": "Action non prise en charge en mode PostgreSQL",
     "settings_backup_pg_plan_unavailable": "Le planificateur local de sauvegarde est indisponible en mode PostgreSQL (utilisez pg_dump et pg_restore)",

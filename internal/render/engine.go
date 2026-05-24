@@ -118,7 +118,7 @@ func (e *Engine) loadTranslations(i18nDir string) error {
 		base := filepath.Base(file)
 		lang := strings.TrimSuffix(base, filepath.Ext(base))
 
-		data, err := os.ReadFile(file)
+		data, err := os.ReadFile(file) // #nosec G304 -- path comes from filepath.Glob under the configured i18n directory.
 		if err != nil {
 			slog.Warn("Erreur de lecture du fichier i18n", "file", file, "error", err)
 			continue

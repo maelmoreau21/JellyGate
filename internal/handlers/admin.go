@@ -557,7 +557,9 @@ func (h *AdminHandler) runExpirationCheck() {
 			}
 			_ = h.db.LogAction("user.expiry_reminder.sent", "system", username, details)
 		}
-		reminderRows.Close()
+		if err := reminderRows.Close(); err != nil {
+			slog.Warn("Erreur fermeture rows reminders expiration", "error", err)
+		}
 	}
 
 	// Suppression planifiee (simple): delete_at atteint.
@@ -591,7 +593,9 @@ func (h *AdminHandler) runExpirationCheck() {
 
 			_ = h.db.LogAction("user.expired.deleted", "system", username, "Suppression planifiee (delete_at)")
 		}
-		deleteRows.Close()
+		if err := deleteRows.Close(); err != nil {
+			slog.Warn("Erreur fermeture rows suppressions planifiees", "error", err)
+		}
 	}
 
 	// Rechercher les utilisateurs actifs dont access_expires_at est dépassé.
@@ -632,7 +636,9 @@ func (h *AdminHandler) runExpirationCheck() {
 		u.ExpiryAction = normalizeExpiryAction(expiryAction.String)
 		usersToProcess = append(usersToProcess, u)
 	}
-	rows.Close()
+	if err := rows.Close(); err != nil {
+		slog.Warn("Erreur fermeture rows expiration", "error", err)
+	}
 
 	if len(usersToProcess) > 0 {
 		slog.Info("Comptes expires detectes", "count", len(usersToProcess))
@@ -1195,6 +1201,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	if req.PreferredLang != nil {
 		if strings.TrimSpace(newPreferredLang) == "" {
+			// #nosec G124 -- language preference is intentionally readable by frontend language switching code.
 			http.SetCookie(w, &http.Cookie{
 				Name:     "lang",
 				Value:    "",
@@ -1205,6 +1212,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 				SameSite: http.SameSiteLaxMode,
 			})
 		} else {
+			// #nosec G124 -- language preference is intentionally readable by frontend language switching code.
 			http.SetCookie(w, &http.Cookie{
 				Name:     "lang",
 				Value:    newPreferredLang,
@@ -1479,7 +1487,7 @@ func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Requ
 	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxAvatarUploadBytes+(1024*1024))
-	if err := r.ParseMultipartForm(1 << 20); err != nil {
+	if err := r.ParseMultipartForm(1 << 20); err != nil { // #nosec G120 -- request body is capped with http.MaxBytesReader above.
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_file_too_large", "Fichier trop lourd ou invalide")})
 		return
 	}
@@ -1986,8 +1994,10 @@ func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request)
 	}
 
 	slog.Info("Synchronisation manuelle Jellyfin terminée", "users_added", addedCount)
-	h.db.LogAction("users.sync", session.FromContext(r.Context()).Username, "all",
-		fmt.Sprintf("Synchronisation manuelle déclenchée: %d nouveaux utilisateurs importés", addedCount))
+	if err := h.db.LogAction("users.sync", session.FromContext(r.Context()).Username, "all",
+		fmt.Sprintf("Synchronisation manuelle déclenchée: %d nouveaux utilisateurs importés", addedCount)); err != nil {
+		slog.Warn("Erreur journalisation synchronisation utilisateurs", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
@@ -2224,7 +2234,9 @@ func (h *AdminHandler) UserAvatar(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400") // 24h
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(http.StatusOK)
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		slog.Warn("Erreur ecriture avatar", "error", err)
+	}
 }
 
 // UserTimeline retourne l'historique principal d'un utilisateur (audit + jalons internes).
@@ -4443,6 +4455,26 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	targetPresetID := strings.TrimSpace(limits.TargetPresetID)
+	if sess.IsAdmin && strings.TrimSpace(req.PolicyPresetID) != "" {
+		targetPresetID = strings.TrimSpace(req.PolicyPresetID)
+	}
+
+	if !sess.IsAdmin {
+		if strings.TrimSpace(req.GroupName) != "" ||
+			strings.TrimSpace(req.PolicyPresetID) != "" ||
+			strings.TrimSpace(req.ForcedUsername) != "" ||
+			strings.TrimSpace(req.TemplateUserID) != "" ||
+			len(req.Libraries) > 0 {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Les options avancees d'invitation sont reservees aux administrateurs"})
+			return
+		}
+		if targetPresetID == "" {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun preset cible n'est configure pour le parrainage"})
+			return
+		}
+	}
+
 	if req.MaxUses < 0 {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "La limite d'utilisations ne peut pas etre negative"})
 		return
@@ -4651,11 +4683,6 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
 	}
 
-	targetPresetID := strings.TrimSpace(limits.TargetPresetID)
-	if sess.IsAdmin && strings.TrimSpace(req.PolicyPresetID) != "" {
-		targetPresetID = strings.TrimSpace(req.PolicyPresetID)
-	}
-
 	if strings.TrimSpace(targetPresetID) != "" {
 		preset, err := h.getJellyfinPresetByID(targetPresetID)
 		if err != nil {
@@ -4714,6 +4741,10 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	jfProfile.UserExpiryDays = jfProfile.DisableAfterDays
+	if !sess.IsAdmin {
+		jfProfile.GroupName = ""
+		jfProfile.ForcedUsername = ""
+	}
 
 	if jfProfile.UsernameMinLength <= 0 {
 		jfProfile.UsernameMinLength = 3
@@ -4749,7 +4780,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	h.db.LogAction("invite.created", sess.Username, req.Label, fmt.Sprintf("Code: %s", code))
+	if err := h.db.LogAction("invite.created", sess.Username, req.Label, fmt.Sprintf("Code: %s", code)); err != nil {
+		slog.Warn("Erreur journalisation creation invitation", "error", err)
+	}
 
 	// Envoi SMTP si demandÃƒÂ©
 	links := resolvePortalLinks(h.cfg, h.db)
@@ -4869,7 +4902,9 @@ func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	h.db.LogAction("invite.deleted", sess.Username, fmt.Sprintf("%d", invID), "")
+	if err := h.db.LogAction("invite.deleted", sess.Username, fmt.Sprintf("%d", invID), ""); err != nil {
+		slog.Warn("Erreur journalisation suppression invitation", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,

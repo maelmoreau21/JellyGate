@@ -104,6 +104,7 @@
                 </div>
 
                 {{/* Password */}}
+                {{ if not .Data.RequireEmailVerification }}
                 <div class="mb-5">
                     <label class="jg-label" for="password">{{ .T "field_password" }}</label>
                     <input type="password" id="password" name="password" class="jg-input"
@@ -122,6 +123,7 @@
                         autocomplete="new-password">
                     <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
                 </div>
+                {{ end }}
 
                 {{ if .Data.CaptchaEnabled }}
                 <div class="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">

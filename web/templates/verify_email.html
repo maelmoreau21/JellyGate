@@ -17,9 +17,36 @@
             <h1 class="text-xl font-bold text-center mb-2">{{ .Data.ResultHeading }}</h1>
             <p class="text-sm text-slate-600 dark:text-slate-300 text-center mb-6">{{ .SuccessMessage }}</p>
 
+            {{ if .Data.ShowInvitePasswordForm }}
+            <div class="mb-5 rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4 text-sm text-slate-600 dark:text-slate-300">
+                <div><strong>{{ .T "field_username" }}:</strong> {{ .Data.PendingUsername }}</div>
+                <div><strong>{{ .T "field_email" }}:</strong> {{ .Data.PendingEmail }}</div>
+            </div>
+            <form method="POST" action="/verify-email/{{ .Data.VerificationCode }}" novalidate>
+                <div class="mb-5">
+                    <label class="jg-label" for="password">{{ .T "field_password" }}</label>
+                    <input type="password" id="password" name="password" class="jg-input"
+                        placeholder='{{ .T "field_password_placeholder" }}' required
+                        minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
+                        autocomplete="new-password">
+                    <p class="text-xs mt-1 text-slate-500">
+                        {{ .T "password_rules_prefix" }} {{ or .Data.PasswordMinLength 8 }}-{{ or .Data.PasswordMaxLength 128 }} {{ .T "password_rules_chars" }}{{ if .Data.PasswordRequireUpper }}, {{ .T "password_rule_upper" }}{{ end }}{{ if .Data.PasswordRequireLower }}, {{ .T "password_rule_lower" }}{{ end }}{{ if .Data.PasswordRequireDigit }}, {{ .T "password_rule_digit" }}{{ end }}{{ if .Data.PasswordRequireSpecial }}, {{ .T "password_rule_special" }}{{ end }}.
+                    </p>
+                </div>
+                <div class="mb-6">
+                    <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
+                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
+                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required
+                        minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
+                        autocomplete="new-password">
+                </div>
+                <button type="submit" class="jg-btn jg-btn-primary w-full px-6 py-3">{{ .T "invite_submit" }}</button>
+            </form>
+            {{ else }}
             <div class="flex justify-center">
                 <a href="/admin/login" class="jg-btn jg-btn-primary px-6 py-3">{{ .Data.LoginLabel }}</a>
             </div>
+            {{ end }}
         </div>
 
         {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}

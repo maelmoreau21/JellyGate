@@ -11,9 +11,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
@@ -40,6 +42,28 @@ func New(cfg config.WebhooksConfig) *Notifier {
 // â”€â”€ Ã‰vÃ©nements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // UserRegisteredEvent contient les donnÃ©es d'un Ã©vÃ©nement d'inscription.
+func htmlText(value string) string {
+	return html.EscapeString(strings.TrimSpace(value))
+}
+
+func discordText(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	replacer := strings.NewReplacer(
+		"\\", "\\\\",
+		"*", "\\*",
+		"_", "\\_",
+		"~", "\\~",
+		"`", "\\`",
+		">", "\\>",
+		"|", "\\|",
+		"@", "@\u200b",
+	)
+	return replacer.Replace(value)
+}
+
 type UserRegisteredEvent struct {
 	Username    string
 	DisplayName string
@@ -149,7 +173,7 @@ func (n *Notifier) NotifyAccessExpiry(username string, daysLeft int) {
 	if n.cfg.Discord.URL != "" {
 		go n.sendDiscordGeneric(title, desc, 15105570, map[string]string{
 			"Utilisateur": username,
-			"Ã‰chÃ©ance":    fmt.Sprintf("%d jours", daysLeft),
+			"Ã‰chÃ©ance":  fmt.Sprintf("%d jours", daysLeft),
 		})
 	}
 
@@ -170,16 +194,19 @@ func (n *Notifier) sendDiscord(event UserRegisteredEvent) {
 	payload := map[string]interface{}{
 		"username":   "JellyGate",
 		"avatar_url": "",
+		"allowed_mentions": map[string]interface{}{
+			"parse": []string{},
+		},
 		"embeds": []map[string]interface{}{
 			{
 				"title":       "ðŸŽ‰ Nouvel utilisateur inscrit",
-				"description": fmt.Sprintf("**%s** vient de crÃ©er un compte via invitation.", event.DisplayName),
+				"description": fmt.Sprintf("**%s** vient de crÃ©er un compte via invitation.", discordText(event.DisplayName)),
 				"color":       3066993, // Vert (#2ECC71)
 				"fields": []map[string]interface{}{
-					{"name": "ðŸ‘¤ Username", "value": fmt.Sprintf("`%s`", event.Username), "inline": true},
-					{"name": "ðŸ“§ Email", "value": n.maskOrEmpty(event.Email), "inline": true},
-					{"name": "ðŸŽ« Invitation", "value": fmt.Sprintf("`%s`", event.InviteCode), "inline": true},
-					{"name": "ðŸ‘¥ InvitÃ© par", "value": n.valueOrNA(event.InvitedBy), "inline": true},
+					{"name": "ðŸ‘¤ Username", "value": fmt.Sprintf("`%s`", discordText(event.Username)), "inline": true},
+					{"name": "ðŸ“§ Email", "value": discordText(n.maskOrEmpty(event.Email)), "inline": true},
+					{"name": "ðŸŽ« Invitation", "value": fmt.Sprintf("`%s`", discordText(event.InviteCode)), "inline": true},
+					{"name": "ðŸ‘¥ InvitÃ© par", "value": discordText(n.valueOrNA(event.InvitedBy)), "inline": true},
 				},
 				"timestamp": event.Timestamp.Format(time.RFC3339),
 				"footer": map[string]string{
@@ -229,11 +256,11 @@ func (n *Notifier) sendTelegram(event UserRegisteredEvent) {
 			"ðŸŽ« Invitation: <code>%s</code>\n"+
 			"ðŸ‘¥ InvitÃ© par: %s\n"+
 			"ðŸ•� %s",
-		event.Username,
-		event.DisplayName,
-		n.maskOrEmpty(event.Email),
-		event.InviteCode,
-		n.valueOrNA(event.InvitedBy),
+		htmlText(event.Username),
+		htmlText(event.DisplayName),
+		htmlText(n.maskOrEmpty(event.Email)),
+		htmlText(event.InviteCode),
+		htmlText(n.valueOrNA(event.InvitedBy)),
 		event.Timestamp.Format("02/01/2006 15:04"),
 	)
 
@@ -287,19 +314,19 @@ func (n *Notifier) sendMatrix(event UserRegisteredEvent) {
 			"<li><b>Invitation:</b> <code>%s</code></li>"+
 			"<li><b>InvitÃ© par:</b> %s</li>"+
 			"</ul>",
-		event.Username,
-		event.DisplayName,
-		n.maskOrEmpty(event.Email),
-		event.InviteCode,
-		n.valueOrNA(event.InvitedBy),
+		htmlText(event.Username),
+		htmlText(event.DisplayName),
+		htmlText(n.maskOrEmpty(event.Email)),
+		htmlText(event.InviteCode),
+		htmlText(n.valueOrNA(event.InvitedBy)),
 	)
 
 	plainBody := fmt.Sprintf(
 		"ðŸŽ‰ Nouvel utilisateur inscrit\n"+
 			"Username: %s\nNom: %s\nEmail: %s\nInvitation: %s\nInvitÃ© par: %s",
-		event.Username, event.DisplayName,
-		n.maskOrEmpty(event.Email), event.InviteCode,
-		n.valueOrNA(event.InvitedBy),
+		discordText(event.Username), discordText(event.DisplayName),
+		discordText(n.maskOrEmpty(event.Email)), discordText(event.InviteCode),
+		discordText(n.valueOrNA(event.InvitedBy)),
 	)
 
 	payload := map[string]interface{}{

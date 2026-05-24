@@ -66,6 +66,28 @@ type inviteSignupResult struct {
 	LDAPOnlyMode bool
 }
 
+type inviteSignupError struct {
+	err                error
+	releaseReservation bool
+}
+
+func (e *inviteSignupError) Error() string {
+	return e.err.Error()
+}
+
+func (e *inviteSignupError) Unwrap() error {
+	return e.err
+}
+
+func inviteSignupFailure(err error, releaseReservation bool) error {
+	return &inviteSignupError{err: err, releaseReservation: releaseReservation}
+}
+
+func shouldReleaseInvitationReservation(err error) bool {
+	var signupErr *inviteSignupError
+	return errors.As(err, &signupErr) && signupErr.releaseReservation
+}
+
 type inviteProvisionPlan struct {
 	EffectiveProfile jellyfin.InviteProfile
 	MappingPresetID  string
@@ -176,6 +198,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	td.Data["RequireEmail"] = profile.RequireEmail
+	td.Data["RequireEmailVerification"] = profile.RequireEmailVerification
 
 	pwdPolicy := resolveInvitePasswordPolicy(profile)
 	usernameMin, usernameMax := resolveInviteUsernamePolicy(profile)
@@ -274,7 +297,12 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	form, err := h.validateForm(r, &profile)
+	var form *inviteFormData
+	if profile.RequireEmailVerification {
+		form, err = h.validatePendingInviteForm(r, &profile)
+	} else {
+		form, err = h.validateForm(r, &profile)
+	}
 	if err != nil {
 		slog.Warn("Formulaire d'inscription invalide", "code", code, "error", err)
 		targetUsername := strings.TrimSpace(submittedUsername)
@@ -338,8 +366,19 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if err := h.reserveInvitationUse(inv); err != nil {
+		slog.Warn("Reservation d'invitation refusee", "code", code, "username", form.Username, "error", err)
+		h.recordInviteFailure(r, antiAbuseCfg)
+		h.logInviteAction(r, "invite.quota.failed", form.Username, code, err.Error())
+		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirée"), http.StatusForbidden)
+		return
+	}
+
 	result, err := h.completeInviteSignup(r, inv, form, profile, strings.TrimSpace(form.Email) != "")
 	if err != nil {
+		if shouldReleaseInvitationReservation(err) {
+			h.releaseInvitationUse(inv)
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -436,6 +475,26 @@ func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.Invi
 		Username: username,
 		Email:    email,
 		Password: password,
+	}, nil
+}
+
+func (h *InvitationHandler) validatePendingInviteForm(r *http.Request, profile *jellyfin.InviteProfile) (*inviteFormData, error) {
+	username := strings.TrimSpace(r.FormValue("username"))
+	email := strings.TrimSpace(r.FormValue("email"))
+
+	if err := h.validateInviteUsername(r, username, profile); err != nil {
+		return nil, err
+	}
+	if email == "" {
+		return nil, fmt.Errorf("l'adresse email est obligatoire")
+	}
+	if _, err := netmail.ParseAddress(email); err != nil {
+		return nil, fmt.Errorf("adresse email invalide")
+	}
+
+	return &inviteFormData{
+		Username: username,
+		Email:    email,
 	}, nil
 }
 
@@ -627,6 +686,42 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 	return &inv, nil
 }
 
+func (h *InvitationHandler) reserveInvitationUse(inv *invitation) error {
+	if inv == nil {
+		return fmt.Errorf("invitation indisponible")
+	}
+	result, err := h.db.Exec(
+		`UPDATE invitations
+		 SET used_count = used_count + 1
+		 WHERE id = ? AND (max_uses <= 0 OR used_count < max_uses)`,
+		inv.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("impossible de reserver l'invitation %d: %w", inv.ID, err)
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("invitation %q a atteint sa limite d'utilisation", inv.Code)
+	}
+	inv.UsedCount++
+	return nil
+}
+
+func (h *InvitationHandler) releaseInvitationUse(inv *invitation) {
+	if inv == nil {
+		return
+	}
+	_, err := h.db.Exec(
+		`UPDATE invitations
+		 SET used_count = CASE WHEN used_count > 0 THEN used_count - 1 ELSE 0 END
+		 WHERE id = ?`,
+		inv.ID,
+	)
+	if err != nil {
+		slog.Warn("Impossible de liberer une reservation d'invitation", "invitation_id", inv.ID, "error", err)
+	}
+}
+
 func (h *InvitationHandler) ensureInviteUsernameAvailable(r *http.Request, username string) error {
 	if strings.TrimSpace(username) == "" {
 		return errors.New(h.tr(r, "field_username_required", "Username is required"))
@@ -686,7 +781,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		if err != nil {
 			slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 2/5 ÃƒÂ©chouÃƒÂ©e : crÃƒÂ©ation LDAP", "username", form.Username, "error", err)
 			h.logInviteAction(r, "invite.ldap.failed", form.Username, inv.Code, err.Error())
-			return nil, fmt.Errorf("%s", h.tr(r, "invite_error_ldap_create", "Erreur lors de la crÃƒÂ©ation du compte (LDAP)"))
+			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_ldap_create", "Erreur lors de la crÃƒÂ©ation du compte (LDAP)")), true)
 		}
 
 		userDN = createdDN
@@ -718,9 +813,11 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		jfUser, err := h.jfClient.CreateUser(form.Username, form.Password)
 		if err != nil {
 			slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 3/5 ÃƒÂ©chouÃƒÂ©e : crÃƒÂ©ation Jellyfin", "username", form.Username, "error", err)
+			rollbackFailed := false
 			if h.ldClient != nil && userDN != "" {
 				slog.Warn("Ã°Å¸â€�â€ž Rollback : suppression du compte LDAP", "dn", userDN)
 				if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
+					rollbackFailed = true
 					slog.Error("Ã¢Å¡Â Ã¯Â¸Â� ROLLBACK LDAP Ãƒâ€°CHOUÃƒâ€° Ã¢â‚¬â€� intervention manuelle requise", "dn", userDN, "rollback_error", rbErr, "original_error", err)
 					h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
 				} else {
@@ -729,7 +826,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 			}
 
 			h.logInviteAction(r, "invite.jellyfin.failed", form.Username, inv.Code, err.Error())
-			return nil, fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_create", "Erreur lors de la crÃƒÂ©ation du compte (Jellyfin)"))
+			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_create", "Erreur lors de la crÃƒÂ©ation du compte (Jellyfin)")), !rollbackFailed)
 		}
 
 		jellyfinID = jfUser.ID
@@ -749,8 +846,10 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 4/5 ÃƒÂ©chouÃƒÂ©e : enregistrement SQLite", "username", form.Username, "error", err)
 		slog.Warn("Ã°Å¸â€�â€ž Rollback : suppression Jellyfin + LDAP")
 
+		rollbackFailed := false
 		if createJellyfinUser && strings.TrimSpace(jellyfinID) != "" {
 			if rbErr := h.jfClient.DeleteUser(jellyfinID); rbErr != nil {
+				rollbackFailed = true
 				slog.Error("Ã¢Å¡Â Ã¯Â¸Â� ROLLBACK JELLYFIN Ãƒâ€°CHOUÃƒâ€° Ã¢â‚¬â€� intervention manuelle requise", "jellyfin_id", jellyfinID, "rollback_error", rbErr)
 				h.logInviteAction(r, "invite.rollback.jellyfin.failed", form.Username, jellyfinID, rbErr.Error())
 			} else {
@@ -760,6 +859,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 		if h.ldClient != nil && userDN != "" {
 			if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
+				rollbackFailed = true
 				slog.Error("Ã¢Å¡Â Ã¯Â¸Â� ROLLBACK LDAP Ãƒâ€°CHOUÃƒâ€° Ã¢â‚¬â€� intervention manuelle requise", "dn", userDN, "rollback_error", rbErr)
 				h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
 			} else {
@@ -768,7 +868,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		}
 
 		h.logInviteAction(r, "invite.sqlite.failed", form.Username, inv.Code, err.Error())
-		return nil, fmt.Errorf("%s", h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte"))
+		return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte")), !rollbackFailed)
 	}
 
 	slog.Info("Ã¢Å“â€¦ Ãƒâ€°tape 4/5 terminÃƒÂ©e", "username", form.Username)
@@ -942,20 +1042,6 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insÃƒÂ©rer l'utilisateur %q: %w", form.Username, err)
-	}
-
-	// INCREMENT du compteur d'utilisation
-	result, err := tx.Exec(
-		`UPDATE invitations SET used_count = used_count + 1 WHERE id = ?`,
-		inv.ID,
-	)
-	if err != nil {
-		return fmt.Errorf("impossible d'incrÃƒÂ©menter le compteur de l'invitation %d: %w", inv.ID, err)
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if rowsAffected == 0 {
-		return fmt.Errorf("invitation %d non trouvÃƒÂ©e lors de l'incrÃƒÂ©mentation", inv.ID)
 	}
 
 	// Commit de la transaction

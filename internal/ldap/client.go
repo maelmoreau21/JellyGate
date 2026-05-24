@@ -132,7 +132,7 @@ func (c *Client) connect() (*goldap.Conn, error) {
 
 	// Bind avec les identifiants de service
 	if err := conn.Bind(c.cfg.BindDN, c.cfg.BindPassword); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("ldap.connect: échec du bind avec %q: %w", c.cfg.BindDN, err)
 	}
 

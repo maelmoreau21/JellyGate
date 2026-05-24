@@ -1,12 +1,7 @@
 package handlers
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,59 +26,6 @@ type pendingInviteSignupRecord struct {
 	PasswordCiphertext string
 	Used               bool
 	ExpiresAt          time.Time
-}
-
-func encryptPendingInvitePassword(secretKey, password string) (string, error) {
-	key := sha256.Sum256([]byte(secretKey))
-	block, err := aes.NewCipher(key[:])
-	if err != nil {
-		return "", fmt.Errorf("initialisation chiffrement invitation: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", fmt.Errorf("initialisation GCM invitation: %w", err)
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
-		return "", fmt.Errorf("generation nonce invitation: %w", err)
-	}
-
-	sealed := gcm.Seal(nil, nonce, []byte(password), nil)
-	payload := append(nonce, sealed...)
-	return base64.RawURLEncoding.EncodeToString(payload), nil
-}
-
-func decryptPendingInvitePassword(secretKey, ciphertext string) (string, error) {
-	decoded, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(ciphertext))
-	if err != nil {
-		return "", fmt.Errorf("decodage mot de passe invitation: %w", err)
-	}
-
-	key := sha256.Sum256([]byte(secretKey))
-	block, err := aes.NewCipher(key[:])
-	if err != nil {
-		return "", fmt.Errorf("initialisation dechiffrement invitation: %w", err)
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", fmt.Errorf("initialisation GCM invitation: %w", err)
-	}
-
-	if len(decoded) < gcm.NonceSize() {
-		return "", fmt.Errorf("contenu chiffre invitation invalide")
-	}
-
-	nonce := decoded[:gcm.NonceSize()]
-	message := decoded[gcm.NonceSize():]
-	plaintext, err := gcm.Open(nil, nonce, message, nil)
-	if err != nil {
-		return "", fmt.Errorf("dechiffrement mot de passe invitation: %w", err)
-	}
-
-	return string(plaintext), nil
 }
 
 func loadPendingInviteSignup(db *database.DB, code string) (*pendingInviteSignupRecord, error) {
@@ -126,12 +68,7 @@ func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invi
 
 	token, err := generateSecureToken(emailVerificationTokenLength)
 	if err != nil {
-		return fmt.Errorf("gÃ©nÃ©ration du token d'invitation: %w", err)
-	}
-
-	passwordCiphertext, err := encryptPendingInvitePassword(h.cfg.SecretKey, form.Password)
-	if err != nil {
-		return err
+		return fmt.Errorf("generation du token d'invitation: %w", err)
 	}
 
 	expiresAt := time.Now().Add(emailVerificationExpiry)
@@ -152,10 +89,10 @@ func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invi
 		inv.Code,
 		form.Username,
 		form.Email,
-		passwordCiphertext,
+		"",
 		expiresAt.Format("2006-01-02 15:04:05"),
 	); err != nil {
-		return fmt.Errorf("crÃ©ation invitation en attente: %w", err)
+		return fmt.Errorf("creation invitation en attente: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {
@@ -178,37 +115,73 @@ func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invi
 	return nil
 }
 
-func (h *InvitationHandler) completePendingInviteSignup(r *http.Request, code string) (string, bool, error) {
+func (h *InvitationHandler) loadPendingInviteContext(code string) (*pendingInviteSignupRecord, *invitation, jellyfin.InviteProfile, string, bool, error) {
 	record, err := loadPendingInviteSignup(h.db, code)
 	if err == sql.ErrNoRows {
-		return "", false, nil
+		return nil, nil, jellyfin.InviteProfile{}, "", false, nil
 	}
 	if err != nil {
-		return "invalid", true, fmt.Errorf("lecture invitation en attente: %w", err)
+		return nil, nil, jellyfin.InviteProfile{}, "invalid", true, fmt.Errorf("lecture invitation en attente: %w", err)
 	}
-
 	if record.Used {
-		return "used", true, fmt.Errorf("invitation dÃ©jÃ  utilisÃ©e")
+		return nil, nil, jellyfin.InviteProfile{}, "used", true, fmt.Errorf("invitation deja utilisee")
 	}
 	if time.Now().After(record.ExpiresAt) {
-		return "expired", true, fmt.Errorf("invitation en attente expirÃ©e")
-	}
-
-	password, err := decryptPendingInvitePassword(h.cfg.SecretKey, record.PasswordCiphertext)
-	if err != nil {
-		return "failed", true, err
+		return nil, nil, jellyfin.InviteProfile{}, "expired", true, fmt.Errorf("invitation en attente expiree")
 	}
 
 	inv, err := h.getValidInvitation(record.InvitationCode)
 	if err != nil {
-		return "failed", true, err
+		return nil, nil, jellyfin.InviteProfile{}, "failed", true, err
 	}
 
 	profile := jellyfin.InviteProfile{RequireEmail: true, RequireEmailVerification: true}
 	if inv.JellyfinProfile != "" {
 		if err := json.Unmarshal([]byte(inv.JellyfinProfile), &profile); err != nil {
-			return "failed", true, fmt.Errorf("profil d'invitation invalide: %w", err)
+			return nil, nil, jellyfin.InviteProfile{}, "failed", true, fmt.Errorf("profil d'invitation invalide: %w", err)
 		}
+	}
+
+	return record, inv, profile, "pending", true, nil
+}
+
+func (h *InvitationHandler) markPendingInviteSignupUsed(code string) error {
+	result, err := h.db.Exec(
+		`UPDATE pending_invite_signups
+		 SET used = TRUE
+		 WHERE code = ? AND used = FALSE AND expires_at > ?`,
+		code,
+		time.Now().Format("2006-01-02 15:04:05"),
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("verification link already used or expired")
+	}
+	return nil
+}
+
+func (h *InvitationHandler) completePendingInviteSignup(r *http.Request, code string) (string, bool, error) {
+	record, inv, profile, status, handled, err := h.loadPendingInviteContext(code)
+	if !handled || err != nil {
+		return status, handled, err
+	}
+
+	if err := r.ParseForm(); err != nil {
+		return "failed", true, fmt.Errorf("requete invalide")
+	}
+	password := r.FormValue("password")
+	confirm := r.FormValue("password_confirm")
+	if password == "" {
+		return "failed", true, fmt.Errorf("le mot de passe est requis")
+	}
+	if password != confirm {
+		return "failed", true, fmt.Errorf("les mots de passe ne correspondent pas")
+	}
+	if err := h.validateInvitePassword(r, password, &profile); err != nil {
+		return "failed", true, err
 	}
 
 	form := &inviteFormData{
@@ -223,20 +196,62 @@ func (h *InvitationHandler) completePendingInviteSignup(r *http.Request, code st
 	if err := h.ensureInviteUsernameAvailable(r, form.Username); err != nil {
 		return "failed", true, err
 	}
+	if err := h.reserveInvitationUse(inv); err != nil {
+		return "failed", true, err
+	}
+	if err := h.markPendingInviteSignupUsed(code); err != nil {
+		h.releaseInvitationUse(inv)
+		return "used", true, err
+	}
 
 	if _, err := h.completeInviteSignup(r, inv, form, profile, true); err != nil {
+		if shouldReleaseInvitationReservation(err) {
+			h.releaseInvitationUse(inv)
+		}
 		return "failed", true, err
 	}
 
-	if _, err := h.db.Exec(`UPDATE pending_invite_signups SET used = TRUE WHERE code = ?`, code); err != nil {
-		slog.Warn("Impossible de marquer l'invitation en attente comme utilisÃ©e", "code", code, "error", err)
-	}
 	if _, err := h.db.Exec(`DELETE FROM pending_invite_signups WHERE lower(username) = lower(?) AND code <> ?`, form.Username, code); err != nil {
 		slog.Warn("Impossible de nettoyer les anciennes invitations en attente", "username", form.Username, "error", err)
 	}
 
 	h.logInviteAction(r, "invite.email_verification.consumed", form.Username, inv.Code, form.Email)
 	return "success", true, nil
+}
+
+func (h *InvitationHandler) renderPendingInvitePasswordPage(w http.ResponseWriter, r *http.Request, code string, record *pendingInviteSignupRecord, profile jellyfin.InviteProfile, statusCode int, message string) {
+	if h.renderer == nil {
+		http.Error(w, message, statusCode)
+		return
+	}
+
+	links := resolvePortalLinks(h.cfg, h.db)
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	td.Section = "login"
+	td.SuccessMessage = message
+	td.Data["ResultTitle"] = h.tr(r, "verify_email_title", "Email verification")
+	td.Data["ResultHeading"] = h.tr(r, "verify_email_invite_password_heading", "Choose your password")
+	td.Data["LoginLabel"] = h.tr(r, "back_to_login", "Back to login")
+	td.Data["ShowInvitePasswordForm"] = true
+	td.Data["VerificationCode"] = code
+	td.Data["PendingUsername"] = record.Username
+	td.Data["PendingEmail"] = record.Email
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.Data["JellyseerrURL"] = links.JellyseerrURL
+	td.Data["JellyTrackURL"] = links.JellyTrackURL
+
+	policy := resolveInvitePasswordPolicy(profile)
+	td.Data["PasswordMinLength"] = policy.MinLength
+	td.Data["PasswordMaxLength"] = policy.MaxLength
+	td.Data["PasswordRequireUpper"] = policy.RequireUpper
+	td.Data["PasswordRequireLower"] = policy.RequireLower
+	td.Data["PasswordRequireDigit"] = policy.RequireDigit
+	td.Data["PasswordRequireSpecial"] = policy.RequireSpecial
+
+	w.WriteHeader(statusCode)
+	if err := h.renderer.Render(w, "verify_email.html", td); err != nil {
+		http.Error(w, message, statusCode)
+	}
 }
 
 func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
@@ -246,10 +261,10 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 	heading := h.tr(r, "verify_email_success_heading", "Email verified")
 	message := h.tr(r, "verify_email_success_message", "Your email address has been confirmed. You can now sign in normally.")
 
-	status, handled, err := h.completePendingInviteSignup(r, code)
+	record, _, profile, status, handled, err := h.loadPendingInviteContext(code)
 	if handled {
 		if err != nil {
-			slog.Warn("Validation email invitation Ã©chouÃ©e", "code", code, "status", status, "error", err)
+			slog.Warn("Validation email invitation echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
 			switch status {
 			case "expired":
 				statusCode = http.StatusGone
@@ -264,29 +279,25 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 				heading = h.tr(r, "verify_email_invite_failed_heading", "Account creation failed")
 				message = h.tr(r, "verify_email_invite_failed_message", "We could not finish creating your account from this invitation. Submit the invitation form again or ask for a new invitation.")
 			}
-		} else {
-			heading = h.tr(r, "verify_email_invite_success_heading", "Email verified, account created")
-			message = h.tr(r, "verify_email_invite_success_message", "Your email address has been confirmed and your account is now ready. You can sign in to Jellyfin.")
+			renderEmailVerificationPage(r, w, h.renderer, jgmw.LangFromContext(r.Context()), statusCode, title, heading, message, h.tr(r, "back_to_login", "Back to login"), resolvePortalLinks(h.cfg, h.db))
+			return
 		}
 
-		renderEmailVerificationPage(
-			r,
+		h.renderPendingInvitePasswordPage(
 			w,
-			h.renderer,
-			jgmw.LangFromContext(r.Context()),
-			statusCode,
-			title,
-			heading,
-			message,
-			h.tr(r, "back_to_login", "Back to login"),
-			resolvePortalLinks(h.cfg, h.db),
+			r,
+			code,
+			record,
+			profile,
+			http.StatusOK,
+			h.tr(r, "verify_email_invite_password_message", "Your email is confirmed. Choose a password to finish creating your account."),
 		)
 		return
 	}
 
 	_, status, err = consumeEmailVerification(h.db, code)
 	if err != nil {
-		slog.Warn("Verification email Ã©chouÃ©e", "code", code, "status", status, "error", err)
+		slog.Warn("Verification email echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
 		switch status {
 		case "expired":
 			statusCode = http.StatusGone
@@ -307,16 +318,38 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
-	renderEmailVerificationPage(
-		r,
-		w,
-		h.renderer,
-		jgmw.LangFromContext(r.Context()),
-		statusCode,
-		title,
-		heading,
-		message,
-		h.tr(r, "back_to_login", "Back to login"),
-		resolvePortalLinks(h.cfg, h.db),
-	)
+	renderEmailVerificationPage(r, w, h.renderer, jgmw.LangFromContext(r.Context()), statusCode, title, heading, message, h.tr(r, "back_to_login", "Back to login"), resolvePortalLinks(h.cfg, h.db))
+}
+
+func (h *InvitationHandler) VerifyEmailSubmit(w http.ResponseWriter, r *http.Request) {
+	code := chi.URLParam(r, "code")
+	title := h.tr(r, "verify_email_title", "Email verification")
+	statusCode := http.StatusOK
+	heading := h.tr(r, "verify_email_invite_success_heading", "Email verified, account created")
+	message := h.tr(r, "verify_email_invite_success_message", "Your email address has been confirmed and your account is now ready. You can sign in to Jellyfin.")
+
+	status, handled, err := h.completePendingInviteSignup(r, code)
+	if !handled {
+		statusCode = http.StatusNotFound
+		heading = h.tr(r, "verify_email_invalid_heading", "Invalid verification link")
+		message = h.tr(r, "verify_email_invalid_message", "This verification link is invalid or no longer available.")
+	} else if err != nil {
+		slog.Warn("Validation email invitation echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
+		switch status {
+		case "expired":
+			statusCode = http.StatusGone
+			heading = h.tr(r, "verify_email_invite_expired_heading", "Verification link expired")
+			message = h.tr(r, "verify_email_invite_expired_message", "This signup confirmation link has expired. Submit the invitation form again to receive a new email.")
+		case "used":
+			statusCode = http.StatusGone
+			heading = h.tr(r, "verify_email_used_heading", "Link already used")
+			message = h.tr(r, "verify_email_used_message", "This verification link has already been used. Your email may already be confirmed.")
+		default:
+			statusCode = http.StatusConflict
+			heading = h.tr(r, "verify_email_invite_failed_heading", "Account creation failed")
+			message = err.Error()
+		}
+	}
+
+	renderEmailVerificationPage(r, w, h.renderer, jgmw.LangFromContext(r.Context()), statusCode, title, heading, message, h.tr(r, "back_to_login", "Back to login"), resolvePortalLinks(h.cfg, h.db))
 }

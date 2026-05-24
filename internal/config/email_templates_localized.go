@@ -60,8 +60,8 @@ type emailTextPack struct {
 	AutomaticFooter          string
 }
 
-var emailTextPacks = map[string]emailTextPack{
-	"fr": {
+var emailTextPacks = map[string]emailTextPack{ // #nosec G101 -- localized template copy contains words such as password/reset but no credentials.
+	"fr": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Acces {{.JellyfinServerName}} active`,
 		ConfirmationBody:         "Bonjour {{.Username}},\n\nTon acces a {{.JellyfinServerName}} est maintenant actif.\n\nTu peux te connecter quand tu veux. Besoin d'aide ? {{.HelpURL}}",
 		EmailVerificationSubject: `Verifie ton adresse e-mail pour {{.JellyfinServerName}}`,
@@ -101,7 +101,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Ton acces a {{.JellyfinServerName}} est pret. Utilise les liens ci-dessous.",
 		AutomaticFooter:          "Ceci est un message automatique envoyé par JellyGate.",
 	},
-	"en": {
+	"en": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `{{.JellyfinServerName}} access activated`,
 		ConfirmationBody:         "Hello {{.Username}},\n\nYour access to {{.JellyfinServerName}} is now active.\n\nYou can sign in whenever you want. Need help? {{.HelpURL}}",
 		EmailVerificationSubject: `Verify your email for {{.JellyfinServerName}}`,
@@ -141,7 +141,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Your access to {{.JellyfinServerName}} is ready. Use the links below.",
 		AutomaticFooter:          "This is an automated message sent by JellyGate.",
 	},
-	"de": {
+	"de": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Zugang zu {{.JellyfinServerName}} aktiviert`,
 		ConfirmationBody:         "Hallo {{.Username}},\n\nDein Zugang zu {{.JellyfinServerName}} ist jetzt aktiv.\n\nDu kannst dich jederzeit anmelden. Hilfe findest du unter {{.HelpURL}}.",
 		EmailVerificationSubject: `Bestatige deine E-Mail fur {{.JellyfinServerName}}`,
@@ -181,7 +181,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Dein Zugang zu {{.JellyfinServerName}} ist bereit. Nutze die Links unten.",
 		AutomaticFooter:          "Dies ist eine automatische Nachricht von JellyGate.",
 	},
-	"es": {
+	"es": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Acceso a {{.JellyfinServerName}} activado`,
 		ConfirmationBody:         "Hola {{.Username}},\n\nTu acceso a {{.JellyfinServerName}} ya esta activo.\n\nPuedes iniciar sesion cuando quieras. Si necesitas ayuda, usa {{.HelpURL}}.",
 		EmailVerificationSubject: `Verifica tu correo para {{.JellyfinServerName}}`,
@@ -221,7 +221,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Tu acceso a {{.JellyfinServerName}} esta listo. Usa los enlaces de abajo.",
 		AutomaticFooter:          "Este es un mensaje automático enviado por JellyGate.",
 	},
-	"it": {
+	"it": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Accesso a {{.JellyfinServerName}} attivato`,
 		ConfirmationBody:         "Ciao {{.Username}},\n\nIl tuo accesso a {{.JellyfinServerName}} e ora attivo.\n\nPuoi accedere quando vuoi. Se ti serve aiuto, usa {{.HelpURL}}.",
 		EmailVerificationSubject: `Verifica la tua e-mail per {{.JellyfinServerName}}`,
@@ -261,7 +261,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Il tuo accesso a {{.JellyfinServerName}} e pronto. Usa i link qui sotto.",
 		AutomaticFooter:          "Questo è un messaggio automatico inviato da JellyGate.",
 	},
-	"nl": {
+	"nl": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Toegang tot {{.JellyfinServerName}} geactiveerd`,
 		ConfirmationBody:         "Hallo {{.Username}},\n\nJe toegang tot {{.JellyfinServerName}} is nu actief.\n\nJe kunt inloggen wanneer je wilt. Hulp vind je via {{.HelpURL}}.",
 		EmailVerificationSubject: `Bevestig je e-mail voor {{.JellyfinServerName}}`,
@@ -301,7 +301,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Je toegang tot {{.JellyfinServerName}} is klaar. Gebruik de links hieronder.",
 		AutomaticFooter:          "Dit is een automatisch bericht verzonden door JellyGate.",
 	},
-	"pl": {
+	"pl": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Dostep do {{.JellyfinServerName}} aktywowany`,
 		ConfirmationBody:         "Czesc {{.Username}},\n\nTwoj dostep do {{.JellyfinServerName}} jest teraz aktywny.\n\nMozesz zalogowac sie w dowolnym momencie. Pomoc znajdziesz pod {{.HelpURL}}.",
 		EmailVerificationSubject: `Potwierdz adres e-mail dla {{.JellyfinServerName}}`,
@@ -341,7 +341,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Twoj dostep do {{.JellyfinServerName}} jest gotowy. Uzyj ponizszych linkow.",
 		AutomaticFooter:          "To jest automatyczna wiadomość wysłana przez JellyGate.",
 	},
-	"pt-br": {
+	"pt-br": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Acesso ao {{.JellyfinServerName}} ativado`,
 		ConfirmationBody:         "Ola {{.Username}},\n\nSeu acesso ao {{.JellyfinServerName}} agora esta ativo.\n\nVoce pode entrar quando quiser. Se precisar de ajuda, use {{.HelpURL}}.",
 		EmailVerificationSubject: `Confirme seu e-mail para {{.JellyfinServerName}}`,
@@ -381,7 +381,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Seu acesso ao {{.JellyfinServerName}} esta pronto. Use os links abaixo.",
 		AutomaticFooter:          "Esta é uma mensagem automática enviada pelo JellyGate.",
 	},
-	"ru": {
+	"ru": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `Доступ к {{.JellyfinServerName}} активирован`,
 		ConfirmationBody:         "Здравствуйте, {{.Username}}.\n\nВаш доступ к {{.JellyfinServerName}} уже активирован.\n\nВы можете войти в любое время. Если нужна помощь, откройте {{.HelpURL}}.",
 		EmailVerificationSubject: `Подтвердите e-mail для {{.JellyfinServerName}}`,
@@ -421,7 +421,7 @@ var emailTextPacks = map[string]emailTextPack{
 		PreviewMessage:           "Ваш доступ к {{.JellyfinServerName}} готов. Используйте ссылки ниже.",
 		AutomaticFooter:          "Это автоматическое сообщение, отправленное JellyGate.",
 	},
-	"zh": {
+	"zh": { // #nosec G101 -- localized template copy contains password/reset wording but no credentials.
 		ConfirmationSubject:      `已启用 {{.JellyfinServerName}} 访问`,
 		ConfirmationBody:         "你好 {{.Username}}，\n\n你现在已经可以访问 {{.JellyfinServerName}}。\n\n你可以随时登录。如需帮助，请打开 {{.HelpURL}}。",
 		EmailVerificationSubject: `请验证你的 {{.JellyfinServerName}} 邮箱`,

@@ -89,7 +89,7 @@ func loadLocales(i18nDir string) (map[string]map[string]string, error) {
 
 	locales := make(map[string]map[string]string, len(files))
 	for _, file := range files {
-		data, readErr := os.ReadFile(file)
+		data, readErr := os.ReadFile(file) // #nosec G304 -- file path comes from filepath.Glob under the configured locale directory.
 		if readErr != nil {
 			return nil, fmt.Errorf("read locale %s: %w", file, readErr)
 		}

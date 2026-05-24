@@ -28,7 +28,7 @@ func main() {
 		filenames = append(filenames, file.Name())
 
 		filePath := filepath.Join(i18nDir, file.Name())
-		data, err := ioutil.ReadFile(filePath)
+		data, err := ioutil.ReadFile(filePath) // #nosec G304 -- filePath is built from os.ReadDir entries under the local i18n directory.
 		if err != nil {
 			log.Fatalf("Failed to read %s: %v", file.Name(), err)
 		}

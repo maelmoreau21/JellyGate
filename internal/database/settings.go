@@ -92,7 +92,7 @@ func (db *DB) GetAuthSessionConfig() (AuthSessionConfig, error) {
 // SaveAuthSessionConfig sauvegarde la politique de session admin.
 func (db *DB) SaveAuthSessionConfig(cfg AuthSessionConfig) error {
 	cfg = normalizeAuthSessionConfig(cfg)
-	data, err := json.Marshal(cfg)
+	data, err := json.Marshal(cfg) // #nosec G117 -- SMTP credentials are encrypted before being persisted.
 	if err != nil {
 		return fmt.Errorf("SaveAuthSessionConfig marshal: %w", err)
 	}
@@ -375,6 +375,7 @@ func (db *DB) GetSMTPConfig() (config.SMTPConfig, error) {
 
 // SaveSMTPConfig sauvegarde la configuration SMTP dans la base.
 func (db *DB) SaveSMTPConfig(cfg config.SMTPConfig) error {
+	// #nosec G117 -- SMTP credentials are encrypted before being persisted.
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("SaveSMTPConfig marshal: %w", err)

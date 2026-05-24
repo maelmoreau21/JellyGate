@@ -624,7 +624,7 @@
     "settings_backup_manual_desc": "Backup Manual Desc",
     "settings_backup_manual_title": "Backup Manual Title",
     "settings_backup_pg_mode_desc_1": "Backup and restore are available in PostgreSQL mode.",
-    "settings_backup_pg_mode_desc_2": "In Docker mode, pg_dump and psql are included in the JellyGate image. Rebuild the image if PostgreSQL major versions do not match. Outside Docker, install pg_dump and psql on the host.",
+    "settings_backup_pg_mode_desc_2": "In Docker mode, pg_dump and pg_restore are included in the JellyGate image. Rebuild the image if PostgreSQL major versions do not match. Outside Docker, install pg_dump and pg_restore on the host.",
     "settings_backup_pg_mode_title": "PostgreSQL backups",
     "settings_backup_pg_not_supported": "Действие не поддерживается в режиме PostgreSQL",
     "settings_backup_pg_plan_unavailable": "Backup Pg Plan Unavailable",

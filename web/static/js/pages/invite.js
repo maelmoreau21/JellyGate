@@ -106,6 +106,9 @@
         });
 
         function checkMatch() {
+            if (!password || !confirmPassword || !matchMessage) {
+                return;
+            }
             if (!confirmPassword.value) {
                 matchMessage.classList.add('hidden');
                 return;
@@ -124,8 +127,10 @@
             }
         }
 
-        password.addEventListener('input', checkMatch);
-        confirmPassword.addEventListener('input', checkMatch);
+        if (password && confirmPassword) {
+            password.addEventListener('input', checkMatch);
+            confirmPassword.addEventListener('input', checkMatch);
+        }
 
         form.addEventListener('submit', (event) => {
             const emailEl = document.getElementById('email');
@@ -137,14 +142,16 @@
                 return;
             }
 
-            const passwordErrors = passwordPolicyErrors(password.value || '');
-            if (passwordErrors.length > 0 || password.value !== confirmPassword.value) {
-                event.preventDefault();
-                if (passwordErrors.length > 0 && policyMessage) {
-                    policyMessage.textContent = `${t.password_policy_missing || 'Missing requirements'}: ${passwordErrors.join(', ')}`;
-                    policyMessage.className = 'text-xs mt-1 text-red-400';
+            if (password && confirmPassword) {
+                const passwordErrors = passwordPolicyErrors(password.value || '');
+                if (passwordErrors.length > 0 || password.value !== confirmPassword.value) {
+                    event.preventDefault();
+                    if (passwordErrors.length > 0 && policyMessage) {
+                        policyMessage.textContent = `${t.password_policy_missing || 'Missing requirements'}: ${passwordErrors.join(', ')}`;
+                        policyMessage.className = 'text-xs mt-1 text-red-400';
+                    }
+                    return;
                 }
-                return;
             }
 
             const submitButton = document.getElementById('submit-btn');

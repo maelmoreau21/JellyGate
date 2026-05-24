@@ -177,6 +177,9 @@ func (h *PasswordResetHandler) SubmitRequest(w http.ResponseWriter, r *http.Requ
 
 	// ——————————————————————————————————————————————————————————————————————————————————————————————————
 	expiresAt := time.Now().Add(resetTokenExpiry)
+	if _, err := h.db.Exec(`UPDATE password_resets SET used = TRUE WHERE user_id = ? AND used = FALSE`, user.ID); err != nil {
+		slog.Warn("Impossible d'invalider les anciens tokens de reset", "user_id", user.ID, "error", err)
+	}
 	_, err = h.db.Exec(
 		`INSERT INTO password_resets (user_id, code, used, expires_at)
 		 VALUES (?, ?, FALSE, ?)`,
@@ -252,7 +255,7 @@ func (h *PasswordResetHandler) ResetPage(w http.ResponseWriter, r *http.Request)
 	td.Section = "login"
 	_, _, err := h.getValidResetToken(code)
 	if err != nil {
-		slog.Warn("Token de reset invalide consulté", "code", code, "error", err)
+		slog.Warn("Token de reset invalide consulte", "code_fingerprint", tokenLogFingerprint(code), "error", err)
 		http.Error(w, "Lien de réinitialisation invalide ou expiré", http.StatusNotFound)
 		return
 	}
@@ -285,7 +288,7 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 	// ——————————————————————————————————————————————————————————————————————————————————————————————————
 	resetRecord, user, err := h.getValidResetToken(code)
 	if err != nil {
-		slog.Warn("Demande de reset invalide", "token", code, "error", err)
+		slog.Warn("Demande de reset invalide", "token_fingerprint", tokenLogFingerprint(code), "error", err)
 		http.Redirect(w, r, "/admin/login?error="+url.QueryEscape(h.tr(r, "reset_error_invalid_or_expired", "Invalid or expired reset link")), http.StatusSeeOther)
 		return
 	}
@@ -311,6 +314,12 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 	)
 
 	// ——————————————————————————————————————————————————————————————————————————————————————————————————
+	if err := h.consumeResetToken(resetRecord.ID); err != nil {
+		slog.Warn("Token de reset deja consomme ou expire", "token_fingerprint", tokenLogFingerprint(code), "error", err)
+		http.Redirect(w, r, "/admin/login?error="+url.QueryEscape(h.tr(r, "reset_error_invalid_or_expired", "Invalid or expired reset link")), http.StatusSeeOther)
+		return
+	}
+
 	var errors []string
 
 	if h.ldClient != nil && user.LdapDN != "" {
@@ -331,12 +340,6 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 		slog.Error("Reset MDP échoué sur TOUS les services", "username", user.Username, "errors", errors)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "reset_error_generic", "Error during reset. Please try again or contact the administrator.")})
 		return
-	}
-
-	// ——————————————————————————————————————————————————————————————————————————————————————————————————
-	_, err = h.db.Exec(`UPDATE password_resets SET used = TRUE WHERE id = ?`, resetRecord.ID)
-	if err != nil {
-		slog.Error("Erreur de mise à jour du token de reset", "id", resetRecord.ID, "error", err)
 	}
 
 	partial := len(errors) > 0
@@ -460,6 +463,24 @@ func (h *PasswordResetHandler) getValidResetToken(code string) (*passwordResetRe
 // generateSecureToken gÃƒÂ©nÃƒÂ¨re un token cryptographiquement sÃƒÂ»r.
 // Utilise crypto/rand pour une entropie maximale.
 // Retourne une chaÃƒÂ®ne hexadÃƒÂ©cimale de 2*length caractÃƒÂ¨res.
+func (h *PasswordResetHandler) consumeResetToken(id int64) error {
+	result, err := h.db.Exec(
+		`UPDATE password_resets
+		 SET used = TRUE
+		 WHERE id = ? AND used = FALSE AND expires_at > ?`,
+		id,
+		time.Now().Format("2006-01-02 15:04:05"),
+	)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("token de reset deja utilise ou expire")
+	}
+	return nil
+}
+
 func generateSecureToken(length int) (string, error) {
 	bytes := make([]byte, length)
 	if _, err := rand.Read(bytes); err != nil {

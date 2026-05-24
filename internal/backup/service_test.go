@@ -40,6 +40,48 @@ func writeTestBackupArchive(t *testing.T, dir, name, metadata string) string {
 	return path
 }
 
+func writeTestArchiveWithEntry(t *testing.T, dir, name, entryName, payload string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	f, err := os.Create(path)
+	if err != nil {
+		t.Fatalf("os.Create() error = %v", err)
+	}
+	zw := zip.NewWriter(f)
+	w, err := zw.Create(entryName)
+	if err != nil {
+		t.Fatalf("zip.Create(%s) error = %v", entryName, err)
+	}
+	if _, err := w.Write([]byte(payload)); err != nil {
+		t.Fatalf("entry write error = %v", err)
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("zip.Close() error = %v", err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("file.Close() error = %v", err)
+	}
+	return path
+}
+
+func TestValidateBackupArchiveRejectsLegacyPostgresSQL(t *testing.T) {
+	dir := t.TempDir()
+	path := writeTestArchiveWithEntry(t, dir, "legacy-sql.zip", legacyPostgresSQLBackupEntry, `\! env`)
+
+	if err := validateBackupArchive(path); err == nil {
+		t.Fatalf("validateBackupArchive() error = nil, want legacy SQL rejection")
+	}
+}
+
+func TestValidateBackupArchiveAcceptsPostgresCustomDump(t *testing.T) {
+	dir := t.TempDir()
+	path := writeTestArchiveWithEntry(t, dir, "custom-dump.zip", postgresBackupEntry, "PGDMP")
+
+	if err := validateBackupArchive(path); err != nil {
+		t.Fatalf("validateBackupArchive() error = %v, want nil", err)
+	}
+}
+
 func TestBackupInfoFromFileClassifiesKnownSources(t *testing.T) {
 	dir := t.TempDir()
 	tests := []struct {

@@ -377,7 +377,7 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 
 	target, status, err := consumeEmailVerification(h.db, code)
 	if err != nil {
-		slog.Warn("Verification email échouée", "code", code, "status", status, "error", err)
+		slog.Warn("Verification email echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
 		switch status {
 		case "expired":
 			statusCode = http.StatusGone

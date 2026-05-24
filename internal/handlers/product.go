@@ -67,7 +67,7 @@ func renderProductMarkdownHTML(raw string) template.HTML {
 	}
 	flushList()
 
-	return template.HTML(b.String())
+	return template.HTML(b.String()) // #nosec G203 -- input is HTML-escaped before controlled markdown tags are added.
 }
 
 func productInlineMarkdown(raw string) string {
