@@ -10,16 +10,16 @@
 </p>
 
 <p align="center">
-  <strong>Portail d'invitations, de récupération de mot de passe et de gestion d'utilisateurs pour Jellyfin, avec LDAP/Active Directory natif.</strong>
+  <strong>Admin and onboarding portal for Jellyfin, with native LDAP/Active Directory support.</strong>
 </p>
 
 ---
 
-## 🚀 Installation (Méthode Recommandée : Docker)
+## Installation (Docker, recommended)
 
-L'utilisation de **Docker Compose** est le moyen le plus simple et recommandé pour déployer JellyGate. Cela garantit la stabilité, la sécurité et la facilité de mise à jour.
+Using Docker Compose is the simplest and recommended way to deploy JellyGate. It keeps the stack stable and easy to update.
 
-### 1. Préparer l'environnement
+### 1. Prepare the folder
 
 ```bash
 mkdir jellygate && cd jellygate
@@ -28,28 +28,28 @@ curl -O https://raw.githubusercontent.com/maelmoreau21/JellyGate/main/.env.examp
 cp .env.example .env
 ```
 
-### 2. Configuration
+### 2. Configure
 
-Éditez le fichier `.env` avec vos paramètres :
+Edit `.env` with your settings:
 
 ```bash
-# Obligatoire : Clé secrète pour les sessions
-JELLYGATE_SECRET_KEY=générez_une_clé_aléatoire_ici
+# Required: secret key for session signing
+JELLYGATE_SECRET_KEY=generate_a_random_key_here
 
 # Jellyfin
-JELLYFIN_URL=http://votre-jellyfin:8096
-JELLYFIN_API_KEY=votre_clé_api_admin
+JELLYFIN_URL=http://your-jellyfin:8096
+JELLYFIN_API_KEY=your_admin_api_key
 ```
 
-### 3. Lancement
+### 3. Start
 
 ```bash
 docker compose up -d
 ```
 
 > [!IMPORTANT]
-> Docker Compose lit le fichier `.env` du dossier de déploiement, pas `.env.local`.
-> Après modification de `JELLYFIN_API_KEY` ou `JELLYFIN_URL`, recréez le conteneur pour appliquer la configuration :
+> Docker Compose reads the `.env` file from the deployment folder, not `.env.local`.
+> After updating `JELLYFIN_API_KEY` or `JELLYFIN_URL`, recreate the container:
 > ```bash
 > docker compose config
 > docker compose up -d --force-recreate
@@ -57,63 +57,69 @@ docker compose up -d
 > ```
 
 > [!TIP]
-> Si vous préférez utiliser **PostgreSQL** au lieu de SQLite, utilisez :
+> If you prefer PostgreSQL instead of SQLite, use:
 > `docker compose -f docker-compose.postgres.yml up -d`
 
-### 4. Accès
+### 4. Access
 
-Rendez-vous sur `http://localhost:8097/admin/login` et connectez-vous avec votre compte Jellyfin administrateur.
+Open `http://localhost:8097/admin/login` and sign in with your Jellyfin admin account.
 
 ---
 
-## 🌟 Fonctionnalités principales
+## Core features
 
-| Domaine | Détail |
+| Area | Details |
 |---|---|
-| **Invitations** | Liens uniques, expiration, quotas, groupe cible, preset Jellyfin, provisioning tiers |
-| **Comptes** | Création atomique LDAP + Jellyfin + SQL, rollback en cas d'échec |
-| **Utilisateurs** | Listing, toggle, suppression, synchronisation Jellyfin, profil utilisateur |
-| **Reset mot de passe** | Demande publique, lien/token, mise à jour Jellyfin + LDAP |
-| **Sécurité** | CSRF, rate limiting, headers HTTP centralisés, cookies signés |
-| **Audit** | Filtres avancés, export CSV/JSON, corrélation par `request_id` |
-| **i18n** | Système multilingue complet (`fr`, `en`, etc.) |
-| **Intégrations** | SMTP, Discord, Telegram, Matrix, Jellyseerr, JellyTrack |
+| Invitations | Unique links, expiry, quotas, labels, Jellyfin presets, automation mappings |
+| Accounts | Atomic provisioning across LDAP + Jellyfin + SQL with rollback on failure |
+| Users | Admin listing, toggle access, delete, Jellyfin sync, user profile |
+| Password reset | Public request, token flow, Jellyfin + LDAP update |
+| Security | CSRF, rate limiting, centralized HTTP headers, signed cookies |
+| Audit | Advanced filters, CSV/JSON export, request_id correlation |
+| i18n | Full multilingual system (fr, en, etc.) |
+| Integrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, JellyTrack |
 
 ---
 
-## ⚙️ Variables d'environnement
+## Environment variables
 
-| Variable | Requis | Défaut | Description |
+| Variable | Required | Default | Description |
 |---|---|---|---|
-| `JELLYGATE_SECRET_KEY` | Oui | - | Clé de signature de session |
-| `JELLYGATE_PORT` | Non | `8097` | Port HTTP |
-| `JELLYGATE_BASE_URL` | Non | `http://localhost:8097` | URL publique |
-| `JELLYFIN_URL` | Oui | - | URL de Jellyfin |
-| `JELLYFIN_API_KEY` | Oui | - | Clé API Jellyfin |
-| `DB_TYPE` | Non | `sqlite` | `sqlite` ou `postgres` |
+| `JELLYGATE_SECRET_KEY` | Yes | - | Session signing key (min 32 chars) |
+| `JELLYGATE_PORT` | No | `8097` | HTTP port |
+| `JELLYGATE_BASE_URL` | No | `http://localhost:8097` | Public base URL |
+| `JELLYGATE_DATA_DIR` | No | `/data` | Data directory inside the container |
+| `JELLYFIN_URL` | Yes | - | Jellyfin URL |
+| `JELLYFIN_API_KEY` | Yes | - | Jellyfin API key |
+| `DB_TYPE` | No | `sqlite` | `sqlite` or `postgres` |
 
 > [!NOTE]
-> LDAP, SMTP, webhooks et templates email se configurent ensuite directement depuis l'interface d'administration.
+> LDAP, SMTP, webhooks, and email templates are configured in the admin UI.
+
+Optional integrations (URLs + API keys):
+- `JELLYSEERR_URL` / `JELLYSEERR_API_KEY`
+- `JELLYTRACK_URL` / `JELLYTRACK_API_KEY`
+- `OMBI_URL` / `OMBI_API_KEY`
 
 ---
 
-## 🌍 Langues
+## Languages
 
-Le changement de langue est automatique selon la priorité : cookie `lang` > header `Accept-Language` > paramètre `default_lang`. Un sélecteur est également disponible dans l'interface.
+Language selection is automatic in this order: `lang` cookie > `Accept-Language` header > `default_lang`. A language selector is also available in the UI.
 
 ---
 
-## 🛠️ Développement & Vérifications
+## Development and validation (optional)
 
 ```bash
-npm run build:css     # Compiler Tailwind
-go build ./...        # Vérifier la compilation
-go test ./...         # Lancer les tests
-go run ./cmd/i18ncheck # Vérifier les traductions
+npm run build:css     # Build Tailwind CSS
+go build ./...        # Compile check
+go test ./...         # Run tests
+go run ./cmd/i18ncheck # Verify translations
 ```
 
 ---
 
-## 📄 Licence
+## License
 
-Distribué sous licence **MIT**.
+Released under the **MIT** license.

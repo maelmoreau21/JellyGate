@@ -1,283 +1,283 @@
-# CLAUDE — Consignes d'agent et Contexte du projet JellyGate
+# CLAUDE - Agent Guidelines and JellyGate Project Context
 <p align="center">
   <img src="../../logo.svg" width="128" height="128" alt="JellyGate Logo">
 </p>
 
-Dernière mise à jour : 2026-04-29 (Version Finale)
+Last updated: 2026-05-26 (Final Version)
 
-Objectif
-- Fournir des directives concises et exploitables pour un assistant Claude travaillant sur ce dépôt, et rassembler le contexte produit/technique dans un seul fichier.
+Purpose
+- Provide concise, actionable guidance for a Claude assistant working on this repo, and consolidate the product/technical context in a single file.
 
-Règles essentielles
-- **Version Finale** : Le projet est en phase finale. Prioriser la stabilité, la performance et la cohérence visuelle.
-- Lire et utiliser la section "Contexte du projet" (plus bas dans ce fichier) comme source d'autorité avant toute décision, modification de code, ou proposition de PR.
-- Découvrir d'abord les conventions du projet : Go 1.26+, `html/template`, i18n JSON sous `web/i18n`, Tailwind CSS (build local via `npm run build:css`).
-- Proposer un plan succinct (3–6 étapes) pour toute tâche non triviale et utiliser la TODO/tool de suivi pour garder la trace des étapes.
-- Ne pas modifier la section "Contexte du projet" sans accord explicite : proposer les changements en commentaire ou en PR.
-- Principe "Link, don't embed" : lier la documentation existante plutôt que la dupliquer.
-- **Docker First** : L'installation via **Docker** est la seule méthode officiellement recommandée pour la production. Toute modification impactant le déploiement doit être impérativement vérifiée dans `docker-compose.yml` et le `Dockerfile`.
-- Préserver la compatibilité i18n : après toute modification de templates ou labels, vérifier chaque fichier `web/i18n/*.json` (10 langues : fr, en, de, es, it, nl, pl, pt-br, ru, zh) et lancer `go run ./cmd/i18ncheck` si pertinent.
-- Tests et validations locales recommandés : exécuter `go build ./...` et `go test ./...` après modifications Go ; pour le CSS, `npm run build:css`.
-- Encodage : sauvegarder les fichiers JSON en UTF-8 sans BOM (important pour `zh.json`).
-- Sécurité : ne jamais committer de secrets en clair dans le dépôt.
+Core rules
+- **Final Version**: The project is in its final phase. Prioritize stability, performance, and visual consistency.
+- Read and use the "Project Context" section (below) as the authority before any decision, code change, or PR proposal.
+- Discover project conventions first: Go 1.26+, `html/template`, i18n JSON under `web/i18n`, Tailwind CSS (local build via `npm run build:css`).
+- Provide a short plan (3-6 steps) for any non-trivial task and use the TODO tracking tool to keep steps visible.
+- Do not modify the "Project Context" section without explicit approval: propose changes in comments or a PR.
+- "Link, don't embed": link to existing documentation rather than duplicating it.
+- **Docker First**: Docker install is the only officially recommended method for production. Any change impacting deployment must be verified in `docker-compose.yml` and the `Dockerfile`.
+- Preserve i18n compatibility: after any template/label change, check every `web/i18n/*.json` file (10 languages: fr, en, de, es, it, nl, pl, pt-br, ru, zh) and run `go run ./cmd/i18ncheck` when relevant.
+- Recommended local validation: run `go build ./...` and `go test ./...` after Go changes; for CSS, run `npm run build:css`.
+- Encoding: save JSON files as UTF-8 without BOM (important for `zh.json`).
+- Security: never commit secrets in clear text in the repo.
 
-- Ne pas committer ni pousser de modifications sur le dépôt, sauf demande explicite de l'utilisateur. Cela inclut les commits, pushes et la création de tags : n'agissez pas sur le dépôt sans instruction claire.
+- Do not commit or push changes to the repo unless the user explicitly asks. This includes commits, pushes, and tag creation: do not act on the repo without a clear instruction.
 
-Commandes rapides utiles
+Quick commands
 - `npm run build:css`
 - `go build ./...`
 - `go test ./...`
 - `go run ./cmd/i18ncheck`
 
-Exemples de prompts (modèles)
-- "Avant toute modification, propose un plan en 3 étapes et liste les fichiers à modifier."
-- "Prépare le diff proposé pour une PR, liste les tests à exécuter et les commandes de validation." 
-- "Vérifie la parité i18n pour la clé 'invite-policy-summary' et propose des corrections si des clés manquent."
+Prompt examples (templates)
+- "Before any change, propose a 3-step plan and list the files to edit."
+- "Prepare the proposed diff for a PR, list tests to run, and validation commands."
+- "Check i18n parity for the key 'invite-policy-summary' and propose fixes if keys are missing."
 
-Comportement attendu
-- Reste bref, factuel et orienté action.
-- Pose des questions de clarification pour tout changement impactant.
-- Proposer PRs/patches quand possible et énumérer les commandes de validation.
+Expected behavior
+- Stay brief, factual, and action-oriented.
+- Ask clarifying questions for any impactful change.
+- Propose PRs/patches when possible and list validation commands.
 
 Notes
-- Ce fichier suit le bootstrap décrit dans `init.prompt.md`: découvrir les conventions, explorer le code, générer ou fusionner (préférer les liens), et itérer avec retours.
+- This file follows the bootstrap described in `init.prompt.md`: discover conventions, explore the code, generate or merge (prefer links), and iterate with feedback.
 
-Si vous souhaitez des règles supplémentaires (hooks git, conventions de commit, checks CI), indiquez lesquelles et je les ajouterai ici.
+If you want additional rules (git hooks, commit conventions, CI checks), tell me and I will add them here.
 
 ---
 
-<!-- Contenu importé : Project Context (project_context.md) -->
+<!-- Imported content: Project Context (project_context.md) -->
 
-# JellyGate — Project Context
+# JellyGate - Project Context
 
-> Dernière mise à jour : 2026-04-29
-> Version : 1.3.0
-> Auteur : Mael Moreau
+> Last updated: 2026-05-26
+> Version: 1.3.0
+> Author: Mael Moreau
 
 ## 1. Vision
 
-JellyGate est un portail d'administration et d'onboarding pour serveurs Jellyfin, pensé pour des déploiements self-hosted qui veulent :
+JellyGate is an admin and onboarding portal for Jellyfin servers, designed for self-hosted deployments that want to:
 
-- centraliser invitations, création de comptes et reset mot de passe
-- intégrer nativement LDAP / Active Directory
-- garder une stack simple à déployer en binaire Go ou Docker
-- exposer une interface admin moderne sans dépendance frontend lourde
+- centralize invitations, account creation, and password resets
+- integrate native LDAP / Active Directory
+- keep a simple stack deployable as a Go binary or Docker
+- expose a modern admin interface without a heavy frontend dependency
 
-Le projet remplace l'approche jfa-go par une intégration plus directe avec Jellyfin, LDAP, la persistance SQL et les workflows d'automatisation maison.
+The project replaces the jfa-go approach with a tighter integration of Jellyfin, LDAP, SQL persistence, and in-house automation workflows.
 
-## 2. Stack actuelle
+## 2. Current stack
 
-- Backend : Go 1.26+, net/http, Chi v5
-- Templates : `html/template`
-- Frontend : HTML, Tailwind build local, JS vanilla, CSS custom
-- Base : SQLite (`modernc.org/sqlite`) ou PostgreSQL
-- LDAP : `go-ldap/ldap/v3`
-- Jellyfin : API REST
-- Email : `wneessen/go-mail`
-- Notifications : Discord, Telegram, Matrix
-- CI/CD : GitHub Actions, Docker Buildx, GHCR
+- Backend: Go 1.26+, net/http, Chi v5
+- Templates: `html/template`
+- Frontend: HTML, local Tailwind build, vanilla JS, custom CSS
+- Database: SQLite (`modernc.org/sqlite`) or PostgreSQL
+- LDAP: `go-ldap/ldap/v3`
+- Jellyfin: REST API
+- Email: `wneessen/go-mail`
+- Notifications: Discord, Telegram, Matrix
+- CI/CD: GitHub Actions, Docker Buildx, GHCR
 
-Le CSS Tailwind est généré localement via `npm run build:css` et servi depuis `web/static/css/tailwind.generated.css`.
+Tailwind CSS is generated locally via `npm run build:css` and served from `web/static/css/tailwind.generated.css`.
 
-## 3. Arborescence logique
+## 3. Logical tree
 
 ```text
 cmd/
-	generate_session/        # outil de generation de secret
-	i18ncheck/               # check i18n CI
-	i18ncoverage/            # stats couverture i18n
-	jellygate/               # point d'entrée HTTP
+    generate_session/        # secret generation tool
+    i18ncheck/               # i18n CI check
+    i18ncoverage/            # i18n coverage stats
+    jellygate/               # HTTP entrypoint
 internal/
-	backup/                  # sauvegarde / restauration
-	config/                  # config runtime et structs métiers
-	database/                # migrations, accès SQL, settings
-	handlers/                # pages et API admin/public
-	integrations/            # provisioning tiers
-	jellyfin/                # client Jellyfin
-	ldap/                    # client LDAP / AD
-	mail/                    # mailer SMTP
-	middleware/              # auth, i18n, sécurité, rate limit
-	notify/                  # webhooks
-	render/                  # moteur de rendu + traduction
-	scheduler/               # tâches périodiques
-	session/                 # cookies signés
+    backup/                  # backup / restore
+    config/                  # runtime config and domain structs
+    database/                # migrations, SQL access, settings
+    handlers/                # admin/public pages and API
+    integrations/            # third-party provisioning
+    jellyfin/                # Jellyfin client
+    ldap/                    # LDAP / AD client
+    mail/                    # SMTP mailer
+    middleware/              # auth, i18n, security, rate limit
+    notify/                  # webhooks
+    render/                  # rendering + translations
+    scheduler/               # periodic tasks
+    session/                 # signed cookies
 scripts/
-	build-css.js             # build Tailwind
-	i18n_inspect.js          # audit manuel i18n
-	run_screenshots.ps1      # outil de screenshots
-	screenshots.js           # moteur screenshots (puppeteer)
+    build-css.js             # Tailwind build
+    i18n_inspect.js          # manual i18n audit
+    run_screenshots.ps1      # screenshots tool
+    screenshots.js           # screenshots engine (puppeteer)
 web/
-	i18n/                    # locales JSON
-	static/                  # css, js, favicon
-	templates/               # pages, layouts, emails
+    i18n/                    # locale JSON
+    static/                  # css, js, favicon
+    templates/               # pages, layouts, emails
 ```
 
-## 4. Capacités produit
+## 4. Product capabilities
 
 ### 4.1 Invitations
 
-- codes uniques avec quota, expiration et label
-- profils Jellyfin associés à l'invitation
-- mapping groupe/preset d'automatisation
-- flux atomique avec rollback LDAP/Jellyfin si une étape échoue
-- vérification d'e-mail configurable au niveau de la politique d'invitation, activée par défaut
-- si la vérification d'e-mail est activée, le compte n'est créé qu'après confirmation du lien public `/verify-email/{code}`
-- corrélation audit par `request_id`
-- l'e-mail d'invitation n'ajoute plus de bloc d'expiration si aucun délai n'est défini
-- les blocs d'aide et d'expiration peuvent être désactivés depuis l'admin
-- un toggle permet de purger automatiquement les liens expirés ou épuisés
-- un "Nom d'utilisateur réservé" (Forced Username) ne peut être défini que pour les invitations à usage unique (`max_uses = 1`) afin d'éviter les conflits de création de compte
-- les utilisateurs non-admins ne peuvent plus créer d'invitations à usage illimité (`max_uses` doit être >= 1)
-- base technique prête pour un futur mode parrainage utilisateur depuis `Mon compte`
-- Sécurité des inscriptions : les réglages anti-abus et CAPTCHA sont dans `Admin > Invitations`, pas dans un centre produit générique. L'API admin dédiée est `GET/POST /admin/api/invitations/security`.
-- Le CAPTCHA local apparaît sur la page publique `/invite/{code}` uniquement si `Anti-abus actif` et `CAPTCHA local` sont activés. Les échecs de CAPTCHA, validation formulaire, invitation invalide ou nom indisponible sont comptés par IP; après `max_failures` dans `window_minutes`, l'IP est bloquée pendant `block_minutes`.
-- Ne pas réintroduire la page UI `Centre produit` / `/admin/product`. Si un ancien module produit devient utile, le replacer dans la page métier correspondante.
+- unique codes with quota, expiry, and label
+- Jellyfin profiles tied to the invitation
+- group mapping / automation preset mapping
+- atomic flow with LDAP/Jellyfin rollback on failure
+- email verification configurable at the invitation policy level, enabled by default
+- if email verification is enabled, the account is created only after confirming `/verify-email/{code}`
+- audit correlation by `request_id`
+- invitation email no longer shows an expiry block if no expiry is defined
+- help and expiry blocks can be disabled from admin
+- a toggle can auto-purge expired or exhausted links
+- a "Forced Username" can only be set on single-use invites (`max_uses = 1`) to avoid account creation conflicts
+- non-admin users cannot create unlimited invites (`max_uses` must be >= 1)
+- technical base ready for a future user sponsorship mode from `My account`
+- Signup security: anti-abuse and CAPTCHA settings live in `Admin > Invitations`, not in a generic product center. Dedicated admin API: `GET/POST /admin/api/invitations/security`.
+- Local CAPTCHA appears on `/invite/{code}` only when `Anti-abuse enabled` and `Local CAPTCHA` are enabled. CAPTCHA failures, form validation failures, invalid invites, or unavailable usernames are counted per IP; after `max_failures` within `window_minutes`, the IP is blocked for `block_minutes`.
+- Do not reintroduce the `Product Center` UI page (`/admin/product`). If an old product module becomes useful, place it in the relevant feature page.
 
-### 4.2 Utilisateurs
+### 4.2 Users
 
-- listing admin
-- synchronisation Jellyfin
-- suppression compte
-- toggle d'accès
-- communication ciblée et envois admin centralisés depuis la page `Utilisateurs`
-- aucune messagerie interne exposée aux utilisateurs: la communication produit se fait uniquement par e-mail
-- profil personnel avec langue préférée et préférences de notification
-- refonte admin en cours page par page pour homogénéiser toute l'interface
+- admin listing
+- Jellyfin sync
+- account deletion
+- access toggle
+- targeted communications and admin sends from the `Users` page
+- no internal messaging exposed to users: product communication is email only
+- personal profile with preferred language and notification preferences
+- admin UI refactor in progress, page by page, to unify the interface
 
-### 4.3 Réinitialisation mot de passe
+### 4.3 Password reset
 
-- page publique de demande
-- token/code temporaire
-- update Jellyfin + LDAP
-- anti-énumération côté message utilisateur
+- public request page
+- temporary token/code
+- Jellyfin + LDAP update
+- anti-enumeration in user-facing messages
 
-### 4.4 Vérification des canaux de contact
+### 4.4 Contact channel verification
 
-- statut vérifié / en attente exposé sur le profil utilisateur
-- lien public `/verify-email/{code}` avec gestion des états valide / expiré / déjà utilisé / invalide
-- envoi initial au signup et renvoi depuis `Mon compte`
-- pour les inscriptions publiques, un enregistrement temporaire est conservé jusqu'à confirmation afin d'éviter toute création de compte avant validation de l'e-mail
-- changement d'adresse géré via `pending_email` jusqu'à confirmation
-- corps HTML et sujet de l'e-mail de vérification configurables depuis l'admin
-- politique historique: les comptes déjà présents avant cette feature, avec e-mail existant et sans vérification en cours, sont marqués vérifiés une seule fois au démarrage
-- objectif cible: étendre ensuite le même modèle de vérification à Discord / Telegram / Matrix
+- verified / pending status exposed on the user profile
+- public link `/verify-email/{code}` with handling for valid / expired / already used / invalid
+- initial send on signup and resend from `My account`
+- for public signups, a temporary record is kept until confirmation to avoid account creation before email validation
+- address changes stored in `pending_email` until confirmed
+- verification email HTML body and subject are configurable from admin
+- historical policy: accounts that existed before this feature, with an email and no pending verification, are marked verified once at startup
+- target goal: extend the same verification model to Discord / Telegram / Matrix later
 
-### 4.5 Automatisation et home server
+### 4.5 Automation and home server
 
-- presets Jellyfin
-- mappings groupes LDAP / groupes fonctionnels
-- tâches planifiées
-- provisioning Jellyseerr optionnel
-- Les presets Jellyfin sont désormais explicites et ne reposent plus sur le clonage d'un utilisateur modèle. Un preset peut définir directement les droits, les médiathèques accessibles, l'accueil Jellyfin et les préférences d'affichage Jellyfin Web.
-- Le champ JSON historique `template_user_id` reste accepté en lecture pour compatibilité, mais ne doit plus être utilisé pour les nouveaux presets ni exposé dans l'UI.
-- Les blocs de preset Jellyfin à préserver sont :
-  - `user_configuration` : épisodes manquants, contenu vu dans ajouts récents, ordre des médiathèques, dossiers groupés, exclusions "Mes médias" et "Ajouts récents".
-  - `display_preferences` : écran de veille, délais, animations, images floues, arrière-plans, thèmes, bannière détails, taille de page, délai "À suivre", images épisode et sections d'accueil 1 à 10.
-- Endpoint admin ajouté : `GET /admin/api/automation/libraries`, qui expose les médiathèques depuis Jellyfin `/Library/VirtualFolders`.
-- Dans l'UI `Automatisation > Presets`, les réglages sont organisés en panneaux repliables `Accès` et `Personnalisation`. La table des médiathèques utilise :
-  - `Accès` : donne ou retire l'accès Jellyfin à la médiathèque.
-  - `Accueil : Mes médias` : affiche cette médiathèque dans la section d'accueil "Mes médias"; cela ne change pas l'accès.
-  - `Accueil : Ajouts récents` : autorise cette médiathèque dans les ajouts récents.
-  - `Regrouper par type` : alimente `GroupedFolders` pour regrouper les dossiers dans les vues Jellyfin par type (Films, Séries, Musique, etc.).
-  - `Position` : ordre des médiathèques via boutons Monter/Descendre; ne pas réintroduire de champ numérique libre car les doublons rendaient l'ordre ambigu.
-- Quand une médiathèque n'est pas accessible dans le preset, les options d'accueil/groupe/position doivent rester désactivées et ne pas être envoyées dans `ordered_views`, `grouped_folders`, `my_media_excludes` ou `latest_items_excludes`.
-- L'application d'un preset Jellyfin passe par trois appels côté client Jellyfin : `POST /Users/{userId}/Policy`, `POST /Users/Configuration?userId=...`, puis `GET/POST /DisplayPreferences/usersettings?userId=...&client=emby`.
+- Jellyfin presets
+- LDAP group mappings / functional group mappings
+- scheduled tasks
+- optional Jellyseerr provisioning
+- Jellyfin presets are now explicit and do not rely on cloning a template user. A preset can define rights, accessible libraries, Jellyfin home, and Jellyfin Web display preferences.
+- The legacy JSON field `template_user_id` remains accepted for read compatibility, but must not be used for new presets or exposed in the UI.
+- Jellyfin preset blocks to preserve:
+  - `user_configuration`: missing episodes, recently added behavior, library order, grouped folders, "My media" and "Latest" exclusions.
+  - `display_preferences`: screensaver, timeouts, animations, blur, backgrounds, themes, detail banner, page size, "Continue Watching" delay, episode images, and home sections 1 to 10.
+- Added admin endpoint: `GET /admin/api/automation/libraries`, which exposes libraries from Jellyfin `/Library/VirtualFolders`.
+- In UI `Automation > Presets`, settings are organized in collapsible panels `Access` and `Personalization`. The library table uses:
+  - `Access`: grant or remove Jellyfin access to the library.
+  - `Home: My media`: show this library in "My media" on the home page; does not change access.
+  - `Home: Latest`: allow this library in latest items.
+  - `Group by type`: feeds `GroupedFolders` to group folders in Jellyfin views by type (Movies, Series, Music, etc.).
+  - `Position`: library order via Move Up/Down buttons; do not reintroduce a numeric input because duplicates made ordering ambiguous.
+- When a library is not accessible in the preset, home/group/position options must remain disabled and must not be sent in `ordered_views`, `grouped_folders`, `my_media_excludes`, or `latest_items_excludes`.
+- Applying a Jellyfin preset uses three client calls: `POST /Users/{userId}/Policy`, `POST /Users/Configuration?userId=...`, then `GET/POST /DisplayPreferences/usersettings?userId=...&client=emby`.
 
-### 4.6 Modeles e-mail
+### 4.6 Email templates
 
-- page `Parametres > Modeles e-mail` recentrée sur les seuls modèles utiles au produit
-- chaque modèle est édité via un bloc déroulant, ce qui évite les longues pages difficiles à relire
-- les éditeurs "Messages simples sans balises" acceptent désormais les variables de template comme `{{.Username}}`, `{{.Email}}`, `{{.ExpiryDate}}`, `{{.InviteLink}}` ou `{{.JellyfinURL}}`
-- un sélecteur `cliquer pour inserer` permet d'ajouter directement les variables dans chaque message no-code
-- les messages simples par défaut sont plus personnalisés et restent injectés automatiquement dans l'habillage partagé et les blocs système
-- les rappels d'expiration utilisent un seul modèle cohérent, quel que soit le palier de rappel choisi
-- panneau d'activation conservé pour couper proprement certains e-mails automatiques
-- contenu d'aide avant/apres inscription simplifie pour eviter les messages type documentation interne
-- aucun e-mail d'ajustement d'expiration n'est envoyé quand une expiration utilisateur est retirée
-- le comportement produit privilègie l'envoi utile uniquement, sans fragments "Non definie"
+- `Settings > Email templates` page focused on the only templates that are useful
+- each template is edited via a collapsible block, avoiding long hard-to-scan pages
+- "Plain messages without tags" editors now accept template variables like `{{.Username}}`, `{{.Email}}`, `{{.ExpiryDate}}`, `{{.InviteLink}}`, or `{{.JellyfinURL}}`
+- a "click to insert" selector lets users add variables in no-code messages
+- default plain messages are more personalized and stay injected into shared layout and system blocks
+- expiry reminders use a single coherent template, regardless of the reminder tier
+- keep an activation panel to cleanly disable certain automated emails
+- help content before/after signup is simplified to avoid internal documentation style messages
+- no expiry adjustment email is sent when a user expiry is removed
+- product behavior favors useful-only sending, no "Not defined" fragments
 
-### 4.7 Audit et observabilite
+### 4.7 Audit and observability
 
-- `audit_log` SQL
-- filtres avancés sur l'API logs
-- export CSV / JSON
-- extraction et affichage `request_id`
+- SQL `audit_log`
+- advanced filters on logs API
+- CSV / JSON export
+- `request_id` extraction and display
 
 ### 4.8 i18n
 
-- locales JSON sous `web/i18n`
-- détection par cookie `lang`, puis `Accept-Language`, puis `default_lang`
-- fallback `lang demandée -> en -> fr`
-- commande CI `go run ./cmd/i18ncheck`
-- labels de navigation et de `Modeles e-mail` homogenises sur les locales admin principales
+- JSON locales under `web/i18n`
+- detection by `lang` cookie, then `Accept-Language`, then `default_lang`
+- fallback `requested lang -> en -> fr`
+- CI command `go run ./cmd/i18ncheck`
+- navigation and `Email templates` labels normalized across main admin locales
 
-### 4.9 Roadmap produit validee
+### 4.9 Validated product roadmap
 
-- parrainage utilisateur depuis `Mon compte` avec quotas, durée de vie et traçabilité sponsor -> invité
-- vérification d'e-mail obligatoire ou configurable selon la politique d'instance
-- création directe d'utilisateur côté admin avec preset complet, expiration et message de bienvenue
-- centre de tâches manuelles pour lancer housekeeping, sync Jellyfin, sync intégrations et sauvegardes
-- intégration Jellyseerr plus profonde: sync profil, préférences de notification et resync manuel
-- contenu produit personnalisable depuis l'admin pour onboarding, aide post-inscription et messages réutilisables
-- timeline utilisateur enrichie basée sur l'audit log existant
+- user sponsorship from `My account` with quotas, lifetime, and sponsor -> invite traceability
+- mandatory or configurable email verification by instance policy
+- direct admin user creation with full preset, expiry, and welcome message
+- manual task center to run housekeeping, Jellyfin sync, integration sync, and backups
+- deeper Jellyseerr integration: profile sync, notification prefs, manual resync
+- customizable product content for onboarding, post-signup help, and reusable messages
+- enriched user timeline based on existing audit log
 
-### 4.10 Backlog d'améliorations inspirées de jfa-go
+### 4.10 Improvement backlog inspired by jfa-go
 
-- anti-abus invitation: CAPTCHA et blocage temporaire sont intégrés à `Admin > Invitations`; améliorations possibles seulement côté métriques/risque, sans recréer de "Centre produit"
-- studio de contenu: éditeur Markdown avec preview pour invitation, bienvenue, e-mails et compte utilisateur
-- assistant de premier lancement: configuration guidée Jellyfin, SMTP, URL publique, sécurité et sauvegardes
-- liaison Discord / Telegram / Matrix côté utilisateur avec validation
-- timeline admin enrichie: invitations, inscriptions, presets, expirations et actions admin
-- simulateur avant application: prévisualisation des changements avant preset ou action bulk
-- page santé du portail: diagnostics Jellyfin, SMTP, Jellyseerr, webhooks, sauvegardes, URL publique et i18n
-- parrainage avancé: stats sponsor, liens personnels, quotas, expiration et suivi sponsor -> invité
-- règles de cycle de vie: inactivité, désactivation, suppression différée et relances automatiques
-- historique et audit propre: journal filtrable, export CSV/JSON et détails avant/après
-- Ombi reste exclu du backlog demandé
+- invitation anti-abuse: CAPTCHA and temporary block are integrated in `Admin > Invitations`; improvements only in metrics/risk, without recreating a "Product Center"
+- content studio: Markdown editor with preview for invitation, welcome, emails, and user account
+- first-run assistant: guided Jellyfin, SMTP, public URL, security, and backup setup
+- Discord / Telegram / Matrix linking on user side with validation
+- richer admin timeline: invites, signups, presets, expiries, and admin actions
+- pre-apply simulator: preview changes before preset or bulk action
+- portal health page: Jellyfin, SMTP, Jellyseerr, webhooks, backups, public URL, and i18n diagnostics
+- advanced sponsorship: sponsor stats, personal links, quotas, expiry, and sponsor -> invite tracking
+- lifecycle rules: inactivity, disable, deferred delete, and automated reminders
+- clean history and audit: filterable journal, CSV/JSON export, before/after details
+- Ombi remains excluded from the requested backlog
 
-## 5. Routes importantes
+## 5. Important routes
 
 ### Public
 
-| Méthode | Route | Usage |
+| Method | Route | Usage |
 | --- | --- | --- |
-| GET | `/invite/{code}` | page d'inscription |
-| POST | `/invite/{code}` | validation inscription |
-| GET | `/reset` | page de demande reset |
-| POST | `/reset/request` | émission du reset |
-| GET | `/reset/{code}` | formulaire nouveau mot de passe |
-| POST | `/reset/{code}` | soumission reset |
-| GET | `/verify-email/{code}` | validation d'adresse e-mail |
+| GET | `/invite/{code}` | signup page |
+| POST | `/invite/{code}` | signup validation |
+| GET | `/reset` | password reset request page |
+| POST | `/reset/request` | reset issuance |
+| GET | `/reset/{code}` | new password form |
+| POST | `/reset/{code}` | reset submit |
+| GET | `/verify-email/{code}` | email verification |
 
 ### Admin UI
 
-| Méthode | Route | Usage |
+| Method | Route | Usage |
 | --- | --- | --- |
 | GET | `/admin/login` | login |
-| POST | `/admin/login` | authentification |
+| POST | `/admin/login` | authentication |
 | POST | `/admin/logout` | logout |
 | GET | `/admin/` | dashboard |
-| GET | `/admin/users` | utilisateurs |
+| GET | `/admin/users` | users |
 | GET | `/admin/invitations` | invitations |
-| GET | `/admin/settings` | paramètres |
-| GET | `/admin/logs` | journaux |
-| GET | `/admin/automation` | automatisation |
-| GET | `/admin/my-account` | profil utilisateur |
+| GET | `/admin/settings` | settings |
+| GET | `/admin/logs` | logs |
+| GET | `/admin/automation` | automation |
+| GET | `/admin/my-account` | user profile |
 
 ### Admin API
 
-| Préfixe | Description |
+| Prefix | Description |
 | --- | --- |
-| `/admin/api/users` | gestion utilisateurs |
-| `/admin/api/invitations` | CRUD invitations, stats sponsor et sécurité anti-abus (`/security`) |
-| `/admin/api/settings` | paramètres applicatifs |
-| `/admin/api/backups` | sauvegardes |
-| `/admin/api/logs` | audit logs et exports |
-| `/admin/api/automation` | presets, mappings, tâches |
+| `/admin/api/users` | user management |
+| `/admin/api/invitations` | invitation CRUD, sponsor stats, anti-abuse security (`/security`) |
+| `/admin/api/settings` | application settings |
+| `/admin/api/backups` | backups |
+| `/admin/api/logs` | audit logs and exports |
+| `/admin/api/automation` | presets, mappings, tasks |
 
-## 6. Base de données
+## 6. Database
 
-Tables principales:
+Main tables:
 
 - `users`
 - `invitations`
@@ -287,58 +287,57 @@ Tables principales:
 - `settings`
 - `audit_log`
 
-Le projet supporte SQLite et PostgreSQL. SQLite reste la cible de déploiement la plus simple. PostgreSQL est utile quand on veut séparer la persistance ou scaler le service.
+The project supports SQLite and PostgreSQL. SQLite is the simplest deployment target. PostgreSQL is useful when you need to separate persistence or scale the service.
 
-## 7. Sécurité
+## 7. Security
 
-### 7.1 Mesures en place
+### 7.1 Measures in place
 
-- authentification admin déléguée à Jellyfin
-- cookies de session signés HMAC-SHA256
-- middleware CSRF pour les routes admin mutables
-- middleware de rate limiting mémoire sur login/invite/reset
-- headers HTTP centralisés: CSP, HSTS conditionnel, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`
-- journalisation des actions sensibles
+- admin auth delegated to Jellyfin
+- HMAC-SHA256 signed session cookies
+- CSRF middleware for mutable admin routes
+- in-memory rate limiting middleware on login/invite/reset
+- centralized HTTP headers: CSP, conditional HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`
+- logging of sensitive actions
 
-### 7.2 Écarts encore ouverts
+### 7.2 Open gaps
 
-- cookies `Secure` encore dépendants de `r.TLS != nil` sur certains chemins et pas de stratégie proxy TLS uniforme
-- secrets LDAP/SMTP/Webhooks stockés en clair dans `settings`
-- `DB_SSLMODE=disable` reste le défaut PostgreSQL
-- pas encore de suite de tests métier significative
+- `Secure` cookies still depend on `r.TLS != nil` on some paths and no uniform TLS proxy strategy
+- LDAP/SMTP/Webhook secrets stored in clear text in `settings`
+- `DB_SSLMODE=disable` remains the default for PostgreSQL
+- no significant business test suite yet
 
-## 8. Expérience utilisateur
+## 8. User experience
 
-L'interface suit actuellement ces principes:
+The interface currently follows these principles:
 
-- fond noir conservé avec des touches de modernité (dégradés Cyan/Émeraude)
-- pages- **Modales Fantômes** : Résolu (CSS `display: none` par défaut + JS helpers).
-- **Navigation Encombrée** : Résolu (Sidebar rétractable + Tab system).
-- **Audit Log** : Refonte de la page `logs.html` avec filtres horizontaux.
- pour réduire la densité d'information au premier écran
-- la navigation admin ne propose plus de centre de messages, les communications partant uniquement par e-mail depuis `Utilisateurs`
-- sur l'écran de connexion, le selecteur de langue et le bouton de thème sont regroupés sous la carte de connexion pour un aspect épuré et moderne.
+- dark base theme with modern accents (cyan/emerald gradients)
+- **Ghost modals**: resolved (CSS `display: none` by default + JS helpers)
+- **Cluttered navigation**: resolved (collapsible sidebar + tab system)
+- **Audit log**: `logs.html` reworked with horizontal filters to reduce density above the fold
+- admin navigation no longer offers a messaging center; communications are email-only from `Users`
+- on the login screen, the language selector and theme button are grouped under the login card for a clean, modern look
 
-Le design system partagé est porté par `web/static/css/custom.css` et `web/templates/layouts/base.html`.
-- **Select Premium** : Utiliser la classe `jg-select-premium` pour les menus déroulants afin de bénéficier de l'accentuation Cyan-Émeraude et de la flèche personnalisée.
-- **Conformité CSP** : Interdiction des gestionnaires d'événements inline (`onclick`, etc.). Utiliser des écouteurs d'événements dans les fichiers `.js` correspondants et des attributs `data-modal` pour les interactions de modales.
-- **Modales** : Utiliser `JG.openModal(id)` et `JG.closeModal(id)` pour gérer l'affichage via les classes `hidden` et `open`.
+The shared design system lives in `web/static/css/custom.css` and `web/templates/layouts/base.html`.
+- **Premium select**: use the `jg-select-premium` class for dropdowns to get the cyan-emerald accent and custom arrow.
+- **CSP compliance**: no inline event handlers (`onclick`, etc.). Use event listeners in the `.js` files and `data-modal` attributes for modal actions.
+- **Modals**: use `JG.openModal(id)` and `JG.closeModal(id)` to toggle `hidden` and `open` classes.
 
 ## 9. CI / Docker
 
-Le workflow `docker-publish.yml` publie une image multi-arch:
+The `docker-publish.yml` workflow publishes a multi-arch image:
 
 - `linux/amd64`
 - `linux/arm64`
 
-Tags conservés:
+Tags retained:
 
 - `latest`
 - `vX.Y.Z`
 
-Le workflow exécute aussi le check i18n via `cmd/i18ncheck` pour empêcher l'introduction de clés manquantes, placeholders incohérents ou valeurs fallback.
+The workflow also runs the i18n check via `cmd/i18ncheck` to prevent missing keys, inconsistent placeholders, or fallback values.
 
-## 10. Commandes de validation
+## 10. Validation commands
 
 ```bash
 npm run build:css
@@ -349,118 +348,118 @@ go run ./cmd/i18ncoverage --max-same-as-base 195
 docker build -t jellygate:local .
 ```
 
-### Lancer localement (mode développement)
+### Run locally (development mode)
 
-Pour exécuter l'application localement sans dépendances externes (base SQLite), copiez/éditez `.env.local` puis lancez :
+To run the app locally without external dependencies (SQLite), copy/edit `.env.local` then run:
 
 ```bash
-# Installer les dépendances CSS si nécessaire
+# Install CSS dependencies if needed
 npm install
-# Générer le CSS Tailwind
+# Build Tailwind CSS
 npm run build:css
 
-# Vérifier que .env.local contient DB_TYPE=sqlite et JELLYGATE_PORT=8097
-# Démarrer l'application (utilise .env.local si vous l'avez exporté dans l'environnement)
+# Ensure .env.local contains DB_TYPE=sqlite and JELLYGATE_PORT=8097
+# Start the app (uses .env.local if you exported it in your environment)
 go run ./cmd/jellygate
 
-# Ensuite ouvrez http://localhost:8097/admin/login dans votre navigateur
+# Then open http://localhost:8097/admin/login in your browser
 ```
 
-Remarques:
-- Si vous utilisez Windows PowerShell, vous pouvez charger les variables de `.env.local` avec un outil comme `direnv` ou définir manuellement les variables d'environnement avant d'exécuter `go run`.
-- Le fichier `web/static/css/tailwind.generated.css` est déjà présent dans le dépôt; si l'interface apparaît noire ou vide, reconstruisez le CSS avec `npm run build:css` puis rechargez la page.
+Notes:
+- On Windows PowerShell, you can load variables from `.env.local` with a tool like `direnv` or set environment variables manually before running `go run`.
+- The file `web/static/css/tailwind.generated.css` is already in the repo; if the UI looks black or empty, rebuild CSS with `npm run build:css` then refresh.
 
-## 11. Points d'attention pour les prochaines évolutions
+## 11. Watch points for future changes
 
-- améliorer la qualité réelle des traductions non `fr`/`en`
-- chiffrer les secrets stockés en base
-- ajouter des tests de handlers et de flux invitation/reset
-- étendre la vérification d'e-mail vers une politique d'instance configurable plus fine
-- ouvrir la voie au parrainage utilisateur et à la création directe d'utilisateur par l'admin
+- improve actual translation quality for non `fr`/`en`
+- encrypt secrets stored in the database
+- add tests for handlers and invitation/reset flows
+- extend email verification into a more granular instance policy
+- open the path to user sponsorship and direct admin user creation
 
-## 12. Priorités produit court terme
+## 12. Short-term product priorities
 
-1. CAPTCHA / anti-abus invitation
-2. Studio de contenu Markdown
-3. Assistant premier lancement
-4. Timeline admin enrichie
-5. Liaison Discord / Telegram / Matrix
+1. CAPTCHA / invitation anti-abuse
+2. Markdown content studio
+3. First-run assistant
+4. Enriched admin timeline
+5. Discord / Telegram / Matrix linking
 
-## 13. Mise à jour récente
+## 13. Recent updates
 
-- **Version 1.1.8** : Refonte de la page `Utilisateurs` (2026-03-28) — amélioration de la lisibilité, meilleure réactivité sur petits écrans, et correction de quelques `id` manquants nécessaires au JS (`bulk-selected-count`, `delete-modal-text`, `timeline-subtitle`). Compatibilité avec `web/static/js/pages/users.js` préservée ; relancer l'audit i18n après modifications de contenu.
+- **Version 1.1.8**: Users page revamp (2026-03-28) - improved readability, better small-screen responsiveness, and fixes for missing JS `id` values (`bulk-selected-count`, `delete-modal-text`, `timeline-subtitle`). Compatibility with `web/static/js/pages/users.js` preserved; rerun the i18n audit after content changes.
 
-- **Version 1.1.9** : Refonte de la page `Automatisation` (2026-03-28) — tables rendues responsive (scroll horizontal via `overflow-x-auto`), tables forcées en `min-w-full` pour éviter l'écrasement des colonnes sur petits écrans, et petites améliorations d'accessibilité/aperçu des tâches. Aucune modification API : compatibilité avec `web/static/js/pages/automation.js` conservée. Effectuer une vérification visuelle après redémarrage.
+- **Version 1.1.9**: Automation page revamp (2026-03-28) - tables made responsive (horizontal scroll via `overflow-x-auto`), tables forced to `min-w-full` to prevent column squashing on small screens, and minor accessibility/task preview improvements. No API changes: compatibility with `web/static/js/pages/automation.js` preserved. Perform a visual QA after restart.
 
-- **Version 1.1.10** : Refonte de la page `Invitations` (2026-03-28) — tables rendues responsive et `min-w-full` appliqué, ajout d'un résumé de politique d'invitation et de messages d'aide (`invite-policy-summary`, `inv-uses-help`, `inv-link-expiry-help`, `inv-can-invite-help`), correction des boutons rapides pour éviter les `id` dupliqués (ajout de classes utilitaires pour attacher les listeners), et ajout d'un emplacement pour le texte de confirmation de suppression (`delete-modal-text`). Compatibilité fonctionnelle avec `web/static/js/pages/invitations.js` préservée — lancer une QA visuelle après redémarrage.
+- **Version 1.1.10**: Invitations page revamp (2026-03-28) - tables made responsive with `min-w-full`, added invitation policy summary and help messages (`invite-policy-summary`, `inv-uses-help`, `inv-link-expiry-help`, `inv-can-invite-help`), fixed quick buttons to avoid duplicate `id` values (added utility classes for listeners), and added a spot for delete confirmation text (`delete-modal-text`). Functional compatibility with `web/static/js/pages/invitations.js` preserved - run visual QA after restart.
 
-- **Version 1.1.11** : Correction des boutons et interactions cassés (2026-04-01) — Trois corrections majeures :
-  1. **Page Utilisateurs** (`users.js` v3.0.0) : réécriture complète ajoutant tous les event listeners manquants — checkbox « Sélectionner tout » (`check-all`), checkboxes individuelles par ligne, bouton « E-mail en lot » (`btn-open-bulk-email`), ouverture/fermeture du drawer d'actions en lot, changement d'action bulk avec rendu dynamique des champs, gestion complète des actions par ligne (éditer, supprimer, timeline, toggle actif), modal d'édition, modal de suppression, modal timeline, filtres avancés (Jellyfin, invitation, extras) et indicateurs de filtres actifs.
-  2. **Page Invitations** (`invitations.html`) : les boutons « Voir tout » et « Nouvelle invitation » utilisaient des `id` (`btn-scroll-invitations`, `btn-open-create-modal`) alors que le JS `invitations.js` attendait des classes CSS (`.btn-scroll-invitations`, `.btn-open-create-modal`). Correction en remplaçant les ID par les classes correspondantes.
-  3. **Page Automatisation** (`automation.html`) : les modales de création de tâche (`modal-task-form`) et d'édition de preset (`modal-preset-form`) n'avaient pas la classe `flex` dans leur conteneur, empêchant le centrage correct via `JG.openModal()`. Ajout de `flex` aux classes CSS des deux modales.
+- **Version 1.1.11**: Broken buttons/interactions fixed (2026-04-01) - three major fixes:
+  1. **Users page** (`users.js` v3.0.0): full rewrite adding all missing event listeners - "Select all" checkbox (`check-all`), per-row checkboxes, "Bulk email" button (`btn-open-bulk-email`), bulk action drawer open/close, bulk action change with dynamic fields, full per-row actions (edit, delete, timeline, toggle active), edit modal, delete modal, timeline modal, advanced filters (Jellyfin, invitation, extras), and active filter indicators.
+  2. **Invitations page** (`invitations.html`): "View all" and "New invitation" buttons used `id` values (`btn-scroll-invitations`, `btn-open-create-modal`) while `invitations.js` expected CSS classes (`.btn-scroll-invitations`, `.btn-open-create-modal`). Fixed by replacing IDs with classes.
+  3. **Automation page** (`automation.html`): task creation modal (`modal-task-form`) and preset edit modal (`modal-preset-form`) lacked the `flex` class in their containers, preventing centering via `JG.openModal()`. Added `flex` to both modal containers.
 
-- **Version 1.1.12** : Sécurisation et Standardisation UI (2026-04-02)
-  - **Sécurité Invitations** : Restriction du champ "Nom d'utilisateur réservé" aux invitations à usage unique (`max_uses = 1`) côté frontend et backend. Interdiction des invitations illimitées pour les non-administrateurs.
-  - **Standardisation UI** : Application du style `jg-select-premium` (flèche accentuée teal, options dark mode) aux sélecteurs de type de tâche.
-  - **Correctif CSP** : Suppression totale des handlers `onclick` dans `automation.html` et `invitations.html`. Migration vers une délégation d'événements dans `automation.js` et `invitations.js` pour l'ouverture/fermeture des modales.
-  - **Robustesse Modales** : Mise à jour de `app.js` (`JG.closeModal`) pour garantir l'ajout systématique de la classe `hidden` et du style `display: none`.
+- **Version 1.1.12**: Security and UI standardization (2026-04-02)
+  - **Invitation security**: "Forced Username" field restricted to single-use invites (`max_uses = 1`) in frontend and backend. Unlimited invites blocked for non-admin users.
+  - **UI standardization**: applied `jg-select-premium` style (teal arrow, dark mode options) to task type selectors.
+  - **CSP fix**: removed all inline `onclick` handlers in `automation.html` and `invitations.html`. Migrated to event delegation in `automation.js` and `invitations.js` for modal open/close.
+  - **Modal robustness**: updated `app.js` (`JG.closeModal`) to always add the `hidden` class and `display: none`.
 
-- **Version 1.1.13** : Grand Nettoyage et Standardisation Docker (2026-04-04)
-  - **Cleanup Repo** : Suppression massive des fichiers temporaires, logs, binaires et scripts de test obsolètes pour plus de clarté.
-  - **Standardisation Docker** : `docker-compose.yml` désormais optimisé pour SQLite par défaut (plus de conteneur Postgres inutile). Introduction de `docker-compose.postgres.yml` pour les installations PostgreSQL.
-  - **Configuration** : Mise à jour de `.env` avec des commentaires plus clairs et suppression des variables inutilisées.
-  - **Documentation** : Actualisation de l'arborescence projet et des consignes d'agent. L'installation via Docker est désormais la méthode officiellement recommandée et mise en avant.
+- **Version 1.1.13**: Cleanup and Docker standardization (2026-04-04)
+  - **Repo cleanup**: removed temporary files, logs, binaries, and obsolete test scripts.
+  - **Docker standardization**: `docker-compose.yml` now optimized for SQLite by default (no unnecessary Postgres container). Added `docker-compose.postgres.yml` for PostgreSQL installs.
+  - **Configuration**: updated `.env` comments and removed unused variables.
+  - **Documentation**: refreshed project tree and agent guidance. Docker install is now the officially recommended method and is highlighted.
 
-- **Version 1.3.0 / Mémoire agent** : Presets Jellyfin complets sans clonage (2026-04-29)
-  - Ajout des blocs JSON `user_configuration` et `display_preferences` à `JellyfinPolicyPreset`, avec valeurs par défaut et normalisation dans `internal/config/config.go` et `internal/database/settings.go`.
-  - Le client Jellyfin applique désormais un preset en trois étapes : droits/bibliothèques (`Policy`), configuration utilisateur (`UserConfiguration`) et préférences Jellyfin Web (`DisplayPreferences.CustomPrefs`).
-  - Ajout de `GET /admin/api/automation/libraries`, branché sur `/Library/VirtualFolders`, pour sélectionner directement les médiathèques accessibles depuis `Automatisation > Presets`.
-  - La modale preset ne propose plus "Cloner un profil Jellyfin"; `template_user_id` reste uniquement une compatibilité JSON legacy.
-  - UI `Automatisation > Presets` : sections repliables `Accès` et `Personnalisation`; la table médiathèques utilise `Accueil : Mes médias`, `Accueil : Ajouts récents`, `Regrouper par type` et `Position` via boutons Monter/Descendre.
-  - Correction UX importante : ne pas permettre plusieurs rangs identiques pour l'ordre des médiathèques; l'ordre doit être l'ordre physique des lignes dans le tableau.
-  - Fichiers principaux touchés : `internal/jellyfin/client.go`, `internal/config/config.go`, `internal/database/settings.go`, `internal/handlers/automation.go`, `internal/handlers/admin.go`, `internal/handlers/invitations.go`, `internal/scheduler/service.go`, `web/templates/admin/automation.html`, `web/static/js/pages/automation.js`, `web/i18n/*.json`.
-  - Tests ajoutés : `internal/jellyfin/client_test.go` vérifie les payloads Policy/UserConfiguration/DisplayPreferences et l'absence de clonage; `internal/database/settings_presets_test.go` vérifie les defaults et la normalisation.
-  - Validations effectuées pendant l'implémentation : `go test ./...`, `go build ./...`, `npm run build:css`, `node --check web/static/js/pages/automation.js`, contrôle i18n des clés Automation sur les 10 langues, `git diff --check`.
+- **Version 1.3.0 / Agent memory**: Full Jellyfin presets without cloning (2026-04-29)
+  - Added JSON blocks `user_configuration` and `display_preferences` to `JellyfinPolicyPreset`, with defaults and normalization in `internal/config/config.go` and `internal/database/settings.go`.
+  - The Jellyfin client now applies a preset in three steps: rights/libraries (`Policy`), user configuration (`UserConfiguration`), and Jellyfin Web preferences (`DisplayPreferences.CustomPrefs`).
+  - Added `GET /admin/api/automation/libraries`, wired to `/Library/VirtualFolders`, to select accessible libraries in `Automation > Presets`.
+  - The preset modal no longer offers "Clone a Jellyfin profile"; `template_user_id` remains JSON legacy compatibility.
+  - UI `Automation > Presets`: collapsible sections `Access` and `Personalization`; library table uses `Home: My media`, `Home: Latest`, `Group by type`, and `Position` via Move Up/Down buttons.
+  - Important UX fix: do not allow multiple identical ranks for library order; order must match the physical row order in the table.
+  - Main files touched: `internal/jellyfin/client.go`, `internal/config/config.go`, `internal/database/settings.go`, `internal/handlers/automation.go`, `internal/handlers/admin.go`, `internal/handlers/invitations.go`, `internal/scheduler/service.go`, `web/templates/admin/automation.html`, `web/static/js/pages/automation.js`, `web/i18n/*.json`.
+  - Tests added: `internal/jellyfin/client_test.go` verifies Policy/UserConfiguration/DisplayPreferences payloads and no cloning; `internal/database/settings_presets_test.go` verifies defaults and normalization.
+  - Validations run: `go test ./...`, `go build ./...`, `npm run build:css`, `node --check web/static/js/pages/automation.js`, i18n check for Automation keys across 10 languages, `git diff --check`.
 
-- **Version 1.3.0 / Mémoire agent** : Suppression du Centre produit et déplacement du CAPTCHA (2026-04-29)
-  - La page UI `Centre produit` et ses assets frontend sont supprimés; ne pas réintroduire `/admin/product` ni un panneau fourre-tout non professionnel.
-  - Les réglages utiles d'anti-abus invitation vivent dans `Admin > Invitations`, section admin `Sécurité des inscriptions`.
-  - API dédiée : `GET /admin/api/invitations/security` et `POST /admin/api/invitations/security`, qui lisent/sauvegardent seulement `ProductFeaturesConfig.AntiAbuse` en conservant le reste de la configuration historique.
-  - Conditions CAPTCHA : visible sur `/invite/{code}` seulement quand `enabled=true` et `captcha=true`; les erreurs sont suivies par IP et déclenchent un blocage temporaire après le seuil configuré.
-  - Fichiers principaux touchés : `cmd/jellygate/main.go`, `internal/handlers/invitation_security.go`, `web/templates/admin/invitations.html`, `web/static/js/pages/invitations.js`, `web/templates/layouts/admin_shell.html`, `web/i18n/*.json`.
-  - Tests ajoutés : `internal/handlers/invitation_security_test.go` vérifie lecture/sauvegarde et normalisation de la configuration anti-abus.
-  - Validations effectuées : `go test ./...`, `go build ./...`, `npm run build:css`, `go run ./cmd/i18ncheck`, `node --check web/static/js/pages/invitations.js`, `git diff --check`.
+- **Version 1.3.0 / Agent memory**: Product center removal and CAPTCHA move (2026-04-29)
+  - The UI `Product Center` page and frontend assets are removed; do not reintroduce `/admin/product` or a generic catch-all panel.
+  - Useful invitation anti-abuse settings live in `Admin > Invitations`, admin section `Signup security`.
+  - Dedicated API: `GET /admin/api/invitations/security` and `POST /admin/api/invitations/security`, reading/saving only `ProductFeaturesConfig.AntiAbuse` while preserving the rest of the historical config.
+  - CAPTCHA conditions: visible on `/invite/{code}` only when `enabled=true` and `captcha=true`; errors are tracked by IP and trigger a temporary block after the configured threshold.
+  - Main files touched: `cmd/jellygate/main.go`, `internal/handlers/invitation_security.go`, `web/templates/admin/invitations.html`, `web/static/js/pages/invitations.js`, `web/templates/layouts/admin_shell.html`, `web/i18n/*.json`.
+  - Tests added: `internal/handlers/invitation_security_test.go` verifies read/write and normalization of the anti-abuse config.
+  - Validations run: `go test ./...`, `go build ./...`, `npm run build:css`, `go run ./cmd/i18ncheck`, `node --check web/static/js/pages/invitations.js`, `git diff --check`.
 
-### 4.6 Internationalisation (i18n)
+### 4.6 Internationalization (i18n)
 
-- Support de 10 langues : Français, Anglais, Allemand, Espagnol, Italien, Néerlandais, Polonais, Portugais (Brésil), Russe, Chinois (Simplifié).
-- Couverture à 100% : Toutes les clés sont synchronisées entre toutes les langues.
-- Fallback intelligent : En cas de clé manquante, le moteur tente `lang` -> `en` -> `fr` -> `key`.
-- Audit automatisé via `cmd/i18ncheck` pour garantir 0 oubli dans les templates.
-- Normalisation des clés en snake_case et suppression des chaînes codées en dur dans les templates.
+- Supports 10 languages: French, English, German, Spanish, Italian, Dutch, Polish, Portuguese (Brazil), Russian, Chinese (Simplified).
+- 100% coverage: all keys are synced across all languages.
+- Smart fallback: missing key -> requested lang -> en -> fr -> key.
+- Automated audit via `cmd/i18ncheck` to guarantee zero missing template keys.
+- Key normalization to snake_case and removal of hardcoded strings in templates.
 
-## i18n — vérification et réparation
+## i18n - verification and repair
 
-- Problème fréquent : les fichiers JSON de traduction doivent être encodés en UTF-8 (sans BOM). Si un fichier est enregistré avec le mauvais encodage, l'interface affichera des caractères illisibles (mojibake) — surtout visible pour `zh.json` (chinois).
-- Audit rapide (détecte clés manquantes et propose une réparation partielle) :
+- Common issue: translation JSON files must be UTF-8 (no BOM). If saved with the wrong encoding, the UI will show mojibake, especially in `zh.json`.
+- Quick audit (detects missing keys and proposes a partial repair):
 
 ```powershell
-# depuis la racine du projet
+# from the repo root
 node scripts\\i18n_inspect.js
 ```
 
-Le script affiche trois blocs : `---ZH_FIXED---` (tentative de décodage des chaînes mojibake pour `zh.json`), `---MISSING_KEYS---` (liste des clés manquantes par fichier) et `---ALL_KEYS---` (ensemble complet des clés détectées).
+The script prints three blocks: `---ZH_FIXED---` (attempted mojibake decode for `zh.json`), `---MISSING_KEYS---` (missing keys per file), and `---ALL_KEYS---` (the full detected key set).
 
-- Réparer l'encodage `zh.json` (tentative automatique) :
+- Repair `zh.json` encoding (automatic attempt):
 
 ```powershell
-# sauvegarde préalable conseillée
+# backup recommended first
 node -e "const fs=require('fs');const p='web/i18n/zh.json';let raw=fs.readFileSync(p,'utf8');if(raw.charCodeAt(0)===0xFEFF) raw=raw.slice(1);let obj;try{obj=JSON.parse(raw)}catch(e){const maybe=Buffer.from(fs.readFileSync(p,'binary'),'binary').toString('utf8');obj=JSON.parse(maybe);}Object.keys(obj).forEach(k=>{if(typeof obj[k]==='string'){const dec=Buffer.from(obj[k],'binary').toString('utf8');if(/[\\u4e00-\\u9fff]/.test(dec)) obj[k]=dec;}});fs.writeFileSync(p,JSON.stringify(obj,null,4));console.log('zh.json: attempted repair (review required)');"
 ```
 
-- Parité des clés : après toute modification de templates (nouvelles `{{ .T "..." }}`), assurez-vous que chaque fichier `web/i18n/*.json` contient les mêmes clés. Pour ajouter des clés manquantes automatiquement, utilisez le résultat `---MISSING_KEYS---` de `i18n_inspect.js` comme feuille de route, puis ajoutez des valeurs de secours (anglais ou langue principale) et demandez des traductions humaines ensuite.
+- Key parity: after any template change (new `{{ .T "..." }}`), ensure every `web/i18n/*.json` has the same keys. To auto-add missing keys, use the `---MISSING_KEYS---` output from `i18n_inspect.js` as a checklist, then add fallback values (English or primary language) and request human translations later.
 
-- Conseils d'édition :
-	- Toujours sauvegarder les fichiers `.json` en `UTF-8 (no BOM)`.
-	- Pour PowerShell 5, évitez `Set-Content -Encoding UTF8` (il écrit un BOM); préférez des éditeurs qui permettent explicitement `UTF-8 without BOM`, ou la commande Node ci-dessus.
-	- Après corrections, redémarrez l'application et contrôlez `/admin/my-account` en `zh` pour valider l'affichage.
+- Editing tips:
+    - Always save `.json` files as UTF-8 (no BOM).
+    - For PowerShell 5, avoid `Set-Content -Encoding UTF8` (writes a BOM); prefer editors that explicitly write "UTF-8 without BOM", or the Node command above.
+    - After fixes, restart the app and check `/admin/my-account` in `zh` to validate display.
