@@ -65,6 +65,9 @@ func TestSettingsHandlerGetAllReturnsAllSupportedEmailLanguages(t *testing.T) {
 	if !resp.Data.AuthSession.Remember30Days {
 		t.Fatalf("default auth session Remember30Days = false, want true")
 	}
+	if !resp.Data.EmailTemplatesMultilingualEnabled {
+		t.Fatalf("default email templates multilingual flag = false, want true")
+	}
 }
 
 func TestSettingsHandlerSaveAndRevokeAuthSession(t *testing.T) {
@@ -251,6 +254,111 @@ func TestSettingsHandlerSaveEmailTemplatesSyncsSharedFields(t *testing.T) {
 	}
 	if gotFR.Confirmation != "Bonjour {{.Username}}" || gotEN.Confirmation != "Hello {{.Username}}" {
 		t.Fatalf("localized bodies should stay distinct: fr=%q en=%q", gotFR.Confirmation, gotEN.Confirmation)
+	}
+}
+
+func TestSettingsHandlerSaveEmailTemplatesMultilingualOffPreservesTranslations(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	templates, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		t.Fatalf("GetEmailTemplatesConfigByLanguage() error = %v", err)
+	}
+
+	fr := templates["fr"]
+	en := templates["en"]
+	fr.ConfirmationSubject = "Sujet FR"
+	fr.Confirmation = "Bonjour {{.Username}}"
+	en.ConfirmationSubject = "Subject EN"
+	en.Confirmation = "Hello {{.Username}}"
+
+	if err := db.SaveEmailTemplatesConfigByLanguage(map[string]config.EmailTemplatesConfig{
+		"fr": fr,
+		"en": en,
+	}); err != nil {
+		t.Fatalf("SaveEmailTemplatesConfigByLanguage() error = %v", err)
+	}
+
+	updatedFR := fr
+	updatedFR.ConfirmationSubject = "Sujet FR modifie"
+	multilingual := false
+	payload := saveEmailTemplatesInput{
+		Language:            "fr",
+		MultilingualEnabled: &multilingual,
+		TemplatesByLang: map[string]config.EmailTemplatesConfig{
+			"fr": updatedFR,
+		},
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.SaveEmailTemplates(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/email-templates", body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("SaveEmailTemplates status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if db.GetEmailTemplatesMultilingualEnabled() {
+		t.Fatalf("multilingual flag = true, want false")
+	}
+
+	saved, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		t.Fatalf("GetEmailTemplatesConfigByLanguage() after save error = %v", err)
+	}
+	if saved["fr"].ConfirmationSubject != "Sujet FR modifie" {
+		t.Fatalf("fr subject = %q, want updated subject", saved["fr"].ConfirmationSubject)
+	}
+	if saved["en"].ConfirmationSubject != "Subject EN" || saved["en"].Confirmation != "Hello {{.Username}}" {
+		t.Fatalf("en translation should be preserved, got subject=%q body=%q", saved["en"].ConfirmationSubject, saved["en"].Confirmation)
+	}
+}
+
+func TestLoadEmailTemplatesForLanguageHonorsMultilingualFlag(t *testing.T) {
+	_, db := newTestSettingsHandler(t)
+
+	if err := db.SetSetting(database.SettingDefaultLang, "fr"); err != nil {
+		t.Fatalf("SetSetting(default_lang) error = %v", err)
+	}
+
+	templates, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		t.Fatalf("GetEmailTemplatesConfigByLanguage() error = %v", err)
+	}
+	fr := templates["fr"]
+	en := templates["en"]
+	fr.ConfirmationSubject = "Sujet FR"
+	fr.Confirmation = "Bonjour {{.Username}}"
+	en.ConfirmationSubject = "Subject EN"
+	en.Confirmation = "Hello {{.Username}}"
+	if err := db.SaveEmailTemplatesConfigByLanguage(map[string]config.EmailTemplatesConfig{
+		"fr": fr,
+		"en": en,
+	}); err != nil {
+		t.Fatalf("SaveEmailTemplatesConfigByLanguage() error = %v", err)
+	}
+
+	if err := db.SetEmailTemplatesMultilingualEnabled(false); err != nil {
+		t.Fatalf("SetEmailTemplatesMultilingualEnabled(false) error = %v", err)
+	}
+	cfg, usedLang, err := loadEmailTemplatesForLanguage(db, "en", emailLanguageContext{PreferredLang: "en"})
+	if err != nil {
+		t.Fatalf("loadEmailTemplatesForLanguage() disabled error = %v", err)
+	}
+	if usedLang != "fr" || cfg.ConfirmationSubject != "Sujet FR" {
+		t.Fatalf("disabled multilingual used lang/config = %q/%q, want fr/Sujet FR", usedLang, cfg.ConfirmationSubject)
+	}
+
+	if err := db.SetEmailTemplatesMultilingualEnabled(true); err != nil {
+		t.Fatalf("SetEmailTemplatesMultilingualEnabled(true) error = %v", err)
+	}
+	cfg, usedLang, err = loadEmailTemplatesForLanguage(db, "en", emailLanguageContext{PreferredLang: "en"})
+	if err != nil {
+		t.Fatalf("loadEmailTemplatesForLanguage() enabled error = %v", err)
+	}
+	if usedLang != "en" || cfg.ConfirmationSubject != "Subject EN" {
+		t.Fatalf("enabled multilingual used lang/config = %q/%q, want en/Subject EN", usedLang, cfg.ConfirmationSubject)
 	}
 }
 

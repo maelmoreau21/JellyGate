@@ -1650,6 +1650,21 @@ func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *AdminHandler) EmailTemplatesPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.AdminUsername = sess.Username
+	td.IsAdmin = true
+	td.CanInvite = true
+	td.Section = "email_templates"
+	if err := h.renderer.Render(w, "admin/email_templates.html", td); err != nil {
+		slog.Error("Erreur rendu email templates page", "error", err)
+		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur : impossible de charger la page"), http.StatusInternalServerError)
+	}
+}
+
 // InvitationsPage affiche la page de gestion des invitations.
 func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())

@@ -1163,5 +1163,8 @@
     "automation_task_type_cleanup_resets": "Clean reset links",
     "automation_task_type_create_backup_advanced": "Backup (advanced)",
     "automation_task_type_advanced_badge": "Advanced",
-    "automation_backup_advanced_hint": "The main backup schedule lives in Settings > Backups. Use this type only for an additional advanced scenario."
+    "automation_backup_advanced_hint": "The main backup schedule lives in Settings > Backups. Use this type only for an additional advanced scenario.",
+    "settings_email_multilingual_label": "Modelos multilingues",
+    "settings_email_multilingual_desc": "Use o idioma do destinatario ou do convite ao enviar e-mails.",
+    "settings_email_multilingual_off_notice": "Desativado: JellyGate edita e envia e-mails no idioma padrao do servidor. As traducoes salvas sao mantidas."
 }

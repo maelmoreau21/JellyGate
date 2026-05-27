@@ -67,6 +67,14 @@ func loadEmailTemplatesForLanguage(db *database.DB, invitationLang string, ctx e
 		return config.DefaultEmailTemplatesForLanguage(resolved), resolved, nil
 	}
 
+	if !db.GetEmailTemplatesMultilingualEnabled() {
+		cfg, usedLang, err := db.GetEmailTemplatesConfigForLang(defaultLang)
+		if err != nil {
+			return config.DefaultEmailTemplatesForLanguage(defaultLang), defaultLang, err
+		}
+		return cfg, usedLang, nil
+	}
+
 	cfg, usedLang, err := db.GetEmailTemplatesConfigForLang(resolved)
 	if err != nil {
 		return config.DefaultEmailTemplatesForLanguage(resolved), resolved, err

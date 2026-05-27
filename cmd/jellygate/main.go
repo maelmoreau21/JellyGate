@@ -382,6 +382,7 @@ func main() {
 				})
 
 				r.Get("/settings", adminHandler.SettingsPage)
+				r.Get("/email-templates", adminHandler.EmailTemplatesPage)
 				r.Post("/settings", handlePlaceholder("Sauvegarder les paramètres"))
 
 				r.Get("/logs", adminHandler.LogsPage)

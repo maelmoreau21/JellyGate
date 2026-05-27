@@ -361,20 +361,21 @@ func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Re
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
-	DefaultLang            string                                 `json:"default_lang"`
-	DatabaseType           string                                 `json:"database_type"`
-	BackupSQLiteOnly       bool                                   `json:"backup_sqlite_only"`
-	DefaultEmailBaseHeader string                                 `json:"default_email_base_header"`
-	DefaultEmailBaseFooter string                                 `json:"default_email_base_footer"`
-	PortalLinks            config.PortalLinksConfig               `json:"portal_links"`
-	InvitationProfile      config.InvitationProfileConfig         `json:"invitation_profile"`
-	AuthSession            database.AuthSessionConfig             `json:"auth_session"`
-	LDAP                   config.LDAPConfig                      `json:"ldap"`
-	SMTP                   config.SMTPConfig                      `json:"smtp"`
-	Webhooks               config.WebhooksConfig                  `json:"webhooks"`
-	Backup                 config.BackupConfig                    `json:"backup"`
-	EmailTemplates         config.EmailTemplatesConfig            `json:"email_templates"`
-	EmailTemplatesByLang   map[string]config.EmailTemplatesConfig `json:"email_templates_by_lang"`
+	DefaultLang                       string                                 `json:"default_lang"`
+	DatabaseType                      string                                 `json:"database_type"`
+	BackupSQLiteOnly                  bool                                   `json:"backup_sqlite_only"`
+	DefaultEmailBaseHeader            string                                 `json:"default_email_base_header"`
+	DefaultEmailBaseFooter            string                                 `json:"default_email_base_footer"`
+	PortalLinks                       config.PortalLinksConfig               `json:"portal_links"`
+	InvitationProfile                 config.InvitationProfileConfig         `json:"invitation_profile"`
+	AuthSession                       database.AuthSessionConfig             `json:"auth_session"`
+	LDAP                              config.LDAPConfig                      `json:"ldap"`
+	SMTP                              config.SMTPConfig                      `json:"smtp"`
+	Webhooks                          config.WebhooksConfig                  `json:"webhooks"`
+	Backup                            config.BackupConfig                    `json:"backup"`
+	EmailTemplates                    config.EmailTemplatesConfig            `json:"email_templates"`
+	EmailTemplatesByLang              map[string]config.EmailTemplatesConfig `json:"email_templates_by_lang"`
+	EmailTemplatesMultilingualEnabled bool                                   `json:"email_templates_multilingual_enabled"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
@@ -582,20 +583,21 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
-			DefaultLang:            defaultLang,
-			DatabaseType:           h.db.Driver(),
-			BackupSQLiteOnly:       h.db.IsSQLite(),
-			DefaultEmailBaseHeader: config.DefaultEmailBaseHeader(),
-			DefaultEmailBaseFooter: config.DefaultEmailBaseFooter(),
-			PortalLinks:            portalLinks,
-			InvitationProfile:      inviteProfileCfg,
-			AuthSession:            authSessionCfg,
-			LDAP:                   maskedLDAP,
-			SMTP:                   maskedSMTP,
-			Webhooks:               maskedWebhooksConfig(webhooksCfg),
-			Backup:                 backupCfg,
-			EmailTemplates:         emailTemplatesCfg,
-			EmailTemplatesByLang:   emailTemplatesByLang,
+			DefaultLang:                       defaultLang,
+			DatabaseType:                      h.db.Driver(),
+			BackupSQLiteOnly:                  h.db.IsSQLite(),
+			DefaultEmailBaseHeader:            config.DefaultEmailBaseHeader(),
+			DefaultEmailBaseFooter:            config.DefaultEmailBaseFooter(),
+			PortalLinks:                       portalLinks,
+			InvitationProfile:                 inviteProfileCfg,
+			AuthSession:                       authSessionCfg,
+			LDAP:                              maskedLDAP,
+			SMTP:                              maskedSMTP,
+			Webhooks:                          maskedWebhooksConfig(webhooksCfg),
+			Backup:                            backupCfg,
+			EmailTemplates:                    emailTemplatesCfg,
+			EmailTemplatesByLang:              emailTemplatesByLang,
+			EmailTemplatesMultilingualEnabled: h.db.GetEmailTemplatesMultilingualEnabled(),
 		},
 	})
 }
@@ -1117,9 +1119,10 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 
 // SaveEmailTemplates sauvegarde les modÃƒÂ¨les de courriels personnalisÃƒÂ©s.
 type saveEmailTemplatesInput struct {
-	Language        string                                 `json:"language"`
-	Template        *config.EmailTemplatesConfig           `json:"template"`
-	TemplatesByLang map[string]config.EmailTemplatesConfig `json:"templates_by_lang"`
+	Language            string                                 `json:"language"`
+	Template            *config.EmailTemplatesConfig           `json:"template"`
+	TemplatesByLang     map[string]config.EmailTemplatesConfig `json:"templates_by_lang"`
+	MultilingualEnabled *bool                                  `json:"multilingual_enabled"`
 }
 
 // SaveEmailTemplates sauvegarde les modeles e-mail (mono-langue ou multi-langue).
@@ -1142,6 +1145,32 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
 			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	saveMultilingualFlag := func() bool {
+		if payload.MultilingualEnabled == nil {
+			return true
+		}
+		if err := h.db.SetEmailTemplatesMultilingualEnabled(*payload.MultilingualEnabled); err != nil {
+			slog.Error("Erreur sauvegarde mode multi-langue Email Templates", "error", err)
+			writeJSON(w, http.StatusInternalServerError, APIResponse{
+				Success: false,
+				Message: "Erreur de sauvegarde du mode multi-langue",
+			})
+			return false
+		}
+		return true
+	}
+
+	if payload.MultilingualEnabled != nil && len(payload.TemplatesByLang) == 0 && payload.Template == nil {
+		if !saveMultilingualFlag() {
+			return
+		}
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: "Mode multi-langue sauvegarde",
 		})
 		return
 	}
@@ -1179,6 +1208,9 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 			})
 			return
 		}
+		if !saveMultilingualFlag() {
+			return
+		}
 
 		slog.Info("Configuration Email Templates sauvegardee (multi-langue)", "languages", len(sanitized))
 		_ = h.db.LogAction("settings.email_templates.saved", "", "", fmt.Sprintf(`{"languages":%d}`, len(sanitized)))
@@ -1209,6 +1241,9 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 				Success: false,
 				Message: "Erreur de sauvegarde des modeles",
 			})
+			return
+		}
+		if !saveMultilingualFlag() {
 			return
 		}
 
@@ -1246,6 +1281,9 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 			Success: false,
 			Message: "Erreur de sauvegarde des modeles",
 		})
+		return
+	}
+	if !saveMultilingualFlag() {
 		return
 	}
 

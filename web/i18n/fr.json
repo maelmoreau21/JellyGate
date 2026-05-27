@@ -1163,5 +1163,8 @@
     "automation_task_type_cleanup_resets": "Nettoyer les liens de reinitialisation",
     "automation_task_type_create_backup_advanced": "Sauvegarde (avance)",
     "automation_task_type_advanced_badge": "Avance",
-    "automation_backup_advanced_hint": "La sauvegarde programmee principale se regle dans Parametres > Sauvegardes. Utilisez ce type seulement pour un scenario avance supplementaire."
+    "automation_backup_advanced_hint": "La sauvegarde programmee principale se regle dans Parametres > Sauvegardes. Utilisez ce type seulement pour un scenario avance supplementaire.",
+    "settings_email_multilingual_label": "Modeles multilingues",
+    "settings_email_multilingual_desc": "Utiliser la langue du destinataire ou de l'invitation lors de l'envoi.",
+    "settings_email_multilingual_off_notice": "Desactive : JellyGate edite et envoie les e-mails dans la langue par defaut du serveur. Les traductions stockees sont conservees."
 }

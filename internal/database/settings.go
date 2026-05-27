@@ -19,12 +19,13 @@ import (
 // ── Clés de settings ────────────────────────────────────────────────────────
 
 const (
-	SettingLDAPConfig                  = "ldap_config"                    // JSON: config.LDAPConfig
-	SettingSMTPConfig                  = "smtp_config"                    // JSON: config.SMTPConfig
-	SettingWebhooksConfig              = "webhooks_config"                // JSON: config.WebhooksConfig
-	SettingPortalLinks                 = "portal_links"                   // JSON: config.PortalLinksConfig
-	SettingEmailTemplates              = "email_templates"                // JSON: config.EmailTemplatesConfig
-	SettingEmailTemplatesByLang        = "email_templates_by_lang"        // JSON: map[lang]config.EmailTemplatesConfig
+	SettingLDAPConfig                  = "ldap_config"             // JSON: config.LDAPConfig
+	SettingSMTPConfig                  = "smtp_config"             // JSON: config.SMTPConfig
+	SettingWebhooksConfig              = "webhooks_config"         // JSON: config.WebhooksConfig
+	SettingPortalLinks                 = "portal_links"            // JSON: config.PortalLinksConfig
+	SettingEmailTemplates              = "email_templates"         // JSON: config.EmailTemplatesConfig
+	SettingEmailTemplatesByLang        = "email_templates_by_lang" // JSON: map[lang]config.EmailTemplatesConfig
+	SettingEmailTemplatesMultilingual  = "email_templates_multilingual_enabled"
 	SettingBackupConfig                = "backup_config"                  // JSON: config.BackupConfig
 	SettingProductFeatures             = "product_features"               // JSON: config.ProductFeaturesConfig
 	SettingJellyfinPresets             = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
@@ -492,6 +493,25 @@ func defaultEmailTemplatesForSupportedLanguage(lang string) config.EmailTemplate
 		normalized = "fr"
 	}
 	return config.DefaultEmailTemplatesForLanguage(normalized)
+}
+
+// GetEmailTemplatesMultilingualEnabled retourne true par defaut pour conserver
+// le comportement multi-langue des installations existantes.
+func (db *DB) GetEmailTemplatesMultilingualEnabled() bool {
+	raw, err := db.GetSetting(SettingEmailTemplatesMultilingual)
+	if err != nil || strings.TrimSpace(raw) == "" {
+		return true
+	}
+	return !strings.EqualFold(strings.TrimSpace(raw), "false")
+}
+
+// SetEmailTemplatesMultilingualEnabled active ou desactive la selection de
+// langue des templates sans supprimer les traductions deja stockees.
+func (db *DB) SetEmailTemplatesMultilingualEnabled(enabled bool) error {
+	if enabled {
+		return db.SetSetting(SettingEmailTemplatesMultilingual, "true")
+	}
+	return db.SetSetting(SettingEmailTemplatesMultilingual, "false")
 }
 
 func copySharedEmailTemplateFields(dst *config.EmailTemplatesConfig, src config.EmailTemplatesConfig) {

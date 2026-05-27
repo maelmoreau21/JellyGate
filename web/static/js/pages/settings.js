@@ -5,6 +5,8 @@
     let loadedEmailTemplatesByLang = {};
     let loadedEmailSharedTemplateConfig = {};
     let activeEmailTemplatesLang = '';
+    let loadedDefaultEmailLang = 'fr';
+    let emailTemplatesMultilingualEnabled = true;
     let emailBaseDefaults = { header: '', footer: '' };
     let currentInvitationProfile = {};
     let currentLDAPConfig = {};
@@ -13,6 +15,18 @@
     const templateValidationTimers = new Map();
     const templateValidationRequestIds = new Map();
     const emailLanguageOrder = ['fr', 'en', 'de', 'es', 'it', 'nl', 'pl', 'pt-br', 'ru', 'zh'];
+    const emailLanguageLabels = {
+        fr: 'Français',
+        en: 'English',
+        de: 'Deutsch',
+        es: 'Español',
+        it: 'Italiano',
+        nl: 'Nederlands',
+        pl: 'Polski',
+        'pt-br': 'Português (Brasil)',
+        ru: 'Русский',
+        zh: '中文 (简体)',
+    };
     let activeEmailEditorTarget = null;
 
     function t(key, fallback) {
@@ -58,7 +72,7 @@
         }
         emailLanguageOrder.forEach((lang) => {
             if (!byLang.has(lang)) {
-                byLang.set(lang, lang);
+                byLang.set(lang, emailLanguageLabels[lang] || lang);
             }
         });
         return emailLanguageOrder.map((lang) => ({ value: lang, label: byLang.get(lang) || lang }));
@@ -752,7 +766,7 @@
             return '';
         }
         if (!loadedEmailTemplatesByLang[normalized]) {
-            const defaultLang = normalizeLangTag(document.getElementById('default-lang')?.value || '');
+            const defaultLang = normalizeLangTag(document.getElementById('default-lang')?.value || loadedDefaultEmailLang || '');
             const seed = loadedEmailTemplatesByLang[defaultLang] || Object.values(loadedEmailTemplatesByLang)[0] || {};
             loadedEmailTemplatesByLang[normalized] = extractEmailTemplateLocalizedConfig(cloneEmailTemplateConfig(seed));
         }
@@ -763,7 +777,14 @@
         const select = document.getElementById('email-template-lang-select');
         if (select && activeEmailTemplatesLang) {
             select.value = activeEmailTemplatesLang;
+            select.disabled = !emailTemplatesMultilingualEnabled;
         }
+        const toggle = document.getElementById('email-template-multilingual-enabled');
+        if (toggle) {
+            toggle.checked = emailTemplatesMultilingualEnabled;
+        }
+        document.getElementById('email-template-language-controls')?.classList.toggle('hidden', !emailTemplatesMultilingualEnabled);
+        document.getElementById('email-template-multilingual-off-note')?.classList.toggle('hidden', emailTemplatesMultilingualEnabled);
         const label = getActiveEmailLanguageLabel();
         document.querySelectorAll('[data-email-toolbar-lang]').forEach((node) => {
             node.textContent = label;
@@ -771,6 +792,9 @@
     }
 
     function switchEmailTemplatesLanguage(lang) {
+        if (!emailTemplatesMultilingualEnabled) {
+            lang = loadedDefaultEmailLang || lang;
+        }
         const normalized = ensureEmailTemplateForLanguage(lang);
         if (!normalized) {
             return;
@@ -783,6 +807,22 @@
         syncEmailTemplateLanguageControls();
         document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]').forEach((area) => scheduleLiveTemplateValidation(area));
         scheduleBaseLivePreview();
+    }
+
+    function setEmailTemplatesMultilingualEnabled(enabled) {
+        emailTemplatesMultilingualEnabled = enabled !== false;
+        const defaultLang = normalizeLangTag(loadedDefaultEmailLang || document.getElementById('default-lang')?.value || '') || 'fr';
+        if (!emailTemplatesMultilingualEnabled && defaultLang) {
+            if (activeEmailTemplatesLang && activeEmailTemplatesLang !== defaultLang) {
+                storeActiveEmailTemplateDraft();
+            }
+            ensureEmailTemplateForLanguage(defaultLang);
+            activeEmailTemplatesLang = defaultLang;
+            applyEmailTemplateLocalizedForm(loadedEmailTemplatesByLang[defaultLang]);
+            document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]').forEach((area) => scheduleLiveTemplateValidation(area));
+            scheduleBaseLivePreview();
+        }
+        syncEmailTemplateLanguageControls();
     }
 
     function renderEmailTemplateLanguageControls(defaultLang) {
@@ -1059,13 +1099,23 @@
         const telegramWebhook = webhooks.telegram || {};
         const matrixWebhook = webhooks.matrix || {};
         setBackupMode(data.database_type || 'sqlite');
+        loadedDefaultEmailLang = normalizeLangTag(data.default_lang || '') || 'fr';
 
-        document.getElementById('default-lang').value = data.default_lang || 'fr';
+        const defaultLangField = document.getElementById('default-lang');
+        if (defaultLangField) {
+            defaultLangField.value = loadedDefaultEmailLang;
+        }
         const links = data.portal_links || {};
-        document.getElementById('general-jellygate-url').value = links.jellygate_url || '';
-        document.getElementById('general-jellyfin-url').value = links.jellyfin_url || '';
-        document.getElementById('general-jellyfin-server-name').value = links.jellyfin_server_name || 'Jellyfin';
-        if (!links.jellyfin_server_name || links.jellyfin_server_name === 'Jellyfin') {
+        if (document.getElementById('form-general')) {
+            document.getElementById('general-jellygate-url').value = links.jellygate_url || '';
+            document.getElementById('general-jellyfin-url').value = links.jellyfin_url || '';
+            document.getElementById('general-jellyfin-server-name').value = links.jellyfin_server_name || 'Jellyfin';
+            document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
+            document.getElementById('general-jellytrack-url').value = links.jellytrack_url || '';
+            refreshPortalShortcuts(links);
+        }
+
+        if (document.getElementById('general-jellyfin-server-name') && (!links.jellyfin_server_name || links.jellyfin_server_name === 'Jellyfin')) {
             void (async () => {
                 const res = await JG.api('/admin/api/settings/general/fetch-server-name', { method: 'POST' });
                 if (res && res.success && res.data && res.data.server_name) {
@@ -1077,58 +1127,71 @@
                 }
             })();
         }
-        document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
-        document.getElementById('general-jellytrack-url').value = links.jellytrack_url || '';
-        refreshPortalShortcuts(links);
 
-        const authSession = data.auth_session || {};
-        setAuthSessionDuration(authSession.remember_30_days !== false);
+        if (document.getElementById('form-auth-session')) {
+            const authSession = data.auth_session || {};
+            setAuthSessionDuration(authSession.remember_30_days !== false);
+        }
 
-        applyInvitationProfileConfig(data.invitation_profile || {});
+        if (document.getElementById('form-invitation-profile')) {
+            applyInvitationProfileConfig(data.invitation_profile || {});
+        }
 
-        currentLDAPConfig = { ...ldap };
-        document.getElementById('ldap-enabled').checked = ldap.enabled || false;
-        document.getElementById('ldap-host').value = ldap.host || '';
-        document.getElementById('ldap-port').value = ldap.port || 636;
-        document.getElementById('ldap-tls').checked = ldap.use_tls !== false;
-        document.getElementById('ldap-skip-verify').checked = ldap.skip_verify || false;
-        document.getElementById('ldap-bind-dn').value = ldap.bind_dn || '';
-        document.getElementById('ldap-bind-password').value = ldap.bind_password || '';
-        document.getElementById('ldap-base-dn').value = ldap.base_dn || '';
-        document.getElementById('ldap-search-filter').value = ldap.search_filter || '';
-        document.getElementById('ldap-search-attributes').value = ldap.search_attributes || 'uid,sAMAccountName,cn,userPrincipalName,mail';
-        document.getElementById('ldap-uid-attribute').value = ldap.uid_attribute || 'uid';
-        document.getElementById('ldap-username-attribute').value = ldap.username_attribute || 'auto';
-        document.getElementById('ldap-admin-filter').value = ldap.admin_filter || '';
-        document.getElementById('ldap-admin-filter-memberuid').checked = !!ldap.admin_filter_memberuid;
-        toggleLDAPFields();
+        if (document.getElementById('form-ldap')) {
+            currentLDAPConfig = { ...ldap };
+            document.getElementById('ldap-enabled').checked = ldap.enabled || false;
+            document.getElementById('ldap-host').value = ldap.host || '';
+            document.getElementById('ldap-port').value = ldap.port || 636;
+            document.getElementById('ldap-tls').checked = ldap.use_tls !== false;
+            document.getElementById('ldap-skip-verify').checked = ldap.skip_verify || false;
+            document.getElementById('ldap-bind-dn').value = ldap.bind_dn || '';
+            document.getElementById('ldap-bind-password').value = ldap.bind_password || '';
+            document.getElementById('ldap-base-dn').value = ldap.base_dn || '';
+            document.getElementById('ldap-search-filter').value = ldap.search_filter || '';
+            document.getElementById('ldap-search-attributes').value = ldap.search_attributes || 'uid,sAMAccountName,cn,userPrincipalName,mail';
+            document.getElementById('ldap-uid-attribute').value = ldap.uid_attribute || 'uid';
+            document.getElementById('ldap-username-attribute').value = ldap.username_attribute || 'auto';
+            document.getElementById('ldap-admin-filter').value = ldap.admin_filter || '';
+            document.getElementById('ldap-admin-filter-memberuid').checked = !!ldap.admin_filter_memberuid;
+            toggleLDAPFields();
+        }
 
-        document.getElementById('smtp-host').value = smtp.host || '';
-        document.getElementById('smtp-port').value = smtp.port || 587;
-        document.getElementById('smtp-username').value = smtp.username || '';
-        document.getElementById('smtp-password').value = smtp.password || '';
-        document.getElementById('smtp-from').value = smtp.from || '';
-        document.getElementById('smtp-tls').checked = smtp.use_tls !== false;
+        if (document.getElementById('form-smtp')) {
+            document.getElementById('smtp-host').value = smtp.host || '';
+            document.getElementById('smtp-port').value = smtp.port || 587;
+            document.getElementById('smtp-username').value = smtp.username || '';
+            document.getElementById('smtp-password').value = smtp.password || '';
+            document.getElementById('smtp-from').value = smtp.from || '';
+            document.getElementById('smtp-tls').checked = smtp.use_tls !== false;
+        }
 
-        document.getElementById('wh-discord-url').value = discordWebhook.url || '';
-        document.getElementById('wh-telegram-token').value = telegramWebhook.token || '';
-        document.getElementById('wh-telegram-chat').value = telegramWebhook.chat_id || '';
-        document.getElementById('wh-matrix-url').value = matrixWebhook.url || '';
-        document.getElementById('wh-matrix-room').value = matrixWebhook.room_id || '';
-        document.getElementById('wh-matrix-token').value = matrixWebhook.token || '';
+        if (document.getElementById('form-webhooks')) {
+            document.getElementById('wh-discord-url').value = discordWebhook.url || '';
+            document.getElementById('wh-telegram-token').value = telegramWebhook.token || '';
+            document.getElementById('wh-telegram-chat').value = telegramWebhook.chat_id || '';
+            document.getElementById('wh-matrix-url').value = matrixWebhook.url || '';
+            document.getElementById('wh-matrix-room').value = matrixWebhook.room_id || '';
+            document.getElementById('wh-matrix-token').value = matrixWebhook.token || '';
+        }
 
-        const backupCfg = data.backup || {};
-        document.getElementById('backup-enabled').checked = !!backupCfg.enabled;
-        const backupHour = Number.isInteger(backupCfg.hour) ? backupCfg.hour : 3;
-        const backupMinute = Number.isInteger(backupCfg.minute) ? backupCfg.minute : 0;
-        document.getElementById('backup-time').value = `${String(backupHour).padStart(2, '0')}:${String(backupMinute).padStart(2, '0')}`;
-        document.getElementById('backup-retention').value = 7;
+        if (document.getElementById('form-backup')) {
+            const backupCfg = data.backup || {};
+            document.getElementById('backup-enabled').checked = !!backupCfg.enabled;
+            const backupHour = Number.isInteger(backupCfg.hour) ? backupCfg.hour : 3;
+            const backupMinute = Number.isInteger(backupCfg.minute) ? backupCfg.minute : 0;
+            document.getElementById('backup-time').value = `${String(backupHour).padStart(2, '0')}:${String(backupMinute).padStart(2, '0')}`;
+            document.getElementById('backup-retention').value = 7;
+        }
+
+        if (!document.getElementById('form-email-templates')) {
+            return;
+        }
 
         emailBaseDefaults = {
             header: data.default_email_base_header || '',
             footer: data.default_email_base_footer || '',
         };
-
+        emailTemplatesMultilingualEnabled = data.email_templates_multilingual_enabled !== false;
         loadedEmailTemplatesByLang = {};
         loadedEmailSharedTemplateConfig = getDefaultEmailSharedTemplateConfig();
         const templatesByLang = data.email_templates_by_lang || {};
@@ -1140,19 +1203,19 @@
             loadedEmailTemplatesByLang[lang] = extractEmailTemplateLocalizedConfig(value);
         });
 
-        const defaultEmailLang = normalizeLangTag(data.default_lang || '') || 'fr';
-        const sharedSource = templatesByLang[defaultEmailLang] || data.email_templates || Object.values(templatesByLang)[0] || {};
+        const sharedSource = templatesByLang[loadedDefaultEmailLang] || data.email_templates || Object.values(templatesByLang)[0] || {};
         loadedEmailSharedTemplateConfig = extractEmailTemplateSharedConfig(sharedSource);
         applyEmailTemplateSharedForm(loadedEmailSharedTemplateConfig);
         if (Object.keys(loadedEmailTemplatesByLang).length === 0 && data.email_templates) {
-            loadedEmailTemplatesByLang[defaultEmailLang] = extractEmailTemplateLocalizedConfig(data.email_templates);
+            loadedEmailTemplatesByLang[loadedDefaultEmailLang] = extractEmailTemplateLocalizedConfig(data.email_templates);
         }
-        if (!loadedEmailTemplatesByLang[defaultEmailLang] && data.email_templates) {
-            loadedEmailTemplatesByLang[defaultEmailLang] = extractEmailTemplateLocalizedConfig(data.email_templates);
+        if (!loadedEmailTemplatesByLang[loadedDefaultEmailLang] && data.email_templates) {
+            loadedEmailTemplatesByLang[loadedDefaultEmailLang] = extractEmailTemplateLocalizedConfig(data.email_templates);
         }
 
-        activeEmailTemplatesLang = defaultEmailLang;
-        renderEmailTemplateLanguageControls(defaultEmailLang);
+        activeEmailTemplatesLang = loadedDefaultEmailLang;
+        renderEmailTemplateLanguageControls(loadedDefaultEmailLang);
+        setEmailTemplatesMultilingualEnabled(emailTemplatesMultilingualEnabled);
 
         await requestBasePreview(document.getElementById('tpl-base-live-preview-frame'), { showLoading: true });
     }
@@ -1216,21 +1279,33 @@
                 },
             };
         } else if (section === 'email-templates') {
+            const defaultEmailLang = normalizeLangTag(loadedDefaultEmailLang || document.getElementById('default-lang')?.value || '') || 'fr';
+            if (!emailTemplatesMultilingualEnabled && activeEmailTemplatesLang !== defaultEmailLang) {
+                switchEmailTemplatesLanguage(defaultEmailLang);
+            }
             storeActiveEmailTemplateDraft();
             if (!activeEmailTemplatesLang) {
-                activeEmailTemplatesLang = normalizeLangTag(document.getElementById('default-lang')?.value || '') || 'fr';
+                activeEmailTemplatesLang = defaultEmailLang;
             }
             loadedEmailSharedTemplateConfig = cloneEmailTemplateConfig(readEmailTemplateSharedForm());
             if (!loadedEmailTemplatesByLang[activeEmailTemplatesLang]) {
                 loadedEmailTemplatesByLang[activeEmailTemplatesLang] = cloneEmailTemplateConfig(readEmailTemplateLocalizedForm());
             }
             const templatesByLang = {};
-            Object.entries(loadedEmailTemplatesByLang).forEach(([lang, localized]) => {
-                templatesByLang[lang] = mergeEmailTemplateConfig(loadedEmailSharedTemplateConfig, localized);
-            });
+            if (emailTemplatesMultilingualEnabled) {
+                Object.entries(loadedEmailTemplatesByLang).forEach(([lang, localized]) => {
+                    templatesByLang[lang] = mergeEmailTemplateConfig(loadedEmailSharedTemplateConfig, localized);
+                });
+            } else {
+                templatesByLang[defaultEmailLang] = mergeEmailTemplateConfig(
+                    loadedEmailSharedTemplateConfig,
+                    loadedEmailTemplatesByLang[defaultEmailLang] || readEmailTemplateLocalizedForm(),
+                );
+            }
             body = {
                 language: activeEmailTemplatesLang,
                 templates_by_lang: templatesByLang,
+                multilingual_enabled: emailTemplatesMultilingualEnabled,
             };
         } else if (section === 'backup') {
             const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
@@ -1465,6 +1540,11 @@
 
         bindEmailEditorTargets();
         initializeEmailVariableLibrary();
+        const multilingualToggle = document.getElementById('email-template-multilingual-enabled');
+        if (multilingualToggle && !multilingualToggle.dataset.bound) {
+            multilingualToggle.dataset.bound = '1';
+            multilingualToggle.addEventListener('change', () => setEmailTemplatesMultilingualEnabled(multilingualToggle.checked));
+        }
         document.querySelectorAll('.email-template-item').forEach((item) => syncEmailTemplateCardState(item));
 
         const closeBtn = document.getElementById('email-preview-close');
