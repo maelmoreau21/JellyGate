@@ -661,6 +661,14 @@
     "settings_email_delivery_title": "Wiadomosci opcjonalne",
     "settings_email_language_desc": "Każdy język zachowuje własne tematy i treści e-maili. Użyj tego przełącznika, aby zmienić szkice.",
     "settings_email_language_label": "Język szablonu",
+    "settings_email_import_failed": "Import szablonów e-maili nie powiódł się",
+    "settings_email_import_success": "Szablony e-maili zaimportowane",
+    "settings_email_import": "Importuj",
+    "settings_email_export_all": "Eksportuj wszystko",
+    "settings_email_export_lang": "Eksportuj ten język",
+    "settings_email_files_desc": "Pliki w repozytorium są domyślnymi szablonami. Import i edytor zapisują wersje niestandardowe w bazie danych.",
+    "settings_email_files_title": "Pliki szablonów",
+    "settings_email_language_server_label": "Język e-maili serwera",
     "settings_email_logo_desc": "Pozostaw puste, aby automatycznie używać oficjalnego logo Jellyfin w podglądach i wysyłanych e-mailach.",
     "settings_email_logo_label": "Logo w prawym górnym rogu",
     "settings_email_preview_close_aria": "Zamknij podgląd e-maila",
@@ -1166,5 +1174,5 @@
     "automation_backup_advanced_hint": "The main backup schedule lives in Settings > Backups. Use this type only for an additional advanced scenario.",
     "settings_email_multilingual_label": "Szablony wielojezyczne",
     "settings_email_multilingual_desc": "Uzywaj jezyka odbiorcy lub zaproszenia podczas wysylania e-maili.",
-    "settings_email_multilingual_off_notice": "Wylaczone: JellyGate edytuje i wysyla e-maile w domyslnym jezyku serwera. Zapisane tlumaczenia zostaja zachowane."
+    "settings_email_multilingual_off_notice": "Wyłączone: język wybrany powyżej staje się językiem serwera używanym dla e-maili. Zapisane tłumaczenia są zachowane."
 }

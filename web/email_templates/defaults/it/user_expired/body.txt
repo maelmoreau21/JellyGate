@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+Accesso a {{.JellyfinServerName}} scaduto.
+
+Contatta gli amministratori se hai bisogno di accedere di nuovo.

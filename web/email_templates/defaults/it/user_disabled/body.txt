@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+Accesso a {{.JellyfinServerName}} disattivato.
+
+Se pensi sia un errore o vuoi capirne il motivo, contatta gli amministratori.

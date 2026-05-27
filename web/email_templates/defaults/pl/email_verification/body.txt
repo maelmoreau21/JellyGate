@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Zweryfikuj adres e-mail, aby zabezpieczyć dostęp do {{.JellyfinServerName}}.
+
+Jeśli to nie Ty prosisz o tę operację, możesz zignorować tę wiadomość.

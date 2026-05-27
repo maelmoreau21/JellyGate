@@ -1,0 +1,7 @@
+你好,
+
+邀请加入 {{.JellyfinServerName}}.
+
+请使用下面的按钮创建账号。 注册后，你可以访问 Jellyfin；如果已配置，也可以使用 Seerr/Jellyseerr 或 JellyTrack 链接。
+
+需要帮助？{{.HelpURL}}

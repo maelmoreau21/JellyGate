@@ -1,0 +1,5 @@
+Hello,
+
+Your {{.JellyfinServerName}} invitation expires soon.
+
+Create your account before the date shown below. After expiry, you will need to request a new invitation from the administrators.

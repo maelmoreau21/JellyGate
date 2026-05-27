@@ -1,0 +1,5 @@
+Hola {{.Username}},
+
+Restablece tu contraseña de {{.JellyfinServerName}}.
+
+Usa el botón de abajo para elegir una nueva contraseña. Si no solicitaste esto, puedes ignorar este mensaje.

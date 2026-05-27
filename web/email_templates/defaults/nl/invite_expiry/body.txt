@@ -1,0 +1,5 @@
+Hallo,
+
+Je uitnodiging voor {{.JellyfinServerName}} verloopt binnenkort.
+
+Maak je account aan vóór de datum hieronder. Na verloop moet je een nieuwe uitnodiging aanvragen bij de beheerders.

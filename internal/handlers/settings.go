@@ -14,6 +14,7 @@
 package handlers
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -22,8 +23,10 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
@@ -1120,6 +1123,7 @@ func (h *SettingsHandler) SaveBackup(w http.ResponseWriter, r *http.Request) {
 // SaveEmailTemplates sauvegarde les modÃƒÂ¨les de courriels personnalisÃƒÂ©s.
 type saveEmailTemplatesInput struct {
 	Language            string                                 `json:"language"`
+	DefaultLang         string                                 `json:"default_lang"`
 	Template            *config.EmailTemplatesConfig           `json:"template"`
 	TemplatesByLang     map[string]config.EmailTemplatesConfig `json:"templates_by_lang"`
 	MultilingualEnabled *bool                                  `json:"multilingual_enabled"`
@@ -1149,7 +1153,36 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	saveMultilingualFlag := func() bool {
+	forcedDefaultLang := ""
+	if payload.MultilingualEnabled != nil && !*payload.MultilingualEnabled {
+		rawDefaultLang := strings.TrimSpace(payload.DefaultLang)
+		if rawDefaultLang == "" {
+			rawDefaultLang = strings.TrimSpace(payload.Language)
+		}
+		if rawDefaultLang == "" {
+			rawDefaultLang = h.db.GetDefaultLang()
+		}
+		forcedDefaultLang = config.NormalizeLanguageTag(rawDefaultLang)
+		if !config.IsSupportedLanguage(forcedDefaultLang) {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "Langue serveur invalide pour les modeles e-mail",
+			})
+			return
+		}
+	}
+
+	saveEmailTemplateMode := func() bool {
+		if forcedDefaultLang != "" {
+			if err := h.db.SetSetting(database.SettingDefaultLang, forcedDefaultLang); err != nil {
+				slog.Error("Erreur sauvegarde langue serveur Email Templates", "lang", forcedDefaultLang, "error", err)
+				writeJSON(w, http.StatusInternalServerError, APIResponse{
+					Success: false,
+					Message: "Erreur de sauvegarde de la langue serveur",
+				})
+				return false
+			}
+		}
 		if payload.MultilingualEnabled == nil {
 			return true
 		}
@@ -1165,7 +1198,7 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 	}
 
 	if payload.MultilingualEnabled != nil && len(payload.TemplatesByLang) == 0 && payload.Template == nil {
-		if !saveMultilingualFlag() {
+		if !saveEmailTemplateMode() {
 			return
 		}
 		writeJSON(w, http.StatusOK, APIResponse{
@@ -1177,19 +1210,38 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 
 	if len(payload.TemplatesByLang) > 0 {
 		sanitized := make(map[string]config.EmailTemplatesConfig, len(payload.TemplatesByLang))
-		for rawLang, cfg := range payload.TemplatesByLang {
-			lang := config.NormalizeLanguageTag(rawLang)
-			if !config.IsSupportedLanguage(lang) {
-				continue
-			}
-			if err := sanitizeEmailTemplatesInput(lang, &cfg); err != nil {
+		if forcedDefaultLang != "" {
+			cfg, ok := payload.TemplatesByLang[forcedDefaultLang]
+			if !ok {
 				writeJSON(w, http.StatusBadRequest, APIResponse{
 					Success: false,
-					Message: fmt.Sprintf("Langue %s: %s", lang, err.Error()),
+					Message: "La langue serveur choisie est absente des modeles envoyes",
 				})
 				return
 			}
-			sanitized[lang] = cfg
+			if err := sanitizeEmailTemplatesInput(forcedDefaultLang, &cfg); err != nil {
+				writeJSON(w, http.StatusBadRequest, APIResponse{
+					Success: false,
+					Message: fmt.Sprintf("Langue %s: %s", forcedDefaultLang, err.Error()),
+				})
+				return
+			}
+			sanitized[forcedDefaultLang] = cfg
+		} else {
+			for rawLang, cfg := range payload.TemplatesByLang {
+				lang := config.NormalizeLanguageTag(rawLang)
+				if !config.IsSupportedLanguage(lang) {
+					continue
+				}
+				if err := sanitizeEmailTemplatesInput(lang, &cfg); err != nil {
+					writeJSON(w, http.StatusBadRequest, APIResponse{
+						Success: false,
+						Message: fmt.Sprintf("Langue %s: %s", lang, err.Error()),
+					})
+					return
+				}
+				sanitized[lang] = cfg
+			}
 		}
 
 		if len(sanitized) == 0 {
@@ -1200,15 +1252,15 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
+		if !saveEmailTemplateMode() {
+			return
+		}
 		if err := h.db.SaveEmailTemplatesConfigByLanguage(sanitized); err != nil {
 			slog.Error("Erreur sauvegarde config Email Templates (multi-langue)", "error", err)
 			writeJSON(w, http.StatusInternalServerError, APIResponse{
 				Success: false,
 				Message: "Erreur de sauvegarde des modeles",
 			})
-			return
-		}
-		if !saveMultilingualFlag() {
 			return
 		}
 
@@ -1224,6 +1276,9 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 	if payload.Template != nil {
 		cfg := *payload.Template
 		targetLang := config.NormalizeLanguageTag(payload.Language)
+		if forcedDefaultLang != "" {
+			targetLang = forcedDefaultLang
+		}
 		if !config.IsSupportedLanguage(targetLang) {
 			targetLang = h.db.GetDefaultLang()
 		}
@@ -1235,15 +1290,15 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
+		if !saveEmailTemplateMode() {
+			return
+		}
 		if err := h.db.SaveEmailTemplatesConfigForLang(targetLang, cfg); err != nil {
 			slog.Error("Erreur sauvegarde config Email Templates (langue cible)", "lang", targetLang, "error", err)
 			writeJSON(w, http.StatusInternalServerError, APIResponse{
 				Success: false,
 				Message: "Erreur de sauvegarde des modeles",
 			})
-			return
-		}
-		if !saveMultilingualFlag() {
 			return
 		}
 
@@ -1265,6 +1320,9 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	targetLang := config.NormalizeLanguageTag(payload.Language)
+	if forcedDefaultLang != "" {
+		targetLang = forcedDefaultLang
+	}
 	if !config.IsSupportedLanguage(targetLang) {
 		targetLang = h.db.GetDefaultLang()
 	}
@@ -1275,15 +1333,15 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		})
 		return
 	}
+	if !saveEmailTemplateMode() {
+		return
+	}
 	if err := h.db.SaveEmailTemplatesConfigForLang(targetLang, legacy); err != nil {
 		slog.Error("Erreur sauvegarde config Email Templates (legacy)", "lang", targetLang, "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
 			Message: "Erreur de sauvegarde des modeles",
 		})
-		return
-	}
-	if !saveMultilingualFlag() {
 		return
 	}
 
@@ -1293,6 +1351,293 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		Success: true,
 		Message: "Modeles e-mail sauvegardes",
 	})
+}
+
+type emailTemplateArchiveSettings struct {
+	BaseTemplateHeader          string `json:"base_template_header"`
+	BaseTemplateFooter          string `json:"base_template_footer"`
+	EmailLogoURL                string `json:"email_logo_url"`
+	DisableConfirmationEmail    bool   `json:"disable_confirmation_email"`
+	DisableExpiryReminderEmails bool   `json:"disable_expiry_reminder_emails"`
+	ExpiryReminderDays          int    `json:"expiry_reminder_days"`
+	DisableInviteExpiryEmail    bool   `json:"disable_invite_expiry_email"`
+	DisableUserCreationEmail    bool   `json:"disable_user_creation_email"`
+	DisableUserDeletionEmail    bool   `json:"disable_user_deletion_email"`
+	DisableUserDisabledEmail    bool   `json:"disable_user_disabled_email"`
+	DisableUserEnabledEmail     bool   `json:"disable_user_enabled_email"`
+	DisableUserExpiredEmail     bool   `json:"disable_user_expired_email"`
+	DisableExpiryAdjustedEmail  bool   `json:"disable_expiry_adjusted_email"`
+	DisableWelcomeEmail         bool   `json:"disable_welcome_email"`
+}
+
+func emailTemplateArchiveSettingsFromConfig(cfg config.EmailTemplatesConfig) emailTemplateArchiveSettings {
+	return emailTemplateArchiveSettings{
+		BaseTemplateHeader:          cfg.BaseTemplateHeader,
+		BaseTemplateFooter:          cfg.BaseTemplateFooter,
+		EmailLogoURL:                cfg.EmailLogoURL,
+		DisableConfirmationEmail:    cfg.DisableConfirmationEmail,
+		DisableExpiryReminderEmails: cfg.DisableExpiryReminderEmails,
+		ExpiryReminderDays:          cfg.ExpiryReminderDays,
+		DisableInviteExpiryEmail:    cfg.DisableInviteExpiryEmail,
+		DisableUserCreationEmail:    cfg.DisableUserCreationEmail,
+		DisableUserDeletionEmail:    cfg.DisableUserDeletionEmail,
+		DisableUserDisabledEmail:    cfg.DisableUserDisabledEmail,
+		DisableUserEnabledEmail:     cfg.DisableUserEnabledEmail,
+		DisableUserExpiredEmail:     cfg.DisableUserExpiredEmail,
+		DisableExpiryAdjustedEmail:  cfg.DisableExpiryAdjustedEmail,
+		DisableWelcomeEmail:         cfg.DisableWelcomeEmail,
+	}
+}
+
+func applyEmailTemplateArchiveSettings(cfg *config.EmailTemplatesConfig, settings emailTemplateArchiveSettings) {
+	if cfg == nil {
+		return
+	}
+	if strings.TrimSpace(settings.BaseTemplateHeader) != "" {
+		cfg.BaseTemplateHeader = settings.BaseTemplateHeader
+	}
+	if strings.TrimSpace(settings.BaseTemplateFooter) != "" {
+		cfg.BaseTemplateFooter = settings.BaseTemplateFooter
+	}
+	cfg.EmailLogoURL = strings.TrimSpace(settings.EmailLogoURL)
+	cfg.DisableConfirmationEmail = settings.DisableConfirmationEmail
+	cfg.DisableExpiryReminderEmails = settings.DisableExpiryReminderEmails
+	if settings.ExpiryReminderDays > 0 {
+		cfg.ExpiryReminderDays = settings.ExpiryReminderDays
+	}
+	cfg.DisableInviteExpiryEmail = settings.DisableInviteExpiryEmail
+	cfg.DisableUserCreationEmail = settings.DisableUserCreationEmail
+	cfg.DisableUserDeletionEmail = settings.DisableUserDeletionEmail
+	cfg.DisableUserDisabledEmail = settings.DisableUserDisabledEmail
+	cfg.DisableUserEnabledEmail = settings.DisableUserEnabledEmail
+	cfg.DisableUserExpiredEmail = settings.DisableUserExpiredEmail
+	cfg.DisableExpiryAdjustedEmail = settings.DisableExpiryAdjustedEmail
+	cfg.DisableWelcomeEmail = settings.DisableWelcomeEmail
+}
+
+// ExportEmailTemplates exporte les modeles e-mail dans un ZIP lisible par langue.
+func (h *SettingsHandler) ExportEmailTemplates(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	requestedLang := strings.TrimSpace(r.URL.Query().Get("lang"))
+	if requestedLang == "" {
+		requestedLang = h.db.GetDefaultLang()
+	}
+
+	templates, err := h.db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		slog.Error("Erreur lecture modeles e-mail export", "error", err)
+		http.Error(w, "Erreur de lecture des modeles", http.StatusInternalServerError)
+		return
+	}
+
+	langs := config.SupportedLanguageTags()
+	filename := "jellygate-email-templates-all.zip"
+	if !strings.EqualFold(requestedLang, "all") {
+		lang := config.NormalizeLanguageTag(requestedLang)
+		if !config.IsSupportedLanguage(lang) {
+			http.Error(w, "Langue invalide", http.StatusBadRequest)
+			return
+		}
+		langs = []string{lang}
+		filename = "jellygate-email-templates-" + lang + ".zip"
+	}
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for _, lang := range langs {
+		cfg, ok := templates[lang]
+		if !ok {
+			cfg = config.DefaultEmailTemplatesForLanguage(lang)
+		}
+		if err := writeEmailTemplateLanguageToZip(zw, lang, cfg); err != nil {
+			_ = zw.Close()
+			slog.Error("Erreur export ZIP modeles e-mail", "lang", lang, "error", err)
+			http.Error(w, "Erreur de generation du ZIP", http.StatusInternalServerError)
+			return
+		}
+	}
+	if err := zw.Close(); err != nil {
+		slog.Error("Erreur fermeture ZIP modeles e-mail", "error", err)
+		http.Error(w, "Erreur de generation du ZIP", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Content-Length", fmt.Sprintf("%d", buf.Len()))
+	_, _ = w.Write(buf.Bytes())
+}
+
+func writeEmailTemplateLanguageToZip(zw *zip.Writer, lang string, cfg config.EmailTemplatesConfig) error {
+	meta, err := config.DefaultEmailTemplateMetaJSONForLanguage(lang)
+	if err != nil {
+		return err
+	}
+	if err := writeZipTextFile(zw, path.Join(lang, "_meta.json"), string(meta)+"\n"); err != nil {
+		return err
+	}
+	settings, err := json.MarshalIndent(emailTemplateArchiveSettingsFromConfig(cfg), "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := writeZipTextFile(zw, path.Join(lang, "_settings.json"), string(settings)+"\n"); err != nil {
+		return err
+	}
+	for _, key := range config.EmailTemplateFileKeys() {
+		subject, _ := config.EmailTemplateSubjectByKey(cfg, key.Key)
+		body, _ := config.EmailTemplateBodyByKey(cfg, key.Key)
+		body = config.EditableNoCodeEmailTemplateBodyForLanguage(lang, key.Key, body, cfg.BaseTemplateHeader, cfg.BaseTemplateFooter)
+		if err := writeZipTextFile(zw, path.Join(lang, key.Dir, "subject.txt"), strings.TrimSpace(subject)+"\n"); err != nil {
+			return err
+		}
+		if err := writeZipTextFile(zw, path.Join(lang, key.Dir, "body.txt"), strings.TrimSpace(body)+"\n"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func writeZipTextFile(zw *zip.Writer, name, value string) error {
+	f, err := zw.Create(name)
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(f, value)
+	return err
+}
+
+// ImportEmailTemplates importe un ZIP au format lang/template/subject.txt|body.txt.
+func (h *SettingsHandler) ImportEmailTemplates(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Fichier ZIP invalide: " + err.Error()})
+		return
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Fichier ZIP manquant"})
+		return
+	}
+	defer file.Close()
+
+	raw, err := io.ReadAll(io.LimitReader(file, 32<<20))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Lecture du ZIP impossible: " + err.Error()})
+		return
+	}
+	zr, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ZIP invalide: " + err.Error()})
+		return
+	}
+
+	existing, err := h.db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		existing = map[string]config.EmailTemplatesConfig{}
+	}
+	imported := map[string]config.EmailTemplatesConfig{}
+	for _, entry := range zr.File {
+		if entry.FileInfo().IsDir() {
+			continue
+		}
+		name := path.Clean(strings.ReplaceAll(entry.Name, "\\", "/"))
+		if strings.HasPrefix(name, "../") || strings.HasPrefix(name, "/") {
+			continue
+		}
+		parts := strings.Split(name, "/")
+		if len(parts) < 2 {
+			continue
+		}
+		lang := config.NormalizeLanguageTag(parts[0])
+		if !config.IsSupportedLanguage(lang) {
+			continue
+		}
+		cfg, ok := imported[lang]
+		if !ok {
+			if current, exists := existing[lang]; exists {
+				cfg = current
+			} else {
+				cfg = config.DefaultEmailTemplatesForLanguage(lang)
+			}
+		}
+		content, err := readZipTextFile(entry)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Lecture du ZIP impossible: " + err.Error()})
+			return
+		}
+		if len(parts) == 2 && parts[1] == "_settings.json" {
+			var settings emailTemplateArchiveSettings
+			if err := json.Unmarshal([]byte(content), &settings); err != nil {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Fichier _settings.json invalide pour " + lang})
+				return
+			}
+			applyEmailTemplateArchiveSettings(&cfg, settings)
+			imported[lang] = cfg
+			continue
+		}
+		if len(parts) != 3 {
+			continue
+		}
+		templateKey, ok := config.EmailTemplateKeyFromDir(parts[1])
+		if !ok {
+			continue
+		}
+		switch parts[2] {
+		case "subject.txt":
+			config.SetEmailTemplateSubjectByKey(&cfg, templateKey, strings.TrimSpace(content))
+		case "body.txt":
+			config.SetEmailTemplateBodyByKey(&cfg, templateKey, strings.TrimSpace(content))
+		default:
+			continue
+		}
+		imported[lang] = cfg
+	}
+
+	if len(imported) == 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Aucun modele e-mail valide trouve dans le ZIP"})
+		return
+	}
+	for lang, cfg := range imported {
+		if err := sanitizeEmailTemplatesInput(lang, &cfg); err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Langue %s: %s", lang, err.Error())})
+			return
+		}
+		imported[lang] = cfg
+	}
+	if err := h.db.SaveEmailTemplatesConfigByLanguage(imported); err != nil {
+		slog.Error("Erreur import modeles e-mail", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur d'import des modeles"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: fmt.Sprintf("%d langue(s) importee(s)", len(imported)),
+	})
+}
+
+func readZipTextFile(entry *zip.File) (string, error) {
+	rc, err := entry.Open()
+	if err != nil {
+		return "", err
+	}
+	defer rc.Close()
+	raw, err := io.ReadAll(io.LimitReader(rc, 2<<20))
+	if err != nil {
+		return "", err
+	}
+	if !utf8.Valid(raw) {
+		return "", fmt.Errorf("fichier %s non UTF-8", entry.Name)
+	}
+	text := strings.ReplaceAll(string(raw), "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	return strings.TrimSpace(text), nil
 }
 
 // SaveInvitationProfile sauvegarde la politique globale appliquee aux invitations.

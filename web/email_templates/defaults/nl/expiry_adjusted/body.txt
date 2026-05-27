@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Vervaldatum {{.JellyfinServerName}} bijgewerkt.
+
+De nieuwe datum staat hieronder. Als dit niet is wat je verwachtte, neem dan contact op met de beheerders.

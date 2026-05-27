@@ -1,0 +1,5 @@
+Olá {{.Username}},
+
+Redefinir senha do {{.JellyfinServerName}}.
+
+Use o botão abaixo para escolher uma nova senha. Se você não solicitou isso, pode ignorar esta mensagem.

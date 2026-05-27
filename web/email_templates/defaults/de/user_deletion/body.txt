@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Konto für {{.JellyfinServerName}} gelöscht.
+
+Falls das unerwartet ist, kontaktiere bitte schnell die Administratoren, damit sie die Situation prüfen können.

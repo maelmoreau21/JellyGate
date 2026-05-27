@@ -1,0 +1,7 @@
+Hallo {{.Username}},
+
+Zugang zu {{.JellyfinServerName}} aktiviert.
+
+Du kannst dich sofort bei Jellyfin anmelden. Wenn Seerr/Jellyseerr oder JellyTrack eingerichtet sind, findest du unten Links, um Filme oder Serien anzufragen, Inhaltswünsche zu melden und deine Wiedergabestatistiken anzusehen.
+
+Brauchst du Hilfe? {{.HelpURL}}

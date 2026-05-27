@@ -1,0 +1,7 @@
+Hola {{.Username}},
+
+Acceso a {{.JellyfinServerName}} activado.
+
+Puedes iniciar sesión en Jellyfin ahora mismo. Cuando Seerr/Jellyseerr o JellyTrack estén configurados, los enlaces útiles de abajo te permitirán pedir una película o serie, informar necesidades de contenido y ver tus estadísticas.
+
+¿Necesitas ayuda? {{.HelpURL}}

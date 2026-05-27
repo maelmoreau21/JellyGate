@@ -58,6 +58,11 @@ type emailTextPack struct {
 	PreviewDuration          string
 	PreviewMessage           string
 	AutomaticFooter          string
+	UsefulLinksTitle         string
+	JellyseerrLinkLabel      string
+	JellyseerrLinkDesc       string
+	JellyTrackLinkLabel      string
+	JellyTrackLinkDesc       string
 }
 
 var emailTextPacks = map[string]emailTextPack{ // #nosec G101 -- localized template copy contains words such as password/reset but no credentials.
@@ -471,13 +476,14 @@ func SupportedLanguageTags() []string {
 
 func emailTextPackFor(lang string) emailTextPack {
 	normalized := NormalizeLanguageTag(lang)
-	if pack, ok := emailTextPacks[normalized]; ok {
+	packs := resolvedEmailTextPacks()
+	if pack, ok := packs[normalized]; ok {
 		return pack
 	}
-	if pack, ok := emailTextPacks["en"]; ok {
+	if pack, ok := packs["en"]; ok {
 		return pack
 	}
-	return emailTextPacks["fr"]
+	return packs["fr"]
 }
 
 func DefaultNoCodeEmailTemplateBodyForLanguage(lang, key string) string {
@@ -550,38 +556,70 @@ func DefaultEmailTemplateSubjectForLanguage(lang, key string) string {
 
 func automaticEmailBlockForLanguage(lang, templateKey string) string {
 	pack := emailTextPackFor(lang)
+	block := ""
 	switch strings.TrimSpace(templateKey) {
 	case "email_verification":
-		return `
+		block = `
 <div style="margin:22px 0 0 0;">
 	<a href="{{.VerificationLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:700;">` + html.EscapeString(pack.VerifyButtonLabel) + `</a>
 </div>
 <p style="font-size:13px;color:#475569;">` + html.EscapeString(pack.ExpiresInLabel) + ` {{.ExpiresIn}}</p>`
 	case "expiry_reminder", "invite_expiry", "expiry_adjusted":
-		return `
+		block = `
 <div style="margin:22px 0 0 0;padding:14px 16px;border:1px solid #dbe4f0;border-radius:14px;background:#f8fafc;color:#0f172a;">
 	<div style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;margin-bottom:6px;">` + html.EscapeString(pack.ExpiryDateLabel) + `</div>
 	<div style="font-size:16px;font-weight:700;">{{.ExpiryDate}}</div>
 </div>`
 	case "invitation":
-		return `
+		block = `
 <div style="margin:22px 0 0 0;">
 	<a href="{{.InviteLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:700;">` + html.EscapeString(pack.CreateAccountButtonLabel) + `</a>
 </div>`
 	case "password_reset":
-		return `
+		block = `
 <div style="margin:22px 0 0 0;">
 	<a href="{{.ResetLink}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:700;">` + html.EscapeString(pack.ResetPasswordButtonLabel) + `</a>
 </div>
 <p style="font-size:13px;color:#475569;">` + html.EscapeString(pack.ExpiresInLabel) + ` {{.ExpiresIn}}</p>`
 	case "welcome":
-		return `
+		block = `
 <div style="margin:22px 0 0 0;">
 	<a href="{{.JellyfinURL}}" style="display:inline-block;background:#0ea5e9;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:999px;font-weight:700;">` + html.EscapeString(pack.OpenServerButtonLabel) + `</a>
 </div>`
-	default:
-		return ""
 	}
+	if emailTemplateSupportsPortalLinks(templateKey) {
+		block += automaticPortalLinksBlock(pack)
+	}
+	return block
+}
+
+func emailTemplateSupportsPortalLinks(templateKey string) bool {
+	switch strings.TrimSpace(templateKey) {
+	case "confirmation", "invitation", "user_creation", "user_enabled", "welcome":
+		return true
+	default:
+		return false
+	}
+}
+
+func automaticPortalLinksBlock(pack emailTextPack) string {
+	title := firstNonEmpty(pack.UsefulLinksTitle, "Useful links")
+	seerrLabel := firstNonEmpty(pack.JellyseerrLinkLabel, "Request content")
+	seerrDesc := firstNonEmpty(pack.JellyseerrLinkDesc, "Ask for a movie or series on Seerr.")
+	trackLabel := firstNonEmpty(pack.JellyTrackLinkLabel, "View statistics")
+	trackDesc := firstNonEmpty(pack.JellyTrackLinkDesc, "Check your viewing statistics on JellyTrack.")
+	return `
+{{if or .JellyseerrURL .JellyTrackURL}}
+<div style="margin:22px 0 0 0;padding:16px;border:1px solid #dbe4f0;border-radius:14px;background:#f8fafc;color:#0f172a;">
+	<div style="font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#64748b;margin-bottom:10px;">` + html.EscapeString(title) + `</div>
+	{{if .JellyseerrURL}}
+	<p style="margin:0 0 10px 0;"><strong>` + html.EscapeString(seerrLabel) + `</strong><br><span style="color:#475569;">` + html.EscapeString(seerrDesc) + `</span><br><a href="{{.JellyseerrURL}}" style="color:#2563eb;text-decoration:none;font-weight:700;">{{.JellyseerrURL}}</a></p>
+	{{end}}
+	{{if .JellyTrackURL}}
+	<p style="margin:0;"><strong>` + html.EscapeString(trackLabel) + `</strong><br><span style="color:#475569;">` + html.EscapeString(trackDesc) + `</span><br><a href="{{.JellyTrackURL}}" style="color:#2563eb;text-decoration:none;font-weight:700;">{{.JellyTrackURL}}</a></p>
+	{{end}}
+</div>
+{{end}}`
 }
 
 func DefaultEmailPreviewDurationForLanguage(lang string) string {

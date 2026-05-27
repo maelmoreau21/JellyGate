@@ -1,0 +1,5 @@
+你好 {{.Username}},
+
+欢迎使用 {{.JellyfinServerName}}.
+
+你现在可以使用 Jellyfin。如果 Seerr/Jellyseerr 可用，可以请求电影或剧集；如果 JellyTrack 可用，可以查看播放统计。

@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Wachtwoord voor {{.JellyfinServerName}} resetten.
+
+Gebruik de knop hieronder om een nieuw wachtwoord te kiezen. Als je dit niet hebt aangevraagd, kun je dit bericht negeren.

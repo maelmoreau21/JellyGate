@@ -1,0 +1,5 @@
+Hello {{.Username}},
+
+{{.JellyfinServerName}} account deleted.
+
+If this seems unexpected, contact the administrators quickly so they can check the situation.

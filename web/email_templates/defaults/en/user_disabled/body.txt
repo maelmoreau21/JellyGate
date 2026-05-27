@@ -1,0 +1,5 @@
+Hello {{.Username}},
+
+{{.JellyfinServerName}} access disabled.
+
+If you think this is a mistake or want to understand why, contact the administrators.

@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Bitte bestätige deine E-Mail-Adresse, um deinen Zugang zu {{.JellyfinServerName}} zu schützen.
+
+Wenn du diese Anfrage nicht ausgelöst hast, kannst du diese Nachricht ignorieren.

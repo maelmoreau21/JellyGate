@@ -661,6 +661,14 @@
     "settings_email_delivery_title": "可选邮件",
     "settings_email_language_desc": "每种语言都有自己的邮件主题和内容。使用此选择器切换草案。",
     "settings_email_language_label": "模板语言",
+    "settings_email_import_failed": "邮件模板导入失败",
+    "settings_email_import_success": "邮件模板已导入",
+    "settings_email_import": "导入",
+    "settings_email_export_all": "导出全部",
+    "settings_email_export_lang": "导出当前语言",
+    "settings_email_files_desc": "仓库中的文件是默认模板。导入和编辑器会把自定义版本保存到数据库。",
+    "settings_email_files_title": "模板文件",
+    "settings_email_language_server_label": "服务器邮件语言",
     "settings_email_logo_desc": "留空则在预览和发出的邮件中自动使用 Jellyfin 官方 Logo。",
     "settings_email_logo_label": "右上角 Logo",
     "settings_email_preview_close_aria": "关闭邮件预览",
@@ -1166,5 +1174,5 @@
     "automation_backup_advanced_hint": "The main backup schedule lives in Settings > Backups. Use this type only for an additional advanced scenario.",
     "settings_email_multilingual_label": "多语言模板",
     "settings_email_multilingual_desc": "发送邮件时使用收件人或邀请的语言。",
-    "settings_email_multilingual_off_notice": "已停用：JellyGate 使用服务器默认语言编辑并发送邮件，已保存的翻译会保留。"
+    "settings_email_multilingual_off_notice": "已禁用：上方选择的语言会成为邮件使用的服务器语言。已保存的其他翻译会保留。"
 }

@@ -1,0 +1,7 @@
+Bonjour {{.Username}},
+
+Accès {{.JellyfinServerName}} activé.
+
+Tu peux te connecter à Jellyfin dès maintenant. Quand Seerr/Jellyseerr ou JellyTrack sont configurés, les liens utiles ci-dessous te permettent de demander un film ou une série, de signaler un besoin de contenu, et de consulter tes statistiques de lecture.
+
+Besoin d’aide ? {{.HelpURL}}

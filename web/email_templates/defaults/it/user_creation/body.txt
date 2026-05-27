@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+Account {{.JellyfinServerName}} creato.
+
+Usa i dati ricevuti per accedere. I link qui sotto portano a Jellyfin, Seerr/Jellyseerr per le richieste di contenuto e JellyTrack per le statistiche quando questi servizi sono configurati.

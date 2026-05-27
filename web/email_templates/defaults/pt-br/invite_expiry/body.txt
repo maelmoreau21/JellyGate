@@ -1,0 +1,5 @@
+Olá,
+
+Seu convite do {{.JellyfinServerName}} expira em breve.
+
+Crie sua conta antes da data indicada abaixo. Após a expiração, peça um novo convite aos administradores.

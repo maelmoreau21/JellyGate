@@ -1,0 +1,5 @@
+你好 {{.Username}},
+
+{{.JellyfinServerName}} 账号已删除.
+
+如果这不是预期操作，请尽快联系管理员核实情况。

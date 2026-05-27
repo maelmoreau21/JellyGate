@@ -1,0 +1,1 @@
+Deine Einladung für {{.JellyfinServerName}} läuft bald ab

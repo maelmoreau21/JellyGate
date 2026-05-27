@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Herinnering verlopen toegang {{.JellyfinServerName}}.
+
+Als je je toegang wilt verlengen, neem dan vóór die datum contact op met de beheerders.

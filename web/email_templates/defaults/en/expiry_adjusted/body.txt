@@ -1,0 +1,5 @@
+Hello {{.Username}},
+
+{{.JellyfinServerName}} access expiry updated.
+
+The new date appears below. If it is not what you expected, contact the administrators.

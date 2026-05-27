@@ -661,6 +661,14 @@
     "settings_email_delivery_title": "E-mails opcionais",
     "settings_email_language_desc": "Cada idioma mantém seus próprios assuntos e conteúdos de e-mail. Use este seletor para alternar entre os rascunhos.",
     "settings_email_language_label": "Idioma do modelo",
+    "settings_email_import_failed": "Falha ao importar modelos de e-mail",
+    "settings_email_import_success": "Modelos de e-mail importados",
+    "settings_email_import": "Importar",
+    "settings_email_export_all": "Exportar tudo",
+    "settings_email_export_lang": "Exportar este idioma",
+    "settings_email_files_desc": "Os arquivos do repositório são os modelos padrão. A importação e o editor salvam versões personalizadas no banco de dados.",
+    "settings_email_files_title": "Arquivos de modelos",
+    "settings_email_language_server_label": "Idioma de e-mail do servidor",
     "settings_email_logo_desc": "Deixe vazio para usar o logotipo oficial do Jellyfin automaticamente nas visualizações e nos e-mails enviados.",
     "settings_email_logo_label": "Logotipo no canto superior direito",
     "settings_email_preview_close_aria": "Fechar visualização de e-mail",
@@ -1166,5 +1174,5 @@
     "automation_backup_advanced_hint": "The main backup schedule lives in Settings > Backups. Use this type only for an additional advanced scenario.",
     "settings_email_multilingual_label": "Modelos multilingues",
     "settings_email_multilingual_desc": "Use o idioma do destinatario ou do convite ao enviar e-mails.",
-    "settings_email_multilingual_off_notice": "Desativado: JellyGate edita e envia e-mails no idioma padrao do servidor. As traducoes salvas sao mantidas."
+    "settings_email_multilingual_off_notice": "Desativado: o idioma escolhido acima passa a ser o idioma do servidor usado para e-mails. As traduções salvas são preservadas."
 }

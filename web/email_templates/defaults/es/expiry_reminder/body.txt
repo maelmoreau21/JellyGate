@@ -1,0 +1,5 @@
+Hola {{.Username}},
+
+Recordatorio de expiración de {{.JellyfinServerName}}.
+
+Si quieres ampliar tu acceso, contacta con los administradores antes de esa fecha.

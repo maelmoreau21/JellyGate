@@ -1,0 +1,5 @@
+Hola {{.Username}},
+
+Expiración de {{.JellyfinServerName}} actualizada.
+
+La nueva fecha aparece abajo. Si no es lo esperado, contacta con los administradores.

@@ -1,0 +1,19 @@
+{
+  "verify_button_label": "Vérifier mon e-mail",
+  "expiry_date_label": "Date",
+  "expires_in_label": "Expire dans",
+  "create_account_button_label": "Créer mon compte",
+  "direct_link_label": "Lien direct",
+  "reset_password_button_label": "Réinitialiser mon mot de passe",
+  "code_label": "Code",
+  "open_server_button_label": "Ouvrir {{.JellyfinServerName}}",
+  "direct_access_label": "Accès direct",
+  "preview_duration": "15 minutes",
+  "preview_message": "Ton accès à {{.JellyfinServerName}} est prêt. Utilise les liens ci-dessous.",
+  "automatic_footer": "Ceci est un message automatique envoyé par JellyGate.",
+  "useful_links_title": "Liens utiles",
+  "jellyseerr_link_label": "Demander un film ou une série",
+  "jellyseerr_link_desc": "Va sur Seerr/Jellyseerr pour proposer un nouveau contenu à ajouter.",
+  "jellytrack_link_label": "Voir tes statistiques",
+  "jellytrack_link_desc": "Va sur JellyTrack pour suivre ton activité et tes statistiques de lecture."
+}

@@ -1,0 +1,1 @@
+Your {{.JellyfinServerName}} invitation expires soon

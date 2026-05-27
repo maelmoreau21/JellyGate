@@ -1,0 +1,5 @@
+Hello {{.Username}},
+
+Welcome to {{.JellyfinServerName}}.
+
+You can now enjoy Jellyfin. If Seerr/Jellyseerr is available, you can request movies or series; if JellyTrack is available, you can view playback statistics.

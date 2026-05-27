@@ -661,6 +661,14 @@
     "settings_email_delivery_title": "Дополнительные письма",
     "settings_email_language_desc": "Для каждого языка сохраняются свои темы и содержимое писем. Используйте этот переключатель для выбора черновика.",
     "settings_email_language_label": "Язык шаблона",
+    "settings_email_import_failed": "Не удалось импортировать шаблоны писем",
+    "settings_email_import_success": "Шаблоны писем импортированы",
+    "settings_email_import": "Импортировать",
+    "settings_email_export_all": "Экспортировать все",
+    "settings_email_export_lang": "Экспортировать этот язык",
+    "settings_email_files_desc": "Файлы в репозитории являются шаблонами по умолчанию. Импорт и редактор сохраняют измененные версии в базе данных.",
+    "settings_email_files_title": "Файлы шаблонов",
+    "settings_email_language_server_label": "Язык писем сервера",
     "settings_email_logo_desc": "Оставьте пустым, чтобы автоматически использовать официальный логотип Jellyfin в предпросмотре и отправляемых письмах.",
     "settings_email_logo_label": "Логотип в верхнем правом углу",
     "settings_email_preview_close_aria": "Закрыть предпросмотр письма",
@@ -1166,5 +1174,5 @@
     "automation_backup_advanced_hint": "The main backup schedule lives in Settings > Backups. Use this type only for an additional advanced scenario.",
     "settings_email_multilingual_label": "Mnogoyazychnye shablony",
     "settings_email_multilingual_desc": "Ispolzovat yazyk poluchatelya ili priglasheniya pri otpravke pisem.",
-    "settings_email_multilingual_off_notice": "Otklyucheno: JellyGate redaktiruet i otpravlyaet pisma na yazyke servera po umolchaniyu. Sohranennye perevody ostayutsya."
+    "settings_email_multilingual_off_notice": "Отключено: выбранный выше язык становится серверным языком для писем. Сохраненные переводы не удаляются."
 }

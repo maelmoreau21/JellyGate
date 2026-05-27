@@ -1,0 +1,7 @@
+Hallo {{.Username}},
+
+Toegang tot {{.JellyfinServerName}} geactiveerd.
+
+Je kunt nu inloggen op Jellyfin. Wanneer Seerr/Jellyseerr of JellyTrack zijn ingesteld, kun je via de nuttige links hieronder een film of serie aanvragen, contentwensen melden en je kijkstatistieken bekijken.
+
+Hulp nodig? {{.HelpURL}}

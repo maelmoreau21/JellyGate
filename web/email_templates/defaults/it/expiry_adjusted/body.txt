@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+Scadenza accesso {{.JellyfinServerName}} aggiornata.
+
+La nuova data appare qui sotto. Se non corrisponde alle tue aspettative, contatta gli amministratori.

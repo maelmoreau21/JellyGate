@@ -1,0 +1,5 @@
+Bonjour {{.Username}},
+
+Rappel d’expiration pour {{.JellyfinServerName}}.
+
+Si tu souhaites prolonger ton accès, contacte l’équipe d’administration avant cette date.

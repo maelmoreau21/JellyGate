@@ -777,24 +777,27 @@
         const select = document.getElementById('email-template-lang-select');
         if (select && activeEmailTemplatesLang) {
             select.value = activeEmailTemplatesLang;
-            select.disabled = !emailTemplatesMultilingualEnabled;
+            select.disabled = false;
         }
         const toggle = document.getElementById('email-template-multilingual-enabled');
         if (toggle) {
             toggle.checked = emailTemplatesMultilingualEnabled;
         }
-        document.getElementById('email-template-language-controls')?.classList.toggle('hidden', !emailTemplatesMultilingualEnabled);
+        const label = document.getElementById('email-template-language-label');
+        if (label) {
+            label.textContent = emailTemplatesMultilingualEnabled
+                ? t('settings_email_language_label', 'Template language')
+                : t('settings_email_language_server_label', 'Server email language');
+        }
+        document.getElementById('email-template-language-controls')?.classList.remove('hidden');
         document.getElementById('email-template-multilingual-off-note')?.classList.toggle('hidden', emailTemplatesMultilingualEnabled);
-        const label = getActiveEmailLanguageLabel();
+        const activeLabel = getActiveEmailLanguageLabel();
         document.querySelectorAll('[data-email-toolbar-lang]').forEach((node) => {
-            node.textContent = label;
+            node.textContent = activeLabel;
         });
     }
 
     function switchEmailTemplatesLanguage(lang) {
-        if (!emailTemplatesMultilingualEnabled) {
-            lang = loadedDefaultEmailLang || lang;
-        }
         const normalized = ensureEmailTemplateForLanguage(lang);
         if (!normalized) {
             return;
@@ -803,22 +806,62 @@
             storeActiveEmailTemplateDraft();
         }
         activeEmailTemplatesLang = normalized;
+        if (!emailTemplatesMultilingualEnabled) {
+            loadedDefaultEmailLang = normalized;
+        }
         applyEmailTemplateLocalizedForm(loadedEmailTemplatesByLang[activeEmailTemplatesLang]);
         syncEmailTemplateLanguageControls();
         document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]').forEach((area) => scheduleLiveTemplateValidation(area));
         scheduleBaseLivePreview();
     }
 
+    function currentEmailTemplateArchiveLang() {
+        return normalizeLangTag(activeEmailTemplatesLang || loadedDefaultEmailLang || document.getElementById('default-lang')?.value || '') || 'fr';
+    }
+
+    function exportEmailTemplates(lang) {
+        const targetLang = lang === 'all' ? 'all' : currentEmailTemplateArchiveLang();
+        window.location.href = `/admin/api/settings/email-templates/export?lang=${encodeURIComponent(targetLang)}`;
+    }
+
+    async function importEmailTemplates(file) {
+        if (!file) {
+            return;
+        }
+        const button = document.getElementById('email-template-import-btn');
+        if (button) {
+            button.disabled = true;
+        }
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            const res = await JG.api('/admin/api/settings/email-templates/import', {
+                method: 'POST',
+                body: formData,
+            });
+            if (res && res.success) {
+                JG.toast(res.message || t('settings_email_import_success', 'Email templates imported'), 'success');
+                await loadSettings();
+                return;
+            }
+            JG.toast((res && res.message) || t('settings_email_import_failed', 'Email template import failed'), 'error');
+        } finally {
+            if (button) {
+                button.disabled = false;
+            }
+        }
+    }
+
     function setEmailTemplatesMultilingualEnabled(enabled) {
         emailTemplatesMultilingualEnabled = enabled !== false;
         const defaultLang = normalizeLangTag(loadedDefaultEmailLang || document.getElementById('default-lang')?.value || '') || 'fr';
-        if (!emailTemplatesMultilingualEnabled && defaultLang) {
-            if (activeEmailTemplatesLang && activeEmailTemplatesLang !== defaultLang) {
-                storeActiveEmailTemplateDraft();
+        if (!emailTemplatesMultilingualEnabled) {
+            const targetLang = normalizeLangTag(activeEmailTemplatesLang || defaultLang) || defaultLang;
+            ensureEmailTemplateForLanguage(targetLang);
+            if (activeEmailTemplatesLang !== targetLang) {
+                activeEmailTemplatesLang = targetLang;
+                applyEmailTemplateLocalizedForm(loadedEmailTemplatesByLang[targetLang]);
             }
-            ensureEmailTemplateForLanguage(defaultLang);
-            activeEmailTemplatesLang = defaultLang;
-            applyEmailTemplateLocalizedForm(loadedEmailTemplatesByLang[defaultLang]);
             document.querySelectorAll('#form-email-templates textarea[id^="tpl-"]').forEach((area) => scheduleLiveTemplateValidation(area));
             scheduleBaseLivePreview();
         }
@@ -1279,13 +1322,16 @@
                 },
             };
         } else if (section === 'email-templates') {
-            const defaultEmailLang = normalizeLangTag(loadedDefaultEmailLang || document.getElementById('default-lang')?.value || '') || 'fr';
-            if (!emailTemplatesMultilingualEnabled && activeEmailTemplatesLang !== defaultEmailLang) {
-                switchEmailTemplatesLanguage(defaultEmailLang);
+            const configuredDefaultLang = normalizeLangTag(loadedDefaultEmailLang || document.getElementById('default-lang')?.value || '') || 'fr';
+            const targetEmailLang = normalizeLangTag(activeEmailTemplatesLang || configuredDefaultLang) || configuredDefaultLang;
+            ensureEmailTemplateForLanguage(targetEmailLang);
+            if (activeEmailTemplatesLang !== targetEmailLang) {
+                activeEmailTemplatesLang = targetEmailLang;
+                applyEmailTemplateLocalizedForm(loadedEmailTemplatesByLang[targetEmailLang]);
             }
             storeActiveEmailTemplateDraft();
             if (!activeEmailTemplatesLang) {
-                activeEmailTemplatesLang = defaultEmailLang;
+                activeEmailTemplatesLang = targetEmailLang;
             }
             loadedEmailSharedTemplateConfig = cloneEmailTemplateConfig(readEmailTemplateSharedForm());
             if (!loadedEmailTemplatesByLang[activeEmailTemplatesLang]) {
@@ -1297,13 +1343,20 @@
                     templatesByLang[lang] = mergeEmailTemplateConfig(loadedEmailSharedTemplateConfig, localized);
                 });
             } else {
-                templatesByLang[defaultEmailLang] = mergeEmailTemplateConfig(
+                const serverEmailLang = normalizeLangTag(activeEmailTemplatesLang || targetEmailLang) || targetEmailLang;
+                loadedDefaultEmailLang = serverEmailLang;
+                const defaultLangField = document.getElementById('default-lang');
+                if (defaultLangField) {
+                    defaultLangField.value = serverEmailLang;
+                }
+                templatesByLang[serverEmailLang] = mergeEmailTemplateConfig(
                     loadedEmailSharedTemplateConfig,
-                    loadedEmailTemplatesByLang[defaultEmailLang] || readEmailTemplateLocalizedForm(),
+                    loadedEmailTemplatesByLang[serverEmailLang] || readEmailTemplateLocalizedForm(),
                 );
             }
             body = {
                 language: activeEmailTemplatesLang,
+                default_lang: emailTemplatesMultilingualEnabled ? undefined : activeEmailTemplatesLang,
                 templates_by_lang: templatesByLang,
                 multilingual_enabled: emailTemplatesMultilingualEnabled,
             };
@@ -1544,6 +1597,27 @@
         if (multilingualToggle && !multilingualToggle.dataset.bound) {
             multilingualToggle.dataset.bound = '1';
             multilingualToggle.addEventListener('change', () => setEmailTemplatesMultilingualEnabled(multilingualToggle.checked));
+        }
+        const exportLangBtn = document.getElementById('email-template-export-lang');
+        if (exportLangBtn && !exportLangBtn.dataset.bound) {
+            exportLangBtn.dataset.bound = '1';
+            exportLangBtn.addEventListener('click', () => exportEmailTemplates(currentEmailTemplateArchiveLang()));
+        }
+        const exportAllBtn = document.getElementById('email-template-export-all');
+        if (exportAllBtn && !exportAllBtn.dataset.bound) {
+            exportAllBtn.dataset.bound = '1';
+            exportAllBtn.addEventListener('click', () => exportEmailTemplates('all'));
+        }
+        const importBtn = document.getElementById('email-template-import-btn');
+        const importFile = document.getElementById('email-template-import-file');
+        if (importBtn && importFile && !importBtn.dataset.bound) {
+            importBtn.dataset.bound = '1';
+            importBtn.addEventListener('click', () => importFile.click());
+            importFile.addEventListener('change', async () => {
+                const file = importFile.files && importFile.files[0];
+                importFile.value = '';
+                await importEmailTemplates(file);
+            });
         }
         document.querySelectorAll('.email-template-item').forEach((item) => syncEmailTemplateCardState(item));
 

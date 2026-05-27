@@ -1,0 +1,5 @@
+Bonjour {{.Username}},
+
+Compte {{.JellyfinServerName}} supprimé.
+
+Si cela te semble inattendu, contacte rapidement l’équipe d’administration afin de vérifier la situation.

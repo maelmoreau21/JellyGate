@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Ablauferinnerung für {{.JellyfinServerName}}.
+
+Wenn du deinen Zugang verlängern möchtest, kontaktiere die Administratoren vor diesem Datum.

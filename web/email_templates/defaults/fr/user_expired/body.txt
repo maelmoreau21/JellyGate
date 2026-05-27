@@ -1,0 +1,5 @@
+Bonjour {{.Username}},
+
+Accès {{.JellyfinServerName}} expiré.
+
+Contacte l’équipe d’administration si tu souhaites retrouver l’accès.

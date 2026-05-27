@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Zugang zu {{.JellyfinServerName}} deaktiviert.
+
+Wenn du denkst, dass dies ein Fehler ist oder den Grund erfahren möchtest, kontaktiere die Administratoren.

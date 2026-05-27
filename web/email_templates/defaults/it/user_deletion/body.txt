@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+Account {{.JellyfinServerName}} eliminato.
+
+Se non te lo aspettavi, contatta rapidamente gli amministratori per verificare la situazione.

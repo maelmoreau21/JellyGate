@@ -1,0 +1,1 @@
+Bestätige deine E-Mail für {{.JellyfinServerName}}

@@ -1,0 +1,7 @@
+Hello,
+
+Invitation to join {{.JellyfinServerName}}.
+
+Create your account with the button below. After signup, you can access Jellyfin and use Seerr/Jellyseerr or JellyTrack links when they are configured.
+
+Need help? {{.HelpURL}}

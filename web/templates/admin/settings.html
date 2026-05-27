@@ -155,11 +155,11 @@
             </div>
           </form>
 
-          <div class="mt-4 rounded-xl border border-red-500/20 bg-red-500/10 p-4">
+          <div class="jg-danger-callout mt-4 p-4">
             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h4 class="text-sm font-semibold text-red-100">{{ .T "settings_auth_session_revoke_title" }}</h4>
-                <p class="mt-1 text-xs leading-5 text-red-100/75">{{ .T "settings_auth_session_revoke_desc" }}</p>
+                <h4 class="text-sm font-semibold">{{ .T "settings_auth_session_revoke_title" }}</h4>
+                <p class="mt-1 text-xs leading-5">{{ .T "settings_auth_session_revoke_desc" }}</p>
               </div>
               <button type="button" id="btn-auth-session-revoke-all" class="jg-btn jg-btn-danger px-5 py-2.5 md:flex-shrink-0">{{ .T "settings_auth_session_revoke_button" }}</button>
             </div>
@@ -612,6 +612,9 @@
       ldap_test_username_required: '{{ .T "settings_ldap_test_username_required" }}',
       ldap_test_credentials_required: '{{ .T "settings_ldap_test_credentials_required" }}',
       settings_email_language_label: '{{ .T "settings_email_language_label" }}',
+      settings_email_language_server_label: '{{ .T "settings_email_language_server_label" }}',
+      settings_email_import_success: '{{ .T "settings_email_import_success" }}',
+      settings_email_import_failed: '{{ .T "settings_email_import_failed" }}',
       settings_email_var_username: '{{ .T "settings_email_var_username" }}',
       settings_email_var_email: '{{ .T "settings_email_var_email" }}',
       settings_email_var_invite_link: '{{ .T "settings_email_var_invite_link" }}',

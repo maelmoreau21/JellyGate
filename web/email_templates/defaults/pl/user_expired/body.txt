@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Dostęp do {{.JellyfinServerName}} wygasł.
+
+Skontaktuj się z administratorami, jeśli potrzebujesz ponownego dostępu.

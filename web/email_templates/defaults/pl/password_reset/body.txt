@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Reset hasła {{.JellyfinServerName}}.
+
+Użyj przycisku poniżej, aby wybrać nowe hasło. Jeśli to nie Ty prosisz o tę operację, możesz zignorować tę wiadomość.

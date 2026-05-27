@@ -1,0 +1,7 @@
+Bonjour,
+
+Invitation à rejoindre {{.JellyfinServerName}}.
+
+Crée ton compte avec le bouton ci-dessous. Après l’inscription, tu pourras accéder à Jellyfin et utiliser les liens Seerr/Jellyseerr ou JellyTrack quand ils sont configurés.
+
+Besoin d’aide ? {{.HelpURL}}

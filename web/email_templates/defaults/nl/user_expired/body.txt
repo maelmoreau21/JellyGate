@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Toegang tot {{.JellyfinServerName}} verlopen.
+
+Neem contact op met de beheerders als je opnieuw toegang nodig hebt.

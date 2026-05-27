@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Konto {{.JellyfinServerName}} usunięte.
+
+Jeśli to nieoczekiwane, szybko skontaktuj się z administratorami, aby sprawdzili sytuację.

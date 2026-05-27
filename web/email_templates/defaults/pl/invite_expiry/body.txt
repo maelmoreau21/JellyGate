@@ -1,0 +1,5 @@
+Cześć,
+
+Zaproszenie {{.JellyfinServerName}} wkrótce wygaśnie.
+
+Utwórz konto przed datą podaną poniżej. Po wygaśnięciu poproś administratorów o nowe zaproszenie.

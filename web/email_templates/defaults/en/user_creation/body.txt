@@ -1,0 +1,5 @@
+Hello {{.Username}},
+
+{{.JellyfinServerName}} account created.
+
+Use the details you received to sign in. The useful links below point to Jellyfin, Seerr/Jellyseerr for content requests, and JellyTrack for statistics when those services are configured.

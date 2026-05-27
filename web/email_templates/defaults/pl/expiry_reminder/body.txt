@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Przypomnienie o wygaśnięciu {{.JellyfinServerName}}.
+
+Jeśli chcesz przedłużyć dostęp, skontaktuj się z administratorami przed tą datą.

@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Passwort für {{.JellyfinServerName}} zurücksetzen.
+
+Nutze den Button unten, um ein neues Passwort zu wählen. Wenn du diese Anfrage nicht ausgelöst hast, kannst du diese Nachricht ignorieren.

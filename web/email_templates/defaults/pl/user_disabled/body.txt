@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Dostęp do {{.JellyfinServerName}} wyłączony.
+
+Jeśli uważasz, że to błąd albo chcesz znać powód, skontaktuj się z administratorami.

@@ -1,0 +1,5 @@
+Bonjour {{.Username}},
+
+Accès {{.JellyfinServerName}} réactivé.
+
+Les liens utiles ci-dessous apparaîtront uniquement si les services associés sont configurés.

@@ -1,0 +1,7 @@
+Ciao,
+
+Invito a entrare in {{.JellyfinServerName}}.
+
+Crea il tuo account con il pulsante qui sotto. Dopo la registrazione potrai accedere a Jellyfin e usare i link Seerr/Jellyseerr o JellyTrack quando sono configurati.
+
+Hai bisogno di aiuto? {{.HelpURL}}

@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Data wygaśnięcia {{.JellyfinServerName}} zaktualizowana.
+
+Nowa data znajduje się poniżej. Jeśli nie tego oczekujesz, skontaktuj się z administratorami.

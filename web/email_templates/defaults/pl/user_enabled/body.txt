@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Dostęp do {{.JellyfinServerName}} został przywrócony.
+
+Przydatne linki poniżej pojawią się tylko wtedy, gdy powiązane usługi są skonfigurowane.

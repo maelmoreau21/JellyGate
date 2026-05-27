@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+L'accesso a {{.JellyfinServerName}} è stato ripristinato.
+
+I link utili qui sotto compaiono solo se i servizi corrispondenti sono configurati.

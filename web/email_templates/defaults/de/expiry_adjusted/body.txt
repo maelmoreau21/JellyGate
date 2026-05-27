@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Ablaufdatum für {{.JellyfinServerName}} aktualisiert.
+
+Das neue Datum steht unten. Wenn es nicht deinen Erwartungen entspricht, kontaktiere die Administratoren.

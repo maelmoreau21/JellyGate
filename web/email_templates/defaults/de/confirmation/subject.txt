@@ -1,0 +1,1 @@
+Zugang zu {{.JellyfinServerName}} aktiviert

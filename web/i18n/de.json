@@ -661,6 +661,14 @@
     "settings_email_delivery_title": "Optionale Nachrichten",
     "settings_email_language_desc": "Each language keeps its own email subjects and content. Use this single selector to switch drafts.",
     "settings_email_language_label": "Template language",
+    "settings_email_import_failed": "Import der E-Mail-Vorlagen fehlgeschlagen",
+    "settings_email_import_success": "E-Mail-Vorlagen importiert",
+    "settings_email_import": "Importieren",
+    "settings_email_export_all": "Alles exportieren",
+    "settings_email_export_lang": "Diese Sprache exportieren",
+    "settings_email_files_desc": "Die Dateien im Repository sind die Standardvorlagen. Import und Editor speichern angepasste Versionen in der Datenbank.",
+    "settings_email_files_title": "Vorlagendateien",
+    "settings_email_language_server_label": "Server-E-Mail-Sprache",
     "settings_email_logo_desc": "Leave empty to use the official Jellyfin logo automatically in previews and outgoing emails.",
     "settings_email_logo_label": "Top-right logo",
     "settings_email_preview_close_aria": "Email Preview Close Aria",
@@ -1166,5 +1174,5 @@
     "automation_backup_advanced_hint": "The main backup schedule lives in Settings > Backups. Use this type only for an additional advanced scenario.",
     "settings_email_multilingual_label": "Mehrsprachige Vorlagen",
     "settings_email_multilingual_desc": "Beim Versand die Sprache des Empfangers oder der Einladung verwenden.",
-    "settings_email_multilingual_off_notice": "Deaktiviert: JellyGate bearbeitet und versendet E-Mails in der Standardsprache des Servers. Gespeicherte Ubersetzungen bleiben erhalten."
+    "settings_email_multilingual_off_notice": "Deaktiviert: Die oben ausgewählte Sprache wird als Server-Sprache für E-Mails verwendet. Gespeicherte Übersetzungen bleiben erhalten."
 }

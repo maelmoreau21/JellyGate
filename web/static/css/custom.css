@@ -195,6 +195,44 @@ html:not(.dark) .jg-public-link-chip {
     color: var(--jg-text);
 }
 
+.jg-info-callout,
+.jg-danger-callout {
+    border-radius: var(--jg-radius-sm);
+    border: 1px solid var(--jg-border);
+}
+
+.jg-info-callout {
+    background: rgba(14, 165, 233, 0.1);
+    border-color: rgba(56, 189, 248, 0.24);
+    color: #e0f2fe;
+}
+
+.jg-danger-callout {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(248, 113, 113, 0.24);
+    color: #fee2e2;
+}
+
+.jg-danger-callout p {
+    color: rgba(254, 226, 226, 0.82);
+}
+
+html:not(.dark) .jg-info-callout {
+    background: #eff6ff;
+    border-color: rgba(37, 99, 235, 0.18);
+    color: #1e3a8a;
+}
+
+html:not(.dark) .jg-danger-callout {
+    background: #fff1f2;
+    border-color: rgba(225, 29, 72, 0.18);
+    color: #881337;
+}
+
+html:not(.dark) .jg-danger-callout p {
+    color: #9f1239;
+}
+
 /* Users page specific helpers */
 .users-aside {
     position: sticky;
@@ -1114,27 +1152,16 @@ html.dark .jg-login-lang-slot .jg-lang-switcher label {
     position: relative;
 }
 
-.email-template-select-icon {
-    position: absolute;
-    left: 1rem;
-    top: 50%;
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    color: var(--jg-accent-cyan);
-    pointer-events: none;
-    transform: translateY(-50%);
-}
-
 .email-template-lang-select {
     min-height: 3rem;
-    padding-left: 3rem !important;
+    padding-left: 1rem !important;
+    padding-right: 3.25rem !important;
     border-color: rgba(34, 211, 238, 0.28) !important;
     background-color: rgba(2, 6, 23, 0.34) !important;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 34px rgba(2, 6, 23, 0.18);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .email-template-lang-select:focus {

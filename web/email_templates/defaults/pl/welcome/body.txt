@@ -1,0 +1,5 @@
+Cześć {{.Username}},
+
+Witaj w {{.JellyfinServerName}}.
+
+Możesz już korzystać z Jellyfin. Jeśli Seerr/Jellyseerr jest dostępny, możesz prosić o filmy lub seriale; jeśli JellyTrack jest dostępny, możesz sprawdzać statystyki oglądania.

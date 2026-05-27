@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Zugang zu {{.JellyfinServerName}} abgelaufen.
+
+Kontaktiere die Administratoren, wenn du wieder Zugang benötigst.

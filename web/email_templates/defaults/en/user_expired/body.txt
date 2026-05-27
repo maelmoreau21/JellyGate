@@ -1,0 +1,5 @@
+Hello {{.Username}},
+
+{{.JellyfinServerName}} access expired.
+
+Contact the administrators if you need access again.

@@ -1,8 +1,14 @@
 package config
 
 import (
+	"bytes"
+	"encoding/json"
+	htmltemplate "html/template"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestDefaultEmailTemplatesForLanguageUsesServerNameVariable(t *testing.T) {
@@ -39,7 +45,7 @@ func TestAutomaticEmailBlockForLanguageIsLocalized(t *testing.T) {
 	if !strings.Contains(enBlock, "Create my account") {
 		t.Fatalf("english invitation block should be localized, got %q", enBlock)
 	}
-	if !strings.Contains(frBlock, "Creer mon compte") {
+	if !strings.Contains(frBlock, "Créer mon compte") {
 		t.Fatalf("french invitation block should be localized, got %q", frBlock)
 	}
 }
@@ -54,4 +60,83 @@ func TestDefaultEmailPreviewTextIsLocalized(t *testing.T) {
 	if got := DefaultEmailPreviewMessageForLanguage("en"); !strings.Contains(got, "{{.JellyfinServerName}}") {
 		t.Fatalf("preview message should mention JellyfinServerName, got %q", got)
 	}
+}
+
+func TestEmailTemplateDefaultFilesAreCompleteAndUTF8(t *testing.T) {
+	root := EmailTemplateDefaultsPath()
+	for _, lang := range SupportedLanguageTags() {
+		metaPath := filepath.Join(root, lang, "_meta.json")
+		metaRaw, err := os.ReadFile(metaPath)
+		if err != nil {
+			t.Fatalf("%s _meta.json missing: %v", lang, err)
+		}
+		if !utf8.Valid(metaRaw) {
+			t.Fatalf("%s _meta.json is not valid UTF-8", lang)
+		}
+		var meta map[string]string
+		if err := json.Unmarshal(metaRaw, &meta); err != nil {
+			t.Fatalf("%s _meta.json invalid JSON: %v", lang, err)
+		}
+		if strings.TrimSpace(meta["useful_links_title"]) == "" {
+			t.Fatalf("%s _meta.json missing useful_links_title", lang)
+		}
+
+		for _, key := range EmailTemplateFileKeys() {
+			for _, filename := range []string{"subject.txt", "body.txt"} {
+				filePath := filepath.Join(root, lang, key.Dir, filename)
+				raw, err := os.ReadFile(filePath)
+				if err != nil {
+					t.Fatalf("%s %s/%s missing: %v", lang, key.Dir, filename, err)
+				}
+				text := string(raw)
+				if !utf8.Valid(raw) {
+					t.Fatalf("%s %s/%s is not valid UTF-8", lang, key.Dir, filename)
+				}
+				if strings.TrimSpace(text) == "" {
+					t.Fatalf("%s %s/%s is empty", lang, key.Dir, filename)
+				}
+				if strings.Contains(text, "Ã") || strings.Contains(text, "Â") || strings.Contains(text, "\uFFFD") {
+					t.Fatalf("%s %s/%s contains mojibake: %q", lang, key.Dir, filename, text)
+				}
+			}
+		}
+	}
+}
+
+func TestAutomaticPortalLinksRenderOnlyWhenConfigured(t *testing.T) {
+	cfg := DefaultEmailTemplatesForLanguage("fr")
+	data := map[string]string{
+		"Username":           "maelle",
+		"JellyfinServerName": "Jellyfin",
+		"HelpURL":            "https://help.example.com",
+		"JellyfinURL":        "https://jellyfin.example.com",
+		"JellyGateURL":       "https://gate.example.com",
+		"JellyseerrURL":      "",
+		"JellyTrackURL":      "",
+	}
+
+	withoutLinks := renderEmailTemplateForTest(t, cfg.Confirmation, data)
+	if strings.Contains(withoutLinks, "Liens utiles") || strings.Contains(withoutLinks, "JellyseerrURL") || strings.Contains(withoutLinks, "JellyTrackURL") {
+		t.Fatalf("portal links block should be hidden when URLs are empty: %s", withoutLinks)
+	}
+
+	data["JellyseerrURL"] = "https://seerr.example.com"
+	data["JellyTrackURL"] = "https://track.example.com"
+	withLinks := renderEmailTemplateForTest(t, cfg.Confirmation, data)
+	if !strings.Contains(withLinks, "Liens utiles") || !strings.Contains(withLinks, "https://seerr.example.com") || !strings.Contains(withLinks, "https://track.example.com") {
+		t.Fatalf("portal links block should render configured URLs: %s", withLinks)
+	}
+}
+
+func renderEmailTemplateForTest(t *testing.T, tpl string, data map[string]string) string {
+	t.Helper()
+	parsed, err := htmltemplate.New("email").Parse(tpl)
+	if err != nil {
+		t.Fatalf("parse template: %v", err)
+	}
+	var out bytes.Buffer
+	if err := parsed.Execute(&out, data); err != nil {
+		t.Fatalf("execute template: %v", err)
+	}
+	return out.String()
 }

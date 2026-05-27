@@ -1,0 +1,5 @@
+Hello {{.Username}},
+
+{{.JellyfinServerName}} access expiry reminder.
+
+If you want to extend your access, contact the administrators before that date.

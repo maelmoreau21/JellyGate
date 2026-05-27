@@ -1,0 +1,5 @@
+Hallo,
+
+Deine Einladung für {{.JellyfinServerName}} läuft bald ab.
+
+Erstelle dein Konto vor dem unten angegebenen Datum. Danach musst du eine neue Einladung bei den Administratoren anfordern.

@@ -1,0 +1,19 @@
+{
+  "verify_button_label": "Mijn e-mail verifiëren",
+  "expiry_date_label": "Datum",
+  "expires_in_label": "Verloopt over",
+  "create_account_button_label": "Mijn account maken",
+  "direct_link_label": "Directe link",
+  "reset_password_button_label": "Mijn wachtwoord resetten",
+  "code_label": "Code",
+  "open_server_button_label": "{{.JellyfinServerName}} openen",
+  "direct_access_label": "Directe toegang",
+  "preview_duration": "15 minuten",
+  "preview_message": "Je toegang tot {{.JellyfinServerName}} is klaar. Gebruik de links hieronder.",
+  "automatic_footer": "Dit is een automatisch bericht verzonden door JellyGate.",
+  "useful_links_title": "Nuttige links",
+  "jellyseerr_link_label": "Vraag een film of serie aan",
+  "jellyseerr_link_desc": "Gebruik Seerr/Jellyseerr om nieuwe content voor te stellen.",
+  "jellytrack_link_label": "Bekijk je statistieken",
+  "jellytrack_link_desc": "Gebruik JellyTrack om je activiteit en kijkstatistieken te volgen."
+}

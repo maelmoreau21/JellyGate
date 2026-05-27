@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+Promemoria scadenza per {{.JellyfinServerName}}.
+
+Se vuoi estendere l’accesso, contatta gli amministratori prima di quella data.

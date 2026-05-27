@@ -1,0 +1,5 @@
+Hola,
+
+Tu invitación de {{.JellyfinServerName}} expira pronto.
+
+Crea tu cuenta antes de la fecha indicada abajo. Después tendrás que pedir una nueva invitación a los administradores.

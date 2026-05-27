@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Konto für {{.JellyfinServerName}} erstellt.
+
+Nutze die erhaltenen Informationen, um dich anzumelden. Die Links unten führen zu Jellyfin, Seerr/Jellyseerr für Inhaltsanfragen und JellyTrack für Statistiken, wenn diese Dienste eingerichtet sind.

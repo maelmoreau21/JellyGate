@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -315,6 +318,75 @@ func TestSettingsHandlerSaveEmailTemplatesMultilingualOffPreservesTranslations(t
 	}
 }
 
+func TestSettingsHandlerSaveEmailTemplatesMultilingualOffSavesSelectedServerLanguage(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	if err := db.SetSetting(database.SettingDefaultLang, "fr"); err != nil {
+		t.Fatalf("SetSetting(default_lang) error = %v", err)
+	}
+	templates, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		t.Fatalf("GetEmailTemplatesConfigByLanguage() error = %v", err)
+	}
+
+	fr := templates["fr"]
+	en := templates["en"]
+	fr.ConfirmationSubject = "Sujet FR conserve"
+	fr.Confirmation = "Bonjour {{.Username}}"
+	en.ConfirmationSubject = "Subject EN selected"
+	en.Confirmation = "Hello selected {{.Username}}"
+	if err := db.SaveEmailTemplatesConfigByLanguage(map[string]config.EmailTemplatesConfig{
+		"fr": fr,
+		"en": en,
+	}); err != nil {
+		t.Fatalf("SaveEmailTemplatesConfigByLanguage() error = %v", err)
+	}
+
+	updatedEN := en
+	updatedEN.ConfirmationSubject = "Subject EN mono"
+	multilingual := false
+	payload := saveEmailTemplatesInput{
+		Language:            "en",
+		DefaultLang:         "en",
+		MultilingualEnabled: &multilingual,
+		TemplatesByLang: map[string]config.EmailTemplatesConfig{
+			"en": updatedEN,
+		},
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.SaveEmailTemplates(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/email-templates", body))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("SaveEmailTemplates status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	if got := db.GetDefaultLang(); got != "en" {
+		t.Fatalf("default language = %q, want en", got)
+	}
+
+	saved, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		t.Fatalf("GetEmailTemplatesConfigByLanguage() after save error = %v", err)
+	}
+	if saved["en"].ConfirmationSubject != "Subject EN mono" {
+		t.Fatalf("en subject = %q, want updated mono subject", saved["en"].ConfirmationSubject)
+	}
+	if saved["fr"].ConfirmationSubject != "Sujet FR conserve" {
+		t.Fatalf("fr translation should be preserved, got %q", saved["fr"].ConfirmationSubject)
+	}
+
+	cfg, usedLang, err := loadEmailTemplatesForLanguage(db, "fr", emailLanguageContext{PreferredLang: "fr"})
+	if err != nil {
+		t.Fatalf("loadEmailTemplatesForLanguage() error = %v", err)
+	}
+	if usedLang != "en" || cfg.ConfirmationSubject != "Subject EN mono" {
+		t.Fatalf("mono-language send should use server lang en, got %s/%q", usedLang, cfg.ConfirmationSubject)
+	}
+}
+
 func TestLoadEmailTemplatesForLanguageHonorsMultilingualFlag(t *testing.T) {
 	_, db := newTestSettingsHandler(t)
 
@@ -412,4 +484,101 @@ func TestSettingsHandlerPreviewEmailTemplateUsesJellyGateBranding(t *testing.T) 
 	if !strings.Contains(resp.Data.HTML, "Media Lab") {
 		t.Fatalf("preview should render Jellyfin server name, got %q", resp.Data.HTML)
 	}
+}
+
+func TestSettingsHandlerEmailTemplatesExportImportRoundtrip(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	templates, err := db.GetEmailTemplatesConfigByLanguage()
+	if err != nil {
+		t.Fatalf("GetEmailTemplatesConfigByLanguage() error = %v", err)
+	}
+	fr := templates["fr"]
+	fr.ConfirmationSubject = "Sujet export FR"
+	fr.Confirmation = config.PrepareEmailTemplateBodyForLanguage("fr", "confirmation", "Bonjour export {{.Username}}", fr.BaseTemplateHeader, fr.BaseTemplateFooter)
+	if err := db.SaveEmailTemplatesConfigForLang("fr", fr); err != nil {
+		t.Fatalf("SaveEmailTemplatesConfigForLang(fr) error = %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	handler.ExportEmailTemplates(rec, newAdminRequest(http.MethodGet, "/admin/api/settings/email-templates/export?lang=fr", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ExportEmailTemplates(fr) status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	zipBytes := rec.Body.Bytes()
+	if got := readZipEntryForTest(t, zipBytes, "fr/confirmation/subject.txt"); strings.TrimSpace(got) != "Sujet export FR" {
+		t.Fatalf("exported fr subject = %q", got)
+	}
+	if got := readZipEntryForTest(t, zipBytes, "fr/confirmation/body.txt"); !strings.Contains(got, "Bonjour export {{.Username}}") {
+		t.Fatalf("exported fr body should be editable text, got %q", got)
+	}
+
+	recAll := httptest.NewRecorder()
+	handler.ExportEmailTemplates(recAll, newAdminRequest(http.MethodGet, "/admin/api/settings/email-templates/export?lang=all", nil))
+	if recAll.Code != http.StatusOK {
+		t.Fatalf("ExportEmailTemplates(all) status = %d, want %d", recAll.Code, http.StatusOK)
+	}
+	for _, lang := range config.SupportedLanguageTags() {
+		if got := strings.TrimSpace(readZipEntryForTest(t, recAll.Body.Bytes(), lang+"/confirmation/subject.txt")); got == "" {
+			t.Fatalf("export all missing %s confirmation subject", lang)
+		}
+	}
+
+	importHandler, importDB := newTestSettingsHandler(t)
+	var upload bytes.Buffer
+	writer := multipart.NewWriter(&upload)
+	fileWriter, err := writer.CreateFormFile("file", "fr.zip")
+	if err != nil {
+		t.Fatalf("CreateFormFile() error = %v", err)
+	}
+	if _, err := fileWriter.Write(zipBytes); err != nil {
+		t.Fatalf("write upload zip error = %v", err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatalf("multipart writer close error = %v", err)
+	}
+
+	req := newAdminRequest(http.MethodPost, "/admin/api/settings/email-templates/import", upload.Bytes())
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	rec = httptest.NewRecorder()
+	importHandler.ImportEmailTemplates(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ImportEmailTemplates status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	imported, _, err := importDB.GetEmailTemplatesConfigForLang("fr")
+	if err != nil {
+		t.Fatalf("GetEmailTemplatesConfigForLang(fr) after import error = %v", err)
+	}
+	if imported.ConfirmationSubject != "Sujet export FR" {
+		t.Fatalf("imported fr subject = %q, want roundtrip subject", imported.ConfirmationSubject)
+	}
+	if !strings.Contains(imported.Confirmation, "Bonjour export {{.Username}}") {
+		t.Fatalf("imported fr body should contain roundtrip body, got %q", imported.Confirmation)
+	}
+}
+
+func readZipEntryForTest(t *testing.T, raw []byte, name string) string {
+	t.Helper()
+	reader, err := zip.NewReader(bytes.NewReader(raw), int64(len(raw)))
+	if err != nil {
+		t.Fatalf("zip.NewReader() error = %v", err)
+	}
+	for _, file := range reader.File {
+		if file.Name != name {
+			continue
+		}
+		rc, err := file.Open()
+		if err != nil {
+			t.Fatalf("open zip entry %s error = %v", name, err)
+		}
+		defer rc.Close()
+		value, err := io.ReadAll(rc)
+		if err != nil {
+			t.Fatalf("read zip entry %s error = %v", name, err)
+		}
+		return string(value)
+	}
+	t.Fatalf("zip entry %s not found", name)
+	return ""
 }

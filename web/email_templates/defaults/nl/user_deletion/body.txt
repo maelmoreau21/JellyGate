@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Account voor {{.JellyfinServerName}} verwijderd.
+
+Als dit onverwacht is, neem dan snel contact op met de beheerders zodat zij de situatie kunnen controleren.

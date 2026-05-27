@@ -1,0 +1,1 @@
+Zweryfikuj e-mail dla {{.JellyfinServerName}}

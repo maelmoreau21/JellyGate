@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Willkommen bei {{.JellyfinServerName}}.
+
+Du kannst Jellyfin jetzt nutzen. Wenn Seerr/Jellyseerr verfügbar ist, kannst du Filme oder Serien anfragen; wenn JellyTrack verfügbar ist, kannst du deine Wiedergabestatistiken ansehen.

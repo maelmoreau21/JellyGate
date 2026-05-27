@@ -26,18 +26,23 @@
               </span>
             </label>
             <div id="email-template-language-controls" class="email-template-language-picker w-full lg:max-w-sm">
-              <label class="jg-label" for="email-template-lang-select">{{ .T "settings_email_language_label" }}</label>
+              <label class="jg-label" id="email-template-language-label" for="email-template-lang-select">{{ .T "settings_email_language_label" }}</label>
               <div class="email-template-select-shell">
-                <span class="email-template-select-icon" aria-hidden="true">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 0A18.02 18.02 0 019 14.5m5 4.5l3-7 3 7m-1.1-2.5h-3.8" />
-                  </svg>
-                </span>
                 <select id="email-template-lang-select" class="jg-input jg-select-premium email-template-lang-select bg-black/20 hover:bg-black/40 text-sm h-12"></select>
               </div>
               <p class="text-xs text-slate-400 mt-3">{{ .T "settings_email_language_desc" }}</p>
             </div>
             <div id="email-template-multilingual-off-note" class="email-template-multilingual-note hidden w-full lg:max-w-sm">{{ .T "settings_email_multilingual_off_notice" }}</div>
+            <div class="flex flex-col gap-2 w-full lg:max-w-sm">
+              <div class="text-[10px] font-black uppercase tracking-[0.24em] text-jg-text-muted/70">{{ .T "settings_email_files_title" }}</div>
+              <p class="text-xs text-jg-text-muted">{{ .T "settings_email_files_desc" }}</p>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" id="email-template-export-lang" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_export_lang" }}</button>
+                <button type="button" id="email-template-export-all" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_export_all" }}</button>
+                <button type="button" id="email-template-import-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_import" }}</button>
+                <input type="file" id="email-template-import-file" class="hidden" accept=".zip,application/zip,application/x-zip-compressed">
+              </div>
+            </div>
             <div class="flex-1 rounded-xl border border-black/5 dark:border-white/10 bg-black/20 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div class="text-[10px] font-black uppercase tracking-[0.24em] text-jg-text-muted/70 mb-1">{{ .T "settings_email_active_field_label" }}</div>
@@ -411,6 +416,9 @@
       ldap_test_username_required: '{{ .T "settings_ldap_test_username_required" }}',
       ldap_test_credentials_required: '{{ .T "settings_ldap_test_credentials_required" }}',
       settings_email_language_label: '{{ .T "settings_email_language_label" }}',
+      settings_email_language_server_label: '{{ .T "settings_email_language_server_label" }}',
+      settings_email_import_success: '{{ .T "settings_email_import_success" }}',
+      settings_email_import_failed: '{{ .T "settings_email_import_failed" }}',
       settings_email_var_username: '{{ .T "settings_email_var_username" }}',
       settings_email_var_email: '{{ .T "settings_email_var_email" }}',
       settings_email_var_invite_link: '{{ .T "settings_email_var_invite_link" }}',

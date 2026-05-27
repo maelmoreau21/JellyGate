@@ -1,0 +1,5 @@
+Bonjour {{.Username}},
+
+Expiration de l’accès {{.JellyfinServerName}} mise à jour.
+
+La nouvelle date apparaît ci-dessous. Si elle ne correspond pas à ce que tu attendais, contacte l’équipe d’administration.

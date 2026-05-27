@@ -1,0 +1,5 @@
+Olá {{.Username}},
+
+Verifique seu endereço de e-mail para proteger seu acesso ao {{.JellyfinServerName}}.
+
+Se você não solicitou isso, pode ignorar esta mensagem.

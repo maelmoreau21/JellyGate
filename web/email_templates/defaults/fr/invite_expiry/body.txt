@@ -1,0 +1,5 @@
+Bonjour,
+
+Ton invitation {{.JellyfinServerName}} expire bientôt.
+
+Crée ton compte avant la date indiquée ci-dessous. Après expiration, il faudra demander une nouvelle invitation à l’équipe d’administration.

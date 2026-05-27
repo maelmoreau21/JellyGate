@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Verifieer je e-mailadres om je toegang tot {{.JellyfinServerName}} te beveiligen.
+
+Als je dit niet hebt aangevraagd, kun je dit bericht negeren.

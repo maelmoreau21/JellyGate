@@ -1,0 +1,5 @@
+Hallo {{.Username}},
+
+Welkom bij {{.JellyfinServerName}}.
+
+Je kunt nu genieten van Jellyfin. Als Seerr/Jellyseerr beschikbaar is, kun je films of series aanvragen; als JellyTrack beschikbaar is, kun je je kijkstatistieken bekijken.

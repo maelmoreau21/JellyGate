@@ -1,0 +1,5 @@
+Hola {{.Username}},
+
+Cuenta de {{.JellyfinServerName}} eliminada.
+
+Si esto te parece inesperado, contacta rápidamente con los administradores para que revisen la situación.

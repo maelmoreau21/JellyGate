@@ -1,0 +1,5 @@
+Ciao {{.Username}},
+
+Reimposta la password di {{.JellyfinServerName}}.
+
+Usa il pulsante qui sotto per scegliere una nuova password. Se non hai richiesto questa operazione, puoi ignorare il messaggio.
