@@ -2,6 +2,6 @@ Hola,
 
 Invitación para unirte a {{.JellyfinServerName}}.
 
-Crea tu cuenta con el botón de abajo. Después del registro podrás acceder a Jellyfin y usar los enlaces de Seerr/Jellyseerr o JellyTrack cuando estén configurados.
+Crea tu cuenta con el botón de abajo. Después del registro podrás acceder a Jellyfin y usar los enlaces de seerrr o JellyTrack cuando estén configurados.
 
 ¿Necesitas ayuda? {{.HelpURL}}

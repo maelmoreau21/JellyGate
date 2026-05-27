@@ -605,7 +605,7 @@ func emailTemplateSupportsPortalLinks(templateKey string) bool {
 func automaticPortalLinksBlock(pack emailTextPack) string {
 	title := firstNonEmpty(pack.UsefulLinksTitle, "Useful links")
 	seerrLabel := firstNonEmpty(pack.JellyseerrLinkLabel, "Request content")
-	seerrDesc := firstNonEmpty(pack.JellyseerrLinkDesc, "Ask for a movie or series on Seerr.")
+	seerrDesc := firstNonEmpty(pack.JellyseerrLinkDesc, "Ask for a movie or series on seerrr.")
 	trackLabel := firstNonEmpty(pack.JellyTrackLinkLabel, "View statistics")
 	trackDesc := firstNonEmpty(pack.JellyTrackLinkDesc, "Check your viewing statistics on JellyTrack.")
 	return `

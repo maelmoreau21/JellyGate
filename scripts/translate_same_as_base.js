@@ -29,7 +29,7 @@ const INVARIANT_VALUES = new Set([
     'Discord',
     'Telegram',
     'Matrix',
-    'Jellyseerr',
+    'seerrr',
     'JellyTrack',
     'Jellytrack',
 ]);

@@ -2,6 +2,6 @@ Cześć,
 
 Zaproszenie do {{.JellyfinServerName}}.
 
-Utwórz konto przyciskiem poniżej. Po rejestracji możesz korzystać z Jellyfin oraz linków Seerr/Jellyseerr lub JellyTrack, gdy są skonfigurowane.
+Utwórz konto przyciskiem poniżej. Po rejestracji możesz korzystać z Jellyfin oraz linków seerrr lub JellyTrack, gdy są skonfigurowane.
 
 Potrzebujesz pomocy? {{.HelpURL}}

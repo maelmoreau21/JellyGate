@@ -219,7 +219,7 @@
             { value: '{{.JellyfinURL}}', label: t('settings_email_var_jellyfin_url', 'Jellyfin login URL') },
             { value: '{{.JellyfinServerName}}', label: t('settings_email_var_jellyfin_server_name', 'Jellyfin server name') },
             { value: '{{.serveurname}}', label: t('settings_email_var_jellyfin_server_name', 'Jellyfin server name') },
-            { value: '{{.JellyseerrURL}}', label: t('settings_email_var_jellyseerr_url', 'Jellyseerr URL') },
+            { value: '{{.JellyseerrURL}}', label: t('settings_email_var_jellyseerr_url', 'seerrr URL') },
             { value: '{{.JellyTrackURL}}', label: t('settings_email_var_jellytrack_url', 'JellyTrack URL') },
             { value: '{{.Message}}', label: t('settings_email_var_message', 'custom message (admin invitation)') },
         ];
@@ -476,7 +476,7 @@
             JellyGateURL: jellygateURL || 'https://jellygate.example.com',
             JellyfinURL: jellyfinURL || 'https://jellyfin.example.com',
             JellyfinServerName: jellyfinServerName || 'Jellyfin',
-            JellyseerrURL: jellyseerrURL || 'https://jellyseerr.example.com',
+            JellyseerrURL: jellyseerrURL || 'https://seerrr.example.com',
             JellyTrackURL: jellytrackURL || 'https://jellytrack.example.com',
             HelpURL: jellygateURL || jellyfinURL || 'https://jellygate.example.com',
             EmailLogoURL: resolveEmailLogoPreviewURL(),

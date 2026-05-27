@@ -2,6 +2,6 @@ Olá {{.Username}},
 
 Acesso ao {{.JellyfinServerName}} ativado.
 
-Você já pode entrar no Jellyfin. Quando Seerr/Jellyseerr ou JellyTrack estiverem configurados, os links úteis abaixo permitem pedir um filme ou série, informar necessidades de conteúdo e ver suas estatísticas.
+Você já pode entrar no Jellyfin. Quando seerrr ou JellyTrack estiverem configurados, os links úteis abaixo permitem pedir um filme ou série, informar necessidades de conteúdo e ver suas estatísticas.
 
 Precisa de ajuda? {{.HelpURL}}

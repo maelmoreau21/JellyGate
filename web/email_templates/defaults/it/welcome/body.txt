@@ -2,4 +2,4 @@ Ciao {{.Username}},
 
 Benvenuto su {{.JellyfinServerName}}.
 
-Puoi iniziare a usare Jellyfin. Se Seerr/Jellyseerr è disponibile, puoi richiedere film o serie; se JellyTrack è disponibile, puoi consultare le statistiche di visione.
+Puoi iniziare a usare Jellyfin. Se seerrr è disponibile, puoi richiedere film o serie; se JellyTrack è disponibile, puoi consultare le statistiche di visione.

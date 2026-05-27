@@ -80,6 +80,11 @@ func TestEmailTemplateDefaultFilesAreCompleteAndUTF8(t *testing.T) {
 		if strings.TrimSpace(meta["useful_links_title"]) == "" {
 			t.Fatalf("%s _meta.json missing useful_links_title", lang)
 		}
+		for metaKey, metaValue := range meta {
+			if strings.Contains(metaValue, "Jellyseerr") || strings.Contains(metaValue, "Seerr/Jellyseerr") {
+				t.Fatalf("%s _meta.json %s still mentions deprecated Jellyseerr wording: %q", lang, metaKey, metaValue)
+			}
+		}
 
 		for _, key := range EmailTemplateFileKeys() {
 			for _, filename := range []string{"subject.txt", "body.txt"} {
@@ -97,6 +102,9 @@ func TestEmailTemplateDefaultFilesAreCompleteAndUTF8(t *testing.T) {
 				}
 				if strings.Contains(text, "Ã") || strings.Contains(text, "Â") || strings.Contains(text, "\uFFFD") {
 					t.Fatalf("%s %s/%s contains mojibake: %q", lang, key.Dir, filename, text)
+				}
+				if strings.Contains(text, "Jellyseerr") || strings.Contains(text, "Seerr/Jellyseerr") {
+					t.Fatalf("%s %s/%s still mentions deprecated Jellyseerr wording: %q", lang, key.Dir, filename, text)
 				}
 			}
 		}

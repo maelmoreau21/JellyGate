@@ -2,4 +2,4 @@ Hola {{.Username}},
 
 Cuenta de {{.JellyfinServerName}} creada.
 
-Usa los datos recibidos para iniciar sesión. Los enlaces de abajo llevan a Jellyfin, Seerr/Jellyseerr para solicitudes de contenido y JellyTrack para estadísticas cuando esos servicios estén configurados.
+Usa los datos recibidos para iniciar sesión. Los enlaces de abajo llevan a Jellyfin, seerrr para solicitudes de contenido y JellyTrack para estadísticas cuando esos servicios estén configurados.

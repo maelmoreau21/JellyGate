@@ -2,4 +2,4 @@ Olá {{.Username}},
 
 Conta do {{.JellyfinServerName}} criada.
 
-Use os dados recebidos para entrar. Os links abaixo apontam para Jellyfin, Seerr/Jellyseerr para pedidos de conteúdo e JellyTrack para estatísticas quando esses serviços estiverem configurados.
+Use os dados recebidos para entrar. Os links abaixo apontam para Jellyfin, seerrr para pedidos de conteúdo e JellyTrack para estatísticas quando esses serviços estiverem configurados.

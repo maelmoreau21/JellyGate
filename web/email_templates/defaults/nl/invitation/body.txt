@@ -2,6 +2,6 @@ Hallo,
 
 Uitnodiging voor {{.JellyfinServerName}}.
 
-Maak je account aan met de knop hieronder. Na registratie kun je Jellyfin openen en de links naar Seerr/Jellyseerr of JellyTrack gebruiken wanneer ze zijn ingesteld.
+Maak je account aan met de knop hieronder. Na registratie kun je Jellyfin openen en de links naar seerrr of JellyTrack gebruiken wanneer ze zijn ingesteld.
 
 Hulp nodig? {{.HelpURL}}

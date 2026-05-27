@@ -2,4 +2,4 @@ Hallo {{.Username}},
 
 Account voor {{.JellyfinServerName}} aangemaakt.
 
-Gebruik de ontvangen gegevens om in te loggen. De links hieronder wijzen naar Jellyfin, Seerr/Jellyseerr voor contentverzoeken en JellyTrack voor statistieken wanneer deze diensten zijn ingesteld.
+Gebruik de ontvangen gegevens om in te loggen. De links hieronder wijzen naar Jellyfin, seerrr voor contentverzoeken en JellyTrack voor statistieken wanneer deze diensten zijn ingesteld.

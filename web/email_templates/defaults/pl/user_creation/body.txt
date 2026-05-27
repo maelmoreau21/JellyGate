@@ -2,4 +2,4 @@ Cześć {{.Username}},
 
 Konto {{.JellyfinServerName}} utworzone.
 
-Użyj otrzymanych danych, aby się zalogować. Linki poniżej prowadzą do Jellyfin, Seerr/Jellyseerr do próśb o treści oraz JellyTrack do statystyk, gdy te usługi są skonfigurowane.
+Użyj otrzymanych danych, aby się zalogować. Linki poniżej prowadzą do Jellyfin, seerrr do próśb o treści oraz JellyTrack do statystyk, gdy te usługi są skonfigurowane.

@@ -2,6 +2,6 @@
 
 {{.JellyfinServerName}} 访问权限已启用.
 
-你现在可以登录 Jellyfin。如果已配置 Seerr/Jellyseerr 或 JellyTrack，下方的实用链接可以用于请求电影或剧集、提交内容需求，并查看播放统计。
+你现在可以登录 Jellyfin。如果已配置 seerrr 或 JellyTrack，下方的实用链接可以用于请求电影或剧集、提交内容需求，并查看播放统计。
 
 需要帮助？{{.HelpURL}}

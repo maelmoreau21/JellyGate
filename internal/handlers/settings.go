@@ -643,7 +643,7 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if input.JellyseerrURL, err = normalizePublicPortalURL(input.JellyseerrURL); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL publique Jellyseerr invalide: " + err.Error()})
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "URL publique seerrr invalide: " + err.Error()})
 		return
 	}
 	if input.JellyTrackURL, err = normalizePublicPortalURL(input.JellyTrackURL); err != nil {

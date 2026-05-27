@@ -2,4 +2,4 @@
 
 {{.JellyfinServerName}} 账号已创建.
 
-请使用收到的信息登录。 下面的链接会指向 Jellyfin、用于内容请求的 Seerr/Jellyseerr，以及用于统计的 JellyTrack（如果这些服务已配置）。
+请使用收到的信息登录。 下面的链接会指向 Jellyfin、用于内容请求的 seerrr，以及用于统计的 JellyTrack（如果这些服务已配置）。

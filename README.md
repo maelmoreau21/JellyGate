@@ -77,7 +77,7 @@ Open `http://localhost:8097/admin/login` and sign in with your Jellyfin admin ac
 | Security | CSRF, rate limiting, centralized HTTP headers, signed cookies |
 | Audit | Advanced filters, CSV/JSON export, request_id correlation |
 | i18n | Full multilingual system (fr, en, etc.) |
-| Integrations | SMTP, Discord, Telegram, Matrix, Jellyseerr, JellyTrack |
+| Integrations | SMTP, Discord, Telegram, Matrix, seerrr, JellyTrack |
 
 ---
 

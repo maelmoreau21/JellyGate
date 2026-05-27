@@ -2,4 +2,4 @@ Bonjour {{.Username}},
 
 Bienvenue sur {{.JellyfinServerName}}.
 
-Tu peux maintenant profiter de Jellyfin. Si Seerr/Jellyseerr est disponible, tu peux demander des films ou séries; si JellyTrack est disponible, tu peux consulter tes statistiques de lecture.
+Tu peux maintenant profiter de Jellyfin. Si seerrr est disponible, tu peux demander des films ou séries; si JellyTrack est disponible, tu peux consulter tes statistiques de lecture.

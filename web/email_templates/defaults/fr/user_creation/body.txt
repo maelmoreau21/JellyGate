@@ -2,4 +2,4 @@ Bonjour {{.Username}},
 
 Compte {{.JellyfinServerName}} créé.
 
-Utilise les informations reçues pour te connecter. Les liens utiles ci-dessous pointent vers Jellyfin, Seerr/Jellyseerr pour les demandes de contenu, et JellyTrack pour les statistiques quand ces services sont configurés.
+Utilise les informations reçues pour te connecter. Les liens utiles ci-dessous pointent vers Jellyfin, seerrr pour les demandes de contenu, et JellyTrack pour les statistiques quand ces services sont configurés.

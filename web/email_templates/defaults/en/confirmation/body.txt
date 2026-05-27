@@ -2,6 +2,6 @@ Hello {{.Username}},
 
 {{.JellyfinServerName}} access activated.
 
-You can sign in to Jellyfin right away. When Seerr/Jellyseerr or JellyTrack are configured, the useful links below let you request a movie or series, report content needs, and view your playback statistics.
+You can sign in to Jellyfin right away. When seerrr or JellyTrack are configured, the useful links below let you request a movie or series, report content needs, and view your playback statistics.
 
 Need help? {{.HelpURL}}
