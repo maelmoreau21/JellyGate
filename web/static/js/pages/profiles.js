@@ -3,20 +3,39 @@
         presets: [],
         libraries: [],
         selected: 0,
+        activeTab: 'rights',
     };
 
     const els = {};
     const qs = (id) => document.getElementById(id);
     const num = (id) => Math.max(0, parseInt(qs(id)?.value || '0', 10) || 0);
+    const list = (id) => (qs(id)?.value || '')
+        .split(/[\n,]+/)
+        .map((v) => v.trim())
+        .filter(Boolean);
+    const setList = (id, values) => {
+        const el = qs(id);
+        if (el) el.value = (values || []).join('\n');
+    };
 
     function hydrateEls() {
         [
             'profiles-list', 'profiles-count', 'profiles-save-btn', 'profile-new-btn', 'profile-form',
             'profile-index', 'profile-id', 'profile-name', 'profile-description', 'profile-admin',
-            'profile-all-folders', 'profile-download', 'profile-remote', 'profile-libraries',
-            'profile-disable-days', 'profile-sessions', 'profile-bitrate', 'profile-can-invite',
+            'profile-hidden', 'profile-disabled', 'profile-all-folders', 'profile-download', 'profile-remote',
+            'profile-playback', 'profile-audio-transcode', 'profile-video-transcode', 'profile-remux',
+            'profile-live-tv', 'profile-live-tv-management', 'profile-public-sharing', 'profile-content-deletion',
+            'profile-sync-transcoding', 'profile-syncplay', 'profile-libraries', 'profile-blocked-folders',
+            'profile-deletion-folders', 'profile-disable-days', 'profile-delete-days', 'profile-sessions',
+            'profile-bitrate', 'profile-parental-rating', 'profile-invalid-login', 'profile-login-lockout',
+            'profile-allowed-tags', 'profile-blocked-tags', 'profile-home-sections', 'profile-ordered-views',
+            'profile-grouped-folders', 'profile-home-excludes', 'profile-backdrops', 'profile-theme-songs',
+            'profile-theme-videos', 'profile-page-size', 'profile-can-invite', 'profile-can-temp-invite',
             'profile-target-preset', 'profile-quota-day', 'profile-quota-month', 'profile-link-days',
-            'profile-max-uses', 'profile-delete-btn', 'profile-editor-title', 'profile-editor-subtitle'
+            'profile-max-uses', 'profile-temp-default', 'profile-temp-max', 'profile-allowed-targets',
+            'profile-allowed-temp-targets', 'profile-is-temporary', 'profile-account-default',
+            'profile-account-max', 'profile-ldap-groups', 'profile-devices', 'profile-channels',
+            'profile-delete-btn', 'profile-editor-title', 'profile-editor-subtitle', 'profile-tabs',
         ].forEach((id) => { els[id] = qs(id); });
     }
 
@@ -24,20 +43,30 @@
         return preset?.name || preset?.id || 'Profil';
     }
 
+    function renderTabs() {
+        document.querySelectorAll('[data-profile-tab]').forEach((panel) => {
+            panel.classList.toggle('hidden', panel.dataset.profileTab !== state.activeTab);
+        });
+        document.querySelectorAll('[data-profile-tab-target]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.profileTabTarget === state.activeTab);
+        });
+    }
+
     function renderList() {
         if (!els['profiles-list']) return;
         els['profiles-count'].textContent = String(state.presets.length);
         els['profiles-list'].innerHTML = state.presets.map((preset, index) => {
             const active = index === state.selected ? 'active' : '';
-            const libs = preset.enable_all_folders ? 'Toutes bibliothèques' : `${(preset.enabled_folder_ids || []).length} bibliothèque(s)`;
+            const libs = preset.enable_all_folders ? 'Toutes bibliotheques' : `${(preset.enabled_folder_ids || []).length} bibliotheque(s)`;
             const admin = preset.is_administrator ? '<span class="jg-ds-tag danger">Admin</span>' : '';
-            const invite = preset.can_invite ? '<span class="jg-ds-tag">Parrain</span>' : '';
+            const invite = (preset.can_invite || preset.can_create_invitations) ? '<span class="jg-ds-tag">Parrain</span>' : '';
+            const temp = preset.is_temporary ? '<span class="jg-ds-tag">Temp</span>' : '';
             return `<button type="button" class="jg-profile-card ${active}" data-index="${index}">
                 <span>
                     <strong>${JG.esc(presetName(preset))}</strong>
                     <small>${JG.esc(preset.description || libs)}</small>
                 </span>
-                <span class="jg-profile-badges">${admin}${invite}</span>
+                <span class="jg-profile-badges">${admin}${invite}${temp}</span>
             </button>`;
         }).join('');
     }
@@ -52,7 +81,7 @@
     function renderLibraryPicker(preset) {
         if (!els['profile-libraries']) return;
         if (!state.libraries.length) {
-            els['profile-libraries'].innerHTML = '<div class="text-sm text-jg-text-muted">Aucune bibliothèque Jellyfin chargée.</div>';
+            els['profile-libraries'].innerHTML = '<div class="text-sm text-jg-text-muted">Aucune bibliotheque Jellyfin chargee.</div>';
             return;
         }
         const selected = new Set(preset?.enabled_folder_ids || []);
@@ -75,22 +104,65 @@
         els['profile-name'].value = preset.name || '';
         els['profile-description'].value = preset.description || '';
         els['profile-admin'].checked = !!preset.is_administrator;
+        els['profile-hidden'].checked = !!preset.is_hidden;
+        els['profile-disabled'].checked = !!preset.is_disabled;
         els['profile-all-folders'].checked = !!preset.enable_all_folders;
         els['profile-download'].checked = !!preset.enable_download;
         els['profile-remote'].checked = preset.enable_remote_access !== false;
+        els['profile-playback'].checked = preset.enable_media_playback !== false;
+        els['profile-audio-transcode'].checked = preset.enable_audio_playback_transcoding !== false;
+        els['profile-video-transcode'].checked = preset.enable_video_playback_transcoding !== false;
+        els['profile-remux'].checked = preset.enable_playback_remuxing !== false;
+        els['profile-live-tv'].checked = !!preset.enable_live_tv_access;
+        els['profile-live-tv-management'].checked = !!preset.enable_live_tv_management;
+        els['profile-public-sharing'].checked = !!preset.enable_public_sharing;
+        els['profile-content-deletion'].checked = !!preset.enable_content_deletion;
+        els['profile-sync-transcoding'].checked = !!preset.enable_sync_transcoding;
+        els['profile-syncplay'].value = preset.syncplay_access || '';
         els['profile-disable-days'].value = String(preset.disable_after_days || 0);
+        els['profile-delete-days'].value = String(preset.delete_after_days || 0);
         els['profile-sessions'].value = String(preset.max_sessions || 0);
         els['profile-bitrate'].value = String(preset.bitrate_limit || 0);
-        els['profile-can-invite'].checked = !!preset.can_invite;
+        els['profile-parental-rating'].value = String(preset.max_parental_rating || 0);
+        els['profile-invalid-login'].value = String(preset.invalid_login_attempt_count || 0);
+        els['profile-login-lockout'].value = String(preset.login_attempts_before_lockout || 0);
+        els['profile-can-invite'].checked = !!(preset.can_invite || preset.can_create_invitations);
+        els['profile-can-temp-invite'].checked = !!preset.can_create_temporary_invitations;
         els['profile-target-preset'].value = preset.target_preset_id || '';
         els['profile-quota-day'].value = String(preset.invite_quota_day || 0);
-        els['profile-quota-month'].value = String(preset.invite_quota_month || 0);
+        els['profile-quota-month'].value = String(preset.invite_quota_month || preset.invite_quota || 0);
         els['profile-link-days'].value = String(preset.invite_link_validity_days || 0);
         els['profile-max-uses'].value = String(preset.invite_max_uses || 0);
+        els['profile-temp-default'].value = String(preset.default_temporary_duration_days || 0);
+        els['profile-temp-max'].value = String(preset.max_temporary_duration_days || 0);
+        els['profile-is-temporary'].checked = !!preset.is_temporary;
+        els['profile-account-default'].value = String(preset.default_account_duration_days || 0);
+        els['profile-account-max'].value = String(preset.max_account_duration_days || 0);
         els['profile-editor-title'].textContent = presetName(preset);
         els['profile-editor-subtitle'].textContent = preset.id ? `ID ${preset.id}` : 'Nouveau profil';
+        setList('profile-blocked-folders', preset.blocked_media_folders);
+        setList('profile-deletion-folders', preset.enable_content_deletion_from_folders);
+        setList('profile-allowed-tags', preset.allowed_tags);
+        setList('profile-blocked-tags', [...(preset.blocked_tags || []), ...(preset.block_unrated_items || [])]);
+        setList('profile-home-sections', preset.display_preferences?.home_sections);
+        setList('profile-ordered-views', preset.user_configuration?.ordered_views);
+        setList('profile-grouped-folders', preset.user_configuration?.grouped_folders);
+        setList('profile-home-excludes', [
+            ...(preset.user_configuration?.my_media_excludes || []),
+            ...(preset.user_configuration?.latest_items_excludes || []),
+        ]);
+        els['profile-backdrops'].checked = !!preset.display_preferences?.enable_backdrops;
+        els['profile-theme-songs'].checked = !!preset.display_preferences?.enable_theme_songs;
+        els['profile-theme-videos'].checked = !!preset.display_preferences?.enable_theme_videos;
+        els['profile-page-size'].value = String(preset.display_preferences?.library_page_size || 0);
+        setList('profile-allowed-targets', preset.allowed_target_preset_ids);
+        setList('profile-allowed-temp-targets', preset.allowed_temporary_preset_ids);
+        setList('profile-ldap-groups', preset.ldap_groups);
+        setList('profile-devices', preset.enabled_devices);
+        setList('profile-channels', [...(preset.enabled_channels || []), ...(preset.blocked_channels || []).map((v) => `!${v}`)]);
         renderLibraryPicker(preset);
         renderList();
+        renderTabs();
     }
 
     function collectForm() {
@@ -98,25 +170,79 @@
         const current = state.presets[index] || {};
         const enabledFolderIDs = Array.from(els['profile-libraries'].querySelectorAll('input:checked')).map((input) => input.value).filter(Boolean);
         const id = (els['profile-id'].value || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+        const channels = list('profile-channels');
+        const blockedChannels = channels.filter((v) => v.startsWith('!')).map((v) => v.slice(1)).filter(Boolean);
+        const enabledChannels = channels.filter((v) => !v.startsWith('!'));
+        const homeExcludes = list('profile-home-excludes');
         return {
             ...current,
             id,
             name: (els['profile-name'].value || '').trim() || id || 'Profil',
             description: (els['profile-description'].value || '').trim(),
             is_administrator: !!els['profile-admin'].checked,
+            is_hidden: !!els['profile-hidden'].checked,
+            is_disabled: !!els['profile-disabled'].checked,
             enable_all_folders: !!els['profile-all-folders'].checked,
             enabled_folder_ids: enabledFolderIDs,
+            blocked_media_folders: list('profile-blocked-folders'),
+            enable_all_devices: list('profile-devices').length === 0,
+            enabled_devices: list('profile-devices'),
+            enable_all_channels: enabledChannels.length === 0,
+            enabled_channels: enabledChannels,
+            blocked_channels: blockedChannels,
             enable_download: !!els['profile-download'].checked,
+            enable_media_playback: !!els['profile-playback'].checked,
+            enable_audio_playback_transcoding: !!els['profile-audio-transcode'].checked,
+            enable_video_playback_transcoding: !!els['profile-video-transcode'].checked,
+            enable_playback_remuxing: !!els['profile-remux'].checked,
             enable_remote_access: !!els['profile-remote'].checked,
-            disable_after_days: num('profile-disable-days'),
+            enable_live_tv_access: !!els['profile-live-tv'].checked,
+            enable_live_tv_management: !!els['profile-live-tv-management'].checked,
+            enable_public_sharing: !!els['profile-public-sharing'].checked,
+            enable_content_deletion: !!els['profile-content-deletion'].checked,
+            enable_content_deletion_from_folders: list('profile-deletion-folders'),
+            enable_sync_transcoding: !!els['profile-sync-transcoding'].checked,
+            syncplay_access: (els['profile-syncplay'].value || '').trim(),
+            invalid_login_attempt_count: num('profile-invalid-login'),
+            login_attempts_before_lockout: num('profile-login-lockout'),
             max_sessions: num('profile-sessions'),
             bitrate_limit: num('profile-bitrate'),
+            disable_after_days: num('profile-disable-days'),
+            delete_after_days: num('profile-delete-days'),
+            max_parental_rating: num('profile-parental-rating'),
+            allowed_tags: list('profile-allowed-tags'),
+            blocked_tags: list('profile-blocked-tags'),
+            user_configuration: {
+                ...(current.user_configuration || {}),
+                ordered_views: list('profile-ordered-views'),
+                grouped_folders: list('profile-grouped-folders'),
+                my_media_excludes: homeExcludes,
+                latest_items_excludes: homeExcludes,
+            },
+            display_preferences: {
+                ...(current.display_preferences || {}),
+                home_sections: list('profile-home-sections'),
+                enable_backdrops: !!els['profile-backdrops'].checked,
+                enable_theme_songs: !!els['profile-theme-songs'].checked,
+                enable_theme_videos: !!els['profile-theme-videos'].checked,
+                library_page_size: num('profile-page-size'),
+            },
             can_invite: !!els['profile-can-invite'].checked,
+            can_create_invitations: !!els['profile-can-invite'].checked,
             target_preset_id: (els['profile-target-preset'].value || '').trim(),
+            allowed_target_preset_ids: list('profile-allowed-targets'),
             invite_quota_day: num('profile-quota-day'),
             invite_quota_month: num('profile-quota-month'),
             invite_link_validity_days: num('profile-link-days'),
             invite_max_uses: num('profile-max-uses'),
+            can_create_temporary_invitations: !!els['profile-can-temp-invite'].checked,
+            allowed_temporary_preset_ids: list('profile-allowed-temp-targets'),
+            default_temporary_duration_days: num('profile-temp-default'),
+            max_temporary_duration_days: num('profile-temp-max'),
+            is_temporary: !!els['profile-is-temporary'].checked,
+            default_account_duration_days: num('profile-account-default'),
+            max_account_duration_days: num('profile-account-max'),
+            ldap_groups: list('profile-ldap-groups'),
         };
     }
 
@@ -151,7 +277,7 @@
             JG.toast(res?.message || 'Sauvegarde impossible', 'error');
             return;
         }
-        JG.toast(res.message || 'Profils sauvegardés', 'success');
+        JG.toast(res.message || 'Profils sauvegardes', 'success');
         await load();
     }
 
@@ -160,11 +286,18 @@
             id: `profil-${state.presets.length + 1}`,
             name: 'Nouveau profil',
             enable_all_folders: true,
+            enable_all_devices: true,
+            enable_all_channels: true,
             enable_download: false,
             enable_remote_access: true,
+            enable_media_playback: true,
+            enable_audio_playback_transcoding: true,
+            enable_video_playback_transcoding: true,
+            enable_playback_remuxing: true,
             max_sessions: 0,
             bitrate_limit: 0,
             can_invite: false,
+            can_create_invitations: false,
         });
         state.selected = state.presets.length - 1;
         fillForm();
@@ -192,11 +325,19 @@
             fillForm();
         });
 
+        els['profile-tabs']?.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-profile-tab-target]');
+            if (!button) return;
+            state.presets[state.selected] = collectForm();
+            state.activeTab = button.dataset.profileTabTarget || 'rights';
+            renderTabs();
+        });
+
         els['profile-form']?.addEventListener('submit', (event) => {
             event.preventDefault();
             state.presets[state.selected] = collectForm();
             renderList();
-            JG.toast('Profil mis à jour dans le brouillon', 'success');
+            JG.toast('Profil mis a jour dans le brouillon', 'success');
         });
         els['profiles-save-btn']?.addEventListener('click', saveAll);
         els['profile-new-btn']?.addEventListener('click', addProfile);

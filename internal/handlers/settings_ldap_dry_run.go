@@ -102,6 +102,7 @@ func normalizeDryRunMappings(mappings []config.GroupPolicyMapping) []config.Grou
 			Source:         "ldap",
 			LDAPGroupDN:    strings.TrimSpace(mapping.LDAPGroupDN),
 			PolicyPresetID: presetID,
+			Priority:       mapping.Priority,
 		})
 	}
 	return normalized

@@ -259,6 +259,17 @@
                                 {{ .T "invitations_ignore_user_expiry_limit" }}
                             </label>
                         </div>
+                        <div class="rounded-xl border border-jg-border bg-black/20 p-4 space-y-3">
+                            <label class="flex items-center gap-2 text-sm" for="inv-is-temporary">
+                                <input type="checkbox" id="inv-is-temporary" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
+                                Invitation temporaire
+                            </label>
+                            <div>
+                                <label class="jg-label text-[10px] uppercase tracking-wider">Duree du compte temporaire</label>
+                                <input type="number" id="inv-account-duration-days" class="jg-input h-10" min="1" value="30" disabled>
+                            </div>
+                            <div id="inv-temp-help" class="text-xs text-jg-text-muted"></div>
+                        </div>
                         <div class="rounded-xl border border-jg-border bg-black/20 p-4">
                             <label class="flex items-center gap-2 text-sm" id="inv-can-invite-wrap">
                                 <input type="checkbox" id="inv-new-user-can-invite" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
@@ -363,6 +374,12 @@
         inviterQuotaMonth: parseInt("{{ .Data.InviteInviterQuotaMonth }}", 10) || 0,
         limitUserExpiryDays: parseInt("{{ .Data.InviteDefaultDisableAfterDays }}", 10) || 0,
         defaultDisableAfterDays: parseInt("{{ .Data.InviteDefaultDisableAfterDays }}", 10) || 0,
+        targetPresetID: '{{ .Data.InviteTargetPresetID }}',
+        allowedTargetPresetIDs: '{{ .Data.InviteAllowedTargetPresetIDs }}',
+        canCreateTemporaryInvitations: "{{ if .Data.InviteCanCreateTemporaryInvitations }}true{{ else }}false{{ end }}" === "true",
+        allowedTemporaryPresetIDs: '{{ .Data.InviteAllowedTemporaryPresetIDs }}',
+        defaultTemporaryDurationDays: parseInt("{{ .Data.InviteDefaultTemporaryDurationDays }}", 10) || 0,
+        maxTemporaryDurationDays: parseInt("{{ .Data.InviteMaxTemporaryDurationDays }}", 10) || 0,
         i18n: {
             linkCopied: '{{ .T "invitations_link_copied" }}',
             copyUnavailable: '{{ .T "invitations_copy_unavailable" }}',

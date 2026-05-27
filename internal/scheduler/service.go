@@ -2,7 +2,9 @@ package scheduler
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log/slog"
 	"math"
@@ -200,6 +202,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 
 		totalCreated := 0
 		totalUpdated := 0
+		processedLDAPUsers := map[string]struct{}{}
 		for _, m := range mappings {
 			if m.Source != "ldap" || m.LDAPGroupDN == "" {
 				continue
@@ -218,6 +221,15 @@ func (s *Service) executeTask(task TaskRecord) error {
 			}
 
 			for _, member := range members {
+				memberKey := strings.ToLower(strings.TrimSpace(member.Username))
+				if memberKey == "" {
+					continue
+				}
+				if _, alreadyProcessed := processedLDAPUsers[memberKey]; alreadyProcessed {
+					continue
+				}
+				processedLDAPUsers[memberKey] = struct{}{}
+
 				if strings.TrimSpace(member.DN) != "" {
 					if err := ldapClient.AddUserToGroup(member.DN, ldapBaseGroup); err != nil {
 						slog.Warn("Scheduler: impossible d'assurer l'appartenance au groupe LDAP de base", "user", member.Username, "group", ldapBaseGroup, "error", err)
@@ -233,21 +245,44 @@ func (s *Service) executeTask(task TaskRecord) error {
 				err := s.db.QueryRow(`SELECT id, jellyfin_id, preset_id, ldap_dn FROM users WHERE username = ?`, member.Username).Scan(&dbUser.ID, &dbUser.JFID, &dbUser.PresetID, &dbUser.LDAPDN)
 
 				if err == sql.ErrNoRows {
-					jfUser, err := s.jf.CreateUser(member.Username, "")
+					mirrorPassword, err := schedulerRandomPassword()
+					if err != nil {
+						slog.Error("Scheduler: impossible de generer le mot de passe miroir Jellyfin", "user", member.Username, "error", err)
+						continue
+					}
+					jfUser, err := s.jf.CreateUser(member.Username, mirrorPassword)
 					if err != nil {
 						slog.Error("Scheduler: echec creation Jellyfin pour utilisateur LDAP", "user", member.Username, "error", err)
 						continue
 					}
-					if err := s.applyPresetToJellyfin(jfUser.ID, preset); err != nil {
+					profileStatus := "applied"
+					profileError := ""
+					var appliedAt interface{} = time.Now()
+					if err := s.applyPresetToJellyfin(jfUser.ID, preset, ldapCfg); err != nil {
+						profileStatus = "failed"
+						profileError = err.Error()
+						appliedAt = nil
 						slog.Warn("Scheduler: echec application preset", "user", member.Username, "error", err)
 					}
-					_, _ = s.db.Exec(`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, preset_id, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, jfUser.ID, member.Username, member.Email, member.DN, m.GroupName, preset.ID, !member.IsDisabled)
+					_, _ = s.db.Exec(`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, preset_id, is_active, profile_apply_status, profile_apply_error, profile_applied_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, jfUser.ID, member.Username, member.Email, member.DN, m.GroupName, preset.ID, !member.IsDisabled, profileStatus, profileError, appliedAt)
 					totalCreated++
 				} else if err == nil {
 					if dbUser.PresetID != preset.ID || dbUser.LDAPDN != member.DN {
 						// Pour un compte existant, la sync LDAP ne force plus les droits Jellyfin.
 						// Elle garde seulement l'association locale; le forçage passe par l'action admin explicite.
-						_, _ = s.db.Exec(`UPDATE users SET preset_id = ?, ldap_dn = ?, group_name = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, preset.ID, member.DN, m.GroupName, dbUser.ID)
+						profileStatus := "pending"
+						profileError := ""
+						var appliedAt interface{}
+						if strings.TrimSpace(dbUser.JFID) != "" {
+							if err := s.applyPresetToJellyfin(dbUser.JFID, preset, ldapCfg); err != nil {
+								profileStatus = "failed"
+								profileError = err.Error()
+							} else {
+								profileStatus = "applied"
+								appliedAt = time.Now()
+							}
+						}
+						_, _ = s.db.Exec(`UPDATE users SET preset_id = ?, ldap_dn = ?, group_name = ?, profile_apply_status = ?, profile_apply_error = ?, profile_applied_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, preset.ID, member.DN, m.GroupName, profileStatus, profileError, appliedAt, dbUser.ID)
 						totalUpdated++
 					}
 				}
@@ -461,36 +496,24 @@ func (s *Service) loadTask(taskID int64) (TaskRecord, error) {
 	return t, nil
 }
 
-func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinPolicyPreset) error {
+func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinPolicyPreset, ldapCfg config.LDAPConfig) error {
 	if s.jf == nil {
 		return fmt.Errorf("client Jellyfin nul")
 	}
 
-	profile := jellyfin.InviteProfile{
-		PresetID:               strings.TrimSpace(strings.ToLower(preset.ID)),
-		EnableAllFolders:       preset.EnableAllFolders,
-		EnabledFolderIDs:       append([]string(nil), preset.EnabledFolderIDs...),
-		EnableDownload:         preset.EnableDownload,
-		EnableRemoteAccess:     preset.EnableRemoteAccess,
-		MaxSessions:            preset.MaxSessions,
-		BitrateLimit:           preset.BitrateLimit,
-		UsernameMinLength:      preset.UsernameMinLength,
-		UsernameMaxLength:      preset.UsernameMaxLength,
-		PasswordMinLength:      preset.PasswordMinLength,
-		PasswordMaxLength:      preset.PasswordMaxLength,
-		PasswordRequireUpper:   preset.RequireUpper,
-		PasswordRequireLower:   preset.RequireLower,
-		PasswordRequireDigit:   preset.RequireDigit,
-		PasswordRequireSpecial: preset.RequireSpecial,
-		DisableAfterDays:       preset.DisableAfterDays,
-		UserExpiryDays:         preset.DisableAfterDays,
-		DeleteAfterDays:        preset.DeleteAfterDays,
-		CanInvite:              preset.CanInvite,
-		UserConfiguration:      preset.UserConfiguration,
-		DisplayPreferences:     preset.DisplayPreferences,
-	}
+	profile := jellyfin.InviteProfileFromPolicyPreset(&preset)
+	profile.LDAPAuthProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPAuthProviderID)
+	profile.LDAPPasswordResetProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPPasswordResetProviderID)
 
 	return s.jf.ApplyInviteProfile(jfUserID, profile)
+}
+
+func schedulerRandomPassword() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 func resolveLDAPBaseGroup(cfg config.LDAPConfig) string {

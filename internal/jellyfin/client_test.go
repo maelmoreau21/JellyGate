@@ -535,13 +535,41 @@ func TestApplyInviteProfileAppliesPolicyConfigurationAndDisplayPreferences(t *te
 
 	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
 	profile := InviteProfile{
-		TemplateUserID:     "template",
-		EnableAllFolders:   false,
-		EnabledFolderIDs:   []string{"movies", "shows"},
-		EnableDownload:     false,
-		EnableRemoteAccess: true,
-		MaxSessions:        2,
-		BitrateLimit:       4000,
+		TemplateUserID:                   "template",
+		IsHidden:                         true,
+		EnableAllFolders:                 false,
+		EnabledFolderIDs:                 []string{"movies", "shows"},
+		BlockedMediaFolders:              []string{"secret"},
+		EnableAllDevices:                 false,
+		EnabledDevices:                   []string{"tv"},
+		EnableAllChannels:                false,
+		EnabledChannels:                  []string{"channel-a"},
+		BlockedChannels:                  []string{"channel-b"},
+		EnableDownload:                   false,
+		EnableMediaPlayback:              true,
+		EnableAudioPlaybackTranscoding:   false,
+		EnableVideoPlaybackTranscoding:   true,
+		EnablePlaybackRemuxing:           true,
+		EnableRemoteAccess:               true,
+		EnableLiveTvAccess:               true,
+		EnableContentDeletion:            true,
+		EnableContentDeletionFromFolders: []string{"movies"},
+		EnablePublicSharing:              true,
+		EnableSyncTranscoding:            true,
+		EnableMediaConversion:            true,
+		ForceRemoteSourceTranscoding:     true,
+		SyncPlayAccess:                   "CreateAndJoinGroups",
+		InvalidLoginAttemptCount:         1,
+		LoginAttemptsBeforeLockout:       5,
+		MaxSessions:                      2,
+		BitrateLimit:                     4000,
+		AllowedTags:                      []string{"kids"},
+		BlockedTags:                      []string{"horror"},
+		MaxParentalRating:                1000,
+		BlockUnratedItems:                []string{"Movie"},
+		AccessSchedules:                  []AccessSchedule{{DayOfWeek: "Monday", StartHour: 8, EndHour: 22}},
+		LDAPAuthProviderID:               "ldap-auth",
+		LDAPPasswordResetProviderID:      "ldap-reset",
 		UserConfiguration: config.JellyfinPresetUserConfiguration{
 			DisplayMissingEpisodes: true,
 			HidePlayedInLatest:     true,
@@ -573,11 +601,14 @@ func TestApplyInviteProfileAppliesPolicyConfigurationAndDisplayPreferences(t *te
 		t.Fatalf("ApplyInviteProfile() error = %v", err)
 	}
 
-	if !policyPayload.EnableMediaPlayback || !policyPayload.EnableAudioPlaybackTranscoding || !policyPayload.EnableVideoPlaybackTranscoding {
-		t.Fatalf("playback capabilities should be enabled: %+v", policyPayload)
+	if !policyPayload.EnableMediaPlayback || policyPayload.EnableAudioPlaybackTranscoding || !policyPayload.EnableVideoPlaybackTranscoding || !policyPayload.EnablePlaybackRemuxing {
+		t.Fatalf("playback capabilities not applied: %+v", policyPayload)
 	}
 	if policyPayload.IsAdministrator || policyPayload.IsDisabled {
 		t.Fatalf("invited user should not be admin or disabled: %+v", policyPayload)
+	}
+	if !policyPayload.IsHidden {
+		t.Fatalf("IsHidden = false, want true")
 	}
 	if policyPayload.EnableAllFolders {
 		t.Fatalf("EnableAllFolders = true, want false")
@@ -585,8 +616,32 @@ func TestApplyInviteProfileAppliesPolicyConfigurationAndDisplayPreferences(t *te
 	if got := policyPayload.EnabledFolders; len(got) != 2 || got[0] != "movies" || got[1] != "shows" {
 		t.Fatalf("EnabledFolders = %#v", got)
 	}
+	if got := policyPayload.BlockedMediaFolders; len(got) != 1 || got[0] != "secret" {
+		t.Fatalf("BlockedMediaFolders = %#v", got)
+	}
+	if policyPayload.EnableAllDevices || len(policyPayload.EnabledDevices) != 1 || policyPayload.EnabledDevices[0] != "tv" {
+		t.Fatalf("device policy not applied: %+v", policyPayload)
+	}
+	if policyPayload.EnableAllChannels || len(policyPayload.EnabledChannels) != 1 || policyPayload.EnabledChannels[0] != "channel-a" || len(policyPayload.BlockedChannels) != 1 {
+		t.Fatalf("channel policy not applied: %+v", policyPayload)
+	}
 	if policyPayload.MaxActiveSessions != 2 || policyPayload.RemoteClientBitrateLimit != 4000 {
 		t.Fatalf("policy limits not applied: %+v", policyPayload)
+	}
+	if !policyPayload.EnableLiveTvAccess || !policyPayload.EnableContentDeletion || len(policyPayload.EnableContentDeletionFromFolders) != 1 || !policyPayload.EnablePublicSharing || !policyPayload.EnableSyncTranscoding || !policyPayload.EnableMediaConversion || !policyPayload.ForceRemoteSourceTranscoding {
+		t.Fatalf("extended policy toggles not applied: %+v", policyPayload)
+	}
+	if policyPayload.SyncPlayAccess != "CreateAndJoinGroups" || policyPayload.InvalidLoginAttemptCount != 1 || policyPayload.LoginAttemptsBeforeLockout != 5 {
+		t.Fatalf("lockout/syncplay not applied: %+v", policyPayload)
+	}
+	if policyPayload.AuthenticationProviderID != "ldap-auth" || policyPayload.PasswordResetProviderID != "ldap-reset" {
+		t.Fatalf("LDAP provider IDs not applied: %+v", policyPayload)
+	}
+	if len(policyPayload.AllowedTags) != 1 || policyPayload.AllowedTags[0] != "kids" || len(policyPayload.BlockedTags) != 1 || policyPayload.MaxParentalRating != 1000 || len(policyPayload.BlockUnratedItems) != 1 {
+		t.Fatalf("restriction policy not applied: %+v", policyPayload)
+	}
+	if len(policyPayload.AccessSchedules) != 1 || policyPayload.AccessSchedules[0].DayOfWeek != "Monday" {
+		t.Fatalf("AccessSchedules = %#v", policyPayload.AccessSchedules)
 	}
 
 	if userConfigPayload["AudioLanguagePreference"] != "fr" {
@@ -665,6 +720,54 @@ func TestApplyInviteProfileCanApplyAdministratorPolicy(t *testing.T) {
 	}
 	if !policyPayload.IsAdministrator {
 		t.Fatalf("IsAdministrator = false, want true: %+v", policyPayload)
+	}
+}
+
+func TestInviteProfileFromPolicyPresetMapsExtendedProfile(t *testing.T) {
+	preset := config.JellyfinPolicyPreset{
+		ID:                               "Sponsor",
+		IsHidden:                         true,
+		EnableAllFolders:                 false,
+		EnabledFolderIDs:                 []string{"movies"},
+		BlockedMediaFolders:              []string{"blocked"},
+		EnableAllDevices:                 false,
+		EnabledDevices:                   []string{"web"},
+		EnableAllChannels:                false,
+		EnabledChannels:                  []string{"news"},
+		BlockedChannels:                  []string{"sports"},
+		EnableMediaPlayback:              true,
+		EnableVideoPlaybackTranscoding:   true,
+		EnablePlaybackRemuxing:           true,
+		EnableRemoteAccess:               true,
+		EnableLiveTvAccess:               true,
+		EnableContentDeletionFromFolders: []string{"movies"},
+		AllowedTags:                      []string{"family"},
+		BlockedTags:                      []string{"adult"},
+		MaxParentalRating:                1000,
+		BlockUnratedItems:                []string{"Movie"},
+		AccessSchedules:                  []config.JellyfinPresetAccessSchedule{{DayOfWeek: "Friday", StartHour: 10, EndHour: 23}},
+		IsTemporary:                      true,
+		DefaultAccountDurationDays:       10,
+		MaxAccountDurationDays:           20,
+		LDAPGroups:                       []string{"cn=jellyfin"},
+		CanCreateInvitations:             true,
+	}
+
+	profile := InviteProfileFromPolicyPreset(&preset)
+	if profile.PresetID != "sponsor" || !profile.IsHidden || !profile.EnableRemoteAccess {
+		t.Fatalf("basic fields not mapped: %+v", profile)
+	}
+	if len(profile.EnabledFolderIDs) != 1 || profile.EnabledFolderIDs[0] != "movies" || len(profile.BlockedMediaFolders) != 1 {
+		t.Fatalf("folder fields not mapped: %+v", profile)
+	}
+	if profile.EnableAllDevices || len(profile.EnabledDevices) != 1 || profile.EnableAllChannels || len(profile.EnabledChannels) != 1 || len(profile.BlockedChannels) != 1 {
+		t.Fatalf("device/channel fields not mapped: %+v", profile)
+	}
+	if len(profile.AccessSchedules) != 1 || profile.AccessSchedules[0].DayOfWeek != "Friday" {
+		t.Fatalf("access schedules not mapped: %#v", profile.AccessSchedules)
+	}
+	if !profile.IsTemporary || profile.AccountDurationDays != 10 || len(profile.LDAPGroups) != 1 || !profile.CanInvite {
+		t.Fatalf("lifecycle/invitation fields not mapped: %+v", profile)
 	}
 }
 

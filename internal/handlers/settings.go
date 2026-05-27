@@ -202,6 +202,14 @@ func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
 	if input.ProvisionMode == "" {
 		input.ProvisionMode = "hybrid"
 	}
+	input.JellyfinLDAPAuthProviderID = strings.TrimSpace(input.JellyfinLDAPAuthProviderID)
+	if input.JellyfinLDAPAuthProviderID == "" {
+		input.JellyfinLDAPAuthProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin"
+	}
+	input.JellyfinLDAPPasswordResetProviderID = strings.TrimSpace(input.JellyfinLDAPPasswordResetProviderID)
+	if input.JellyfinLDAPPasswordResetProviderID == "" {
+		input.JellyfinLDAPPasswordResetProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider"
+	}
 
 	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
 	input.InviterGroup = strings.TrimSpace(input.InviterGroup)

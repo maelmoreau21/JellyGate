@@ -144,6 +144,10 @@ type LDAPConfig struct {
 	InviterGroup        string `json:"inviter_group"`
 	AdministratorsGroup string `json:"administrators_group"`
 
+	// Providers Jellyfin utilises pour les comptes miroir LDAP.
+	JellyfinLDAPAuthProviderID          string `json:"jellyfin_ldap_auth_provider_id"`
+	JellyfinLDAPPasswordResetProviderID string `json:"jellyfin_ldap_password_reset_provider_id"`
+
 	Domain string `json:"domain"` // Domaine AD (ex: home.lan)
 }
 
@@ -1090,41 +1094,87 @@ func NormalizeJellyfinPresetDisplayPreferences(cfg JellyfinPresetDisplayPreferen
 
 // JellyfinPolicyPreset décrit un preset réutilisable pour les politiques Jellyfin.
 type JellyfinPolicyPreset struct {
-	ID                 string                           `json:"id"`
-	Name               string                           `json:"name"`
-	Description        string                           `json:"description"`
-	IsAdministrator    bool                             `json:"is_administrator"`
-	EnableAllFolders   bool                             `json:"enable_all_folders"`
-	EnabledFolderIDs   []string                         `json:"enabled_folder_ids"`
-	EnableDownload     bool                             `json:"enable_download"`
-	EnableRemoteAccess bool                             `json:"enable_remote_access"`
-	MaxSessions        int                              `json:"max_sessions"`
-	BitrateLimit       int                              `json:"bitrate_limit"`
-	TemplateUserID     string                           `json:"template_user_id"`
-	UserConfiguration  JellyfinPresetUserConfiguration  `json:"user_configuration"`
-	DisplayPreferences JellyfinPresetDisplayPreferences `json:"display_preferences"`
-	UsernameMinLength  int                              `json:"username_min_length"`
-	UsernameMaxLength  int                              `json:"username_max_length"`
-	PasswordMinLength  int                              `json:"password_min_length"`
-	PasswordMaxLength  int                              `json:"password_max_length"`
-	RequireUpper       bool                             `json:"require_upper"`
-	RequireLower       bool                             `json:"require_lower"`
-	RequireDigit       bool                             `json:"require_digit"`
-	RequireSpecial     bool                             `json:"require_special"`
-	DisableAfterDays   int                              `json:"disable_after_days"`
-	ExpiryAction       string                           `json:"expiry_action"`
-	DeleteAfterDays    int                              `json:"delete_after_days"`
+	ID                               string                           `json:"id"`
+	Name                             string                           `json:"name"`
+	Description                      string                           `json:"description"`
+	IsAdministrator                  bool                             `json:"is_administrator"`
+	IsHidden                         bool                             `json:"is_hidden"`
+	IsDisabled                       bool                             `json:"is_disabled"`
+	EnableAllFolders                 bool                             `json:"enable_all_folders"`
+	EnabledFolderIDs                 []string                         `json:"enabled_folder_ids"`
+	BlockedMediaFolders              []string                         `json:"blocked_media_folders"`
+	EnableDownload                   bool                             `json:"enable_download"`
+	EnableRemoteAccess               bool                             `json:"enable_remote_access"`
+	EnableAllDevices                 bool                             `json:"enable_all_devices"`
+	EnabledDevices                   []string                         `json:"enabled_devices"`
+	EnableAllChannels                bool                             `json:"enable_all_channels"`
+	EnabledChannels                  []string                         `json:"enabled_channels"`
+	BlockedChannels                  []string                         `json:"blocked_channels"`
+	EnableMediaPlayback              bool                             `json:"enable_media_playback"`
+	EnableAudioPlaybackTranscoding   bool                             `json:"enable_audio_playback_transcoding"`
+	EnableVideoPlaybackTranscoding   bool                             `json:"enable_video_playback_transcoding"`
+	EnablePlaybackRemuxing           bool                             `json:"enable_playback_remuxing"`
+	ForceRemoteSourceTranscoding     bool                             `json:"force_remote_source_transcoding"`
+	EnableLiveTvAccess               bool                             `json:"enable_live_tv_access"`
+	EnableLiveTvManagement           bool                             `json:"enable_live_tv_management"`
+	EnableSharedDeviceControl        bool                             `json:"enable_shared_device_control"`
+	EnableContentDeletion            bool                             `json:"enable_content_deletion"`
+	EnableContentDeletionFromFolders []string                         `json:"enable_content_deletion_from_folders"`
+	EnablePublicSharing              bool                             `json:"enable_public_sharing"`
+	EnableSyncTranscoding            bool                             `json:"enable_sync_transcoding"`
+	EnableMediaConversion            bool                             `json:"enable_media_conversion"`
+	SyncPlayAccess                   string                           `json:"syncplay_access"`
+	InvalidLoginAttemptCount         int                              `json:"invalid_login_attempt_count"`
+	LoginAttemptsBeforeLockout       int                              `json:"login_attempts_before_lockout"`
+	MaxSessions                      int                              `json:"max_sessions"`
+	BitrateLimit                     int                              `json:"bitrate_limit"`
+	TemplateUserID                   string                           `json:"template_user_id"`
+	UserConfiguration                JellyfinPresetUserConfiguration  `json:"user_configuration"`
+	DisplayPreferences               JellyfinPresetDisplayPreferences `json:"display_preferences"`
+	AllowedTags                      []string                         `json:"allowed_tags"`
+	BlockedTags                      []string                         `json:"blocked_tags"`
+	MaxParentalRating                int                              `json:"max_parental_rating"`
+	BlockUnratedItems                []string                         `json:"block_unrated_items"`
+	AccessSchedules                  []JellyfinPresetAccessSchedule   `json:"access_schedules"`
+	UsernameMinLength                int                              `json:"username_min_length"`
+	UsernameMaxLength                int                              `json:"username_max_length"`
+	PasswordMinLength                int                              `json:"password_min_length"`
+	PasswordMaxLength                int                              `json:"password_max_length"`
+	RequireUpper                     bool                             `json:"require_upper"`
+	RequireLower                     bool                             `json:"require_lower"`
+	RequireDigit                     bool                             `json:"require_digit"`
+	RequireSpecial                   bool                             `json:"require_special"`
+	DisableAfterDays                 int                              `json:"disable_after_days"`
+	ExpiryAction                     string                           `json:"expiry_action"`
+	DeleteAfterDays                  int                              `json:"delete_after_days"`
+	IsTemporary                      bool                             `json:"is_temporary"`
+	DefaultAccountDurationDays       int                              `json:"default_account_duration_days"`
+	MaxAccountDurationDays           int                              `json:"max_account_duration_days"`
+	LDAPGroups                       []string                         `json:"ldap_groups"`
 
 	// Parrainage / Sponsorship
-	CanInvite              bool   `json:"can_invite"`
-	TargetPresetID         string `json:"target_preset_id"`          // Le preset assigne aux personnes invitees
-	InviteQuota            int    `json:"invite_quota"`              // Legacy: quota mensuel d'invitations
-	InviteQuotaDay         int    `json:"invite_quota_day"`          // Quota journalier d'invitations
-	InviteQuotaMonth       int    `json:"invite_quota_month"`        // Quota mensuel d'invitations
-	InviteMaxUses          int    `json:"invite_max_uses"`           // Nombre d'utilisations par lien d'invitation
-	InviteMaxLinkHours     int    `json:"invite_max_link_hours"`     // Legacy: duree de validite d'un lien en heures
-	InviteLinkValidityDays int    `json:"invite_link_validity_days"` // Duree de validite d'un lien en jours
-	InviteAllowLanguage    bool   `json:"invite_allow_language"`     // Si vrai, le parrain peut choisir la langue de l'invitation
+	CanInvite                     bool     `json:"can_invite"`
+	CanCreateInvitations          bool     `json:"can_create_invitations"`
+	TargetPresetID                string   `json:"target_preset_id"`          // Le preset assigne aux personnes invitees
+	AllowedTargetPresetIDs        []string `json:"allowed_target_preset_ids"` // Profils cibles autorises
+	InviteQuota                   int      `json:"invite_quota"`              // Legacy: quota mensuel d'invitations
+	InviteQuotaDay                int      `json:"invite_quota_day"`          // Quota journalier d'invitations
+	InviteQuotaMonth              int      `json:"invite_quota_month"`        // Quota mensuel d'invitations
+	InviteMaxUses                 int      `json:"invite_max_uses"`           // Nombre d'utilisations par lien d'invitation
+	InviteMaxLinkHours            int      `json:"invite_max_link_hours"`     // Legacy: duree de validite d'un lien en heures
+	InviteLinkValidityDays        int      `json:"invite_link_validity_days"` // Duree de validite d'un lien en jours
+	InviteAllowLanguage           bool     `json:"invite_allow_language"`     // Si vrai, le parrain peut choisir la langue de l'invitation
+	CanCreateTemporaryInvitations bool     `json:"can_create_temporary_invitations"`
+	AllowedTemporaryPresetIDs     []string `json:"allowed_temporary_preset_ids"`
+	DefaultTemporaryDurationDays  int      `json:"default_temporary_duration_days"`
+	MaxTemporaryDurationDays      int      `json:"max_temporary_duration_days"`
+}
+
+// JellyfinPresetAccessSchedule represente une plage horaire d'acces Jellyfin.
+type JellyfinPresetAccessSchedule struct {
+	DayOfWeek string `json:"day_of_week"`
+	StartHour int    `json:"start_hour"`
+	EndHour   int    `json:"end_hour"`
 }
 
 // InvitationProfileConfig contient la politique appliquee a chaque nouvelle invitation.
@@ -1195,6 +1245,7 @@ type GroupPolicyMapping struct {
 	Source         string `json:"source"` // internal|ldap
 	LDAPGroupDN    string `json:"ldap_group_dn"`
 	PolicyPresetID string `json:"policy_preset_id"`
+	Priority       int    `json:"priority"`
 }
 
 // PortalLinksConfig contient les URLs publiques exposees dans l'UI et les emails.
@@ -1218,136 +1269,186 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 
 	return []JellyfinPolicyPreset{
 		{
-			ID:                 "standard",
-			Name:               "Standard",
-			Description:        "Profil par defaut: acces distant actif, telechargement actif.",
-			EnableAllFolders:   true,
-			EnableDownload:     true,
-			EnableRemoteAccess: true,
-			MaxSessions:        0,
-			BitrateLimit:       0,
-			UserConfiguration:  defaultUserConfiguration,
-			DisplayPreferences: defaultDisplayPreferences,
-			UsernameMinLength:  3,
-			UsernameMaxLength:  32,
-			PasswordMinLength:  8,
-			PasswordMaxLength:  128,
-			DisableAfterDays:   0,
-			ExpiryAction:       "disable",
-			DeleteAfterDays:    0,
+			ID:                             "standard",
+			Name:                           "Standard",
+			Description:                    "Profil par defaut: acces distant actif, telechargement actif.",
+			EnableAllFolders:               true,
+			EnableAllDevices:               true,
+			EnableAllChannels:              true,
+			EnableDownload:                 true,
+			EnableRemoteAccess:             true,
+			EnableMediaPlayback:            true,
+			EnableAudioPlaybackTranscoding: true,
+			EnableVideoPlaybackTranscoding: true,
+			EnablePlaybackRemuxing:         true,
+			MaxSessions:                    0,
+			BitrateLimit:                   0,
+			UserConfiguration:              defaultUserConfiguration,
+			DisplayPreferences:             defaultDisplayPreferences,
+			UsernameMinLength:              3,
+			UsernameMaxLength:              32,
+			PasswordMinLength:              8,
+			PasswordMaxLength:              128,
+			DisableAfterDays:               0,
+			ExpiryAction:                   "disable",
+			DeleteAfterDays:                0,
 		},
 		{
-			ID:                 "limited",
-			Name:               "Limite",
-			Description:        "Profil restreint: telechargement coupe, 2 sessions max.",
-			EnableAllFolders:   true,
-			EnableDownload:     false,
-			EnableRemoteAccess: true,
-			MaxSessions:        2,
-			BitrateLimit:       4000,
-			UserConfiguration:  defaultUserConfiguration,
-			DisplayPreferences: defaultDisplayPreferences,
-			UsernameMinLength:  3,
-			UsernameMaxLength:  32,
-			PasswordMinLength:  10,
-			PasswordMaxLength:  128,
-			RequireDigit:       true,
-			DisableAfterDays:   0,
-			ExpiryAction:       "disable",
-			DeleteAfterDays:    0,
+			ID:                             "limited",
+			Name:                           "Limite",
+			Description:                    "Profil restreint: telechargement coupe, 2 sessions max.",
+			EnableAllFolders:               true,
+			EnableAllDevices:               true,
+			EnableAllChannels:              true,
+			EnableDownload:                 false,
+			EnableRemoteAccess:             true,
+			EnableMediaPlayback:            true,
+			EnableAudioPlaybackTranscoding: true,
+			EnableVideoPlaybackTranscoding: true,
+			EnablePlaybackRemuxing:         true,
+			MaxSessions:                    2,
+			BitrateLimit:                   4000,
+			UserConfiguration:              defaultUserConfiguration,
+			DisplayPreferences:             defaultDisplayPreferences,
+			UsernameMinLength:              3,
+			UsernameMaxLength:              32,
+			PasswordMinLength:              10,
+			PasswordMaxLength:              128,
+			RequireDigit:                   true,
+			DisableAfterDays:               0,
+			ExpiryAction:                   "disable",
+			DeleteAfterDays:                0,
 		},
 		{
-			ID:                 "family",
-			Name:               "Famille",
-			Description:        "Acces familial durable: toutes les bibliotheques, telechargements actifs, sans parrainage.",
-			EnableAllFolders:   true,
-			EnableDownload:     true,
-			EnableRemoteAccess: true,
-			MaxSessions:        0,
-			BitrateLimit:       0,
-			UserConfiguration:  defaultUserConfiguration,
-			DisplayPreferences: defaultDisplayPreferences,
-			UsernameMinLength:  3,
-			UsernameMaxLength:  32,
-			PasswordMinLength:  8,
-			PasswordMaxLength:  128,
-			DisableAfterDays:   0,
-			ExpiryAction:       "disable",
-			DeleteAfterDays:    0,
-			CanInvite:          false,
+			ID:                             "family",
+			Name:                           "Famille",
+			Description:                    "Acces familial durable: toutes les bibliotheques, telechargements actifs, sans parrainage.",
+			EnableAllFolders:               true,
+			EnableAllDevices:               true,
+			EnableAllChannels:              true,
+			EnableDownload:                 true,
+			EnableRemoteAccess:             true,
+			EnableMediaPlayback:            true,
+			EnableAudioPlaybackTranscoding: true,
+			EnableVideoPlaybackTranscoding: true,
+			EnablePlaybackRemuxing:         true,
+			MaxSessions:                    0,
+			BitrateLimit:                   0,
+			UserConfiguration:              defaultUserConfiguration,
+			DisplayPreferences:             defaultDisplayPreferences,
+			UsernameMinLength:              3,
+			UsernameMaxLength:              32,
+			PasswordMinLength:              8,
+			PasswordMaxLength:              128,
+			DisableAfterDays:               0,
+			ExpiryAction:                   "disable",
+			DeleteAfterDays:                0,
+			CanInvite:                      false,
 		},
 		{
-			ID:                 "temporary_guest",
-			Name:               "Invité temporaire",
-			Description:        "Acces limite pour une invitation courte: 30 jours, 2 sessions, debit plafonne.",
-			EnableAllFolders:   true,
-			EnableDownload:     false,
-			EnableRemoteAccess: true,
-			MaxSessions:        2,
-			BitrateLimit:       4000,
-			UserConfiguration:  defaultUserConfiguration,
-			DisplayPreferences: defaultDisplayPreferences,
-			UsernameMinLength:  3,
-			UsernameMaxLength:  32,
-			PasswordMinLength:  10,
-			PasswordMaxLength:  128,
-			RequireDigit:       true,
-			DisableAfterDays:   30,
-			ExpiryAction:       "disable",
-			DeleteAfterDays:    0,
-			CanInvite:          false,
+			ID:                             "temporary_guest",
+			Name:                           "Invité temporaire",
+			Description:                    "Acces limite pour une invitation courte: 30 jours, 2 sessions, debit plafonne.",
+			EnableAllFolders:               true,
+			EnableAllDevices:               true,
+			EnableAllChannels:              true,
+			EnableDownload:                 false,
+			EnableRemoteAccess:             true,
+			EnableMediaPlayback:            true,
+			EnableAudioPlaybackTranscoding: true,
+			EnableVideoPlaybackTranscoding: true,
+			EnablePlaybackRemuxing:         true,
+			MaxSessions:                    2,
+			BitrateLimit:                   4000,
+			UserConfiguration:              defaultUserConfiguration,
+			DisplayPreferences:             defaultDisplayPreferences,
+			UsernameMinLength:              3,
+			UsernameMaxLength:              32,
+			PasswordMinLength:              10,
+			PasswordMaxLength:              128,
+			RequireDigit:                   true,
+			DisableAfterDays:               30,
+			ExpiryAction:                   "disable",
+			DeleteAfterDays:                0,
+			IsTemporary:                    true,
+			DefaultAccountDurationDays:     30,
+			MaxAccountDurationDays:         30,
+			CanInvite:                      false,
 		},
 		{
-			ID:                 "admin",
-			Name:               "Admin",
-			Description:        "Profil administrateur Jellyfin, reserve aux administrateurs JellyGate.",
-			IsAdministrator:    true,
-			EnableAllFolders:   true,
-			EnableDownload:     true,
-			EnableRemoteAccess: true,
-			MaxSessions:        0,
-			BitrateLimit:       0,
-			UserConfiguration:  defaultUserConfiguration,
-			DisplayPreferences: defaultDisplayPreferences,
-			UsernameMinLength:  3,
-			UsernameMaxLength:  32,
-			PasswordMinLength:  12,
-			PasswordMaxLength:  128,
-			RequireUpper:       true,
-			RequireLower:       true,
-			RequireDigit:       true,
-			DisableAfterDays:   0,
-			ExpiryAction:       "disable",
-			DeleteAfterDays:    0,
-			CanInvite:          true,
+			ID:                             "admin",
+			Name:                           "Admin",
+			Description:                    "Profil administrateur Jellyfin, reserve aux administrateurs JellyGate.",
+			IsAdministrator:                true,
+			EnableAllFolders:               true,
+			EnableAllDevices:               true,
+			EnableAllChannels:              true,
+			EnableDownload:                 true,
+			EnableRemoteAccess:             true,
+			EnableMediaPlayback:            true,
+			EnableAudioPlaybackTranscoding: true,
+			EnableVideoPlaybackTranscoding: true,
+			EnablePlaybackRemuxing:         true,
+			EnableLiveTvAccess:             true,
+			EnableLiveTvManagement:         true,
+			EnableSharedDeviceControl:      true,
+			EnableContentDeletion:          true,
+			MaxSessions:                    0,
+			BitrateLimit:                   0,
+			UserConfiguration:              defaultUserConfiguration,
+			DisplayPreferences:             defaultDisplayPreferences,
+			UsernameMinLength:              3,
+			UsernameMaxLength:              32,
+			PasswordMinLength:              12,
+			PasswordMaxLength:              128,
+			RequireUpper:                   true,
+			RequireLower:                   true,
+			RequireDigit:                   true,
+			DisableAfterDays:               0,
+			ExpiryAction:                   "disable",
+			DeleteAfterDays:                0,
+			CanInvite:                      true,
+			CanCreateInvitations:           true,
 		},
 		{
-			ID:                     "sponsor",
-			Name:                   "Parrain",
-			Description:            "Compte parrain: peut creer des liens courts vers le profil Invité temporaire.",
-			EnableAllFolders:       true,
-			EnableDownload:         true,
-			EnableRemoteAccess:     true,
-			MaxSessions:            0,
-			BitrateLimit:           0,
-			UserConfiguration:      defaultUserConfiguration,
-			DisplayPreferences:     defaultDisplayPreferences,
-			UsernameMinLength:      3,
-			UsernameMaxLength:      32,
-			PasswordMinLength:      10,
-			PasswordMaxLength:      128,
-			RequireDigit:           true,
-			DisableAfterDays:       0,
-			ExpiryAction:           "disable",
-			DeleteAfterDays:        0,
-			CanInvite:              true,
-			TargetPresetID:         "temporary_guest",
-			InviteQuotaDay:         3,
-			InviteQuotaMonth:       10,
-			InviteMaxUses:          1,
-			InviteMaxLinkHours:     168,
-			InviteLinkValidityDays: 7,
-			InviteAllowLanguage:    true,
+			ID:                             "sponsor",
+			Name:                           "Parrain",
+			Description:                    "Compte parrain: peut creer des liens courts vers le profil Invité temporaire.",
+			EnableAllFolders:               true,
+			EnableAllDevices:               true,
+			EnableAllChannels:              true,
+			EnableDownload:                 true,
+			EnableRemoteAccess:             true,
+			EnableMediaPlayback:            true,
+			EnableAudioPlaybackTranscoding: true,
+			EnableVideoPlaybackTranscoding: true,
+			EnablePlaybackRemuxing:         true,
+			MaxSessions:                    0,
+			BitrateLimit:                   0,
+			UserConfiguration:              defaultUserConfiguration,
+			DisplayPreferences:             defaultDisplayPreferences,
+			UsernameMinLength:              3,
+			UsernameMaxLength:              32,
+			PasswordMinLength:              10,
+			PasswordMaxLength:              128,
+			RequireDigit:                   true,
+			DisableAfterDays:               0,
+			ExpiryAction:                   "disable",
+			DeleteAfterDays:                0,
+			CanInvite:                      true,
+			CanCreateInvitations:           true,
+			TargetPresetID:                 "temporary_guest",
+			AllowedTargetPresetIDs:         []string{"temporary_guest"},
+			InviteQuotaDay:                 3,
+			InviteQuotaMonth:               10,
+			InviteMaxUses:                  1,
+			InviteMaxLinkHours:             168,
+			InviteLinkValidityDays:         7,
+			InviteAllowLanguage:            true,
+			CanCreateTemporaryInvitations:  true,
+			AllowedTemporaryPresetIDs:      []string{"temporary_guest"},
+			DefaultTemporaryDurationDays:   30,
+			MaxTemporaryDurationDays:       30,
 		},
 	}
 }

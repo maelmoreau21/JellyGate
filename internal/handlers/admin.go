@@ -45,24 +45,27 @@ import (
 
 // UserResponse est la représentation JSON d'un utilisateur pour l'API admin.
 type UserResponse struct {
-	ID              int64  `json:"id"`
-	JellyfinID      string `json:"jellyfin_id"`
-	Username        string `json:"username"`
-	Email           string `json:"email"`
-	LDAPDN          string `json:"ldap_dn"`
-	GroupName       string `json:"group_name"`
-	PresetID        string `json:"preset_id"` // NEW
-	InvitedBy       string `json:"invited_by"`
-	IsActive        bool   `json:"is_active"`
-	IsBanned        bool   `json:"is_banned"`
-	CanInvite       bool   `json:"can_invite"`
-	AccessExpiresAt string `json:"access_expires_at,omitempty"` // ISO 8601
-	DeleteAt        string `json:"delete_at,omitempty"`
-	ExpiryAction    string `json:"expiry_action"`
-	DeleteAfterDays int    `json:"expiry_delete_after_days"`
-	ExpiredAt       string `json:"expired_at,omitempty"`
-	CreatedAt       string `json:"created_at"`
-	UpdatedAt       string `json:"updated_at"`
+	ID                 int64  `json:"id"`
+	JellyfinID         string `json:"jellyfin_id"`
+	Username           string `json:"username"`
+	Email              string `json:"email"`
+	LDAPDN             string `json:"ldap_dn"`
+	GroupName          string `json:"group_name"`
+	PresetID           string `json:"preset_id"` // NEW
+	InvitedBy          string `json:"invited_by"`
+	IsActive           bool   `json:"is_active"`
+	IsBanned           bool   `json:"is_banned"`
+	CanInvite          bool   `json:"can_invite"`
+	AccessExpiresAt    string `json:"access_expires_at,omitempty"` // ISO 8601
+	DeleteAt           string `json:"delete_at,omitempty"`
+	ExpiryAction       string `json:"expiry_action"`
+	DeleteAfterDays    int    `json:"expiry_delete_after_days"`
+	ExpiredAt          string `json:"expired_at,omitempty"`
+	ProfileApplyStatus string `json:"profile_apply_status"`
+	ProfileApplyError  string `json:"profile_apply_error,omitempty"`
+	ProfileAppliedAt   string `json:"profile_applied_at,omitempty"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
 
 	// Statuts temps réel depuis Jellyfin (enrichissement)
 	JellyfinDisabled        bool   `json:"jellyfin_disabled"`
@@ -99,31 +102,34 @@ type UserTimelineEvent struct {
 }
 
 type adminUserRecord struct {
-	ID              int64
-	Username        string
-	Email           string
-	PendingEmail    string
-	EmailVerified   bool
-	JellyfinID      string
-	LDAPDN          string // FIXED
-	GroupName       string
-	PresetID        string // NEW
-	ContactDiscord  string
-	ContactTelegram string
-	IsActive        bool
-	CanInvite       bool
-	PreferredLang   string
-	NotifyExpiry    bool
-	NotifyEvents    bool
-	OptInEmail      bool
-	OptInDiscord    bool
-	OptInTelegram   bool
-	ExpiryAction    string
-	DeleteAfterDays int
-	DeleteAt        sql.NullString
-	ExpiredAt       sql.NullString
-	AccessExpiresAt sql.NullString
-	CreatedAt       sql.NullString
+	ID                 int64
+	Username           string
+	Email              string
+	PendingEmail       string
+	EmailVerified      bool
+	JellyfinID         string
+	LDAPDN             string // FIXED
+	GroupName          string
+	PresetID           string // NEW
+	ContactDiscord     string
+	ContactTelegram    string
+	IsActive           bool
+	CanInvite          bool
+	PreferredLang      string
+	NotifyExpiry       bool
+	NotifyEvents       bool
+	OptInEmail         bool
+	OptInDiscord       bool
+	OptInTelegram      bool
+	ExpiryAction       string
+	DeleteAfterDays    int
+	DeleteAt           sql.NullString
+	ExpiredAt          sql.NullString
+	ProfileApplyStatus string
+	ProfileApplyError  string
+	ProfileAppliedAt   sql.NullString
+	AccessExpiresAt    sql.NullString
+	CreatedAt          sql.NullString
 }
 
 type UpdateUserRequest struct {
@@ -1329,13 +1335,18 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
 		"links": invs,
 		"limits": map[string]interface{}{
-			"can_invite":         limits.CanInvite,
-			"max_uses":           limits.MaxUses,
-			"link_validity_days": limits.LinkValidityDays,
-			"quota_day":          limits.QuotaDay,
-			"quota_month":        limits.QuotaMonth,
-			"target_preset_id":   strings.TrimSpace(limits.TargetPresetID),
-			"target_preset_name": targetPresetName,
+			"can_invite":                       limits.CanInvite,
+			"max_uses":                         limits.MaxUses,
+			"link_validity_days":               limits.LinkValidityDays,
+			"quota_day":                        limits.QuotaDay,
+			"quota_month":                      limits.QuotaMonth,
+			"target_preset_id":                 strings.TrimSpace(limits.TargetPresetID),
+			"target_preset_name":               targetPresetName,
+			"allowed_target_preset_ids":        limits.AllowedTargetPresetIDs,
+			"can_create_temporary_invitations": limits.CanCreateTemporaryInvitations,
+			"allowed_temporary_preset_ids":     limits.AllowedTemporaryPresetIDs,
+			"default_temporary_duration_days":  limits.DefaultTemporaryDurationDays,
+			"max_temporary_duration_days":      limits.MaxTemporaryDurationDays,
 		},
 		"usage": map[string]interface{}{
 			"today": todayCount,
@@ -1411,6 +1422,16 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_preset_read_failed", "Erreur lecture profil de droit")})
 		return
 	}
+	if targetPreset.IsTemporary {
+		if !limits.CanCreateTemporaryInvitations {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "admin_temp_invite_forbidden", "Votre profil ne permet pas de creer des invitations temporaires")})
+			return
+		}
+		if !presetIDAllowed(targetPreset.ID, limits.AllowedTemporaryPresetIDs) {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: h.tr(r, "admin_temp_profile_forbidden", "Ce profil temporaire n'est pas autorise")})
+			return
+		}
+	}
 
 	code, err := generateSecureToken(12)
 	if err != nil {
@@ -1436,28 +1457,34 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		expiresAtResponse = resolvedExpiry.Format(time.RFC3339)
 	}
 
-	profile := jellyfin.InviteProfile{
-		PresetID:                 targetPreset.ID,
-		UserExpiryDays:           targetPreset.DisableAfterDays,
-		EnableAllFolders:         targetPreset.EnableAllFolders,
-		EnabledFolderIDs:         targetPreset.EnabledFolderIDs,
-		EnableDownload:           targetPreset.EnableDownload,
-		EnableRemoteAccess:       targetPreset.EnableRemoteAccess,
-		CanInvite:                false,
-		RequireEmail:             inviteCfg.RequireEmail,
-		RequireEmailVerification: resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, false, maxUses),
-		DisableAfterDays:         targetPreset.DisableAfterDays,
-		ExpiryAction:             normalizeExpiryAction(inviteCfg.ExpiryAction),
-		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
-		UserConfiguration:        targetPreset.UserConfiguration,
-		DisplayPreferences:       targetPreset.DisplayPreferences,
+	profile := inviteProfileFromPolicyPreset(targetPreset)
+	profile.CanInvite = false
+	profile.RequireEmail = inviteCfg.RequireEmail
+	profile.RequireEmailVerification = resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, false, maxUses)
+	if profile.IsTemporary {
+		duration := profile.AccountDurationDays
+		if duration <= 0 {
+			duration = limits.DefaultTemporaryDurationDays
+		}
+		if duration <= 0 {
+			duration = targetPreset.DisableAfterDays
+		}
+		if duration > 0 {
+			if limits.MaxTemporaryDurationDays > 0 && duration > limits.MaxTemporaryDurationDays {
+				duration = limits.MaxTemporaryDurationDays
+			}
+			profile.AccountDurationDays = duration
+			profile.DisableAfterDays = duration
+			profile.UserExpiryDays = duration
+		}
 	}
 	profileJSON, _ := json.Marshal(profile)
 
 	_, err = h.db.Exec(`
-		INSERT INTO invitations (code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by)
-		VALUES (?, ?, ?, 0, ?, ?, ?)`,
-		code, "Parrainage de "+sess.Username, maxUses, string(profileJSON), expiresAt, sess.Username)
+		INSERT INTO invitations (code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, profile_id, profile_snapshot, is_temporary, account_duration_days)
+		VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
+		code, "Parrainage de "+sess.Username, maxUses, string(profileJSON), expiresAt, sess.Username,
+		strings.TrimSpace(strings.ToLower(profile.PresetID)), string(profileJSON), profile.IsTemporary, profile.AccountDurationDays)
 
 	if err != nil {
 		slog.Error("Erreur creation invitation parrainage", "error", err)
@@ -1720,6 +1747,12 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	td.Data["InviteInviterQuotaWeek"] = 0
 	td.Data["InviteInviterQuotaMonth"] = limits.QuotaMonth
 	td.Data["InviteDefaultDisableAfterDays"] = limits.UserExpiryDays
+	td.Data["InviteTargetPresetID"] = strings.TrimSpace(limits.TargetPresetID)
+	td.Data["InviteAllowedTargetPresetIDs"] = strings.Join(limits.AllowedTargetPresetIDs, ",")
+	td.Data["InviteCanCreateTemporaryInvitations"] = limits.CanCreateTemporaryInvitations
+	td.Data["InviteAllowedTemporaryPresetIDs"] = strings.Join(limits.AllowedTemporaryPresetIDs, ",")
+	td.Data["InviteDefaultTemporaryDurationDays"] = limits.DefaultTemporaryDurationDays
+	td.Data["InviteMaxTemporaryDurationDays"] = limits.MaxTemporaryDurationDays
 	td.Data["InviteRequireEmail"] = inviteCfg.RequireEmail
 	td.Data["DefaultLang"] = h.db.GetDefaultLang()
 
@@ -2108,6 +2141,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	query := fmt.Sprintf(`SELECT id, jellyfin_id, username, email, ldap_dn, invited_by,
 		        group_name, preset_id, is_active, is_banned, can_invite, access_expires_at, delete_at,
 		        expiry_action, expiry_delete_after_days, expired_at,
+		        profile_apply_status, profile_apply_error, profile_applied_at,
 		        created_at, updated_at
 		 FROM users %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
 
@@ -2126,14 +2160,16 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var users []UserResponse
 	for rows.Next() {
 		var u UserResponse
-		var jellyfinID, email, ldapDN, invitedBy, groupName, presetID sql.NullString
+		var jellyfinID, email, ldapDN, invitedBy, groupName, presetID, profileApplyStatus, profileApplyError sql.NullString
 		var accessExpiresAt, deleteAt, expiryAction, expiredAt, createdAt, updatedAt sql.NullString
+		var profileAppliedAt sql.NullString
 		var deleteAfterDays sql.NullInt64
 
 		err := rows.Scan(
 			&u.ID, &jellyfinID, &u.Username, &email, &ldapDN, &invitedBy, &groupName, &presetID,
 			&u.IsActive, &u.IsBanned, &u.CanInvite, &accessExpiresAt, &deleteAt,
 			&expiryAction, &deleteAfterDays, &expiredAt,
+			&profileApplyStatus, &profileApplyError, &profileAppliedAt,
 			&createdAt, &updatedAt,
 		)
 		if err != nil {
@@ -2150,6 +2186,9 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		u.AccessExpiresAt = accessExpiresAt.String
 		u.DeleteAt = deleteAt.String
 		u.ExpiryAction = normalizeExpiryAction(expiryAction.String)
+		u.ProfileApplyStatus = profileApplyStatus.String
+		u.ProfileApplyError = profileApplyError.String
+		u.ProfileAppliedAt = profileAppliedAt.String
 		if deleteAfterDays.Valid {
 			u.DeleteAfterDays = int(deleteAfterDays.Int64)
 		}
@@ -2328,7 +2367,7 @@ func (h *AdminHandler) UserTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error) {
 	var rec adminUserRecord
-	var email, jellyfinID, ldapDN, groupName, presetID, discordContact, telegramContact sql.NullString
+	var email, jellyfinID, ldapDN, groupName, presetID, discordContact, telegramContact, profileApplyStatus, profileApplyError sql.NullString
 
 	err := h.db.QueryRow(
 		`SELECT id, username, email, jellyfin_id, ldap_dn, group_name, preset_id, is_active, can_invite,
@@ -2336,6 +2375,7 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram,
 		        expiry_action, expiry_delete_after_days, expired_at,
+		        profile_apply_status, profile_apply_error, profile_applied_at,
 		        access_expires_at, delete_at, created_at
 		 FROM users WHERE id = ?`,
 		userID,
@@ -2360,6 +2400,9 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		&rec.ExpiryAction,
 		&rec.DeleteAfterDays,
 		&rec.ExpiredAt,
+		&profileApplyStatus,
+		&profileApplyError,
+		&rec.ProfileAppliedAt,
 		&rec.AccessExpiresAt,
 		&rec.DeleteAt,
 		&rec.CreatedAt,
@@ -2375,6 +2418,8 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 	rec.PresetID = presetID.String
 	rec.ContactDiscord = discordContact.String
 	rec.ContactTelegram = telegramContact.String
+	rec.ProfileApplyStatus = profileApplyStatus.String
+	rec.ProfileApplyError = profileApplyError.String
 
 	return &rec, nil
 }
@@ -2601,25 +2646,7 @@ func (h *AdminHandler) getJellyfinPresetByID(presetID string) (*config.JellyfinP
 }
 
 func inviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) jellyfin.InviteProfile {
-	if preset == nil {
-		return jellyfin.InviteProfile{}
-	}
-	return jellyfin.InviteProfile{
-		IsAdministrator:    preset.IsAdministrator,
-		PresetID:           strings.TrimSpace(strings.ToLower(preset.ID)),
-		EnableAllFolders:   preset.EnableAllFolders,
-		EnabledFolderIDs:   append([]string(nil), preset.EnabledFolderIDs...),
-		EnableDownload:     preset.EnableDownload,
-		EnableRemoteAccess: preset.EnableRemoteAccess,
-		MaxSessions:        preset.MaxSessions,
-		BitrateLimit:       preset.BitrateLimit,
-		CanInvite:          preset.CanInvite,
-		DisableAfterDays:   preset.DisableAfterDays,
-		ExpiryAction:       normalizeExpiryAction(preset.ExpiryAction),
-		DeleteAfterDays:    preset.DeleteAfterDays,
-		UserConfiguration:  preset.UserConfiguration,
-		DisplayPreferences: preset.DisplayPreferences,
-	}
+	return jellyfin.InviteProfileFromPolicyPreset(preset)
 }
 
 func (h *AdminHandler) applyPresetProfileToJellyfin(userID string, preset *config.JellyfinPolicyPreset) error {
@@ -2655,8 +2682,17 @@ func (h *AdminHandler) applyPresetToUser(rec *adminUserRecord, presetID string) 
 		}
 	}
 
+	status := "pending"
+	appliedAtExpr := "NULL"
+	if strings.TrimSpace(rec.JellyfinID) != "" {
+		status = "applied"
+		appliedAtExpr = "CURRENT_TIMESTAMP"
+	}
+
 	// Persister le choix du preset dans SQLite.
-	_, err = h.db.Exec(`UPDATE users SET preset_id = ? WHERE id = ?`, preset.ID, rec.ID)
+	_, err = h.db.Exec(fmt.Sprintf(`UPDATE users
+		SET preset_id = ?, profile_apply_status = ?, profile_apply_error = '', profile_applied_at = %s
+		WHERE id = ?`, appliedAtExpr), preset.ID, status, rec.ID)
 	if err != nil {
 		return fmt.Errorf("maj preset_id sqlite: %w", err)
 	}
@@ -2983,8 +3019,8 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	emailVerified := strings.TrimSpace(req.Email) == ""
 	if _, err := h.db.Exec(
 		`INSERT INTO users
-			(jellyfin_id, username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+			(jellyfin_id, username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, profile_apply_status, profile_apply_error, profile_applied_at, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, '', ?, datetime('now'), datetime('now'))`,
 		created.ID,
 		req.Username,
 		req.Email,
@@ -2995,6 +3031,8 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		req.PolicyPresetID,
 		expiryAction,
 		deleteAfterDays,
+		map[bool]string{true: "applied", false: "pending"}[preset != nil],
+		map[bool]interface{}{true: time.Now(), false: nil}[preset != nil],
 	); err != nil {
 		_ = h.jfClient.DeleteUser(created.ID)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible d'enregistrer l'utilisateur"})
@@ -3868,16 +3906,20 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 // InvitationResponse reprÃƒÂ©sente une invitation formatÃƒÂ©e pour l'API JSON.
 type InvitationResponse struct {
-	ID              int64                  `json:"id"`
-	Code            string                 `json:"code"`
-	Label           string                 `json:"label"`
-	PreferredLang   string                 `json:"preferred_lang"`
-	MaxUses         int                    `json:"max_uses"`
-	UsedCount       int                    `json:"used_count"`
-	JellyfinProfile map[string]interface{} `json:"jellyfin_profile"`
-	ExpiresAt       string                 `json:"expires_at,omitempty"`
-	CreatedBy       string                 `json:"created_by"`
-	CreatedAt       string                 `json:"created_at"`
+	ID                  int64                  `json:"id"`
+	Code                string                 `json:"code"`
+	Label               string                 `json:"label"`
+	PreferredLang       string                 `json:"preferred_lang"`
+	MaxUses             int                    `json:"max_uses"`
+	UsedCount           int                    `json:"used_count"`
+	JellyfinProfile     map[string]interface{} `json:"jellyfin_profile"`
+	ProfileID           string                 `json:"profile_id"`
+	ProfileSnapshot     map[string]interface{} `json:"profile_snapshot,omitempty"`
+	IsTemporary         bool                   `json:"is_temporary"`
+	AccountDurationDays int                    `json:"account_duration_days"`
+	ExpiresAt           string                 `json:"expires_at,omitempty"`
+	CreatedBy           string                 `json:"created_by"`
+	CreatedAt           string                 `json:"created_at"`
 }
 
 func anyToDateString(v interface{}) string {
@@ -3960,8 +4002,43 @@ type invitationCreatorLimits struct {
 	QuotaDay         int
 	QuotaMonth       int
 
-	SourcePreset   *config.JellyfinPolicyPreset
-	TargetPresetID string
+	SourcePreset                  *config.JellyfinPolicyPreset
+	TargetPresetID                string
+	AllowedTargetPresetIDs        []string
+	CanCreateTemporaryInvitations bool
+	AllowedTemporaryPresetIDs     []string
+	DefaultTemporaryDurationDays  int
+	MaxTemporaryDurationDays      int
+}
+
+func normalizedPresetIDs(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	seen := map[string]struct{}{}
+	for _, id := range ids {
+		normalized := strings.TrimSpace(strings.ToLower(id))
+		if normalized == "" {
+			continue
+		}
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		out = append(out, normalized)
+	}
+	return out
+}
+
+func presetIDAllowed(id string, allowed []string) bool {
+	id = strings.TrimSpace(strings.ToLower(id))
+	if id == "" {
+		return false
+	}
+	for _, allowedID := range allowed {
+		if strings.EqualFold(strings.TrimSpace(allowedID), id) {
+			return true
+		}
+	}
+	return false
 }
 
 func presetInviteQuotaMonth(preset *config.JellyfinPolicyPreset) int {
@@ -4015,6 +4092,7 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 		limits.AllowUserExpiry = true
 		limits.AllowIgnoreLimits = true
 		limits.AllowLanguage = true
+		limits.CanCreateTemporaryInvitations = true
 
 		if limits.TargetPresetID != "" {
 			if preset, err := h.getJellyfinPresetByID(limits.TargetPresetID); err == nil {
@@ -4048,12 +4126,13 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 		preset, err := h.getJellyfinPresetByID(presetIDStr)
 		if err == nil && preset != nil {
 			limits.SourcePreset = preset
-			if preset.CanInvite {
+			if preset.CanInvite || preset.CanCreateInvitations {
 				limits.CanInvite = true
 			}
 			if preset.InviteAllowLanguage {
 				limits.AllowLanguage = true
 			}
+			limits.AllowedTargetPresetIDs = normalizedPresetIDs(preset.AllowedTargetPresetIDs)
 			limits.MaxUses = preset.InviteMaxUses
 			limits.LinkValidityDays = presetInviteLinkValidityDays(preset)
 			limits.QuotaDay = preset.InviteQuotaDay
@@ -4061,6 +4140,13 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 			if strings.TrimSpace(preset.TargetPresetID) != "" {
 				limits.TargetPresetID = strings.TrimSpace(preset.TargetPresetID)
 			}
+			if limits.TargetPresetID != "" && !presetIDAllowed(limits.TargetPresetID, limits.AllowedTargetPresetIDs) {
+				limits.AllowedTargetPresetIDs = append(limits.AllowedTargetPresetIDs, strings.TrimSpace(strings.ToLower(limits.TargetPresetID)))
+			}
+			limits.CanCreateTemporaryInvitations = preset.CanCreateTemporaryInvitations
+			limits.AllowedTemporaryPresetIDs = normalizedPresetIDs(preset.AllowedTemporaryPresetIDs)
+			limits.DefaultTemporaryDurationDays = preset.DefaultTemporaryDurationDays
+			limits.MaxTemporaryDurationDays = preset.MaxTemporaryDurationDays
 			if preset.DisableAfterDays > 0 {
 				limits.UserExpiryDays = preset.DisableAfterDays
 			}
@@ -4168,7 +4254,7 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 
 	// 2. RÃ©cupÃ©rer les donnÃ©es paginÃ©es
 	offset := (page - 1) * limit
-	query := fmt.Sprintf(`SELECT id, code, label, preferred_lang, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_at FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
+	query := fmt.Sprintf(`SELECT id, code, label, preferred_lang, max_uses, used_count, jellyfin_profile, profile_id, profile_snapshot, is_temporary, account_duration_days, expires_at, created_by, created_at FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
 
 	queryArgs := append(args, limit, offset)
 	rows, err := h.db.Query(query, queryArgs...)
@@ -4182,13 +4268,14 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	var invs []InvitationResponse
 	for rows.Next() {
 		var i InvitationResponse
-		var label, profile, createdBy, preferredLang sql.NullString
+		var label, profile, profileID, profileSnapshot, createdBy, preferredLang sql.NullString
 		var rawExpiresAt interface{}
 		var rawCreatedAt interface{}
 
 		err := rows.Scan(
 			&i.ID, &i.Code, &label, &preferredLang, &i.MaxUses, &i.UsedCount,
-			&profile, &rawExpiresAt, &createdBy, &rawCreatedAt,
+			&profile, &profileID, &profileSnapshot, &i.IsTemporary, &i.AccountDurationDays,
+			&rawExpiresAt, &createdBy, &rawCreatedAt,
 		)
 		if err != nil {
 			slog.Error("Erreur scan invitation", "error", err)
@@ -4197,6 +4284,7 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 
 		i.Label = label.String
 		i.PreferredLang = normalizeSupportedEmailLang(preferredLang.String)
+		i.ProfileID = strings.TrimSpace(profileID.String)
 		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedBy = createdBy.String
 		i.CreatedAt = anyToDateString(rawCreatedAt)
@@ -4205,6 +4293,11 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 			var p map[string]interface{}
 			_ = json.Unmarshal([]byte(profile.String), &p)
 			i.JellyfinProfile = p
+		}
+		if profileSnapshot.String != "" {
+			var p map[string]interface{}
+			_ = json.Unmarshal([]byte(profileSnapshot.String), &p)
+			i.ProfileSnapshot = p
 		}
 
 		invs = append(invs, i)
@@ -4396,6 +4489,8 @@ type CreateInvitationRequest struct {
 	UserExpiresAt          string   `json:"user_expires_at"`
 	IgnorePresetUserExpiry bool     `json:"ignore_preset_user_expiry"`
 	DisableAfterDays       int      `json:"disable_after_days"`
+	IsTemporary            bool     `json:"is_temporary"`
+	AccountDurationDays    int      `json:"account_duration_days"`
 	NewUserCanInvite       bool     `json:"new_user_can_invite"`
 	SendToEmail            string   `json:"send_to_email"` // Si renseignÃƒÂ©, un e-mail partira par SMTP
 	Email                  string   `json:"email"`         // Legacy frontend key
@@ -4440,6 +4535,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	if req.DisableAfterDays < 0 {
 		req.DisableAfterDays = 0
 	}
+	if req.AccountDurationDays < 0 {
+		req.AccountDurationDays = 0
+	}
 	req.PreferredLang = normalizeSupportedEmailLang(req.PreferredLang)
 
 	inviteCfg, err := h.db.GetInvitationProfileConfig()
@@ -4474,11 +4572,17 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	targetPresetID := strings.TrimSpace(limits.TargetPresetID)
 	if sess.IsAdmin && strings.TrimSpace(req.PolicyPresetID) != "" {
 		targetPresetID = strings.TrimSpace(req.PolicyPresetID)
+	} else if !sess.IsAdmin && strings.TrimSpace(req.PolicyPresetID) != "" {
+		requestedPresetID := strings.TrimSpace(strings.ToLower(req.PolicyPresetID))
+		if !presetIDAllowed(requestedPresetID, limits.AllowedTargetPresetIDs) {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Ce profil cible n'est pas autorise par votre profil"})
+			return
+		}
+		targetPresetID = requestedPresetID
 	}
 
 	if !sess.IsAdmin {
 		if strings.TrimSpace(req.GroupName) != "" ||
-			strings.TrimSpace(req.PolicyPresetID) != "" ||
 			strings.TrimSpace(req.ForcedUsername) != "" ||
 			strings.TrimSpace(req.TemplateUserID) != "" ||
 			len(req.Libraries) > 0 {
@@ -4700,6 +4804,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	presetApplied := false
+	var targetPreset *config.JellyfinPolicyPreset
 	if strings.TrimSpace(targetPresetID) != "" {
 		preset, err := h.getJellyfinPresetByID(targetPresetID)
 		if err != nil {
@@ -4710,35 +4815,33 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Le preset administrateur est reserve aux administrateurs JellyGate"})
 			return
 		}
-		if preset.CanInvite {
+		if preset.CanInvite || preset.CanCreateInvitations {
 			effectiveCanInvite = true
 		}
+		targetPreset = preset
 		presetApplied = true
 
-		jfProfile.PresetID = preset.ID
-		jfProfile.IsAdministrator = preset.IsAdministrator
-		jfProfile.EnableAllFolders = preset.EnableAllFolders
-		jfProfile.EnabledFolderIDs = preset.EnabledFolderIDs
-		jfProfile.EnableDownload = preset.EnableDownload
-		jfProfile.EnableRemoteAccess = preset.EnableRemoteAccess
-		jfProfile.MaxSessions = preset.MaxSessions
-		jfProfile.BitrateLimit = preset.BitrateLimit
-		jfProfile.UserConfiguration = preset.UserConfiguration
-		jfProfile.DisplayPreferences = preset.DisplayPreferences
-		jfProfile.UsernameMinLength = preset.UsernameMinLength
-		jfProfile.UsernameMaxLength = preset.UsernameMaxLength
-		jfProfile.PasswordMinLength = preset.PasswordMinLength
-		jfProfile.PasswordMaxLength = preset.PasswordMaxLength
-		jfProfile.PasswordRequireUpper = preset.RequireUpper
-		jfProfile.PasswordRequireLower = preset.RequireLower
-		jfProfile.PasswordRequireDigit = preset.RequireDigit
-		jfProfile.PasswordRequireSpecial = preset.RequireSpecial
-		jfProfile.DisableAfterDays = preset.DisableAfterDays
-		jfProfile.ExpiryAction = normalizeExpiryAction(preset.ExpiryAction)
-		jfProfile.DeleteAfterDays = preset.DeleteAfterDays
+		baseProfile := jfProfile
+		jfProfile = inviteProfileFromPolicyPreset(preset)
+		jfProfile.RequireEmail = baseProfile.RequireEmail
+		jfProfile.RequireEmailVerification = baseProfile.RequireEmailVerification
+		jfProfile.GroupName = baseProfile.GroupName
+		jfProfile.ForcedUsername = baseProfile.ForcedUsername
+		jfProfile.CanInvite = effectiveCanInvite
 	}
 
 	// Les options exposees dans "Profil utilisateur" sont forcees par les paramÃƒÂ¨tres admin.
+	if presetApplied && !applyUserExpiry && targetPreset != nil {
+		defaultAccountDuration := targetPreset.DefaultAccountDurationDays
+		if defaultAccountDuration <= 0 {
+			defaultAccountDuration = targetPreset.DisableAfterDays
+		}
+		if defaultAccountDuration > 0 {
+			applyUserExpiry = true
+			effectiveDisableAfterDays = defaultAccountDuration
+		}
+	}
+
 	if sess.IsAdmin && !presetApplied {
 		jfProfile.EnableDownload = req.EnableDownloads
 	} else if !presetApplied {
@@ -4746,14 +4849,16 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 	jfProfile.RequireEmail = inviteCfg.RequireEmail
 	jfProfile.RequireEmailVerification = effectiveRequireEmailVerification
-	jfProfile.UsernameMinLength = inviteCfg.UsernameMinLength
-	jfProfile.UsernameMaxLength = inviteCfg.UsernameMaxLength
-	jfProfile.PasswordMinLength = inviteCfg.PasswordMinLength
-	jfProfile.PasswordMaxLength = inviteCfg.PasswordMaxLength
-	jfProfile.PasswordRequireUpper = inviteCfg.PasswordRequireUpper
-	jfProfile.PasswordRequireLower = inviteCfg.PasswordRequireLower
-	jfProfile.PasswordRequireDigit = inviteCfg.PasswordRequireDigit
-	jfProfile.PasswordRequireSpecial = inviteCfg.PasswordRequireSpecial
+	if !presetApplied {
+		jfProfile.UsernameMinLength = inviteCfg.UsernameMinLength
+		jfProfile.UsernameMaxLength = inviteCfg.UsernameMaxLength
+		jfProfile.PasswordMinLength = inviteCfg.PasswordMinLength
+		jfProfile.PasswordMaxLength = inviteCfg.PasswordMaxLength
+		jfProfile.PasswordRequireUpper = inviteCfg.PasswordRequireUpper
+		jfProfile.PasswordRequireLower = inviteCfg.PasswordRequireLower
+		jfProfile.PasswordRequireDigit = inviteCfg.PasswordRequireDigit
+		jfProfile.PasswordRequireSpecial = inviteCfg.PasswordRequireSpecial
+	}
 	jfProfile.DisableAfterDays = effectiveDisableAfterDays
 	jfProfile.UserExpiresAt = effectiveUserExpiresAtRaw
 	if strings.TrimSpace(jfProfile.ExpiryAction) == "" {
@@ -4767,6 +4872,59 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	if !applyUserExpiry {
 		jfProfile.DisableAfterDays = 0
 		jfProfile.UserExpiryDays = 0
+		jfProfile.UserExpiresAt = ""
+	}
+
+	isTemporaryInvitation := req.IsTemporary || (targetPreset != nil && targetPreset.IsTemporary)
+	accountDurationDays := 0
+	if isTemporaryInvitation {
+		if !sess.IsAdmin {
+			if !limits.CanCreateTemporaryInvitations {
+				writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Votre profil ne permet pas de creer des invitations temporaires"})
+				return
+			}
+			if !presetIDAllowed(targetPresetID, limits.AllowedTemporaryPresetIDs) {
+				writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Ce profil temporaire n'est pas autorise par votre profil"})
+				return
+			}
+		}
+
+		defaultDuration := 0
+		maxDuration := 0
+		if targetPreset != nil {
+			defaultDuration = targetPreset.DefaultAccountDurationDays
+			if defaultDuration <= 0 {
+				defaultDuration = targetPreset.DisableAfterDays
+			}
+			maxDuration = targetPreset.MaxAccountDurationDays
+		}
+		if defaultDuration <= 0 {
+			defaultDuration = limits.DefaultTemporaryDurationDays
+		}
+		if maxDuration <= 0 {
+			maxDuration = limits.MaxTemporaryDurationDays
+		}
+
+		accountDurationDays = req.AccountDurationDays
+		if accountDurationDays <= 0 {
+			accountDurationDays = defaultDuration
+		}
+		if accountDurationDays <= 0 {
+			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Renseigne une duree de compte temporaire valide"})
+			return
+		}
+		if maxDuration > 0 && accountDurationDays > maxDuration {
+			if !sess.IsAdmin {
+				writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: fmt.Sprintf("Duree temporaire limitee a %d jour(s) par votre profil", maxDuration)})
+				return
+			}
+			accountDurationDays = maxDuration
+		}
+
+		jfProfile.IsTemporary = true
+		jfProfile.AccountDurationDays = accountDurationDays
+		jfProfile.DisableAfterDays = accountDurationDays
+		jfProfile.UserExpiryDays = accountDurationDays
 		jfProfile.UserExpiresAt = ""
 	}
 
@@ -4797,11 +4955,13 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	profileJSON, _ := json.Marshal(jfProfile)
+	profileSnapshot := string(profileJSON)
 
 	_, err = h.db.Exec(
-		`INSERT INTO invitations (code, label, max_uses, jellyfin_profile, preferred_lang, expires_at, created_by)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO invitations (code, label, max_uses, jellyfin_profile, preferred_lang, expires_at, created_by, profile_id, profile_snapshot, is_temporary, account_duration_days)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		code, req.Label, req.MaxUses, string(profileJSON), req.PreferredLang, expiresAt, sess.Username,
+		strings.TrimSpace(strings.ToLower(jfProfile.PresetID)), profileSnapshot, jfProfile.IsTemporary, jfProfile.AccountDurationDays,
 	)
 
 	if err != nil {

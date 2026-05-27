@@ -322,6 +322,14 @@
                 <input type="checkbox" id="ldap-admin-filter-memberuid" class="form-checkbox">
                 <label for="ldap-admin-filter-memberuid" class="text-sm text-slate-200">{{ .T "settings_ldap_group_member_attr_help" }}</label>
               </div>
+              <div>
+                <label class="jg-label" for="ldap-jf-auth-provider">Provider Jellyfin LDAP auth</label>
+                <input type="text" id="ldap-jf-auth-provider" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin">
+              </div>
+              <div>
+                <label class="jg-label" for="ldap-jf-reset-provider">Provider Jellyfin LDAP reset</label>
+                <input type="text" id="ldap-jf-reset-provider" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider">
+              </div>
             </div>
 
             <details class="settings-collapsible">

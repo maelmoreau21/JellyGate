@@ -938,6 +938,8 @@
             username_attribute: document.getElementById('ldap-username-attribute').value.trim(),
             admin_filter: document.getElementById('ldap-admin-filter').value.trim(),
             admin_filter_memberuid: !!document.getElementById('ldap-admin-filter-memberuid')?.checked,
+            jellyfin_ldap_auth_provider_id: (document.getElementById('ldap-jf-auth-provider')?.value || '').trim(),
+            jellyfin_ldap_password_reset_provider_id: (document.getElementById('ldap-jf-reset-provider')?.value || '').trim(),
         };
 
         if (!payload.provision_mode) payload.provision_mode = 'hybrid';
@@ -1222,6 +1224,12 @@
             document.getElementById('ldap-username-attribute').value = ldap.username_attribute || 'auto';
             document.getElementById('ldap-admin-filter').value = ldap.admin_filter || '';
             document.getElementById('ldap-admin-filter-memberuid').checked = !!ldap.admin_filter_memberuid;
+            if (document.getElementById('ldap-jf-auth-provider')) {
+                document.getElementById('ldap-jf-auth-provider').value = ldap.jellyfin_ldap_auth_provider_id || 'Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin';
+            }
+            if (document.getElementById('ldap-jf-reset-provider')) {
+                document.getElementById('ldap-jf-reset-provider').value = ldap.jellyfin_ldap_password_reset_provider_id || 'Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider';
+            }
             toggleLDAPFields();
         }
 

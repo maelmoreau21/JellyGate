@@ -107,14 +107,24 @@ func TestSecurityEventsMigrationAndInsert(t *testing.T) {
 func TestSaveJellyfinPolicyPresetsNormalizesNewBlocks(t *testing.T) {
 	db := newPresetTestDB(t)
 	preset := config.JellyfinPolicyPreset{
-		ID:                 "bad",
-		Name:               "Bad",
-		EnableAllFolders:   false,
-		EnabledFolderIDs:   []string{"movies", "", "movies", "shows"},
-		EnableDownload:     true,
-		EnableRemoteAccess: true,
-		MaxSessions:        -3,
-		BitrateLimit:       -1,
+		ID:                        "bad",
+		Name:                      "Bad",
+		EnableAllFolders:          false,
+		EnabledFolderIDs:          []string{"movies", "", "movies", "shows"},
+		BlockedMediaFolders:       []string{"secret", "secret", ""},
+		EnableDownload:            true,
+		EnableRemoteAccess:        true,
+		AllowedTargetPresetIDs:    []string{"family", "", "family", "temporary_guest"},
+		AllowedTemporaryPresetIDs: []string{"temporary_guest", "temporary_guest"},
+		AccessSchedules: []config.JellyfinPresetAccessSchedule{
+			{DayOfWeek: "Monday", StartHour: 8, EndHour: 20},
+			{DayOfWeek: "", StartHour: -1, EndHour: 40},
+		},
+		IsTemporary:                true,
+		DefaultAccountDurationDays: 14,
+		MaxAccountDurationDays:     30,
+		MaxSessions:                -3,
+		BitrateLimit:               -1,
 		DisplayPreferences: config.JellyfinPresetDisplayPreferences{
 			ScreenSaver:                 " ",
 			ScreensaverTime:             -1,
@@ -151,6 +161,21 @@ func TestSaveJellyfinPolicyPresetsNormalizesNewBlocks(t *testing.T) {
 	if got.EnabledFolderIDs == nil || len(got.EnabledFolderIDs) != 2 || got.EnabledFolderIDs[0] != "movies" || got.EnabledFolderIDs[1] != "shows" {
 		t.Fatalf("EnabledFolderIDs = %#v", got.EnabledFolderIDs)
 	}
+	if got.BlockedMediaFolders == nil || len(got.BlockedMediaFolders) != 1 || got.BlockedMediaFolders[0] != "secret" {
+		t.Fatalf("BlockedMediaFolders = %#v", got.BlockedMediaFolders)
+	}
+	if got.AllowedTargetPresetIDs == nil || len(got.AllowedTargetPresetIDs) != 2 {
+		t.Fatalf("AllowedTargetPresetIDs not normalized: %#v", got.AllowedTargetPresetIDs)
+	}
+	if got.AllowedTemporaryPresetIDs == nil || len(got.AllowedTemporaryPresetIDs) != 1 {
+		t.Fatalf("AllowedTemporaryPresetIDs not normalized: %#v", got.AllowedTemporaryPresetIDs)
+	}
+	if len(got.AccessSchedules) != 1 || got.AccessSchedules[0].DayOfWeek != "Monday" || got.AccessSchedules[0].StartHour != 8 || got.AccessSchedules[0].EndHour != 20 {
+		t.Fatalf("AccessSchedules not normalized: %#v", got.AccessSchedules)
+	}
+	if !got.IsTemporary || got.DefaultAccountDurationDays != 14 || got.MaxAccountDurationDays != 30 {
+		t.Fatalf("temporary lifecycle not preserved: %+v", got)
+	}
 	if got.DisplayPreferences.ScreenSaver != "none" || got.DisplayPreferences.LibraryPageSize != 100 || got.DisplayPreferences.MaxDaysForNextUp != 365 {
 		t.Fatalf("display numeric defaults not normalized: %+v", got.DisplayPreferences)
 	}
@@ -162,6 +187,23 @@ func TestSaveJellyfinPolicyPresetsNormalizesNewBlocks(t *testing.T) {
 	}
 	if got.UserConfiguration.LatestItemsExcludes == nil || len(got.UserConfiguration.LatestItemsExcludes) != 1 {
 		t.Fatalf("LatestItemsExcludes not cleaned: %#v", got.UserConfiguration.LatestItemsExcludes)
+	}
+}
+
+func TestGroupPolicyMappingsSortedByPriority(t *testing.T) {
+	db := newPresetTestDB(t)
+	if err := db.SaveGroupPolicyMappings([]config.GroupPolicyMapping{
+		{GroupName: "media", Source: "ldap", LDAPGroupDN: "cn=low", PolicyPresetID: "limited", Priority: 1},
+		{GroupName: "media", Source: "ldap", LDAPGroupDN: "cn=high", PolicyPresetID: "admin", Priority: 50},
+	}); err != nil {
+		t.Fatalf("SaveGroupPolicyMappings() error = %v", err)
+	}
+	mappings, err := db.GetGroupPolicyMappings()
+	if err != nil {
+		t.Fatalf("GetGroupPolicyMappings() error = %v", err)
+	}
+	if len(mappings) < 2 || mappings[0].Priority != 50 || mappings[0].PolicyPresetID != "admin" {
+		t.Fatalf("mappings not sorted by priority: %#v", mappings)
 	}
 }
 

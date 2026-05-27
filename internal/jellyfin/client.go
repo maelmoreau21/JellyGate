@@ -75,26 +75,50 @@ type User struct {
 
 // Policy représente la politique de droits d'un utilisateur Jellyfin.
 type Policy struct {
-	IsAdministrator                bool     `json:"IsAdministrator"`
-	IsDisabled                     bool     `json:"IsDisabled"`
-	EnableAllFolders               bool     `json:"EnableAllFolders"`
-	EnabledFolders                 []string `json:"EnabledFolders"`
-	EnableAllChannels              bool     `json:"EnableAllChannels"`
-	EnableMediaPlayback            bool     `json:"EnableMediaPlayback"`
-	EnableAudioPlaybackTranscoding bool     `json:"EnableAudioPlaybackTranscoding"`
-	EnableVideoPlaybackTranscoding bool     `json:"EnableVideoPlaybackTranscoding"`
-	EnableContentDeletion          bool     `json:"EnableContentDeletion"`
-	EnableContentDownloading       bool     `json:"EnableContentDownloading"`
-	EnableRemoteAccess             bool     `json:"EnableRemoteAccess"`
-	EnableLiveTvAccess             bool     `json:"EnableLiveTvAccess"`
-	EnableLiveTvManagement         bool     `json:"EnableLiveTvManagement"`
-	EnableSharedDeviceControl      bool     `json:"EnableSharedDeviceControl"`
-	ForceRemoteSourceTranscoding   bool     `json:"ForceRemoteSourceTranscoding"`
-	EnableSyncTranscoding          bool     `json:"EnableSyncTranscoding"`
-	InvalidLoginAttemptCount       int      `json:"InvalidLoginAttemptCount"`
-	LoginAttemptsBeforeLockout     int      `json:"LoginAttemptsBeforeLockout"`
-	MaxActiveSessions              int      `json:"MaxActiveSessions"`
-	RemoteClientBitrateLimit       int      `json:"RemoteClientBitrateLimit"`
+	IsAdministrator                  bool             `json:"IsAdministrator"`
+	IsDisabled                       bool             `json:"IsDisabled"`
+	IsHidden                         bool             `json:"IsHidden"`
+	EnableAllFolders                 bool             `json:"EnableAllFolders"`
+	EnabledFolders                   []string         `json:"EnabledFolders"`
+	BlockedMediaFolders              []string         `json:"BlockedMediaFolders"`
+	EnableAllDevices                 bool             `json:"EnableAllDevices"`
+	EnabledDevices                   []string         `json:"EnabledDevices"`
+	EnableAllChannels                bool             `json:"EnableAllChannels"`
+	EnabledChannels                  []string         `json:"EnabledChannels"`
+	BlockedChannels                  []string         `json:"BlockedChannels"`
+	EnableMediaPlayback              bool             `json:"EnableMediaPlayback"`
+	EnableAudioPlaybackTranscoding   bool             `json:"EnableAudioPlaybackTranscoding"`
+	EnableVideoPlaybackTranscoding   bool             `json:"EnableVideoPlaybackTranscoding"`
+	EnablePlaybackRemuxing           bool             `json:"EnablePlaybackRemuxing"`
+	EnableContentDeletion            bool             `json:"EnableContentDeletion"`
+	EnableContentDeletionFromFolders []string         `json:"EnableContentDeletionFromFolders"`
+	EnableContentDownloading         bool             `json:"EnableContentDownloading"`
+	EnablePublicSharing              bool             `json:"EnablePublicSharing"`
+	EnableRemoteAccess               bool             `json:"EnableRemoteAccess"`
+	EnableLiveTvAccess               bool             `json:"EnableLiveTvAccess"`
+	EnableLiveTvManagement           bool             `json:"EnableLiveTvManagement"`
+	EnableSharedDeviceControl        bool             `json:"EnableSharedDeviceControl"`
+	ForceRemoteSourceTranscoding     bool             `json:"ForceRemoteSourceTranscoding"`
+	EnableSyncTranscoding            bool             `json:"EnableSyncTranscoding"`
+	EnableMediaConversion            bool             `json:"EnableMediaConversion"`
+	SyncPlayAccess                   string           `json:"SyncPlayAccess"`
+	AllowedTags                      []string         `json:"AllowedTags"`
+	BlockedTags                      []string         `json:"BlockedTags"`
+	MaxParentalRating                int              `json:"MaxParentalRating"`
+	BlockUnratedItems                []string         `json:"BlockUnratedItems"`
+	AccessSchedules                  []AccessSchedule `json:"AccessSchedules"`
+	AuthenticationProviderID         string           `json:"AuthenticationProviderId"`
+	PasswordResetProviderID          string           `json:"PasswordResetProviderId"`
+	InvalidLoginAttemptCount         int              `json:"InvalidLoginAttemptCount"`
+	LoginAttemptsBeforeLockout       int              `json:"LoginAttemptsBeforeLockout"`
+	MaxActiveSessions                int              `json:"MaxActiveSessions"`
+	RemoteClientBitrateLimit         int              `json:"RemoteClientBitrateLimit"`
+}
+
+type AccessSchedule struct {
+	DayOfWeek string `json:"DayOfWeek"`
+	StartHour int    `json:"StartHour"`
+	EndHour   int    `json:"EndHour"`
 }
 
 // Library représente une bibliothèque de médias Jellyfin.
@@ -129,23 +153,47 @@ func (l *Library) UnmarshalJSON(data []byte) error {
 // InviteProfile contient les droits à appliquer lors d'une invitation.
 // Stocké en JSON dans la table invitations.jellyfin_profile.
 type InviteProfile struct {
-	IsAdministrator          bool     `json:"is_administrator"`
-	EnableAllFolders         bool     `json:"enable_all_folders"`
-	EnabledFolderIDs         []string `json:"enabled_folder_ids"`
-	EnableDownload           bool     `json:"enable_download"`
-	RequireEmail             bool     `json:"require_email"`
-	RequireEmailVerification bool     `json:"require_email_verification"`
-	EnableRemoteAccess       bool     `json:"enable_remote_access"`
-	MaxSessions              int      `json:"max_sessions"`
-	BitrateLimit             int      `json:"bitrate_limit"`    // 0 = illimité
-	UserExpiryDays           int      `json:"user_expiry_days"` // 0 = illimité
-	UserExpiresAt            string   `json:"user_expires_at"`
-	DisableAfterDays         int      `json:"disable_after_days"`
-	ExpiryAction             string   `json:"expiry_action"` // disable|delete|disable_then_delete
-	DeleteAfterDays          int      `json:"delete_after_days"`
-	GroupName                string   `json:"group_name"`
-	UsernameMinLength        int      `json:"username_min_length"`
-	UsernameMaxLength        int      `json:"username_max_length"`
+	IsAdministrator                  bool     `json:"is_administrator"`
+	IsHidden                         bool     `json:"is_hidden"`
+	IsDisabled                       bool     `json:"is_disabled"`
+	EnableAllFolders                 bool     `json:"enable_all_folders"`
+	EnabledFolderIDs                 []string `json:"enabled_folder_ids"`
+	BlockedMediaFolders              []string `json:"blocked_media_folders"`
+	EnableAllDevices                 bool     `json:"enable_all_devices"`
+	EnabledDevices                   []string `json:"enabled_devices"`
+	EnableAllChannels                bool     `json:"enable_all_channels"`
+	EnabledChannels                  []string `json:"enabled_channels"`
+	BlockedChannels                  []string `json:"blocked_channels"`
+	EnableDownload                   bool     `json:"enable_download"`
+	EnableMediaPlayback              bool     `json:"enable_media_playback"`
+	EnableAudioPlaybackTranscoding   bool     `json:"enable_audio_playback_transcoding"`
+	EnableVideoPlaybackTranscoding   bool     `json:"enable_video_playback_transcoding"`
+	EnablePlaybackRemuxing           bool     `json:"enable_playback_remuxing"`
+	RequireEmail                     bool     `json:"require_email"`
+	RequireEmailVerification         bool     `json:"require_email_verification"`
+	EnableRemoteAccess               bool     `json:"enable_remote_access"`
+	EnableLiveTvAccess               bool     `json:"enable_live_tv_access"`
+	EnableLiveTvManagement           bool     `json:"enable_live_tv_management"`
+	EnableSharedDeviceControl        bool     `json:"enable_shared_device_control"`
+	EnableContentDeletion            bool     `json:"enable_content_deletion"`
+	EnableContentDeletionFromFolders []string `json:"enable_content_deletion_from_folders"`
+	EnablePublicSharing              bool     `json:"enable_public_sharing"`
+	EnableSyncTranscoding            bool     `json:"enable_sync_transcoding"`
+	EnableMediaConversion            bool     `json:"enable_media_conversion"`
+	ForceRemoteSourceTranscoding     bool     `json:"force_remote_source_transcoding"`
+	SyncPlayAccess                   string   `json:"syncplay_access"`
+	InvalidLoginAttemptCount         int      `json:"invalid_login_attempt_count"`
+	LoginAttemptsBeforeLockout       int      `json:"login_attempts_before_lockout"`
+	MaxSessions                      int      `json:"max_sessions"`
+	BitrateLimit                     int      `json:"bitrate_limit"`    // 0 = illimité
+	UserExpiryDays                   int      `json:"user_expiry_days"` // 0 = illimité
+	UserExpiresAt                    string   `json:"user_expires_at"`
+	DisableAfterDays                 int      `json:"disable_after_days"`
+	ExpiryAction                     string   `json:"expiry_action"` // disable|delete|disable_then_delete
+	DeleteAfterDays                  int      `json:"delete_after_days"`
+	GroupName                        string   `json:"group_name"`
+	UsernameMinLength                int      `json:"username_min_length"`
+	UsernameMaxLength                int      `json:"username_max_length"`
 
 	PasswordMinLength      int  `json:"password_min_length"`
 	PasswordMaxLength      int  `json:"password_max_length"`
@@ -154,11 +202,22 @@ type InviteProfile struct {
 	PasswordRequireDigit   bool `json:"password_require_digit"`
 	PasswordRequireSpecial bool `json:"password_require_special"`
 
+	AllowedTags       []string         `json:"allowed_tags"`
+	BlockedTags       []string         `json:"blocked_tags"`
+	MaxParentalRating int              `json:"max_parental_rating"`
+	BlockUnratedItems []string         `json:"block_unrated_items"`
+	AccessSchedules   []AccessSchedule `json:"access_schedules"`
+
 	// JFA-Go Features
-	ForcedUsername string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
-	TemplateUserID string `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
-	CanInvite      bool   `json:"can_invite"`
-	PresetID       string `json:"preset_id"` // Identifiant du preset (Parrainage)
+	ForcedUsername              string   `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
+	TemplateUserID              string   `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
+	CanInvite                   bool     `json:"can_invite"`
+	PresetID                    string   `json:"preset_id"` // Identifiant du preset (Parrainage)
+	IsTemporary                 bool     `json:"is_temporary"`
+	AccountDurationDays         int      `json:"account_duration_days"`
+	LDAPGroups                  []string `json:"ldap_groups"`
+	LDAPAuthProviderID          string   `json:"ldap_auth_provider_id"`
+	LDAPPasswordResetProviderID string   `json:"ldap_password_reset_provider_id"`
 
 	UserConfiguration  config.JellyfinPresetUserConfiguration  `json:"user_configuration"`
 	DisplayPreferences config.JellyfinPresetDisplayPreferences `json:"display_preferences"`
@@ -170,6 +229,104 @@ type InviteProfile struct {
 //
 // Retourne l'utilisateur créé avec son ID Jellyfin.
 // En cas d'erreur, le rollback doit supprimer le compte AD correspondant.
+// InviteProfileFromPolicyPreset convertit un profil JellyGate en snapshot
+// immuable applicable a Jellyfin.
+func InviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) InviteProfile {
+	if preset == nil {
+		return InviteProfile{}
+	}
+
+	accountDurationDays := preset.DefaultAccountDurationDays
+	if accountDurationDays <= 0 {
+		accountDurationDays = preset.DisableAfterDays
+	}
+	if preset.MaxAccountDurationDays > 0 && (accountDurationDays == 0 || accountDurationDays > preset.MaxAccountDurationDays) {
+		accountDurationDays = preset.MaxAccountDurationDays
+	}
+
+	return InviteProfile{
+		IsAdministrator:                  preset.IsAdministrator,
+		IsHidden:                         preset.IsHidden,
+		IsDisabled:                       preset.IsDisabled,
+		EnableAllFolders:                 preset.EnableAllFolders,
+		EnabledFolderIDs:                 append([]string(nil), preset.EnabledFolderIDs...),
+		BlockedMediaFolders:              append([]string(nil), preset.BlockedMediaFolders...),
+		EnableAllDevices:                 preset.EnableAllDevices,
+		EnabledDevices:                   append([]string(nil), preset.EnabledDevices...),
+		EnableAllChannels:                preset.EnableAllChannels,
+		EnabledChannels:                  append([]string(nil), preset.EnabledChannels...),
+		BlockedChannels:                  append([]string(nil), preset.BlockedChannels...),
+		EnableDownload:                   preset.EnableDownload,
+		EnableMediaPlayback:              preset.EnableMediaPlayback,
+		EnableAudioPlaybackTranscoding:   preset.EnableAudioPlaybackTranscoding,
+		EnableVideoPlaybackTranscoding:   preset.EnableVideoPlaybackTranscoding,
+		EnablePlaybackRemuxing:           preset.EnablePlaybackRemuxing,
+		EnableRemoteAccess:               preset.EnableRemoteAccess,
+		EnableLiveTvAccess:               preset.EnableLiveTvAccess,
+		EnableLiveTvManagement:           preset.EnableLiveTvManagement,
+		EnableSharedDeviceControl:        preset.EnableSharedDeviceControl,
+		EnableContentDeletion:            preset.EnableContentDeletion,
+		EnableContentDeletionFromFolders: append([]string(nil), preset.EnableContentDeletionFromFolders...),
+		EnablePublicSharing:              preset.EnablePublicSharing,
+		EnableSyncTranscoding:            preset.EnableSyncTranscoding,
+		EnableMediaConversion:            preset.EnableMediaConversion,
+		ForceRemoteSourceTranscoding:     preset.ForceRemoteSourceTranscoding,
+		SyncPlayAccess:                   strings.TrimSpace(preset.SyncPlayAccess),
+		InvalidLoginAttemptCount:         preset.InvalidLoginAttemptCount,
+		LoginAttemptsBeforeLockout:       preset.LoginAttemptsBeforeLockout,
+		MaxSessions:                      preset.MaxSessions,
+		BitrateLimit:                     preset.BitrateLimit,
+		DisableAfterDays:                 preset.DisableAfterDays,
+		UserExpiryDays:                   accountDurationDays,
+		ExpiryAction:                     normalizeInviteProfileExpiryAction(preset.ExpiryAction),
+		DeleteAfterDays:                  preset.DeleteAfterDays,
+		UsernameMinLength:                preset.UsernameMinLength,
+		UsernameMaxLength:                preset.UsernameMaxLength,
+		PasswordMinLength:                preset.PasswordMinLength,
+		PasswordMaxLength:                preset.PasswordMaxLength,
+		PasswordRequireUpper:             preset.RequireUpper,
+		PasswordRequireLower:             preset.RequireLower,
+		PasswordRequireDigit:             preset.RequireDigit,
+		PasswordRequireSpecial:           preset.RequireSpecial,
+		AllowedTags:                      append([]string(nil), preset.AllowedTags...),
+		BlockedTags:                      append([]string(nil), preset.BlockedTags...),
+		MaxParentalRating:                preset.MaxParentalRating,
+		BlockUnratedItems:                append([]string(nil), preset.BlockUnratedItems...),
+		AccessSchedules:                  accessSchedulesFromPreset(preset.AccessSchedules),
+		CanInvite:                        preset.CanInvite || preset.CanCreateInvitations,
+		PresetID:                         strings.TrimSpace(strings.ToLower(preset.ID)),
+		IsTemporary:                      preset.IsTemporary,
+		AccountDurationDays:              accountDurationDays,
+		LDAPGroups:                       append([]string(nil), preset.LDAPGroups...),
+		UserConfiguration:                preset.UserConfiguration,
+		DisplayPreferences:               preset.DisplayPreferences,
+	}
+}
+
+func accessSchedulesFromPreset(schedules []config.JellyfinPresetAccessSchedule) []AccessSchedule {
+	if len(schedules) == 0 {
+		return nil
+	}
+	out := make([]AccessSchedule, 0, len(schedules))
+	for _, schedule := range schedules {
+		out = append(out, AccessSchedule{
+			DayOfWeek: schedule.DayOfWeek,
+			StartHour: schedule.StartHour,
+			EndHour:   schedule.EndHour,
+		})
+	}
+	return out
+}
+
+func normalizeInviteProfileExpiryAction(action string) string {
+	switch strings.ToLower(strings.TrimSpace(action)) {
+	case "delete", "disable_then_delete":
+		return strings.ToLower(strings.TrimSpace(action))
+	default:
+		return "disable"
+	}
+}
+
 func (c *Client) CreateUser(name, password string) (*User, error) {
 	reqBody, err := json.Marshal(CreateUserRequest{ // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
 		Name:     name,
@@ -507,18 +664,58 @@ func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error 
 	// Appliquer les paramètres du profil d'invitation
 	policy := user.Policy
 	policy.IsAdministrator = profile.IsAdministrator
-	policy.IsDisabled = false
+	policy.IsDisabled = profile.IsDisabled
+	policy.IsHidden = profile.IsHidden
 	policy.EnableAllFolders = profile.EnableAllFolders
 	policy.EnabledFolders = profile.EnabledFolderIDs
+	policy.BlockedMediaFolders = profile.BlockedMediaFolders
+	policy.EnableAllDevices = profile.EnableAllDevices
+	policy.EnabledDevices = profile.EnabledDevices
+	policy.EnableAllChannels = profile.EnableAllChannels
+	policy.EnabledChannels = profile.EnabledChannels
+	policy.BlockedChannels = profile.BlockedChannels
 	policy.EnableContentDownloading = profile.EnableDownload
+	policy.EnableMediaPlayback = profile.EnableMediaPlayback
+	policy.EnableAudioPlaybackTranscoding = profile.EnableAudioPlaybackTranscoding
+	policy.EnableVideoPlaybackTranscoding = profile.EnableVideoPlaybackTranscoding
+	policy.EnablePlaybackRemuxing = profile.EnablePlaybackRemuxing
 	policy.EnableRemoteAccess = profile.EnableRemoteAccess
+	policy.EnableLiveTvAccess = profile.EnableLiveTvAccess
+	policy.EnableLiveTvManagement = profile.EnableLiveTvManagement
+	policy.EnableSharedDeviceControl = profile.EnableSharedDeviceControl
+	policy.EnableContentDeletion = profile.EnableContentDeletion
+	policy.EnableContentDeletionFromFolders = profile.EnableContentDeletionFromFolders
+	policy.EnablePublicSharing = profile.EnablePublicSharing
+	policy.EnableSyncTranscoding = profile.EnableSyncTranscoding
+	policy.EnableMediaConversion = profile.EnableMediaConversion
+	policy.ForceRemoteSourceTranscoding = profile.ForceRemoteSourceTranscoding
+	policy.SyncPlayAccess = strings.TrimSpace(profile.SyncPlayAccess)
+	policy.InvalidLoginAttemptCount = profile.InvalidLoginAttemptCount
+	policy.LoginAttemptsBeforeLockout = profile.LoginAttemptsBeforeLockout
 	policy.MaxActiveSessions = profile.MaxSessions
 	policy.RemoteClientBitrateLimit = profile.BitrateLimit
+	policy.AllowedTags = profile.AllowedTags
+	policy.BlockedTags = profile.BlockedTags
+	policy.MaxParentalRating = profile.MaxParentalRating
+	policy.BlockUnratedItems = profile.BlockUnratedItems
+	policy.AccessSchedules = profile.AccessSchedules
+	if strings.TrimSpace(profile.LDAPAuthProviderID) != "" {
+		policy.AuthenticationProviderID = strings.TrimSpace(profile.LDAPAuthProviderID)
+	}
+	if strings.TrimSpace(profile.LDAPPasswordResetProviderID) != "" {
+		policy.PasswordResetProviderID = strings.TrimSpace(profile.LDAPPasswordResetProviderID)
+	}
 
 	// Activer les capacités de lecture par défaut
-	policy.EnableMediaPlayback = true
-	policy.EnableAudioPlaybackTranscoding = true
-	policy.EnableVideoPlaybackTranscoding = true
+	if !policy.EnableMediaPlayback &&
+		!policy.EnableAudioPlaybackTranscoding &&
+		!policy.EnableVideoPlaybackTranscoding &&
+		!policy.EnablePlaybackRemuxing {
+		policy.EnableMediaPlayback = true
+		policy.EnableAudioPlaybackTranscoding = true
+		policy.EnableVideoPlaybackTranscoding = true
+		policy.EnablePlaybackRemuxing = true
+	}
 
 	if err := c.SetUserPolicy(userID, policy); err != nil {
 		return err

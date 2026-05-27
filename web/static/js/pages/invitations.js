@@ -14,6 +14,12 @@
     const inviterQuotaMonth = Number(config.inviterQuotaMonth || 0);
     const limitUserExpiryDays = Number(config.limitUserExpiryDays || 0);
     const defaultDisableAfterDays = Number(config.defaultDisableAfterDays || 0);
+    const targetPresetID = String(config.targetPresetID || '').trim();
+    const allowedTargetPresetIDs = String(config.allowedTargetPresetIDs || '').split(',').map((v) => v.trim()).filter(Boolean);
+    const canCreateTemporaryInvitations = !!config.canCreateTemporaryInvitations;
+    const allowedTemporaryPresetIDs = String(config.allowedTemporaryPresetIDs || '').split(',').map((v) => v.trim()).filter(Boolean);
+    const defaultTemporaryDurationDays = Number(config.defaultTemporaryDurationDays || 0);
+    const maxTemporaryDurationDays = Number(config.maxTemporaryDurationDays || 0);
     const defaultLang = normalizeLangTag(config.defaultLang || 'fr') || 'fr';
 
     function normalizeLangTag(raw) {
@@ -363,27 +369,64 @@
             const downloads = document.getElementById('inv-enable-downloads');
             if (downloads && preset) downloads.checked = !!preset.enable_download;
             renderInviteLibraries(preset);
+            updateTemporaryInvitationState(preset);
             resetInvitationPreview();
         }
 
-        async function loadInviteWizardData() {
-            if (!isAdmin) {
-                renderInviteLibraries(null);
-                return;
+        function updateTemporaryInvitationState(preset) {
+            const tempInput = document.getElementById('inv-is-temporary');
+            const durationInput = document.getElementById('inv-account-duration-days');
+            const help = document.getElementById('inv-temp-help');
+            if (!tempInput || !durationInput) return;
+
+            const profileIsTemporary = !!preset?.is_temporary;
+            const allowedBySponsor = isAdmin || canCreateTemporaryInvitations;
+            const selectedID = String(document.getElementById('inv-policy-preset')?.value || targetPresetID || '').trim();
+            const allowedProfile = isAdmin || !selectedID || allowedTemporaryPresetIDs.includes(selectedID);
+            const defaultDays = Number(preset?.default_account_duration_days || preset?.disable_after_days || defaultTemporaryDurationDays || 30);
+            const maxDays = Number(preset?.max_account_duration_days || maxTemporaryDurationDays || 0);
+
+            if (profileIsTemporary) tempInput.checked = true;
+            tempInput.disabled = profileIsTemporary || !allowedBySponsor || !allowedProfile;
+            durationInput.disabled = !tempInput.checked || tempInput.disabled;
+            if (tempInput.checked && (!durationInput.value || durationInput.value === '30')) {
+                durationInput.value = String(defaultDays || 30);
             }
+            if (maxDays > 0 && Number(durationInput.value || 0) > maxDays) {
+                durationInput.value = String(maxDays);
+            }
+            if (help) {
+                const parts = [];
+                if (!allowedBySponsor) parts.push('Votre profil ne permet pas les invitations temporaires.');
+                if (allowedBySponsor && !allowedProfile) parts.push('Ce profil cible n est pas autorise comme temporaire.');
+                if (maxDays > 0) parts.push(`Maximum ${maxDays} jour(s).`);
+                help.textContent = parts.join(' ');
+            }
+        }
+
+        async function loadInviteWizardData() {
             const [presetsRes, librariesRes] = await Promise.all([
                 JG.api('/admin/api/automation/presets'),
-                JG.api('/admin/api/automation/libraries'),
+                isAdmin ? JG.api('/admin/api/automation/libraries') : Promise.resolve({ data: [] }),
             ]);
             invitationPresets = Array.isArray(presetsRes?.data) ? presetsRes.data : [];
             invitationLibraries = Array.isArray(librariesRes?.data) ? librariesRes.data : [];
 
             const select = document.getElementById('inv-policy-preset');
             if (select) {
-                select.innerHTML = '<option value="">Politique globale JellyGate</option>' + invitationPresets.map((preset) => {
+                let visiblePresets = invitationPresets;
+                if (!isAdmin) {
+                    const allowed = new Set(allowedTargetPresetIDs.length ? allowedTargetPresetIDs : [targetPresetID].filter(Boolean));
+                    visiblePresets = invitationPresets.filter((preset) => allowed.has(preset.id));
+                    if (!visiblePresets.length) {
+                        visiblePresets = Array.from(allowed).map((id) => ({ id, name: id }));
+                    }
+                }
+                select.innerHTML = (isAdmin ? '<option value="">Politique globale JellyGate</option>' : '') + visiblePresets.map((preset) => {
                     const adminSuffix = preset.is_administrator ? ' · admin' : '';
                     return `<option value="${JG.esc(preset.id || '')}">${JG.esc((preset.name || preset.id || 'Profil') + adminSuffix)}</option>`;
                 }).join('');
+                if (!isAdmin && targetPresetID) select.value = targetPresetID;
             }
             applySelectedInvitePreset();
         }
@@ -393,18 +436,22 @@
             const expiresInDays = parseInt(document.getElementById('inv-expiry-days')?.value || '0', 10) || 0;
             const userExpiryEnabled = !!document.getElementById('inv-user-expiry-enabled')?.checked;
             const userExpiryDays = parseInt(document.getElementById('inv-user-expiry-days')?.value || '0', 10) || 0;
+            const isTemporary = !!document.getElementById('inv-is-temporary')?.checked;
+            const accountDurationDays = parseInt(document.getElementById('inv-account-duration-days')?.value || '0', 10) || 0;
             return {
                 max_uses: maxUses,
                 expires_in_days: expiresInDays,
                 ignore_preset_link_expiry: !!document.getElementById('inv-ignore-link-limit')?.checked,
                 apply_user_expiry: userExpiryEnabled,
                 user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
+                is_temporary: isTemporary,
+                account_duration_days: isTemporary ? accountDurationDays : 0,
                 ignore_preset_user_expiry: !!document.getElementById('inv-ignore-user-expiry-limit')?.checked,
                 new_user_can_invite: !!document.getElementById('inv-new-user-can-invite')?.checked,
                 forced_username: (document.getElementById('inv-forced-user')?.value || '').trim(),
                 send_to_email: (document.getElementById('inv-email')?.value || '').trim(),
                 preferred_lang: normalizeLangTag(document.getElementById('inv-preferred-lang')?.value || ''),
-                policy_preset_id: isAdmin ? (document.getElementById('inv-policy-preset')?.value || '').trim() : '',
+                policy_preset_id: (document.getElementById('inv-policy-preset')?.value || '').trim(),
                 libraries: isAdmin ? selectedInvitationLibraries() : [],
                 enable_downloads: !!document.getElementById('inv-enable-downloads')?.checked,
                 email_message: (document.getElementById('inv-email-message')?.value || '').trim(),
@@ -612,12 +659,16 @@
             const policyPresetInput = document.getElementById('inv-policy-preset');
             const enableDownloadsInput = document.getElementById('inv-enable-downloads');
             const emailMessageInput = document.getElementById('inv-email-message');
+            const temporaryInput = document.getElementById('inv-is-temporary');
+            const accountDurationInput = document.getElementById('inv-account-duration-days');
 
             const maxUses = parseInt(maxUsesInput?.value || '0', 10) || 0;
             let expiresInDays = parseInt(expiryDaysInput?.value || '0', 10) || 0;
             const userExpiryEnabled = !!userExpiryEnabledInput?.checked;
             let userExpiryDays = parseInt(userExpiryDaysInput?.value || '0', 10) || 0;
             const grantInvite = !!canInviteInput?.checked;
+            const isTemporary = !!temporaryInput?.checked;
+            const accountDurationDays = parseInt(accountDurationInput?.value || '0', 10) || 0;
             const forcedUsername = (forcedUserInput?.value || '').trim();
             const ignorePresetLinkExpiry = !!(ignoreLinkInput && !ignoreLinkInput.disabled && ignoreLinkInput.checked);
             const ignorePresetUserExpiry = !!(ignoreUserInput && !ignoreUserInput.disabled && ignoreUserInput.checked);
@@ -667,12 +718,14 @@
                 ignore_preset_link_expiry: ignorePresetLinkExpiry,
                 apply_user_expiry: userExpiryEnabled,
                 user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
+                is_temporary: isTemporary,
+                account_duration_days: isTemporary ? accountDurationDays : 0,
                 ignore_preset_user_expiry: ignorePresetUserExpiry,
                 new_user_can_invite: grantInvite,
                 forced_username: forcedUsername,
                 send_to_email: (emailInput?.value || '').trim(),
                 preferred_lang: preferredLang,
-                policy_preset_id: isAdmin ? (policyPresetInput?.value || '').trim() : '',
+                policy_preset_id: (policyPresetInput?.value || '').trim(),
                 libraries: isAdmin ? selectedInvitationLibraries() : [],
                 enable_downloads: !!enableDownloadsInput?.checked,
                 email_message: (emailMessageInput?.value || '').trim(),
@@ -807,6 +860,13 @@
             expiryEnabled.addEventListener('change', () => {
                 const days = document.getElementById('inv-user-expiry-days');
                 if (days) days.disabled = !expiryEnabled.checked;
+            });
+        }
+        const tempEnabled = document.getElementById('inv-is-temporary');
+        if (tempEnabled) {
+            tempEnabled.addEventListener('change', () => {
+                const preset = invitationPresets.find((item) => item.id === document.getElementById('inv-policy-preset')?.value);
+                updateTemporaryInvitationState(preset);
             });
         }
 

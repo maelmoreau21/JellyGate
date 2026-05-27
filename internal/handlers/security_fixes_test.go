@@ -57,6 +57,71 @@ func TestCreateInvitationRejectsPrivilegedFieldsForNonAdmin(t *testing.T) {
 	}
 }
 
+func TestCreateInvitationAllowsSponsorTargetProfile(t *testing.T) {
+	_, db := newTestSettingsHandler(t)
+	if err := db.SaveJellyfinPolicyPresets([]config.JellyfinPolicyPreset{
+		{ID: "member", Name: "Member", EnableAllFolders: true, EnableRemoteAccess: true},
+		{ID: "sponsor", Name: "Sponsor", EnableAllFolders: true, EnableRemoteAccess: true, CanCreateInvitations: true, AllowedTargetPresetIDs: []string{"member"}, TargetPresetID: "member"},
+	}); err != nil {
+		t.Fatalf("SaveJellyfinPolicyPresets() error = %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO users (jellyfin_id, username, email, can_invite, preset_id, is_active)
+		 VALUES (?, ?, ?, TRUE, ?, TRUE)`,
+		"sponsor-jf", "sponsor", "sponsor@example.com", "sponsor",
+	); err != nil {
+		t.Fatalf("insert sponsor user: %v", err)
+	}
+
+	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil)
+	body, _ := json.Marshal(CreateInvitationRequest{MaxUses: 1, PolicyPresetID: "member"})
+	req := httptest.NewRequest(http.MethodPost, "/admin/api/invitations", bytes.NewReader(body))
+	req = req.WithContext(session.NewContext(req.Context(), &session.Payload{UserID: "sponsor-jf", Username: "sponsor"}))
+	rec := httptest.NewRecorder()
+
+	handler.CreateInvitation(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("CreateInvitation status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var profileID string
+	if err := db.QueryRow(`SELECT profile_id FROM invitations LIMIT 1`).Scan(&profileID); err != nil {
+		t.Fatalf("read invitation profile_id: %v", err)
+	}
+	if profileID != "member" {
+		t.Fatalf("profile_id = %q, want member", profileID)
+	}
+}
+
+func TestCreateInvitationRejectsTemporaryWhenSponsorProfileDisallows(t *testing.T) {
+	_, db := newTestSettingsHandler(t)
+	if err := db.SaveJellyfinPolicyPresets([]config.JellyfinPolicyPreset{
+		{ID: "temp", Name: "Temp", EnableAllFolders: true, EnableRemoteAccess: true, IsTemporary: true, DefaultAccountDurationDays: 7},
+		{ID: "sponsor", Name: "Sponsor", EnableAllFolders: true, EnableRemoteAccess: true, CanCreateInvitations: true, AllowedTargetPresetIDs: []string{"temp"}, TargetPresetID: "temp"},
+	}); err != nil {
+		t.Fatalf("SaveJellyfinPolicyPresets() error = %v", err)
+	}
+	if _, err := db.Exec(
+		`INSERT INTO users (jellyfin_id, username, email, can_invite, preset_id, is_active)
+		 VALUES (?, ?, ?, TRUE, ?, TRUE)`,
+		"sponsor-jf", "sponsor", "sponsor@example.com", "sponsor",
+	); err != nil {
+		t.Fatalf("insert sponsor user: %v", err)
+	}
+
+	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil)
+	body, _ := json.Marshal(CreateInvitationRequest{MaxUses: 1, PolicyPresetID: "temp", IsTemporary: true, AccountDurationDays: 7})
+	req := httptest.NewRequest(http.MethodPost, "/admin/api/invitations", bytes.NewReader(body))
+	req = req.WithContext(session.NewContext(req.Context(), &session.Payload{UserID: "sponsor-jf", Username: "sponsor"}))
+	rec := httptest.NewRecorder()
+
+	handler.CreateInvitation(rec, req)
+
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("CreateInvitation status = %d, want %d; body=%s", rec.Code, http.StatusForbidden, rec.Body.String())
+	}
+}
+
 func TestReserveInvitationUseEnforcesMaxUses(t *testing.T) {
 	_, db := newTestSettingsHandler(t)
 	if _, err := db.Exec(`INSERT INTO invitations (code, max_uses, used_count) VALUES (?, 1, 0)`, "quota-once"); err != nil {

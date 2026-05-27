@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -238,22 +239,24 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 // Retourne une config par défaut (Enabled=false) si non configurée.
 func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	cfg := config.LDAPConfig{
-		Enabled:              false,
-		Port:                 636,
-		UseTLS:               true,
-		SearchFilter:         "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))",
-		SearchAttributes:     "uid,sAMAccountName,cn,userPrincipalName,mail",
-		UIDAttribute:         "uid",
-		UsernameAttribute:    "auto",
-		AdminFilter:          "",
-		AdminFilterMemberUID: false,
-		UserObjectClass:      "auto",
-		GroupMemberAttr:      "auto",
-		UserOU:               "CN=Users",
-		ProvisionMode:        "hybrid",
-		JellyfinGroup:        "jellyfin",
-		InviterGroup:         "jellyfin-Parrainage",
-		AdministratorsGroup:  "jellyfin-administrateur",
+		Enabled:                             false,
+		Port:                                636,
+		UseTLS:                              true,
+		SearchFilter:                        "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))",
+		SearchAttributes:                    "uid,sAMAccountName,cn,userPrincipalName,mail",
+		UIDAttribute:                        "uid",
+		UsernameAttribute:                   "auto",
+		AdminFilter:                         "",
+		AdminFilterMemberUID:                false,
+		UserObjectClass:                     "auto",
+		GroupMemberAttr:                     "auto",
+		UserOU:                              "CN=Users",
+		ProvisionMode:                       "hybrid",
+		JellyfinGroup:                       "jellyfin",
+		InviterGroup:                        "jellyfin-Parrainage",
+		AdministratorsGroup:                 "jellyfin-administrateur",
+		JellyfinLDAPAuthProviderID:          "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin",
+		JellyfinLDAPPasswordResetProviderID: "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider",
 	}
 
 	raw, err := db.GetSetting(SettingLDAPConfig)
@@ -320,6 +323,12 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	}
 	if strings.TrimSpace(cfg.AdministratorsGroup) == "" {
 		cfg.AdministratorsGroup = "jellyfin-administrateur"
+	}
+	if strings.TrimSpace(cfg.JellyfinLDAPAuthProviderID) == "" {
+		cfg.JellyfinLDAPAuthProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin"
+	}
+	if strings.TrimSpace(cfg.JellyfinLDAPPasswordResetProviderID) == "" {
+		cfg.JellyfinLDAPPasswordResetProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider"
 	}
 
 	return cfg, nil
@@ -797,16 +806,109 @@ func normalizeStringList(values []string) []string {
 	return cleaned
 }
 
+func normalizePresetIDList(values []string) []string {
+	cleaned := make([]string, 0, len(values))
+	seen := map[string]struct{}{}
+	for _, value := range values {
+		trimmed := strings.TrimSpace(strings.ToLower(value))
+		if trimmed == "" {
+			continue
+		}
+		if _, ok := seen[trimmed]; ok {
+			continue
+		}
+		seen[trimmed] = struct{}{}
+		cleaned = append(cleaned, trimmed)
+	}
+	if cleaned == nil {
+		return []string{}
+	}
+	return cleaned
+}
+
+func normalizeJellyfinAccessSchedules(values []config.JellyfinPresetAccessSchedule) []config.JellyfinPresetAccessSchedule {
+	normalized := make([]config.JellyfinPresetAccessSchedule, 0, len(values))
+	for _, value := range values {
+		day := strings.TrimSpace(value.DayOfWeek)
+		if value.StartHour < 0 {
+			value.StartHour = 0
+		}
+		if value.StartHour > 23 {
+			value.StartHour = 23
+		}
+		if value.EndHour < 0 {
+			value.EndHour = 0
+		}
+		if value.EndHour > 24 {
+			value.EndHour = 24
+		}
+		if day == "" || value.EndHour <= value.StartHour {
+			continue
+		}
+		normalized = append(normalized, config.JellyfinPresetAccessSchedule{
+			DayOfWeek: day,
+			StartHour: value.StartHour,
+			EndHour:   value.EndHour,
+		})
+	}
+	if normalized == nil {
+		return []config.JellyfinPresetAccessSchedule{}
+	}
+	return normalized
+}
+
 func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.JellyfinPolicyPreset {
+	preset.ID = strings.TrimSpace(strings.ToLower(preset.ID))
+	preset.TargetPresetID = strings.TrimSpace(strings.ToLower(preset.TargetPresetID))
 	preset.EnabledFolderIDs = normalizeStringList(preset.EnabledFolderIDs)
+	preset.BlockedMediaFolders = normalizeStringList(preset.BlockedMediaFolders)
+	preset.EnabledDevices = normalizeStringList(preset.EnabledDevices)
+	preset.EnabledChannels = normalizeStringList(preset.EnabledChannels)
+	preset.BlockedChannels = normalizeStringList(preset.BlockedChannels)
+	preset.EnableContentDeletionFromFolders = normalizeStringList(preset.EnableContentDeletionFromFolders)
+	preset.AllowedTags = normalizeStringList(preset.AllowedTags)
+	preset.BlockedTags = normalizeStringList(preset.BlockedTags)
+	preset.BlockUnratedItems = normalizeStringList(preset.BlockUnratedItems)
+	preset.AccessSchedules = normalizeJellyfinAccessSchedules(preset.AccessSchedules)
+	preset.LDAPGroups = normalizeStringList(preset.LDAPGroups)
+	preset.AllowedTargetPresetIDs = normalizePresetIDList(preset.AllowedTargetPresetIDs)
+	preset.AllowedTemporaryPresetIDs = normalizePresetIDList(preset.AllowedTemporaryPresetIDs)
 	preset.UserConfiguration = config.NormalizeJellyfinPresetUserConfiguration(preset.UserConfiguration)
 	preset.DisplayPreferences = config.NormalizeJellyfinPresetDisplayPreferences(preset.DisplayPreferences)
 
+	if !preset.EnableAllDevices && len(preset.EnabledDevices) == 0 {
+		preset.EnableAllDevices = true
+	}
+	if !preset.EnableAllChannels && len(preset.EnabledChannels) == 0 && len(preset.BlockedChannels) == 0 {
+		preset.EnableAllChannels = true
+	}
+	if strings.TrimSpace(preset.SyncPlayAccess) == "" {
+		preset.SyncPlayAccess = "CreateAndJoinGroups"
+	}
+	if !preset.EnableMediaPlayback &&
+		!preset.EnableAudioPlaybackTranscoding &&
+		!preset.EnableVideoPlaybackTranscoding &&
+		!preset.EnablePlaybackRemuxing {
+		preset.EnableMediaPlayback = true
+		preset.EnableAudioPlaybackTranscoding = true
+		preset.EnableVideoPlaybackTranscoding = true
+		preset.EnablePlaybackRemuxing = true
+	}
+
+	if preset.InvalidLoginAttemptCount < 0 {
+		preset.InvalidLoginAttemptCount = 0
+	}
+	if preset.LoginAttemptsBeforeLockout < 0 {
+		preset.LoginAttemptsBeforeLockout = 0
+	}
 	if preset.MaxSessions < 0 {
 		preset.MaxSessions = 0
 	}
 	if preset.BitrateLimit < 0 {
 		preset.BitrateLimit = 0
+	}
+	if preset.MaxParentalRating < 0 {
+		preset.MaxParentalRating = 0
 	}
 	if preset.PasswordMinLength < 0 {
 		preset.PasswordMinLength = 0
@@ -816,6 +918,18 @@ func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.Je
 	}
 	if preset.DeleteAfterDays < 0 {
 		preset.DeleteAfterDays = 0
+	}
+	if preset.DefaultAccountDurationDays < 0 {
+		preset.DefaultAccountDurationDays = 0
+	}
+	if preset.MaxAccountDurationDays < 0 {
+		preset.MaxAccountDurationDays = 0
+	}
+	if preset.IsTemporary && preset.DefaultAccountDurationDays <= 0 && preset.DisableAfterDays > 0 {
+		preset.DefaultAccountDurationDays = preset.DisableAfterDays
+	}
+	if preset.MaxAccountDurationDays > 0 && preset.DefaultAccountDurationDays > preset.MaxAccountDurationDays {
+		preset.DefaultAccountDurationDays = preset.MaxAccountDurationDays
 	}
 
 	if preset.InviteQuota < 0 {
@@ -836,6 +950,12 @@ func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.Je
 	if preset.InviteLinkValidityDays < 0 {
 		preset.InviteLinkValidityDays = 0
 	}
+	if preset.DefaultTemporaryDurationDays < 0 {
+		preset.DefaultTemporaryDurationDays = 0
+	}
+	if preset.MaxTemporaryDurationDays < 0 {
+		preset.MaxTemporaryDurationDays = 0
+	}
 
 	// Legacy compatibility: invite_quota historically represented a monthly quota.
 	if preset.InviteQuotaMonth <= 0 && preset.InviteQuota > 0 {
@@ -851,6 +971,30 @@ func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.Je
 	}
 	if preset.InviteMaxLinkHours <= 0 && preset.InviteLinkValidityDays > 0 {
 		preset.InviteMaxLinkHours = preset.InviteLinkValidityDays * 24
+	}
+
+	// Legacy compatibility: can_invite remains the stored flag used in older
+	// users rows, while can_create_invitations is the new profile capability.
+	if preset.CanInvite {
+		preset.CanCreateInvitations = true
+	}
+	if preset.CanCreateInvitations {
+		preset.CanInvite = true
+	}
+	if preset.TargetPresetID != "" && len(preset.AllowedTargetPresetIDs) == 0 {
+		preset.AllowedTargetPresetIDs = []string{preset.TargetPresetID}
+	}
+	if preset.TargetPresetID == "" && len(preset.AllowedTargetPresetIDs) > 0 {
+		preset.TargetPresetID = preset.AllowedTargetPresetIDs[0]
+	}
+	if preset.DefaultTemporaryDurationDays <= 0 && preset.DefaultAccountDurationDays > 0 {
+		preset.DefaultTemporaryDurationDays = preset.DefaultAccountDurationDays
+	}
+	if preset.MaxTemporaryDurationDays <= 0 && preset.MaxAccountDurationDays > 0 {
+		preset.MaxTemporaryDurationDays = preset.MaxAccountDurationDays
+	}
+	if preset.MaxTemporaryDurationDays > 0 && preset.DefaultTemporaryDurationDays > preset.MaxTemporaryDurationDays {
+		preset.DefaultTemporaryDurationDays = preset.MaxTemporaryDurationDays
 	}
 
 	return preset
@@ -971,8 +1115,12 @@ func (db *DB) GetGroupPolicyMappings() ([]config.GroupPolicyMapping, error) {
 			Source:         source,
 			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
 			PolicyPresetID: presetID,
+			Priority:       mappings[i].Priority,
 		})
 	}
+	sort.SliceStable(normalized, func(i, j int) bool {
+		return normalized[i].Priority > normalized[j].Priority
+	})
 
 	return normalized, nil
 }
@@ -997,6 +1145,7 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 			Source:         source,
 			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
 			PolicyPresetID: presetID,
+			Priority:       mappings[i].Priority,
 		})
 	}
 

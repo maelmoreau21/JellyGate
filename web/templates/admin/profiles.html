@@ -1,13 +1,13 @@
 {{ template "admin_shell.html" . }}
 
-{{ define "title" }}Profils Jellyfin — JellyGate{{ end }}
+{{ define "title" }}Profils JellyGate - JellyGate{{ end }}
 
 {{ define "admin_content" }}
 <div class="jg-page-header jg-ds-header">
     <div>
-        <div class="jg-ds-kicker">Data Studio</div>
-        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">Profils Jellyfin</h1>
-        <p class="text-jg-text-muted mt-2">Presets de droits, bibliothèques, expirations et parrainage appliqués aux invitations.</p>
+        <div class="jg-ds-kicker">JellyGate</div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">Profils</h1>
+        <p class="text-jg-text-muted mt-2">Droits Jellyfin, accueil, expiration, parrainage et groupes LDAP appliques aux invitations.</p>
     </div>
     <div class="flex flex-wrap items-center gap-3">
         <button id="profile-new-btn" class="jg-btn jg-btn-ghost h-11 px-4">
@@ -22,8 +22,8 @@
     <section class="jg-ds-panel">
         <div class="jg-ds-panel-head">
             <div>
-                <h2>Presets actifs</h2>
-                <p>Les presets par défaut sont ajoutés sans écraser vos profils existants.</p>
+                <h2>Profils actifs</h2>
+                <p>Ces profils remplacent les anciens presets tout en gardant la compatibilite API.</p>
             </div>
             <span id="profiles-count" class="jg-ds-pill">0</span>
         </div>
@@ -33,101 +33,120 @@
     <aside class="jg-ds-panel jg-profile-editor">
         <div class="jg-ds-panel-head">
             <div>
-                <h2 id="profile-editor-title">Sélectionnez un profil</h2>
-                <p id="profile-editor-subtitle">Modifiez ses droits Jellyfin et ses quotas d'invitation.</p>
+                <h2 id="profile-editor-title">Selectionnez un profil</h2>
+                <p id="profile-editor-subtitle">Modifiez ses droits, son accueil et ses autorisations d'invitation.</p>
             </div>
         </div>
 
         <form id="profile-form" class="space-y-5">
             <input type="hidden" id="profile-index">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label>
-                    <span class="jg-label">Identifiant</span>
-                    <input id="profile-id" class="jg-input h-11" placeholder="famille">
-                </label>
-                <label>
-                    <span class="jg-label">Nom affiché</span>
-                    <input id="profile-name" class="jg-input h-11" placeholder="Famille">
-                </label>
+                <label><span class="jg-label">Identifiant</span><input id="profile-id" class="jg-input h-11" placeholder="famille"></label>
+                <label><span class="jg-label">Nom affiche</span><input id="profile-name" class="jg-input h-11" placeholder="Famille"></label>
             </div>
-            <label>
-                <span class="jg-label">Description</span>
-                <textarea id="profile-description" class="jg-input min-h-20 py-3" placeholder="Rôle du profil"></textarea>
-            </label>
+            <label><span class="jg-label">Description</span><textarea id="profile-description" class="jg-input min-h-20 py-3" placeholder="Role du profil"></textarea></label>
 
-            <div class="jg-ds-field-grid">
-                <label class="jg-ds-check">
-                    <input id="profile-admin" type="checkbox">
-                    <span>Admin Jellyfin</span>
-                </label>
-                <label class="jg-ds-check">
-                    <input id="profile-all-folders" type="checkbox">
-                    <span>Toutes bibliothèques</span>
-                </label>
-                <label class="jg-ds-check">
-                    <input id="profile-download" type="checkbox">
-                    <span>Téléchargement</span>
-                </label>
-                <label class="jg-ds-check">
-                    <input id="profile-remote" type="checkbox">
-                    <span>Accès distant</span>
-                </label>
+            <div id="profile-tabs" class="flex flex-wrap gap-2 border-b border-jg-border pb-3">
+                <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm active" data-profile-tab-target="rights">Droits Jellyfin</button>
+                <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm" data-profile-tab-target="libraries">Bibliotheques</button>
+                <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm" data-profile-tab-target="home">Accueil</button>
+                <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm" data-profile-tab-target="security">Securite</button>
+                <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm" data-profile-tab-target="invites">Invitations</button>
+                <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm" data-profile-tab-target="ldap">LDAP</button>
             </div>
 
-            <div>
-                <div class="jg-label">Bibliothèques Jellyfin</div>
-                <div id="profile-libraries" class="jg-library-picker"></div>
-            </div>
+            <section class="profile-tab-panel space-y-4" data-profile-tab="rights">
+                <div class="jg-ds-field-grid">
+                    <label class="jg-ds-check"><input id="profile-admin" type="checkbox"><span>Admin Jellyfin</span></label>
+                    <label class="jg-ds-check"><input id="profile-hidden" type="checkbox"><span>Masque</span></label>
+                    <label class="jg-ds-check"><input id="profile-disabled" type="checkbox"><span>Desactive</span></label>
+                    <label class="jg-ds-check"><input id="profile-remote" type="checkbox"><span>Acces distant</span></label>
+                    <label class="jg-ds-check"><input id="profile-download" type="checkbox"><span>Telechargement</span></label>
+                    <label class="jg-ds-check"><input id="profile-playback" type="checkbox"><span>Lecture media</span></label>
+                    <label class="jg-ds-check"><input id="profile-audio-transcode" type="checkbox"><span>Transcodage audio</span></label>
+                    <label class="jg-ds-check"><input id="profile-video-transcode" type="checkbox"><span>Transcodage video</span></label>
+                    <label class="jg-ds-check"><input id="profile-remux" type="checkbox"><span>Remux</span></label>
+                    <label class="jg-ds-check"><input id="profile-live-tv" type="checkbox"><span>Live TV</span></label>
+                    <label class="jg-ds-check"><input id="profile-live-tv-management" type="checkbox"><span>Gestion Live TV</span></label>
+                    <label class="jg-ds-check"><input id="profile-public-sharing" type="checkbox"><span>Partage public</span></label>
+                    <label class="jg-ds-check"><input id="profile-content-deletion" type="checkbox"><span>Suppression contenu</span></label>
+                    <label class="jg-ds-check"><input id="profile-sync-transcoding" type="checkbox"><span>Sync transcode</span></label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label><span class="jg-label">Sessions max</span><input id="profile-sessions" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Bitrate distant</span><input id="profile-bitrate" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">SyncPlay</span><input id="profile-syncplay" class="jg-input h-11" placeholder="CreateAndJoinGroups"></label>
+                </div>
+            </section>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <label>
-                    <span class="jg-label">Expiration compte (jours)</span>
-                    <input id="profile-disable-days" type="number" min="0" class="jg-input h-11">
-                </label>
-                <label>
-                    <span class="jg-label">Sessions max</span>
-                    <input id="profile-sessions" type="number" min="0" class="jg-input h-11">
-                </label>
-                <label>
-                    <span class="jg-label">Bitrate distant</span>
-                    <input id="profile-bitrate" type="number" min="0" class="jg-input h-11">
-                </label>
-            </div>
+            <section class="profile-tab-panel space-y-4 hidden" data-profile-tab="libraries">
+                <label class="jg-ds-check"><input id="profile-all-folders" type="checkbox"><span>Toutes bibliotheques</span></label>
+                <div><div class="jg-label">Bibliotheques Jellyfin</div><div id="profile-libraries" class="jg-library-picker"></div></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label><span class="jg-label">Dossiers bloques</span><textarea id="profile-blocked-folders" class="jg-input min-h-20 py-3"></textarea></label>
+                    <label><span class="jg-label">Dossiers autorises pour suppression</span><textarea id="profile-deletion-folders" class="jg-input min-h-20 py-3"></textarea></label>
+                </div>
+            </section>
 
-            <div class="jg-ds-panel jg-ds-subpanel">
-                <div class="jg-ds-panel-head compact">
-                    <div>
-                        <h2>Parrainage</h2>
-                        <p>Droits d'invitation accordés aux nouveaux comptes.</p>
-                    </div>
+            <section class="profile-tab-panel space-y-4 hidden" data-profile-tab="home">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label><span class="jg-label">Sections d'accueil</span><textarea id="profile-home-sections" class="jg-input min-h-24 py-3" placeholder="smalllibrarytiles,resume,latestmedia"></textarea></label>
+                    <label><span class="jg-label">Ordre des vues</span><textarea id="profile-ordered-views" class="jg-input min-h-24 py-3"></textarea></label>
+                    <label><span class="jg-label">Dossiers groupes</span><textarea id="profile-grouped-folders" class="jg-input min-h-20 py-3"></textarea></label>
+                    <label><span class="jg-label">Exclusions My Media / Latest</span><textarea id="profile-home-excludes" class="jg-input min-h-20 py-3"></textarea></label>
                 </div>
                 <div class="jg-ds-field-grid">
-                    <label class="jg-ds-check">
-                        <input id="profile-can-invite" type="checkbox">
-                        <span>Peut inviter</span>
-                    </label>
-                    <label>
-                        <span class="jg-label">Profil cible</span>
-                        <select id="profile-target-preset" class="jg-input h-11"></select>
-                    </label>
-                    <label>
-                        <span class="jg-label">Quota / jour</span>
-                        <input id="profile-quota-day" type="number" min="0" class="jg-input h-11">
-                    </label>
-                    <label>
-                        <span class="jg-label">Quota / mois</span>
-                        <input id="profile-quota-month" type="number" min="0" class="jg-input h-11">
-                    </label>
-                    <label>
-                        <span class="jg-label">Lien (jours)</span>
-                        <input id="profile-link-days" type="number" min="0" class="jg-input h-11">
-                    </label>
-                    <label>
-                        <span class="jg-label">Usages / lien</span>
-                        <input id="profile-max-uses" type="number" min="0" class="jg-input h-11">
-                    </label>
+                    <label class="jg-ds-check"><input id="profile-backdrops" type="checkbox"><span>Backdrops</span></label>
+                    <label class="jg-ds-check"><input id="profile-theme-songs" type="checkbox"><span>Themes audio</span></label>
+                    <label class="jg-ds-check"><input id="profile-theme-videos" type="checkbox"><span>Themes video</span></label>
                 </div>
-            </div>
+                <label><span class="jg-label">Taille page bibliotheque</span><input id="profile-page-size" type="number" min="0" class="jg-input h-11"></label>
+            </section>
+
+            <section class="profile-tab-panel space-y-4 hidden" data-profile-tab="security">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <label><span class="jg-label">Expiration compte (jours)</span><input id="profile-disable-days" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Suppression apres expiration</span><input id="profile-delete-days" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Rating parental max</span><input id="profile-parental-rating" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Tentatives invalides</span><input id="profile-invalid-login" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Lockout apres</span><input id="profile-login-lockout" type="number" min="0" class="jg-input h-11"></label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label><span class="jg-label">Tags autorises</span><textarea id="profile-allowed-tags" class="jg-input min-h-20 py-3"></textarea></label>
+                    <label><span class="jg-label">Tags bloques / non classes</span><textarea id="profile-blocked-tags" class="jg-input min-h-20 py-3"></textarea></label>
+                </div>
+            </section>
+
+            <section class="profile-tab-panel space-y-4 hidden" data-profile-tab="invites">
+                <div class="jg-ds-field-grid">
+                    <label class="jg-ds-check"><input id="profile-can-invite" type="checkbox"><span>Peut creer des invitations</span></label>
+                    <label class="jg-ds-check"><input id="profile-can-temp-invite" type="checkbox"><span>Invitations temporaires</span></label>
+                    <label><span class="jg-label">Profil cible defaut</span><select id="profile-target-preset" class="jg-input h-11"></select></label>
+                    <label><span class="jg-label">Quota / jour</span><input id="profile-quota-day" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Quota / mois</span><input id="profile-quota-month" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Lien (jours)</span><input id="profile-link-days" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Usages / lien</span><input id="profile-max-uses" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Duree temporaire defaut</span><input id="profile-temp-default" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Duree temporaire max</span><input id="profile-temp-max" type="number" min="0" class="jg-input h-11"></label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label><span class="jg-label">Profils cibles autorises</span><textarea id="profile-allowed-targets" class="jg-input min-h-20 py-3"></textarea></label>
+                    <label><span class="jg-label">Profils temporaires autorises</span><textarea id="profile-allowed-temp-targets" class="jg-input min-h-20 py-3"></textarea></label>
+                </div>
+            </section>
+
+            <section class="profile-tab-panel space-y-4 hidden" data-profile-tab="ldap">
+                <label class="jg-ds-check"><input id="profile-is-temporary" type="checkbox"><span>Profil de compte temporaire</span></label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label><span class="jg-label">Duree compte defaut</span><input id="profile-account-default" type="number" min="0" class="jg-input h-11"></label>
+                    <label><span class="jg-label">Duree compte max</span><input id="profile-account-max" type="number" min="0" class="jg-input h-11"></label>
+                </div>
+                <label><span class="jg-label">Groupes LDAP a ajouter</span><textarea id="profile-ldap-groups" class="jg-input min-h-24 py-3"></textarea></label>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label><span class="jg-label">Devices autorises</span><textarea id="profile-devices" class="jg-input min-h-20 py-3"></textarea></label>
+                    <label><span class="jg-label">Chaines autorisees / bloquees</span><textarea id="profile-channels" class="jg-input min-h-20 py-3"></textarea></label>
+                </div>
+            </section>
 
             <div class="flex justify-between gap-3 pt-2">
                 <button id="profile-delete-btn" type="button" class="jg-btn jg-btn-danger h-11 px-4">Supprimer</button>

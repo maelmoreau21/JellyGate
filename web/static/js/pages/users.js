@@ -252,7 +252,11 @@
                     + '<td data-label="' + escAttr(columnLabels.jellyfin) + '" class="px-4 py-4">' + jellyfinStatusBadge(user) + '</td>'
                     + '<td data-label="' + escAttr(columnLabels.preset) + '" class="px-4 py-4">' + (function() {
                         const p = jellyfinPresets.find(pr => pr.id === user.preset_id);
-                        return JG.esc(p ? p.name : (user.preset_id || '\u2014'));
+                        const status = user.profile_apply_status || '';
+                        const statusLabel = status === 'failed'
+                            ? '<span class="block text-[10px] text-rose-400 mt-1" title="' + escAttr(user.profile_apply_error || '') + '">Profil non applique</span>'
+                            : (status === 'applied' ? '<span class="block text-[10px] text-emerald-400 mt-1">Profil applique</span>' : '<span class="block text-[10px] text-jg-text-muted mt-1">Application en attente</span>');
+                        return JG.esc(p ? p.name : (user.preset_id || '\u2014')) + statusLabel;
                     })() + '</td>'
                     + '<td data-label="' + escAttr(columnLabels.expiry) + '" class="px-4 py-4">' + JG.esc(expiry) + '</td>'
                     + '<td data-label="' + escAttr(columnLabels.actions) + '" class="px-6 py-4 text-right jg-users-actions"><div class="jg-row-actions flex justify-end gap-2">'

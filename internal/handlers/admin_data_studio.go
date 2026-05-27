@@ -385,6 +385,12 @@ func (h *AdminHandler) buildInvitationPreview(r *http.Request, sess *session.Pay
 	targetPresetID := strings.TrimSpace(limits.TargetPresetID)
 	if sess.IsAdmin && strings.TrimSpace(req.PolicyPresetID) != "" {
 		targetPresetID = strings.TrimSpace(req.PolicyPresetID)
+	} else if !sess.IsAdmin && strings.TrimSpace(req.PolicyPresetID) != "" {
+		requestedPresetID := strings.TrimSpace(strings.ToLower(req.PolicyPresetID))
+		if !presetIDAllowed(requestedPresetID, limits.AllowedTargetPresetIDs) {
+			return nil, fmt.Errorf("ce profil cible n'est pas autorise par votre profil")
+		}
+		targetPresetID = requestedPresetID
 	}
 
 	var preset *config.JellyfinPolicyPreset
@@ -454,11 +460,64 @@ func (h *AdminHandler) buildInvitationPreview(r *http.Request, sess *session.Pay
 		profile.UserExpiryDays = userDays
 		profile.DisableAfterDays = userDays
 		profile.ForcedUsername = strings.TrimSpace(req.ForcedUsername)
-		profile.CanInvite = preset.CanInvite || (req.NewUserCanInvite && (sess.IsAdmin || limits.AllowGrant))
+		profile.CanInvite = preset.CanInvite || preset.CanCreateInvitations || (req.NewUserCanInvite && (sess.IsAdmin || limits.AllowGrant))
 		if len(req.Libraries) > 0 {
 			profile.EnableAllFolders = false
 			profile.EnabledFolderIDs = req.Libraries
 		}
+		if !applyUserExpiry {
+			defaultAccountDuration := preset.DefaultAccountDurationDays
+			if defaultAccountDuration <= 0 {
+				defaultAccountDuration = preset.DisableAfterDays
+			}
+			if defaultAccountDuration > 0 {
+				applyUserExpiry = true
+				userDays = defaultAccountDuration
+				profile.UserExpiryDays = userDays
+				profile.DisableAfterDays = userDays
+			}
+		}
+	}
+	isTemporary := req.IsTemporary || (preset != nil && preset.IsTemporary)
+	accountDurationDays := 0
+	if isTemporary {
+		if !sess.IsAdmin {
+			if !limits.CanCreateTemporaryInvitations {
+				return nil, fmt.Errorf("votre profil ne permet pas de creer des invitations temporaires")
+			}
+			if !presetIDAllowed(targetPresetID, limits.AllowedTemporaryPresetIDs) {
+				return nil, fmt.Errorf("ce profil temporaire n'est pas autorise par votre profil")
+			}
+		}
+		defaultDuration := limits.DefaultTemporaryDurationDays
+		maxDuration := limits.MaxTemporaryDurationDays
+		if preset != nil {
+			if preset.DefaultAccountDurationDays > 0 {
+				defaultDuration = preset.DefaultAccountDurationDays
+			} else if preset.DisableAfterDays > 0 {
+				defaultDuration = preset.DisableAfterDays
+			}
+			if preset.MaxAccountDurationDays > 0 {
+				maxDuration = preset.MaxAccountDurationDays
+			}
+		}
+		accountDurationDays = req.AccountDurationDays
+		if accountDurationDays <= 0 {
+			accountDurationDays = defaultDuration
+		}
+		if accountDurationDays <= 0 {
+			return nil, fmt.Errorf("renseigne une duree de compte temporaire valide")
+		}
+		if maxDuration > 0 && accountDurationDays > maxDuration {
+			if !sess.IsAdmin {
+				return nil, fmt.Errorf("duree temporaire limitee a %d jour(s)", maxDuration)
+			}
+			accountDurationDays = maxDuration
+		}
+		profile.IsTemporary = true
+		profile.AccountDurationDays = accountDurationDays
+		profile.UserExpiryDays = accountDurationDays
+		profile.DisableAfterDays = accountDurationDays
 	}
 	if sess.IsAdmin && preset == nil {
 		profile.EnableDownload = req.EnableDownloads

@@ -41,16 +41,20 @@ import (
 
 // invitation reprÃƒÂ©sente une ligne de la table invitations.
 type invitation struct {
-	ID              int64
-	Code            string
-	Label           string
-	MaxUses         int
-	UsedCount       int
-	JellyfinProfile string // JSON brut du profil
-	PreferredLang   string
-	ExpiresAt       sql.NullTime
-	CreatedBy       string
-	CreatedAt       time.Time
+	ID                  int64
+	Code                string
+	Label               string
+	MaxUses             int
+	UsedCount           int
+	JellyfinProfile     string // JSON brut du profil
+	ProfileID           string
+	ProfileSnapshot     string
+	IsTemporary         bool
+	AccountDurationDays int
+	PreferredLang       string
+	ExpiresAt           sql.NullTime
+	CreatedBy           string
+	CreatedAt           time.Time
 }
 
 // inviteFormData contient les donnÃƒÂ©es soumises par le formulaire d'inscription.
@@ -61,9 +65,9 @@ type inviteFormData struct {
 }
 
 type inviteSignupResult struct {
-	JellyfinID   string
-	UserDN       string
-	LDAPOnlyMode bool
+	JellyfinID     string
+	UserDN         string
+	LDAPMirrorMode bool
 }
 
 type inviteSignupError struct {
@@ -386,13 +390,13 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if result.LDAPOnlyMode {
+	if result.LDAPMirrorMode {
 		h.renderInviteSuccessPage(
 			w,
 			r,
 			inv,
 			strings.ReplaceAll(
-				h.tr(r, "invite_success_ldap_only", "Bienvenue {username} ! Votre compte a ÃƒÂ©tÃƒÂ© crÃƒÂ©ÃƒÂ© dans l'annuaire LDAP. L'accÃƒÂ¨s Jellyfin utilisera votre integration LDAP."),
+				h.tr(r, "invite_success_ldap_mirror", "Bienvenue {username} ! Votre compte a ete cree dans LDAP et son profil Jellyfin miroir est configure."),
 				"{username}",
 				form.Username,
 			),
@@ -407,7 +411,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		r,
 		inv,
 		strings.ReplaceAll(
-			h.tr(r, "invite_success_hybrid", "Bienvenue {username} ! Votre compte a ete cree dans Jellyfin et dans l'annuaire LDAP."),
+			h.tr(r, "invite_success_local", "Bienvenue {username} ! Votre compte Jellyfin est pret."),
 			"{username}",
 			form.Username,
 		),
@@ -651,17 +655,18 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 	cleanupClosedInvitationsIfEnabled(h.db)
 
 	row := h.db.QueryRow(
-		`SELECT id, code, label, max_uses, used_count, jellyfin_profile, preferred_lang, expires_at, created_by, created_at
+		`SELECT id, code, label, max_uses, used_count, jellyfin_profile, profile_id, profile_snapshot, is_temporary, account_duration_days, preferred_lang, expires_at, created_by, created_at
 		 FROM invitations WHERE code = ?`, code)
 
 	var inv invitation
-	var jellyfinProfile sql.NullString
+	var jellyfinProfile, profileID, profileSnapshot sql.NullString
 	var label sql.NullString
 	var createdBy, preferredLang sql.NullString
 
 	err := row.Scan(
 		&inv.ID, &inv.Code, &label, &inv.MaxUses, &inv.UsedCount,
-		&jellyfinProfile, &preferredLang, &inv.ExpiresAt, &createdBy, &inv.CreatedAt,
+		&jellyfinProfile, &profileID, &profileSnapshot, &inv.IsTemporary, &inv.AccountDurationDays,
+		&preferredLang, &inv.ExpiresAt, &createdBy, &inv.CreatedAt,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("invitation introuvable")
@@ -673,6 +678,8 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 	// Reconstituer les champs nullable
 	inv.Label = label.String
 	inv.JellyfinProfile = jellyfinProfile.String
+	inv.ProfileID = profileID.String
+	inv.ProfileSnapshot = profileSnapshot.String
 	inv.PreferredLang = strings.TrimSpace(preferredLang.String)
 	inv.CreatedBy = createdBy.String
 
@@ -744,8 +751,19 @@ func (h *InvitationHandler) ensureInviteUsernameAvailable(r *http.Request, usern
 
 func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitation, form *inviteFormData, profile jellyfin.InviteProfile, emailVerified bool) (*inviteSignupResult, error) {
 	ldapCfg, _ := h.db.GetLDAPConfig()
-	ldapOnlyMode := h.ldClient != nil && ldapCfg.Enabled && strings.EqualFold(strings.TrimSpace(ldapCfg.ProvisionMode), "ldap_only")
-	createJellyfinUser := !ldapOnlyMode
+	ldapMirrorMode := h.ldClient != nil && ldapCfg.Enabled
+	if h.jfClient == nil {
+		return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_unavailable", "Service Jellyfin indisponible")), true)
+	}
+
+	jellyfinPassword := form.Password
+	if ldapMirrorMode {
+		randomMirrorPassword, tokenErr := generateSecureToken(32)
+		if tokenErr != nil {
+			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_mirror_password", "Impossible de preparer le compte miroir Jellyfin")), true)
+		}
+		jellyfinPassword = randomMirrorPassword
+	}
 
 	provisionPlan := inviteProvisionPlan{EffectiveProfile: profile}
 	if resolvedPlan, err := h.resolveInviteProvisionPlan(profile); err != nil {
@@ -764,6 +782,10 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 				"mapping_preset_id", provisionPlan.MappingPresetID,
 			)
 		}
+	}
+	if ldapMirrorMode {
+		provisionPlan.EffectiveProfile.LDAPAuthProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPAuthProviderID)
+		provisionPlan.EffectiveProfile.LDAPPasswordResetProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPPasswordResetProviderID)
 	}
 
 	ldapProvisionRole := resolveLDAPProvisionRole(profile)
@@ -810,10 +832,14 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}
 
 	var jellyfinID string
-	if createJellyfinUser {
-		slog.Info("Ã°Å¸Å½Â¬ Ãƒâ€°tape 3/5 : CrÃƒÂ©ation du compte Jellyfin", "username", form.Username)
+	{
+		stepLabel := "creation_compte_jellyfin"
+		if ldapMirrorMode {
+			stepLabel = "creation_miroir_jellyfin_ldap"
+		}
+		slog.Info("Ã°Å¸Å½Â¬ Ãƒâ€°tape 3/5 : CrÃƒÂ©ation du compte Jellyfin", "username", form.Username, "mode", stepLabel)
 
-		jfUser, err := h.jfClient.CreateUser(form.Username, form.Password)
+		jfUser, err := h.jfClient.CreateUser(form.Username, jellyfinPassword)
 		if err != nil {
 			slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 3/5 ÃƒÂ©chouÃƒÂ©e : crÃƒÂ©ation Jellyfin", "username", form.Username, "error", err)
 			rollbackFailed := false
@@ -835,13 +861,25 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		jellyfinID = jfUser.ID
 
 		if err := h.jfClient.ApplyInviteProfile(jfUser.ID, provisionPlan.EffectiveProfile); err != nil {
-			slog.Warn("Erreur lors de l'application du profil Jellyfin (non-bloquant)", "jellyfin_id", jfUser.ID, "error", err)
+			slog.Error("Erreur lors de l'application du profil Jellyfin", "jellyfin_id", jfUser.ID, "error", err)
 			h.logInviteAction(r, "invite.profile.failed", form.Username, jfUser.ID, err.Error())
+			rollbackFailed := false
+			if rbErr := h.jfClient.DeleteUser(jfUser.ID); rbErr != nil {
+				rollbackFailed = true
+				slog.Error("Rollback Jellyfin apres profil echoue", "jellyfin_id", jfUser.ID, "rollback_error", rbErr)
+				h.logInviteAction(r, "invite.rollback.jellyfin.failed", form.Username, jfUser.ID, rbErr.Error())
+			}
+			if h.ldClient != nil && userDN != "" {
+				if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
+					rollbackFailed = true
+					slog.Error("Rollback LDAP apres profil Jellyfin echoue", "dn", userDN, "rollback_error", rbErr)
+					h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
+				}
+			}
+			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_profile_apply", "Erreur lors de l'application du profil Jellyfin")), !rollbackFailed)
 		}
 
 		slog.Info("Ã¢Å“â€¦ Ãƒâ€°tape 3/5 terminÃƒÂ©e", "jellyfin_id", jfUser.ID)
-	} else {
-		slog.Info("Ã¢Â�Â­Ã¯Â¸Â� Ãƒâ€°tape 3/5 ignorÃƒÂ©e (mode LDAP-only)", "username", form.Username)
 	}
 
 	slog.Info("Ã°Å¸â€™Â¾ Ãƒâ€°tape 4/5 : Enregistrement SQLite", "username", form.Username)
@@ -850,7 +888,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 		slog.Warn("Ã°Å¸â€�â€ž Rollback : suppression Jellyfin + LDAP")
 
 		rollbackFailed := false
-		if createJellyfinUser && strings.TrimSpace(jellyfinID) != "" {
+		if strings.TrimSpace(jellyfinID) != "" {
 			if rbErr := h.jfClient.DeleteUser(jellyfinID); rbErr != nil {
 				rollbackFailed = true
 				slog.Error("Ã¢Å¡Â Ã¯Â¸Â� ROLLBACK JELLYFIN Ãƒâ€°CHOUÃƒâ€° Ã¢â‚¬â€� intervention manuelle requise", "jellyfin_id", jellyfinID, "rollback_error", rbErr)
@@ -947,7 +985,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 			jellyfinID,
 			userDN,
 			form.Email,
-			map[bool]string{true: "ldap_only", false: "hybrid"}[ldapOnlyMode],
+			map[bool]string{true: "ldap_mirror", false: "local"}[ldapMirrorMode],
 		))
 
 	slog.Info("Ã°Å¸Å½â€° Inscription terminÃƒÂ©e avec succÃƒÂ¨s", "username", form.Username, "jellyfin_id", jellyfinID, "ldap_dn", userDN, "invitation_fingerprint", tokenLogFingerprint(inv.Code))
@@ -966,9 +1004,9 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}
 
 	return &inviteSignupResult{
-		JellyfinID:   jellyfinID,
-		UserDN:       userDN,
-		LDAPOnlyMode: ldapOnlyMode,
+		JellyfinID:     jellyfinID,
+		UserDN:         userDN,
+		LDAPMirrorMode: ldapMirrorMode,
 	}, nil
 }
 
@@ -1026,12 +1064,18 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 
 	canInvite := roleAllowsInvites(ldapRole) || canInviteFromProfile
 	preferredLang := normalizeSupportedEmailLang(inv.PreferredLang)
+	profileApplyStatus := "pending"
+	var profileAppliedAt interface{}
+	if strings.TrimSpace(jellyfinID) != "" {
+		profileApplyStatus = "applied"
+		profileAppliedAt = time.Now()
+	}
 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, email_verified, ldap_dn, group_name, invited_by, preferred_lang, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at, preset_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL, ?)`,
-		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, preferredLang, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID,
+		`INSERT INTO users (jellyfin_id, username, email, email_verified, ldap_dn, group_name, invited_by, preferred_lang, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at, preset_id, profile_apply_status, profile_apply_error, profile_applied_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL, ?, ?, '', ?)`,
+		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, preferredLang, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID, profileApplyStatus, profileAppliedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insÃƒÂ©rer l'utilisateur %q: %w", form.Username, err)
@@ -1083,7 +1127,7 @@ func (h *InvitationHandler) resolveInviteProvisionPlan(profile jellyfin.InvitePr
 		plan.EffectiveProfile = mergeInviteProfileWithPreset(profile, *preset)
 	}
 
-	plan.LDAPGroups = resolveLDAPGroupsFromMappings(mappings, presetID, groupName)
+	plan.LDAPGroups = append(resolveLDAPGroupsFromMappings(mappings, presetID, groupName), plan.EffectiveProfile.LDAPGroups...)
 	return plan, nil
 }
 
@@ -1109,28 +1153,62 @@ func (h *InvitationHandler) getInvitePolicyPresetByID(presetID string) (*config.
 
 func mergeInviteProfileWithPreset(base jellyfin.InviteProfile, preset config.JellyfinPolicyPreset) jellyfin.InviteProfile {
 	merged := base
-	merged.PresetID = strings.TrimSpace(strings.ToLower(preset.ID))
-	merged.EnableAllFolders = preset.EnableAllFolders
-	merged.EnabledFolderIDs = append([]string(nil), preset.EnabledFolderIDs...)
-	merged.EnableDownload = preset.EnableDownload
-	merged.EnableRemoteAccess = preset.EnableRemoteAccess
-	merged.MaxSessions = preset.MaxSessions
-	merged.BitrateLimit = preset.BitrateLimit
-	merged.UserConfiguration = preset.UserConfiguration
-	merged.DisplayPreferences = preset.DisplayPreferences
-	merged.UsernameMinLength = preset.UsernameMinLength
-	merged.UsernameMaxLength = preset.UsernameMaxLength
-	merged.PasswordMinLength = preset.PasswordMinLength
-	merged.PasswordMaxLength = preset.PasswordMaxLength
-	merged.PasswordRequireUpper = preset.RequireUpper
-	merged.PasswordRequireLower = preset.RequireLower
-	merged.PasswordRequireDigit = preset.RequireDigit
-	merged.PasswordRequireSpecial = preset.RequireSpecial
-	merged.DisableAfterDays = preset.DisableAfterDays
-	merged.UserExpiryDays = preset.DisableAfterDays
-	merged.ExpiryAction = normalizeExpiryAction(preset.ExpiryAction)
-	merged.DeleteAfterDays = preset.DeleteAfterDays
-	merged.CanInvite = preset.CanInvite || merged.CanInvite
+	profile := jellyfin.InviteProfileFromPolicyPreset(&preset)
+	merged.PresetID = profile.PresetID
+	merged.IsAdministrator = profile.IsAdministrator
+	merged.IsHidden = profile.IsHidden
+	merged.IsDisabled = profile.IsDisabled
+	merged.EnableAllFolders = profile.EnableAllFolders
+	merged.EnabledFolderIDs = profile.EnabledFolderIDs
+	merged.BlockedMediaFolders = profile.BlockedMediaFolders
+	merged.EnableAllDevices = profile.EnableAllDevices
+	merged.EnabledDevices = profile.EnabledDevices
+	merged.EnableAllChannels = profile.EnableAllChannels
+	merged.EnabledChannels = profile.EnabledChannels
+	merged.BlockedChannels = profile.BlockedChannels
+	merged.EnableDownload = profile.EnableDownload
+	merged.EnableMediaPlayback = profile.EnableMediaPlayback
+	merged.EnableAudioPlaybackTranscoding = profile.EnableAudioPlaybackTranscoding
+	merged.EnableVideoPlaybackTranscoding = profile.EnableVideoPlaybackTranscoding
+	merged.EnablePlaybackRemuxing = profile.EnablePlaybackRemuxing
+	merged.EnableRemoteAccess = profile.EnableRemoteAccess
+	merged.EnableLiveTvAccess = profile.EnableLiveTvAccess
+	merged.EnableLiveTvManagement = profile.EnableLiveTvManagement
+	merged.EnableSharedDeviceControl = profile.EnableSharedDeviceControl
+	merged.EnableContentDeletion = profile.EnableContentDeletion
+	merged.EnableContentDeletionFromFolders = profile.EnableContentDeletionFromFolders
+	merged.EnablePublicSharing = profile.EnablePublicSharing
+	merged.EnableSyncTranscoding = profile.EnableSyncTranscoding
+	merged.EnableMediaConversion = profile.EnableMediaConversion
+	merged.ForceRemoteSourceTranscoding = profile.ForceRemoteSourceTranscoding
+	merged.SyncPlayAccess = profile.SyncPlayAccess
+	merged.InvalidLoginAttemptCount = profile.InvalidLoginAttemptCount
+	merged.LoginAttemptsBeforeLockout = profile.LoginAttemptsBeforeLockout
+	merged.MaxSessions = profile.MaxSessions
+	merged.BitrateLimit = profile.BitrateLimit
+	merged.UserConfiguration = profile.UserConfiguration
+	merged.DisplayPreferences = profile.DisplayPreferences
+	merged.UsernameMinLength = profile.UsernameMinLength
+	merged.UsernameMaxLength = profile.UsernameMaxLength
+	merged.PasswordMinLength = profile.PasswordMinLength
+	merged.PasswordMaxLength = profile.PasswordMaxLength
+	merged.PasswordRequireUpper = profile.PasswordRequireUpper
+	merged.PasswordRequireLower = profile.PasswordRequireLower
+	merged.PasswordRequireDigit = profile.PasswordRequireDigit
+	merged.PasswordRequireSpecial = profile.PasswordRequireSpecial
+	merged.DisableAfterDays = profile.DisableAfterDays
+	merged.UserExpiryDays = profile.UserExpiryDays
+	merged.ExpiryAction = profile.ExpiryAction
+	merged.DeleteAfterDays = profile.DeleteAfterDays
+	merged.AllowedTags = profile.AllowedTags
+	merged.BlockedTags = profile.BlockedTags
+	merged.MaxParentalRating = profile.MaxParentalRating
+	merged.BlockUnratedItems = profile.BlockUnratedItems
+	merged.AccessSchedules = profile.AccessSchedules
+	merged.CanInvite = profile.CanInvite || merged.CanInvite
+	merged.IsTemporary = profile.IsTemporary
+	merged.AccountDurationDays = profile.AccountDurationDays
+	merged.LDAPGroups = profile.LDAPGroups
 	return merged
 }
 
