@@ -885,7 +885,36 @@ func (db *DB) GetJellyfinPolicyPresets() ([]config.JellyfinPolicyPreset, error) 
 		presets[i] = normalizeJellyfinPolicyPreset(presets[i])
 	}
 
-	return presets, nil
+	return mergeDefaultJellyfinPolicyPresets(presets, defaults), nil
+}
+
+func mergeDefaultJellyfinPolicyPresets(saved, defaults []config.JellyfinPolicyPreset) []config.JellyfinPolicyPreset {
+	merged := make([]config.JellyfinPolicyPreset, 0, len(saved)+len(defaults))
+	seen := map[string]struct{}{}
+	for i := range saved {
+		preset := normalizeJellyfinPolicyPreset(saved[i])
+		id := strings.TrimSpace(strings.ToLower(preset.ID))
+		if id == "" {
+			continue
+		}
+		preset.ID = id
+		merged = append(merged, preset)
+		seen[id] = struct{}{}
+	}
+	for i := range defaults {
+		preset := normalizeJellyfinPolicyPreset(defaults[i])
+		id := strings.TrimSpace(strings.ToLower(preset.ID))
+		if id == "" {
+			continue
+		}
+		if _, exists := seen[id]; exists {
+			continue
+		}
+		preset.ID = id
+		merged = append(merged, preset)
+		seen[id] = struct{}{}
+	}
+	return merged
 }
 
 // SaveJellyfinPolicyPresets sauvegarde les presets de politique Jellyfin.

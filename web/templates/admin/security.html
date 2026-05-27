@@ -1,0 +1,77 @@
+{{ template "admin_shell.html" . }}
+
+{{ define "title" }}Sécurité — JellyGate{{ end }}
+
+{{ define "admin_content" }}
+<div class="jg-page-header jg-ds-header">
+    <div>
+        <div class="jg-ds-kicker">Security Studio</div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">Sécurité</h1>
+        <p class="text-jg-text-muted mt-2">IP bloquées, CAPTCHA échoués, invitations invalides, connexions admin et alertes SMTP.</p>
+    </div>
+    <button id="security-refresh" class="jg-btn jg-btn-ghost h-11 px-4">
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M20 9a8 8 0 00-14.9-3M4 15a8 8 0 0014.9 3" /></svg>
+        Actualiser
+    </button>
+</div>
+
+<section id="security-overview" class="jg-ds-metrics">
+    <div class="jg-ds-metric"><span>IP bloquées</span><strong data-key="blocked_ips">0</strong></div>
+    <div class="jg-ds-metric"><span>CAPTCHA échoués</span><strong data-key="captcha_failures">0</strong></div>
+    <div class="jg-ds-metric"><span>Invitations invalides</span><strong data-key="invalid_invitations">0</strong></div>
+    <div class="jg-ds-metric"><span>Connexions admin</span><strong data-key="admin_logins">0</strong></div>
+    <div class="jg-ds-metric"><span>Échecs admin</span><strong data-key="admin_login_failures">0</strong></div>
+    <div class="jg-ds-metric"><span>SMTP</span><strong data-key="smtp_errors">0</strong></div>
+    <div class="jg-ds-metric danger"><span>Alertes suspectes</span><strong data-key="suspicious_alerts">0</strong></div>
+</section>
+
+<section class="jg-ds-panel mt-8">
+    <div class="jg-ds-panel-head">
+        <div>
+            <h2>Journal sécurité</h2>
+            <p>Événements structurés sur les dernières actions sensibles.</p>
+        </div>
+        <div class="jg-ds-toolbar">
+            <select id="security-category" class="jg-input h-10">
+                <option value="">Toutes catégories</option>
+                <option value="invite_abuse">IP bloquées</option>
+                <option value="captcha">CAPTCHA</option>
+                <option value="invalid_invite">Invitations invalides</option>
+                <option value="admin_login">Connexions admin</option>
+                <option value="smtp">SMTP</option>
+                <option value="ldap">LDAP</option>
+            </select>
+            <select id="security-severity" class="jg-input h-10">
+                <option value="">Toutes sévérités</option>
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="critical">Critical</option>
+            </select>
+            <input id="security-search" class="jg-input h-10" placeholder="Rechercher">
+        </div>
+    </div>
+    <div class="jg-table-wrap overflow-x-auto">
+        <table class="jg-table jg-ds-table w-full text-sm">
+            <thead>
+                <tr>
+                    <th>Heure</th>
+                    <th>Catégorie</th>
+                    <th>Type</th>
+                    <th>Sévérité</th>
+                    <th>Acteur</th>
+                    <th>Cible</th>
+                    <th>IP</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="security-events-body">
+                <tr><td colspan="8" class="text-center py-12 text-jg-text-muted">Chargement...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+{{ end }}
+
+{{ define "scripts" }}
+<script src="/static/js/pages/security.js" nonce="{{ .ScriptNonce }}"></script>
+{{ end }}

@@ -192,8 +192,39 @@
 
         <div class="p-6 lg:p-7 overflow-y-auto">
             <form id="create-form" class="space-y-6">
+                <div id="invite-wizard-steps" class="jg-wizard-steps">
+                    <button type="button" class="active" data-step="1"><span>1</span>Profil</button>
+                    <button type="button" data-step="2"><span>2</span>Droits</button>
+                    <button type="button" data-step="3"><span>3</span>Durée</button>
+                    <button type="button" data-step="4"><span>4</span>Message</button>
+                    <button type="button" data-step="5"><span>5</span>Aperçu</button>
+                </div>
+
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-7">
-                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]">
+                    <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="1">
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-sky-300">Profil Jellyfin cible</h3>
+                        <div>
+                            <label class="jg-label">Preset utilisateur</label>
+                            <select id="inv-policy-preset" class="jg-input jg-select-premium h-11 bg-black/20 hover:bg-black/40 text-sm">
+                                <option value="">Politique globale JellyGate</option>
+                            </select>
+                            <div id="inv-profile-summary" class="text-xs text-jg-text-muted mt-2"></div>
+                        </div>
+                    </section>
+
+                    <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="2">
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-teal-300">Bibliothèques et droits</h3>
+                        <label class="flex items-center gap-2 text-sm">
+                            <input type="checkbox" id="inv-enable-downloads" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
+                            Autoriser le téléchargement
+                        </label>
+                        <div>
+                            <div class="jg-label">Bibliothèques Jellyfin</div>
+                            <div id="inv-libraries" class="jg-library-picker compact"></div>
+                        </div>
+                    </section>
+
+                    <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="3">
                         <h3 class="text-sm font-bold uppercase tracking-widest text-cyan-300">{{ .T "invitations_section_link_settings" }}</h3>
                         <div>
                             <label class="jg-label">{{ .T "invitations_max_uses_label" }}</label>
@@ -209,10 +240,6 @@
                             <input type="checkbox" id="inv-ignore-link-limit" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
                             {{ .T "invitations_ignore_link_limit" }}
                         </label>
-                    </section>
-
-                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]">
-                        <h3 class="text-sm font-bold uppercase tracking-widest text-emerald-300">{{ .T "invitations_section_user_profile" }}</h3>
                         <div id="inv-forced-user-wrap">
                             <label class="jg-label">{{ .T "invitations_forced_username" }}</label>
                             <input type="text" id="inv-forced-user" class="jg-input h-11" placeholder='{{ .T "invitations_forced_username_placeholder" }}'>
@@ -241,7 +268,7 @@
                         </div>
                     </section>
 
-                    <section class="rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]">
+                    <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="4">
                         <h3 class="text-sm font-bold uppercase tracking-widest text-rose-300">{{ .T "invitations_section_smtp_notification" }}</h3>
                         <div>
                             <label class="jg-label">{{ .T "invitations_send_to_email_label" }}</label>
@@ -266,17 +293,34 @@
                             <div class="text-xs text-jg-text-muted mt-2">{{ .T "invitations_preferred_lang_help" }}</div>
                         </div>
                         {{ end }}
+                        <div>
+                            <label class="jg-label">Message d'invitation</label>
+                            <textarea id="inv-email-message" class="jg-input min-h-24 py-3" placeholder="Message court ajouté à l'e-mail, optionnel"></textarea>
+                        </div>
                         <div class="text-xs text-jg-text-muted leading-relaxed">
                             {{ .T "invitations_email_auto_note" }}
                         </div>
                     </section>
+
+                    <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="5">
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-amber-300">Aperçu public</h3>
+                        <p class="text-xs text-jg-text-muted leading-relaxed">Vérifiez le lien public, le profil appliqué et le message avant de créer l'invitation.</p>
+                        <button id="inv-preview-btn" type="button" class="jg-btn jg-btn-ghost h-11 w-full">Générer l'aperçu</button>
+                        <div id="inv-preview-output" class="jg-preview-shell text-sm text-jg-text-muted">Aucun aperçu généré.</div>
+                    </section>
                 </div>
 
-                <div class="mt-2 flex flex-col md:flex-row justify-end gap-3 pt-4 border-t border-jg-border">
+                <div class="mt-2 flex flex-col md:flex-row justify-between gap-3 pt-4 border-t border-jg-border">
+                    <div class="flex gap-2">
+                        <button type="button" id="invite-wizard-prev" class="jg-btn jg-btn-ghost h-12 px-5">Précédent</button>
+                        <button type="button" id="invite-wizard-next" class="jg-btn jg-btn-ghost h-12 px-5">Suivant</button>
+                    </div>
+                    <div class="flex flex-col md:flex-row gap-3">
                     <button type="button" class="jg-btn jg-btn-ghost h-12 px-6" data-modal-close="create-modal">{{ .T "cancel" }}</button>
-                    <button type="submit" class="jg-btn jg-btn-primary h-12 px-8 font-bold uppercase tracking-widest" id="create-btn">
+                    <button type="submit" class="jg-btn jg-btn-primary h-12 px-8 font-bold uppercase tracking-widest" id="create-btn" disabled>
                         {{ .T "invitations_create_link" }}
                     </button>
+                    </div>
                 </div>
             </form>
         </div>

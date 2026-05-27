@@ -248,12 +248,14 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	antiAbuseCfg := h.inviteAntiAbuseConfig()
 	if blocked, retryAfter := h.isInviteBlocked(r, antiAbuseCfg); blocked {
 		h.logInviteAction(r, "invite.anti_abuse.blocked", submittedUsername, code, fmt.Sprintf("retry_after=%s", retryAfter.Round(time.Second)))
+		logSecurityEvent(h.db, r, "invite_abuse", "invite.ip.blocked", "critical", submittedUsername, tokenLogFingerprint(code), "IP bloquee par la protection invitation", map[string]string{"retry_after": retryAfter.Round(time.Second).String()})
 		http.Error(w, h.tr(r, "invite_error_too_many_attempts", "Trop de tentatives. Reessayez plus tard."), http.StatusTooManyRequests)
 		return
 	}
 	if err := h.verifyInviteCaptcha(r, antiAbuseCfg); err != nil {
 		h.recordInviteFailure(r, antiAbuseCfg)
 		h.logInviteAction(r, "invite.captcha.failed", submittedUsername, code, err.Error())
+		logSecurityEvent(h.db, r, "captcha", "invite.captcha.failed", "warning", submittedUsername, tokenLogFingerprint(code), "Echec CAPTCHA invitation", map[string]string{"error": err.Error()})
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -272,6 +274,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		}
 		h.recordInviteFailure(r, antiAbuseCfg)
 		h.logInviteAction(r, "invite.validation.failed", targetUsername, code, err.Error())
+		logSecurityEvent(h.db, r, "invalid_invite", "invite.invalid", "warning", targetUsername, tokenLogFingerprint(code), "Invitation invalide ou expiree", map[string]string{"error": err.Error()})
 		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirÃƒÂ©e"), http.StatusForbidden)
 		return
 	}

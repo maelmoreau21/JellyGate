@@ -1,0 +1,148 @@
+{{ template "admin_shell.html" . }}
+
+{{ define "title" }}Profils Jellyfin — JellyGate{{ end }}
+
+{{ define "admin_content" }}
+<div class="jg-page-header jg-ds-header">
+    <div>
+        <div class="jg-ds-kicker">Data Studio</div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">Profils Jellyfin</h1>
+        <p class="text-jg-text-muted mt-2">Presets de droits, bibliothèques, expirations et parrainage appliqués aux invitations.</p>
+    </div>
+    <div class="flex flex-wrap items-center gap-3">
+        <button id="profile-new-btn" class="jg-btn jg-btn-ghost h-11 px-4">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            Nouveau profil
+        </button>
+        <button id="profiles-save-btn" class="jg-btn jg-btn-primary h-11 px-5 font-bold uppercase tracking-widest">Sauvegarder</button>
+    </div>
+</div>
+
+<div class="jg-ds-layout">
+    <section class="jg-ds-panel">
+        <div class="jg-ds-panel-head">
+            <div>
+                <h2>Presets actifs</h2>
+                <p>Les presets par défaut sont ajoutés sans écraser vos profils existants.</p>
+            </div>
+            <span id="profiles-count" class="jg-ds-pill">0</span>
+        </div>
+        <div id="profiles-list" class="jg-profile-list"></div>
+    </section>
+
+    <aside class="jg-ds-panel jg-profile-editor">
+        <div class="jg-ds-panel-head">
+            <div>
+                <h2 id="profile-editor-title">Sélectionnez un profil</h2>
+                <p id="profile-editor-subtitle">Modifiez ses droits Jellyfin et ses quotas d'invitation.</p>
+            </div>
+        </div>
+
+        <form id="profile-form" class="space-y-5">
+            <input type="hidden" id="profile-index">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label>
+                    <span class="jg-label">Identifiant</span>
+                    <input id="profile-id" class="jg-input h-11" placeholder="famille">
+                </label>
+                <label>
+                    <span class="jg-label">Nom affiché</span>
+                    <input id="profile-name" class="jg-input h-11" placeholder="Famille">
+                </label>
+            </div>
+            <label>
+                <span class="jg-label">Description</span>
+                <textarea id="profile-description" class="jg-input min-h-20 py-3" placeholder="Rôle du profil"></textarea>
+            </label>
+
+            <div class="jg-ds-field-grid">
+                <label class="jg-ds-check">
+                    <input id="profile-admin" type="checkbox">
+                    <span>Admin Jellyfin</span>
+                </label>
+                <label class="jg-ds-check">
+                    <input id="profile-all-folders" type="checkbox">
+                    <span>Toutes bibliothèques</span>
+                </label>
+                <label class="jg-ds-check">
+                    <input id="profile-download" type="checkbox">
+                    <span>Téléchargement</span>
+                </label>
+                <label class="jg-ds-check">
+                    <input id="profile-remote" type="checkbox">
+                    <span>Accès distant</span>
+                </label>
+            </div>
+
+            <div>
+                <div class="jg-label">Bibliothèques Jellyfin</div>
+                <div id="profile-libraries" class="jg-library-picker"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label>
+                    <span class="jg-label">Expiration compte (jours)</span>
+                    <input id="profile-disable-days" type="number" min="0" class="jg-input h-11">
+                </label>
+                <label>
+                    <span class="jg-label">Sessions max</span>
+                    <input id="profile-sessions" type="number" min="0" class="jg-input h-11">
+                </label>
+                <label>
+                    <span class="jg-label">Bitrate distant</span>
+                    <input id="profile-bitrate" type="number" min="0" class="jg-input h-11">
+                </label>
+            </div>
+
+            <div class="jg-ds-panel jg-ds-subpanel">
+                <div class="jg-ds-panel-head compact">
+                    <div>
+                        <h2>Parrainage</h2>
+                        <p>Droits d'invitation accordés aux nouveaux comptes.</p>
+                    </div>
+                </div>
+                <div class="jg-ds-field-grid">
+                    <label class="jg-ds-check">
+                        <input id="profile-can-invite" type="checkbox">
+                        <span>Peut inviter</span>
+                    </label>
+                    <label>
+                        <span class="jg-label">Profil cible</span>
+                        <select id="profile-target-preset" class="jg-input h-11"></select>
+                    </label>
+                    <label>
+                        <span class="jg-label">Quota / jour</span>
+                        <input id="profile-quota-day" type="number" min="0" class="jg-input h-11">
+                    </label>
+                    <label>
+                        <span class="jg-label">Quota / mois</span>
+                        <input id="profile-quota-month" type="number" min="0" class="jg-input h-11">
+                    </label>
+                    <label>
+                        <span class="jg-label">Lien (jours)</span>
+                        <input id="profile-link-days" type="number" min="0" class="jg-input h-11">
+                    </label>
+                    <label>
+                        <span class="jg-label">Usages / lien</span>
+                        <input id="profile-max-uses" type="number" min="0" class="jg-input h-11">
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex justify-between gap-3 pt-2">
+                <button id="profile-delete-btn" type="button" class="jg-btn jg-btn-danger h-11 px-4">Supprimer</button>
+                <button type="submit" class="jg-btn jg-btn-primary h-11 px-5">Appliquer au brouillon</button>
+            </div>
+        </form>
+    </aside>
+</div>
+{{ end }}
+
+{{ define "scripts" }}
+<script nonce="{{ .ScriptNonce }}">
+    window.JGPageProfiles = {
+        isAdmin: "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true"
+    };
+</script>
+<script src="/static/js/pages/profiles.js" nonce="{{ .ScriptNonce }}"></script>
+{{ end }}

@@ -33,6 +33,10 @@
         let itemsPerPage = 25;
         let totalPages = 1;
         let pendingDeleteInvitationID = 0;
+        let inviteWizardStep = 1;
+        let previewConfirmed = false;
+        let invitationPresets = [];
+        let invitationLibraries = [];
 
         function fmt(template, vars) {
             return String(template || '').replace(/\{(\w+)\}/g, (_, key) => (vars && key in vars ? String(vars[key]) : ''));
@@ -40,6 +44,28 @@
 
         function createBtnLabel() {
             return `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>${JG.esc(i18n.createLink)}`;
+        }
+
+        function setWizardStep(step) {
+            inviteWizardStep = Math.max(1, Math.min(5, Number(step) || 1));
+            document.querySelectorAll('#invite-wizard-steps button').forEach((btn) => {
+                btn.classList.toggle('active', Number(btn.dataset.step) === inviteWizardStep);
+            });
+            document.querySelectorAll('.jg-wizard-pane').forEach((pane) => {
+                pane.classList.toggle('active', Number(pane.dataset.step) === inviteWizardStep);
+            });
+            const prev = document.getElementById('invite-wizard-prev');
+            const next = document.getElementById('invite-wizard-next');
+            if (prev) prev.disabled = inviteWizardStep <= 1;
+            if (next) next.disabled = inviteWizardStep >= 5;
+        }
+
+        function resetInvitationPreview() {
+            previewConfirmed = false;
+            const createBtn = document.getElementById('create-btn');
+            if (createBtn) createBtn.disabled = true;
+            const output = document.getElementById('inv-preview-output');
+            if (output) output.innerHTML = 'Aucun aperçu généré.';
         }
 
         async function copyLinkToClipboard(link) {
@@ -287,8 +313,133 @@
                 const resolved = defaultLang || 'fr';
                 preferredLangInput.value = preferredLangInput.querySelector(`option[value="${resolved}"]`) ? resolved : '';
             }
+            const enableDownloadsInput = document.getElementById('inv-enable-downloads');
+            if (enableDownloadsInput && !document.getElementById('inv-policy-preset')?.value) {
+                enableDownloadsInput.checked = true;
+            }
 
             updateForcedUsernameState();
+        }
+
+        function renderInviteLibraries(preset) {
+            const wrap = document.getElementById('inv-libraries');
+            if (!wrap) return;
+            if (!isAdmin || invitationLibraries.length === 0) {
+                wrap.innerHTML = '<div class="text-xs text-jg-text-muted">Les bibliothèques suivent la politique du preset.</div>';
+                return;
+            }
+            const selected = new Set((preset && preset.enabled_folder_ids) || []);
+            wrap.innerHTML = invitationLibraries.map((library) => {
+                const id = library.id || library.Id || library.ItemId || '';
+                const checked = selected.has(id) ? 'checked' : '';
+                return `<label class="jg-library-option">
+                    <input type="checkbox" value="${JG.esc(id)}" ${checked}>
+                    <span>${JG.esc(library.name || library.Name || id)}</span>
+                </label>`;
+            }).join('');
+            wrap.classList.toggle('opacity-50', !!preset?.enable_all_folders);
+        }
+
+        function selectedInvitationLibraries() {
+            return Array.from(document.querySelectorAll('#inv-libraries input:checked')).map((input) => input.value).filter(Boolean);
+        }
+
+        function applySelectedInvitePreset() {
+            const select = document.getElementById('inv-policy-preset');
+            const summary = document.getElementById('inv-profile-summary');
+            const preset = invitationPresets.find((item) => item.id === select?.value);
+            if (summary) {
+                if (!preset) {
+                    summary.textContent = 'La politique globale JellyGate sera utilisée.';
+                } else {
+                    const parts = [];
+                    parts.push(preset.enable_all_folders ? 'Toutes bibliothèques' : `${(preset.enabled_folder_ids || []).length} bibliothèque(s)`);
+                    if (preset.is_administrator) parts.push('Admin Jellyfin');
+                    if (preset.can_invite) parts.push('Parrain');
+                    if (preset.disable_after_days > 0) parts.push(`${preset.disable_after_days} jour(s)`);
+                    summary.textContent = `${preset.name || preset.id}: ${parts.join(' · ')}`;
+                }
+            }
+            const downloads = document.getElementById('inv-enable-downloads');
+            if (downloads && preset) downloads.checked = !!preset.enable_download;
+            renderInviteLibraries(preset);
+            resetInvitationPreview();
+        }
+
+        async function loadInviteWizardData() {
+            if (!isAdmin) {
+                renderInviteLibraries(null);
+                return;
+            }
+            const [presetsRes, librariesRes] = await Promise.all([
+                JG.api('/admin/api/automation/presets'),
+                JG.api('/admin/api/automation/libraries'),
+            ]);
+            invitationPresets = Array.isArray(presetsRes?.data) ? presetsRes.data : [];
+            invitationLibraries = Array.isArray(librariesRes?.data) ? librariesRes.data : [];
+
+            const select = document.getElementById('inv-policy-preset');
+            if (select) {
+                select.innerHTML = '<option value="">Politique globale JellyGate</option>' + invitationPresets.map((preset) => {
+                    const adminSuffix = preset.is_administrator ? ' · admin' : '';
+                    return `<option value="${JG.esc(preset.id || '')}">${JG.esc((preset.name || preset.id || 'Profil') + adminSuffix)}</option>`;
+                }).join('');
+            }
+            applySelectedInvitePreset();
+        }
+
+        function collectInvitationPayload() {
+            const maxUses = parseInt(document.getElementById('inv-uses')?.value || '0', 10) || 0;
+            const expiresInDays = parseInt(document.getElementById('inv-expiry-days')?.value || '0', 10) || 0;
+            const userExpiryEnabled = !!document.getElementById('inv-user-expiry-enabled')?.checked;
+            const userExpiryDays = parseInt(document.getElementById('inv-user-expiry-days')?.value || '0', 10) || 0;
+            return {
+                max_uses: maxUses,
+                expires_in_days: expiresInDays,
+                ignore_preset_link_expiry: !!document.getElementById('inv-ignore-link-limit')?.checked,
+                apply_user_expiry: userExpiryEnabled,
+                user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
+                ignore_preset_user_expiry: !!document.getElementById('inv-ignore-user-expiry-limit')?.checked,
+                new_user_can_invite: !!document.getElementById('inv-new-user-can-invite')?.checked,
+                forced_username: (document.getElementById('inv-forced-user')?.value || '').trim(),
+                send_to_email: (document.getElementById('inv-email')?.value || '').trim(),
+                preferred_lang: normalizeLangTag(document.getElementById('inv-preferred-lang')?.value || ''),
+                policy_preset_id: isAdmin ? (document.getElementById('inv-policy-preset')?.value || '').trim() : '',
+                libraries: isAdmin ? selectedInvitationLibraries() : [],
+                enable_downloads: !!document.getElementById('inv-enable-downloads')?.checked,
+                email_message: (document.getElementById('inv-email-message')?.value || '').trim(),
+            };
+        }
+
+        async function previewInvitation() {
+            const btn = document.getElementById('inv-preview-btn');
+            const output = document.getElementById('inv-preview-output');
+            if (btn) btn.disabled = true;
+            const res = await JG.api('/admin/api/invitations/preview', {
+                method: 'POST',
+                body: JSON.stringify(collectInvitationPayload()),
+            });
+            if (btn) btn.disabled = false;
+            if (!res?.success) {
+                previewConfirmed = false;
+                document.getElementById('create-btn')?.setAttribute('disabled', 'disabled');
+                if (output) output.innerHTML = `<div class="text-rose-300">${JG.esc(res?.message || i18n.unknownError)}</div>`;
+                return;
+            }
+            const data = res.data || {};
+            const profile = data.profile || {};
+            previewConfirmed = true;
+            const createBtn = document.getElementById('create-btn');
+            if (createBtn) createBtn.disabled = false;
+            if (output) {
+                output.innerHTML = `<div class="space-y-3">
+                    <div>${data.public_preview_html || ''}</div>
+                    <div><strong>Lien public</strong><br><code>${JG.esc(data.public_url || '')}</code></div>
+                    <div><strong>Profil appliqué</strong><br>${JG.esc(profile.preset_id || data.preset?.name || 'Politique globale')} · ${profile.enable_all_folders ? 'toutes bibliothèques' : `${(profile.enabled_folder_ids || []).length} bibliothèque(s)`}</div>
+                    <div><strong>Message</strong><br>${JG.esc(data.email_message || 'Message standard JellyGate')}</div>
+                </div>`;
+            }
+            setWizardStep(5);
         }
 
         async function loadInvitations() {
@@ -439,6 +590,11 @@
 
         async function submitCreate(event) {
             event.preventDefault();
+            if (!previewConfirmed) {
+                JG.toast('Générez et validez l’aperçu avant de créer le lien.', 'error');
+                setWizardStep(5);
+                return;
+            }
             const btn = document.getElementById('create-btn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>';
@@ -453,6 +609,9 @@
             const preferredLangInput = document.getElementById('inv-preferred-lang');
             const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
             const ignoreUserInput = document.getElementById('inv-ignore-user-expiry-limit');
+            const policyPresetInput = document.getElementById('inv-policy-preset');
+            const enableDownloadsInput = document.getElementById('inv-enable-downloads');
+            const emailMessageInput = document.getElementById('inv-email-message');
 
             const maxUses = parseInt(maxUsesInput?.value || '0', 10) || 0;
             let expiresInDays = parseInt(expiryDaysInput?.value || '0', 10) || 0;
@@ -513,6 +672,10 @@
                 forced_username: forcedUsername,
                 send_to_email: (emailInput?.value || '').trim(),
                 preferred_lang: preferredLang,
+                policy_preset_id: isAdmin ? (policyPresetInput?.value || '').trim() : '',
+                libraries: isAdmin ? selectedInvitationLibraries() : [],
+                enable_downloads: !!enableDownloadsInput?.checked,
+                email_message: (emailMessageInput?.value || '').trim(),
             };
 
             const res = await JG.api('/admin/api/invitations', { method: 'POST', body: JSON.stringify(data) });
@@ -523,6 +686,7 @@
                 JG.toast(i18n.created, 'success');
                 JG.closeModal('create-modal');
                 document.getElementById('create-form')?.reset();
+                resetInvitationPreview();
                 loadInvitations();
                 loadSponsorStats();
             } else {
@@ -574,7 +738,15 @@
             if (e.target.closest('.btn-open-create-modal')) {
                 document.getElementById('create-form')?.reset();
                 applyInvitationPolicyUI();
+                resetInvitationPreview();
+                setWizardStep(1);
                 JG.openModal('create-modal');
+                return;
+            }
+
+            const wizardBtn = e.target.closest('#invite-wizard-steps button');
+            if (wizardBtn) {
+                setWizardStep(wizardBtn.dataset.step);
                 return;
             }
 
@@ -638,8 +810,17 @@
             });
         }
 
+        document.getElementById('invite-wizard-prev')?.addEventListener('click', () => setWizardStep(inviteWizardStep - 1));
+        document.getElementById('invite-wizard-next')?.addEventListener('click', () => setWizardStep(inviteWizardStep + 1));
+        document.getElementById('inv-preview-btn')?.addEventListener('click', previewInvitation);
+        document.getElementById('inv-policy-preset')?.addEventListener('change', applySelectedInvitePreset);
+        document.getElementById('create-form')?.addEventListener('input', resetInvitationPreview);
+        document.getElementById('create-form')?.addEventListener('change', resetInvitationPreview);
+
+        setWizardStep(1);
         loadInvitations();
         loadSponsorStats();
         loadInviteSecurityConfig();
+        loadInviteWizardData();
     });
 })();

@@ -30,11 +30,22 @@ func TestGetJellyfinPolicyPresetsBackfillsDisplayDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetJellyfinPolicyPresets() error = %v", err)
 	}
-	if len(presets) != 1 {
-		t.Fatalf("len(presets) = %d, want 1", len(presets))
+	if len(presets) < 2 {
+		t.Fatalf("len(presets) = %d, want legacy plus defaults", len(presets))
 	}
 
-	display := presets[0].DisplayPreferences
+	var legacy *config.JellyfinPolicyPreset
+	for i := range presets {
+		if presets[i].ID == "legacy" {
+			legacy = &presets[i]
+			break
+		}
+	}
+	if legacy == nil {
+		t.Fatalf("legacy preset missing from merged presets: %#v", presets)
+	}
+
+	display := legacy.DisplayPreferences
 	if display.ScreenSaver != "none" || display.ScreensaverTime != 180 {
 		t.Fatalf("display defaults not backfilled: %+v", display)
 	}
@@ -43,6 +54,53 @@ func TestGetJellyfinPolicyPresetsBackfillsDisplayDefaults(t *testing.T) {
 	}
 	if got := display.HomeSections; len(got) != 10 || got[0] != "smalllibrarytiles" || got[6] != "latestmedia" || got[9] != "none" {
 		t.Fatalf("home section defaults = %#v", got)
+	}
+}
+
+func TestGetJellyfinPolicyPresetsMergesDefaultsWithoutOverwriting(t *testing.T) {
+	db := newPresetTestDB(t)
+	raw := `[{"id":"admin","name":"Admin custom","description":"keep me","enable_all_folders":false,"enable_download":false,"enable_remote_access":true}]`
+	if err := db.SetSetting(SettingJellyfinPresets, raw); err != nil {
+		t.Fatalf("SetSetting() error = %v", err)
+	}
+
+	presets, err := db.GetJellyfinPolicyPresets()
+	if err != nil {
+		t.Fatalf("GetJellyfinPolicyPresets() error = %v", err)
+	}
+	byID := map[string]config.JellyfinPolicyPreset{}
+	for _, preset := range presets {
+		byID[preset.ID] = preset
+	}
+	if got := byID["admin"]; got.Name != "Admin custom" || got.IsAdministrator {
+		t.Fatalf("existing admin preset overwritten: %+v", got)
+	}
+	for _, id := range []string{"family", "temporary_guest", "sponsor", "standard", "limited"} {
+		if _, ok := byID[id]; !ok {
+			t.Fatalf("default preset %q missing from merged presets", id)
+		}
+	}
+}
+
+func TestSecurityEventsMigrationAndInsert(t *testing.T) {
+	db := newPresetTestDB(t)
+	if err := db.LogSecurityEvent(SecurityEvent{
+		Category:  "captcha",
+		EventType: "invite.captcha.failed",
+		Severity:  "warning",
+		Actor:     "guest",
+		IP:        "203.0.113.10",
+		Message:   "captcha failed",
+	}); err != nil {
+		t.Fatalf("LogSecurityEvent() error = %v", err)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(1) FROM security_events WHERE category = ? AND severity = ?`, "captcha", "warning").Scan(&count); err != nil {
+		t.Fatalf("query security_events: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("security_events count = %d, want 1", count)
 	}
 }
 

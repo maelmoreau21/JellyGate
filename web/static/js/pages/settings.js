@@ -980,6 +980,32 @@
         showLDAPTestResult((res && res.message) || t('ldap_test_failed', 'Test failed'), 'error');
     }
 
+    async function confirmLDAPDryRunBeforeSave(payload) {
+        showLDAPTestResult('Dry-run LDAP en cours...', 'info');
+        const res = await JG.api('/admin/api/settings/ldap/dry-run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!res || !res.success) {
+            showLDAPTestResult((res && res.message) || 'Dry-run LDAP impossible', 'error');
+            return false;
+        }
+
+        const summary = res.data?.summary || {};
+        const message = `Dry-run LDAP: ${summary.would_create || 0} création(s), ${summary.would_sync || 0} synchronisation(s), ${summary.blocking_conflicts || 0} conflit(s) bloquant(s).`;
+        showLDAPTestResult(message, summary.blocking_conflicts > 0 ? 'error' : 'success');
+        if ((summary.blocking_conflicts || 0) <= 0) {
+            return true;
+        }
+
+        return JG.confirm(
+            'Conflits LDAP détectés',
+            `${message} Sauvegarder quand même la configuration LDAP ?`,
+            { danger: true, confirmLabel: 'Sauvegarder quand même' },
+        );
+    }
+
     function refreshPortalShortcuts(links) {
         const mapping = [
             { id: 'shortcut-jellygate', url: links.jellygate_url || '' },
@@ -1299,6 +1325,12 @@
             };
         } else if (section === 'ldap') {
             body = collectLDAPPayload();
+            if (body.enabled) {
+                const dryRunOK = await confirmLDAPDryRunBeforeSave(body);
+                if (!dryRunOK) {
+                    return;
+                }
+            }
         } else if (section === 'smtp') {
             body = {
                 host: document.getElementById('smtp-host').value,

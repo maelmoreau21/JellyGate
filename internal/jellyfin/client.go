@@ -129,6 +129,7 @@ func (l *Library) UnmarshalJSON(data []byte) error {
 // InviteProfile contient les droits à appliquer lors d'une invitation.
 // Stocké en JSON dans la table invitations.jellyfin_profile.
 type InviteProfile struct {
+	IsAdministrator          bool     `json:"is_administrator"`
 	EnableAllFolders         bool     `json:"enable_all_folders"`
 	EnabledFolderIDs         []string `json:"enabled_folder_ids"`
 	EnableDownload           bool     `json:"enable_download"`
@@ -505,7 +506,7 @@ func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error 
 
 	// Appliquer les paramètres du profil d'invitation
 	policy := user.Policy
-	policy.IsAdministrator = false // Jamais admin via invitation
+	policy.IsAdministrator = profile.IsAdministrator
 	policy.IsDisabled = false
 	policy.EnableAllFolders = profile.EnableAllFolders
 	policy.EnabledFolders = profile.EnabledFolderIDs

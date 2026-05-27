@@ -2605,6 +2605,7 @@ func inviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) jellyfin
 		return jellyfin.InviteProfile{}
 	}
 	return jellyfin.InviteProfile{
+		IsAdministrator:    preset.IsAdministrator,
 		PresetID:           strings.TrimSpace(strings.ToLower(preset.ID)),
 		EnableAllFolders:   preset.EnableAllFolders,
 		EnabledFolderIDs:   append([]string(nil), preset.EnabledFolderIDs...),
@@ -4698,14 +4699,24 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
 	}
 
+	presetApplied := false
 	if strings.TrimSpace(targetPresetID) != "" {
 		preset, err := h.getJellyfinPresetByID(targetPresetID)
 		if err != nil {
 			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Preset Jellyfin introuvable"})
 			return
 		}
+		if preset.IsAdministrator && !sess.IsAdmin {
+			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Le preset administrateur est reserve aux administrateurs JellyGate"})
+			return
+		}
+		if preset.CanInvite {
+			effectiveCanInvite = true
+		}
+		presetApplied = true
 
 		jfProfile.PresetID = preset.ID
+		jfProfile.IsAdministrator = preset.IsAdministrator
 		jfProfile.EnableAllFolders = preset.EnableAllFolders
 		jfProfile.EnabledFolderIDs = preset.EnabledFolderIDs
 		jfProfile.EnableDownload = preset.EnableDownload
@@ -4728,7 +4739,11 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Les options exposees dans "Profil utilisateur" sont forcees par les paramÃƒÂ¨tres admin.
-	jfProfile.EnableDownload = inviteCfg.EnableDownloads
+	if sess.IsAdmin && !presetApplied {
+		jfProfile.EnableDownload = req.EnableDownloads
+	} else if !presetApplied {
+		jfProfile.EnableDownload = inviteCfg.EnableDownloads
+	}
 	jfProfile.RequireEmail = inviteCfg.RequireEmail
 	jfProfile.RequireEmailVerification = effectiveRequireEmailVerification
 	jfProfile.UsernameMinLength = inviteCfg.UsernameMinLength
@@ -4867,6 +4882,15 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 				if errMail != nil {
 					slog.Error("Erreur d'envoi SMTP (Invitation)", "email", recipient, "error", errMail)
 					_ = h.db.LogAction("invite.email.failed", sess.Username, code, errMail.Error())
+					_ = h.db.LogSecurityEvent(database.SecurityEvent{
+						Category:  "smtp",
+						EventType: "invite.email.failed",
+						Severity:  "warning",
+						Actor:     sess.Username,
+						Target:    code,
+						Message:   "Erreur SMTP invitation",
+						Metadata:  errMail.Error(),
+					})
 				}
 			}(sendToEmail, inviteeName, inviteExpiryDate, customMessage, req.PreferredLang)
 		} else {

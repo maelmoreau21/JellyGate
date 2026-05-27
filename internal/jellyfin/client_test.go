@@ -636,6 +636,38 @@ func TestApplyInviteProfileAppliesPolicyConfigurationAndDisplayPreferences(t *te
 	}
 }
 
+func TestApplyInviteProfileCanApplyAdministratorPolicy(t *testing.T) {
+	var policyPayload Policy
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/Users/user":
+			_ = json.NewEncoder(w).Encode(User{ID: "user", Name: "user", Policy: Policy{EnableAllFolders: true}})
+		case r.Method == http.MethodPost && r.URL.Path == "/Users/user/Policy":
+			if err := json.NewDecoder(r.Body).Decode(&policyPayload); err != nil {
+				t.Fatalf("decode policy payload: %v", err)
+			}
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && r.URL.Path == "/Users/Configuration":
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodGet && r.URL.Path == "/DisplayPreferences/usersettings":
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{"Id": "usersettings"})
+		case r.Method == http.MethodPost && r.URL.Path == "/DisplayPreferences/usersettings":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		}
+	}))
+	defer server.Close()
+
+	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
+	if err := client.ApplyInviteProfile("user", InviteProfile{IsAdministrator: true, EnableAllFolders: true, EnableRemoteAccess: true}); err != nil {
+		t.Fatalf("ApplyInviteProfile() error = %v", err)
+	}
+	if !policyPayload.IsAdministrator {
+		t.Fatalf("IsAdministrator = false, want true: %+v", policyPayload)
+	}
+}
+
 func stringSliceFromInterface(value interface{}) []string {
 	raw, ok := value.([]interface{})
 	if !ok {

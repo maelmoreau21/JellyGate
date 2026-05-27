@@ -723,6 +723,22 @@ func (db *DB) sqliteMigrations() []migration {
 			)`,
 		},
 		{
+			name: "create_security_events",
+			sql: `CREATE TABLE IF NOT EXISTS security_events (
+				id         INTEGER PRIMARY KEY AUTOINCREMENT,
+				category   TEXT NOT NULL,
+				event_type TEXT NOT NULL,
+				severity   TEXT NOT NULL DEFAULT 'info',
+				actor      TEXT,
+				target     TEXT,
+				ip         TEXT,
+				message    TEXT,
+				metadata   TEXT,
+				resolved   BOOLEAN NOT NULL DEFAULT 0,
+				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+		},
+		{
 			name: "index_invitations_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_code ON invitations(code)`,
 		},
@@ -745,6 +761,18 @@ func (db *DB) sqliteMigrations() []migration {
 		{
 			name: "index_audit_log_created_at",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)`,
+		},
+		{
+			name: "index_security_events_created_at",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at)`,
+		},
+		{
+			name: "index_security_events_category",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_security_events_category ON security_events(category)`,
+		},
+		{
+			name: "index_security_events_resolved",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_security_events_resolved ON security_events(resolved, created_at)`,
 		},
 		{
 			name: "index_users_created_at",
@@ -918,6 +946,22 @@ func (db *DB) postgresMigrations() []migration {
 			)`,
 		},
 		{
+			name: "create_security_events",
+			sql: `CREATE TABLE IF NOT EXISTS security_events (
+				id         BIGSERIAL PRIMARY KEY,
+				category   TEXT NOT NULL,
+				event_type TEXT NOT NULL,
+				severity   TEXT NOT NULL DEFAULT 'info',
+				actor      TEXT,
+				target     TEXT,
+				ip         TEXT,
+				message    TEXT,
+				metadata   TEXT,
+				resolved   BOOLEAN NOT NULL DEFAULT FALSE,
+				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+		},
+		{
 			name: "index_invitations_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_code ON invitations(code)`,
 		},
@@ -940,6 +984,18 @@ func (db *DB) postgresMigrations() []migration {
 		{
 			name: "index_audit_log_created_at",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at)`,
+		},
+		{
+			name: "index_security_events_created_at",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_security_events_created_at ON security_events(created_at)`,
+		},
+		{
+			name: "index_security_events_category",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_security_events_category ON security_events(category)`,
+		},
+		{
+			name: "index_security_events_resolved",
+			sql:  `CREATE INDEX IF NOT EXISTS idx_security_events_resolved ON security_events(resolved, created_at)`,
 		},
 		{
 			name: "index_users_created_at",
@@ -1025,6 +1081,58 @@ func (db *DB) LogAction(action, actor, target, details string) error {
 // ── Statistiques Dashboard ──────────────────────────────────────────────────
 
 // RegistrationDay représente un point de données pour le graphique d'inscriptions.
+// SecurityEvent represente un evenement securite exploitable par le dashboard.
+type SecurityEvent struct {
+	ID        int64  `json:"id"`
+	Category  string `json:"category"`
+	EventType string `json:"event_type"`
+	Severity  string `json:"severity"`
+	Actor     string `json:"actor,omitempty"`
+	Target    string `json:"target,omitempty"`
+	IP        string `json:"ip,omitempty"`
+	Message   string `json:"message,omitempty"`
+	Metadata  string `json:"metadata,omitempty"`
+	Resolved  bool   `json:"resolved"`
+	CreatedAt string `json:"created_at"`
+}
+
+// LogSecurityEvent enregistre un evenement securite structure.
+func (db *DB) LogSecurityEvent(event SecurityEvent) error {
+	event.Category = strings.TrimSpace(event.Category)
+	event.EventType = strings.TrimSpace(event.EventType)
+	event.Severity = strings.TrimSpace(strings.ToLower(event.Severity))
+	if event.Category == "" || event.EventType == "" {
+		return nil
+	}
+	switch event.Severity {
+	case "info", "warning", "critical":
+	default:
+		event.Severity = "info"
+	}
+
+	_, err := db.Exec(
+		`INSERT INTO security_events (category, event_type, severity, actor, target, ip, message, metadata, resolved)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		event.Category,
+		event.EventType,
+		event.Severity,
+		strings.TrimSpace(event.Actor),
+		strings.TrimSpace(event.Target),
+		strings.TrimSpace(event.IP),
+		strings.TrimSpace(event.Message),
+		strings.TrimSpace(event.Metadata),
+		event.Resolved,
+	)
+	if err != nil {
+		slog.Error("Erreur lors de l'ecriture du journal securite",
+			"category", event.Category,
+			"event_type", event.EventType,
+			"error", err,
+		)
+	}
+	return err
+}
+
 type RegistrationDay struct {
 	Day   string `json:"day"`
 	Count int    `json:"count"`

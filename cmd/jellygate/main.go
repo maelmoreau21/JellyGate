@@ -307,6 +307,9 @@ func main() {
 				r.Use(jgmw.RequireAdminAuth())
 
 				r.Get("/users", adminHandler.UsersPage)
+				r.Get("/profiles", adminHandler.ProfilesPage)
+				r.Get("/security", adminHandler.SecurityPage)
+				r.Get("/pending-actions", adminHandler.PendingActionsPage)
 				r.Get("/automation", automationHandler.AutomationPage)
 				r.Route("/api/users", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
@@ -335,6 +338,7 @@ func main() {
 					r.Post("/auth-session", settingsHandler.SaveAuthSession)
 					r.Post("/auth-session/revoke", settingsHandler.RevokeAuthSessions)
 					r.Post("/ldap", settingsHandler.SaveLDAP)
+					r.Post("/ldap/dry-run", settingsHandler.LDAPDryRun)
 					r.Post("/ldap/test-connection", settingsHandler.TestLDAPConnection)
 					r.Post("/ldap/test-user", settingsHandler.TestLDAPUserLookup)
 					r.Post("/ldap/test-jellyfin-auth", settingsHandler.TestJellyfinLDAPAuth)
@@ -361,6 +365,17 @@ func main() {
 				r.Route("/api/logs", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.LogsAPI)
+				})
+
+				r.Route("/api/security", func(r chi.Router) {
+					r.Use(jgmw.RequireCSRF())
+					r.Get("/overview", adminHandler.SecurityOverview)
+					r.Get("/events", adminHandler.SecurityEvents)
+				})
+
+				r.Route("/api/pending-actions", func(r chi.Router) {
+					r.Use(jgmw.RequireCSRF())
+					r.Get("/", adminHandler.PendingActions)
 				})
 
 				r.Route("/api/automation", func(r chi.Router) {
@@ -400,6 +415,7 @@ func main() {
 				r.Get("/stats", adminHandler.InvitationStats)
 				r.Get("/security", adminHandler.InvitationSecurityConfig)
 				r.Post("/security", adminHandler.SaveInvitationSecurityConfig)
+				r.Post("/preview", adminHandler.PreviewInvitation)
 				r.Post("/", adminHandler.CreateInvitation)
 				r.Delete("/{id}", adminHandler.DeleteInvitation)
 			})

@@ -149,11 +149,13 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 			"error", err,
 		)
 		h.logAction("admin.login.failed", username, "", fmt.Sprintf("IP: %s, erreur: %s", r.RemoteAddr, err))
+		logSecurityEvent(h.db, r, "admin_login", "admin.login.failed", "warning", username, "", "Echec de connexion admin", map[string]string{"error": err.Error()})
 		h.redirectLoginError(w, r, "invalid", username)
 		return
 	}
 	if authUser == nil {
 		h.logAction("admin.login.failed", username, "", fmt.Sprintf("IP: %s, erreur: reponse Jellyfin vide", r.RemoteAddr))
+		logSecurityEvent(h.db, r, "admin_login", "admin.login.failed", "warning", username, "", "Echec de connexion admin", map[string]string{"error": "reponse Jellyfin vide"})
 		h.redirectLoginError(w, r, "invalid", username)
 		return
 	}
@@ -194,6 +196,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 						"error", accessErr,
 					)
 					h.logAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, controle LDAP impossible: %v", r.RemoteAddr, accessErr))
+					logSecurityEvent(h.db, r, "admin_login", "admin.login.failed", "warning", lookupUsername, "", "Controle LDAP impossible", map[string]string{"error": accessErr.Error()})
 					h.redirectLoginError(w, r, "invalid", lookupUsername)
 					return
 				}
@@ -206,6 +209,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 						"remote", r.RemoteAddr,
 					)
 					h.logAction("admin.login.failed", lookupUsername, "", fmt.Sprintf("IP: %s, filtre LDAP: acces refuse", r.RemoteAddr))
+					logSecurityEvent(h.db, r, "admin_login", "admin.login.failed", "warning", lookupUsername, "", "Acces refuse par le filtre LDAP", nil)
 					h.redirectLoginError(w, r, "invalid", lookupUsername)
 					return
 				}
@@ -282,6 +286,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		"remote", r.RemoteAddr,
 	)
 	h.logAction("admin.login.success", authUsername, authUserID, fmt.Sprintf("IP: %s", r.RemoteAddr))
+	logSecurityEvent(h.db, r, "admin_login", "admin.login.success", "info", authUsername, authUserID, "Connexion admin reussie", nil)
 
 	http.Redirect(w, r, "/admin/", http.StatusSeeOther)
 }
