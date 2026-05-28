@@ -1055,7 +1055,7 @@
         if (presetsRes && presetsRes.success && Array.isArray(presetsRes.data)) {
             const presetOptions = presetsRes.data.map((preset) => ({
                 value: preset.id || '',
-                label: preset.name || preset.id || t('preset_fallback', 'Preset'),
+                label: preset.name || preset.id || t('preset_fallback', 'Profil'),
             }));
             setSelectOptions('invite-profile-preset', presetOptions);
         }

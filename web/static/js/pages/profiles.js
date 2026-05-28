@@ -1,13 +1,18 @@
 (() => {
+    const config = window.JGPageProfiles || {};
+    const i18n = config.i18n || {};
     const state = {
         presets: [],
         libraries: [],
         selected: 0,
         activeTab: 'rights',
+        dirty: false,
+        hydrating: false,
     };
 
     const els = {};
     const qs = (id) => document.getElementById(id);
+    const t = (key, fallback) => i18n[key] || fallback;
     const num = (id) => Math.max(0, parseInt(qs(id)?.value || '0', 10) || 0);
     const list = (id) => (qs(id)?.value || '')
         .split(/[\n,]+/)
@@ -36,20 +41,43 @@
             'profile-allowed-temp-targets', 'profile-is-temporary', 'profile-account-default',
             'profile-account-max', 'profile-ldap-groups', 'profile-devices', 'profile-channels',
             'profile-delete-btn', 'profile-editor-title', 'profile-editor-subtitle', 'profile-tabs',
+            'profile-active-menu-name', 'profile-dirty-indicator',
         ].forEach((id) => { els[id] = qs(id); });
     }
 
     function presetName(preset) {
-        return preset?.name || preset?.id || 'Profil';
+        return preset?.name || preset?.id || t('profileFallback', 'Profil');
     }
 
-    function renderTabs() {
+    function setDirty(value) {
+        if (state.hydrating) return;
+        state.dirty = !!value;
+        els['profile-dirty-indicator']?.classList.toggle('hidden', !state.dirty);
+    }
+
+    function activeTabLabel() {
+        const button = Array.from(document.querySelectorAll('[data-profile-tab-target]'))
+            .find((node) => node.dataset.profileTabTarget === state.activeTab);
+        return button?.querySelector('.jg-profile-tab-label')?.textContent?.trim()
+            || t('profileFallback', 'Profil');
+    }
+
+    function renderTabs(focusActive = false) {
         document.querySelectorAll('[data-profile-tab]').forEach((panel) => {
-            panel.classList.toggle('hidden', panel.dataset.profileTab !== state.activeTab);
+            const active = panel.dataset.profileTab === state.activeTab;
+            panel.classList.toggle('hidden', !active);
+            panel.hidden = !active;
         });
         document.querySelectorAll('[data-profile-tab-target]').forEach((button) => {
-            button.classList.toggle('active', button.dataset.profileTabTarget === state.activeTab);
+            const active = button.dataset.profileTabTarget === state.activeTab;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-selected', active ? 'true' : 'false');
+            button.setAttribute('tabindex', active ? '0' : '-1');
+            if (active && focusActive) button.focus();
         });
+        if (els['profile-active-menu-name']) {
+            els['profile-active-menu-name'].textContent = activeTabLabel();
+        }
     }
 
     function renderList() {
@@ -57,11 +85,13 @@
         els['profiles-count'].textContent = String(state.presets.length);
         els['profiles-list'].innerHTML = state.presets.map((preset, index) => {
             const active = index === state.selected ? 'active' : '';
-            const libs = preset.enable_all_folders ? 'Toutes bibliotheques' : `${(preset.enabled_folder_ids || []).length} bibliotheque(s)`;
-            const admin = preset.is_administrator ? '<span class="jg-ds-tag danger">Admin</span>' : '';
-            const invite = (preset.can_invite || preset.can_create_invitations) ? '<span class="jg-ds-tag">Parrain</span>' : '';
-            const temp = preset.is_temporary ? '<span class="jg-ds-tag">Temp</span>' : '';
-            return `<button type="button" class="jg-profile-card ${active}" data-index="${index}">
+            const libs = preset.enable_all_folders
+                ? t('allLibraries', 'Toutes bibliotheques')
+                : t('libraryCount', '{count} bibliotheque(s)').replace('{count}', String((preset.enabled_folder_ids || []).length));
+            const admin = preset.is_administrator ? `<span class="jg-ds-tag danger">${JG.esc(t('tagAdmin', 'Admin'))}</span>` : '';
+            const invite = (preset.can_invite || preset.can_create_invitations) ? `<span class="jg-ds-tag">${JG.esc(t('tagSponsor', 'Parrain'))}</span>` : '';
+            const temp = preset.is_temporary ? `<span class="jg-ds-tag">${JG.esc(t('tagTemporary', 'Temp'))}</span>` : '';
+            return `<button type="button" class="jg-profile-card ${active}" data-index="${index}" aria-current="${index === state.selected ? 'true' : 'false'}">
                 <span>
                     <strong>${JG.esc(presetName(preset))}</strong>
                     <small>${JG.esc(preset.description || libs)}</small>
@@ -73,7 +103,7 @@
 
     function renderTargetOptions() {
         if (!els['profile-target-preset']) return;
-        els['profile-target-preset'].innerHTML = '<option value="">Aucun</option>' + state.presets.map((preset) => {
+        els['profile-target-preset'].innerHTML = `<option value="">${JG.esc(t('none', 'Aucun'))}</option>` + state.presets.map((preset) => {
             return `<option value="${JG.esc(preset.id || '')}">${JG.esc(presetName(preset))}</option>`;
         }).join('');
     }
@@ -81,7 +111,7 @@
     function renderLibraryPicker(preset) {
         if (!els['profile-libraries']) return;
         if (!state.libraries.length) {
-            els['profile-libraries'].innerHTML = '<div class="text-sm text-jg-text-muted">Aucune bibliotheque Jellyfin chargee.</div>';
+            els['profile-libraries'].innerHTML = `<div class="text-sm text-jg-text-muted">${JG.esc(t('noLibraries', 'Aucune bibliotheque Jellyfin chargee.'))}</div>`;
             return;
         }
         const selected = new Set(preset?.enabled_folder_ids || []);
@@ -98,6 +128,7 @@
     function fillForm() {
         const preset = state.presets[state.selected];
         if (!preset) return;
+        state.hydrating = true;
         renderTargetOptions();
         els['profile-index'].value = String(state.selected);
         els['profile-id'].value = preset.id || '';
@@ -139,7 +170,7 @@
         els['profile-account-default'].value = String(preset.default_account_duration_days || 0);
         els['profile-account-max'].value = String(preset.max_account_duration_days || 0);
         els['profile-editor-title'].textContent = presetName(preset);
-        els['profile-editor-subtitle'].textContent = preset.id ? `ID ${preset.id}` : 'Nouveau profil';
+        els['profile-editor-subtitle'].textContent = preset.id ? `ID ${preset.id}` : t('newProfileSubtitle', 'Nouveau profil');
         setList('profile-blocked-folders', preset.blocked_media_folders);
         setList('profile-deletion-folders', preset.enable_content_deletion_from_folders);
         setList('profile-allowed-tags', preset.allowed_tags);
@@ -163,6 +194,8 @@
         renderLibraryPicker(preset);
         renderList();
         renderTabs();
+        els['profile-libraries']?.classList.toggle('opacity-50', !!els['profile-all-folders'].checked);
+        state.hydrating = false;
     }
 
     function collectForm() {
@@ -177,7 +210,7 @@
         return {
             ...current,
             id,
-            name: (els['profile-name'].value || '').trim() || id || 'Profil',
+            name: (els['profile-name'].value || '').trim() || id || t('profileFallback', 'Profil'),
             description: (els['profile-description'].value || '').trim(),
             is_administrator: !!els['profile-admin'].checked,
             is_hidden: !!els['profile-hidden'].checked,
@@ -252,7 +285,7 @@
             JG.api('/admin/api/automation/libraries'),
         ]);
         if (!presetsRes?.success) {
-            JG.toast(presetsRes?.message || 'Impossible de charger les profils', 'error');
+            JG.toast(presetsRes?.message || t('loadError', 'Impossible de charger les profils'), 'error');
             return;
         }
         state.presets = Array.isArray(presetsRes.data) ? presetsRes.data : [];
@@ -260,12 +293,13 @@
         state.selected = 0;
         renderList();
         fillForm();
+        setDirty(false);
     }
 
     async function saveAll() {
         const current = collectForm();
         if (!current.id) {
-            JG.toast('Identifiant de profil requis', 'error');
+            JG.toast(t('idRequired', 'Identifiant de profil requis'), 'error');
             return;
         }
         state.presets[state.selected] = current;
@@ -274,17 +308,18 @@
             body: JSON.stringify(state.presets),
         });
         if (!res?.success) {
-            JG.toast(res?.message || 'Sauvegarde impossible', 'error');
+            JG.toast(res?.message || t('saveError', 'Sauvegarde impossible'), 'error');
             return;
         }
-        JG.toast(res.message || 'Profils sauvegardes', 'success');
+        JG.toast(res.message || t('saved', 'Profils sauvegardes'), 'success');
         await load();
+        setDirty(false);
     }
 
     function addProfile() {
         state.presets.push({
             id: `profil-${state.presets.length + 1}`,
-            name: 'Nouveau profil',
+            name: t('newProfile', 'Nouveau profil'),
             enable_all_folders: true,
             enable_all_devices: true,
             enable_all_channels: true,
@@ -301,16 +336,25 @@
         });
         state.selected = state.presets.length - 1;
         fillForm();
+        setDirty(true);
     }
 
     function deleteProfile() {
         if (state.presets.length <= 1) {
-            JG.toast('Gardez au moins un profil', 'error');
+            JG.toast(t('keepOne', 'Gardez au moins un profil'), 'error');
             return;
         }
         state.presets.splice(state.selected, 1);
         state.selected = Math.max(0, state.selected - 1);
         fillForm();
+        setDirty(true);
+    }
+
+    function activateTab(button, focusActive = false) {
+        if (!button) return;
+        state.presets[state.selected] = collectForm();
+        state.activeTab = button.dataset.profileTabTarget || 'rights';
+        renderTabs(focusActive);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -327,17 +371,32 @@
 
         els['profile-tabs']?.addEventListener('click', (event) => {
             const button = event.target.closest('[data-profile-tab-target]');
-            if (!button) return;
-            state.presets[state.selected] = collectForm();
-            state.activeTab = button.dataset.profileTabTarget || 'rights';
-            renderTabs();
+            activateTab(button);
         });
 
+        els['profile-tabs']?.addEventListener('keydown', (event) => {
+            const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+            if (!keys.includes(event.key)) return;
+            const buttons = Array.from(document.querySelectorAll('[data-profile-tab-target]'));
+            const current = buttons.findIndex((button) => button.dataset.profileTabTarget === state.activeTab);
+            if (current < 0) return;
+            event.preventDefault();
+            let next = current;
+            if (event.key === 'ArrowLeft') next = current <= 0 ? buttons.length - 1 : current - 1;
+            if (event.key === 'ArrowRight') next = current >= buttons.length - 1 ? 0 : current + 1;
+            if (event.key === 'Home') next = 0;
+            if (event.key === 'End') next = buttons.length - 1;
+            activateTab(buttons[next], true);
+        });
+
+        els['profile-form']?.addEventListener('input', () => setDirty(true));
+        els['profile-form']?.addEventListener('change', () => setDirty(true));
         els['profile-form']?.addEventListener('submit', (event) => {
             event.preventDefault();
             state.presets[state.selected] = collectForm();
             renderList();
-            JG.toast('Profil mis a jour dans le brouillon', 'success');
+            setDirty(true);
+            JG.toast(t('draftUpdated', 'Profil mis a jour dans le brouillon'), 'success');
         });
         els['profiles-save-btn']?.addEventListener('click', saveAll);
         els['profile-new-btn']?.addEventListener('click', addProfile);

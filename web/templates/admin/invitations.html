@@ -204,7 +204,7 @@
                     <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="1">
                         <h3 class="text-sm font-bold uppercase tracking-widest text-sky-300">Profil Jellyfin cible</h3>
                         <div>
-                            <label class="jg-label">Preset utilisateur</label>
+                            <label class="jg-label">{{ .T "invitations_user_profile_label" }}</label>
                             <select id="inv-policy-preset" class="jg-input jg-select-premium h-11 bg-black/20 hover:bg-black/40 text-sm">
                                 <option value="">Politique globale JellyGate</option>
                             </select>
@@ -262,10 +262,10 @@
                         <div class="rounded-xl border border-jg-border bg-black/20 p-4 space-y-3">
                             <label class="flex items-center gap-2 text-sm" for="inv-is-temporary">
                                 <input type="checkbox" id="inv-is-temporary" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
-                                Invitation temporaire
+                                {{ .T "invitations_temporary_label" }}
                             </label>
                             <div>
-                                <label class="jg-label text-[10px] uppercase tracking-wider">Duree du compte temporaire</label>
+                                <label class="jg-label text-[10px] uppercase tracking-wider">{{ .T "invitations_temporary_duration_label" }}</label>
                                 <input type="number" id="inv-account-duration-days" class="jg-input h-10" min="1" value="30" disabled>
                             </div>
                             <div id="inv-temp-help" class="text-xs text-jg-text-muted"></div>
@@ -305,8 +305,8 @@
                         </div>
                         {{ end }}
                         <div>
-                            <label class="jg-label">Message d'invitation</label>
-                            <textarea id="inv-email-message" class="jg-input min-h-24 py-3" placeholder="Message court ajouté à l'e-mail, optionnel"></textarea>
+                            <label class="jg-label">{{ .T "invitations_email_message_label" }}</label>
+                            <textarea id="inv-email-message" class="jg-input min-h-24 py-3" placeholder='{{ .T "invitations_email_message_placeholder" }}'></textarea>
                         </div>
                         <div class="text-xs text-jg-text-muted leading-relaxed">
                             {{ .T "invitations_email_auto_note" }}
@@ -314,17 +314,17 @@
                     </section>
 
                     <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="5">
-                        <h3 class="text-sm font-bold uppercase tracking-widest text-amber-300">Aperçu public</h3>
-                        <p class="text-xs text-jg-text-muted leading-relaxed">Vérifiez le lien public, le profil appliqué et le message avant de créer l'invitation.</p>
-                        <button id="inv-preview-btn" type="button" class="jg-btn jg-btn-ghost h-11 w-full">Générer l'aperçu</button>
-                        <div id="inv-preview-output" class="jg-preview-shell text-sm text-jg-text-muted">Aucun aperçu généré.</div>
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-amber-300">{{ .T "invitations_preview_title" }}</h3>
+                        <p class="text-xs text-jg-text-muted leading-relaxed">{{ .T "invitations_preview_help" }}</p>
+                        <button id="inv-preview-btn" type="button" class="jg-btn jg-btn-ghost h-11 w-full">{{ .T "invitations_preview_generate" }}</button>
+                        <div id="inv-preview-output" class="jg-preview-shell text-sm text-jg-text-muted">{{ .T "invitations_preview_empty" }}</div>
                     </section>
                 </div>
 
                 <div class="mt-2 flex flex-col md:flex-row justify-between gap-3 pt-4 border-t border-jg-border">
                     <div class="flex gap-2">
-                        <button type="button" id="invite-wizard-prev" class="jg-btn jg-btn-ghost h-12 px-5">Précédent</button>
-                        <button type="button" id="invite-wizard-next" class="jg-btn jg-btn-ghost h-12 px-5">Suivant</button>
+                        <button type="button" id="invite-wizard-prev" class="jg-btn jg-btn-ghost h-12 px-5">{{ .T "invitations_prev" }}</button>
+                        <button type="button" id="invite-wizard-next" class="jg-btn jg-btn-ghost h-12 px-5">{{ .T "invitations_next" }}</button>
                     </div>
                     <div class="flex flex-col md:flex-row gap-3">
                     <button type="button" class="jg-btn jg-btn-ghost h-12 px-6" data-modal-close="create-modal">{{ .T "cancel" }}</button>
@@ -425,6 +425,11 @@
             userExpiryFuture: '{{ .T "invitations_user_expiry_future" }}',
             created: '{{ .T "invitations_created" }}',
             unknownError: '{{ .T "invitations_unknown_error" }}',
+            profileLibrariesFollow: '{{ .T "invitations_profile_libraries_follow" }}',
+            profileGlobal: '{{ .T "invitations_profile_global" }}',
+            profileApplied: '{{ .T "invitations_profile_applied" }}',
+            profileAllLibraries: '{{ .T "invitations_profile_all_libraries" }}',
+            profileLibraryCount: '{{ .T "invitations_profile_library_count" }}',
             securityLoadFailed: '{{ .T "invitations_security_load_failed" }}',
             securitySaveFailed: '{{ .T "invitations_security_save_failed" }}',
             securitySaved: '{{ .T "invitations_security_saved" }}',

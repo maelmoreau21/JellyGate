@@ -215,7 +215,7 @@
                 username: i18n.tableUsername || 'User',
                 status: i18n.tableStatus || 'Status',
                 jellyfin: i18n.tableJellyfin || 'Jellyfin',
-                preset: i18n.tablePreset || 'Preset',
+                preset: i18n.tablePreset || 'Profil',
                 expiry: i18n.tableExpiry || 'Expiry',
                 actions: i18n.tableActions || 'Actions',
             };
@@ -363,7 +363,7 @@
                 c.innerHTML = '<div class="space-y-4"><div><label class="jg-label">' + JG.esc(text.bulkJfDownloadLabel || 'Download') + '</label><select id="bulk-jf-download" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkJfDownloadUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfDownloadAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfDownloadBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfRemoteLabel || 'Remote') + '</label><select id="bulk-jf-remote" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkJfRemoteUnchanged||'Unchanged') + '</option><option value="true">' + JG.esc(text.bulkJfRemoteAllowed||'Allowed') + '</option><option value="false">' + JG.esc(text.bulkJfRemoteBlocked||'Blocked') + '</option></select></div><div><label class="jg-label">' + JG.esc(text.bulkJfSessionsLabel || 'Sessions') + '</label><input type="number" id="bulk-jf-sessions" class="jg-input h-12" min="0"></div><div><label class="jg-label">' + JG.esc(text.bulkJfBitrateLabel || 'Bitrate') + '</label><input type="number" id="bulk-jf-bitrate" class="jg-input h-12" min="0"></div></div>';
             } else if (action === 'apply_preset') {
                 const opts = jellyfinPresets.map(p => '<option value="' + JG.esc(p.id) + '">' + JG.esc(p.name||p.id) + '</option>').join('');
-                c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Preset') + '</label><select id="bulk-preset" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkSelectPresetPlaceholder||'Select...') + '</option>' + opts + '</select></div>';
+                c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Profil') + '</label><select id="bulk-preset" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkSelectPresetPlaceholder||'Select...') + '</option>' + opts + '</select></div>';
             } else if (['activate','deactivate','delete','send_password_reset'].includes(action)) {
                 c.innerHTML = '<div class="text-center py-8 text-jg-text-muted">' + JG.esc(text.bulkNoExtraParams||'No additional parameters required.') + '</div>';
             } else {
@@ -424,7 +424,7 @@
             } else if (action === 'apply_preset') {
                 payload.policy_preset_id = document.getElementById('bulk-preset')?.value || '';
                 if (!payload.policy_preset_id) {
-                    return { error: i18n.bulkNeedPreset || 'Select a preset' };
+                    return { error: i18n.bulkNeedPreset || 'Select a profile' };
                 }
             }
 
@@ -601,7 +601,7 @@
         // Edit Modal
         function fillPresetSelect(select, selectedValue = '') {
             if (!select) return;
-            let html = '<option value="">' + JG.esc(i18n.createNoPreset || 'No preset') + '</option>';
+            let html = '<option value="">' + JG.esc(i18n.createNoPreset || 'No profile') + '</option>';
             jellyfinPresets.forEach(p => {
                 html += `<option value="${JG.esc(p.id)}">${JG.esc(p.name || p.id)}</option>`;
             });
@@ -673,7 +673,7 @@
             document.getElementById('edit-user-id').value = uid;
             document.getElementById('edit-email').value = user.email || '';
             
-            // Populate Presets
+            // Populate profiles.
             const presetSel = document.getElementById('edit-preset-id');
             fillPresetSelect(presetSel, user.preset_id || '');
 
@@ -713,10 +713,10 @@
             const uid = parseInt(document.getElementById('edit-user-id')?.value || '0', 10);
             const presetID = document.getElementById('edit-preset-id')?.value || '';
             if (!uid || !presetID) {
-                JG.toast(i18n.bulkNeedPreset || 'Select a preset', 'error');
+                JG.toast(i18n.bulkNeedPreset || 'Select a profile', 'error');
                 return;
             }
-            if (!(await JG.confirm(i18n.forcePresetTitle || 'Apply preset', i18n.forcePresetConfirm || 'Force this preset on Jellyfin now?'))) return;
+            if (!(await JG.confirm(i18n.forcePresetTitle || 'Reapply profile', i18n.forcePresetConfirm || 'Reapply this profile on Jellyfin now?'))) return;
 
             const res = await JG.api('/admin/api/users/bulk', {
                 method: 'POST',
@@ -724,7 +724,7 @@
             });
             const forcedCount = Number(res?.data?.success || 0);
             if (res.success && forcedCount > 0) {
-                JG.toast(i18n.forcePresetDone || res.message || 'Preset applied', 'success');
+                JG.toast(i18n.forcePresetDone || res.message || 'Profile reapplied', 'success');
                 await loadUsers();
             } else {
                 const firstResult = Array.isArray(res?.data?.results) ? res.data.results[0] : null;

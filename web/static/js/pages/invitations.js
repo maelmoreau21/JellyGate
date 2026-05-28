@@ -331,7 +331,7 @@
             const wrap = document.getElementById('inv-libraries');
             if (!wrap) return;
             if (!isAdmin || invitationLibraries.length === 0) {
-                wrap.innerHTML = '<div class="text-xs text-jg-text-muted">Les bibliothèques suivent la politique du preset.</div>';
+                wrap.innerHTML = `<div class="text-xs text-jg-text-muted">${JG.esc(i18n.profileLibrariesFollow || 'Les bibliotheques suivent le profil choisi.')}</div>`;
                 return;
             }
             const selected = new Set((preset && preset.enabled_folder_ids) || []);
@@ -356,10 +356,12 @@
             const preset = invitationPresets.find((item) => item.id === select?.value);
             if (summary) {
                 if (!preset) {
-                    summary.textContent = 'La politique globale JellyGate sera utilisée.';
+                    summary.textContent = i18n.profileGlobal || 'Profil global JellyGate';
                 } else {
                     const parts = [];
-                    parts.push(preset.enable_all_folders ? 'Toutes bibliothèques' : `${(preset.enabled_folder_ids || []).length} bibliothèque(s)`);
+                    const libraryCount = String(i18n.profileLibraryCount || '{count} bibliotheque(s)')
+                        .replace('{count}', String((preset.enabled_folder_ids || []).length));
+                    parts.push(preset.enable_all_folders ? (i18n.profileAllLibraries || 'Toutes bibliotheques') : libraryCount);
                     if (preset.is_administrator) parts.push('Admin Jellyfin');
                     if (preset.can_invite) parts.push('Parrain');
                     if (preset.disable_after_days > 0) parts.push(`${preset.disable_after_days} jour(s)`);
@@ -422,7 +424,7 @@
                         visiblePresets = Array.from(allowed).map((id) => ({ id, name: id }));
                     }
                 }
-                select.innerHTML = (isAdmin ? '<option value="">Politique globale JellyGate</option>' : '') + visiblePresets.map((preset) => {
+                select.innerHTML = (isAdmin ? `<option value="">${JG.esc(i18n.profileGlobal || 'Profil global JellyGate')}</option>` : '') + visiblePresets.map((preset) => {
                     const adminSuffix = preset.is_administrator ? ' · admin' : '';
                     return `<option value="${JG.esc(preset.id || '')}">${JG.esc((preset.name || preset.id || 'Profil') + adminSuffix)}</option>`;
                 }).join('');
@@ -482,7 +484,7 @@
                 output.innerHTML = `<div class="space-y-3">
                     <div>${data.public_preview_html || ''}</div>
                     <div><strong>Lien public</strong><br><code>${JG.esc(data.public_url || '')}</code></div>
-                    <div><strong>Profil appliqué</strong><br>${JG.esc(profile.preset_id || data.preset?.name || 'Politique globale')} · ${profile.enable_all_folders ? 'toutes bibliothèques' : `${(profile.enabled_folder_ids || []).length} bibliothèque(s)`}</div>
+                    <div><strong>${JG.esc(i18n.profileApplied || 'Profil applique')}</strong><br>${JG.esc(profile.preset_id || data.preset?.name || i18n.profileGlobal || 'Profil global')} · ${JG.esc(profile.enable_all_folders ? (i18n.profileAllLibraries || 'toutes bibliotheques') : String(i18n.profileLibraryCount || '{count} bibliotheque(s)').replace('{count}', String((profile.enabled_folder_ids || []).length)))}</div>
                     <div><strong>Message</strong><br>${JG.esc(data.email_message || 'Message standard JellyGate')}</div>
                 </div>`;
             }

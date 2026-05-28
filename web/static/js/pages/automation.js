@@ -714,8 +714,8 @@
             
             const name = document.getElementById('preset-name').value.trim();
             if (!presets[idx].id) {
-                 // New preset, generate slug
-                 presets[idx].id = getSlug(name) || 'preset-' + Math.random().toString(36).substr(2, 5);
+                 // New profile, generate a stable slug.
+                 presets[idx].id = getSlug(name) || 'profile-' + Math.random().toString(36).substr(2, 5);
             }
             presets[idx].name = name;
             const ldapInput = document.getElementById('preset-ldap-dn');
@@ -914,7 +914,7 @@
 
         document.getElementById('btn-preset-add')?.addEventListener('click', () => {
             presets.push({
-                id: '', // Empty ID = new preset flag
+                id: '', // Empty ID = new profile flag
                 name: '',
                 enable_download: true,
                 enable_remote_access: true,
