@@ -308,9 +308,12 @@ func main() {
 
 				r.Get("/users", adminHandler.UsersPage)
 				r.Get("/profiles", adminHandler.ProfilesPage)
+				r.Get("/ldap", adminHandler.LDAPPage)
 				r.Get("/security", adminHandler.SecurityPage)
 				r.Get("/pending-actions", adminHandler.PendingActionsPage)
-				r.Get("/automation", automationHandler.AutomationPage)
+				r.Get("/automation", func(w http.ResponseWriter, r *http.Request) {
+					http.Redirect(w, r, "/admin/settings#scheduler", http.StatusSeeOther)
+				})
 				r.Route("/api/users", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)

@@ -16,10 +16,10 @@
             {{ .T "settings_tab_general" }}
         </div>
     </button>
-    <button data-tab-target="ldap" id="tab-ldap" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
+    <button data-tab-target="scheduler" id="tab-scheduler" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
         <div class="flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-            {{ .T "settings_tab_ldap" }}
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3M5 11h14M7 21h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+            {{ .T "automation_tasks_title" }}
         </div>
     </button>
     <button data-tab-target="smtp" id="tab-smtp" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
@@ -236,6 +236,8 @@
 
       </div>
     </div>
+
+    {{ template "scheduler_panel" . }}
 
     {{/* """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" */}}
     {{/* TAB: LDAP */}}
@@ -654,6 +656,47 @@
       settings_template_syntax_valid: '{{ .T "settings_template_syntax_valid" }}',
     },
   };
+  window.JGPageScheduler = {
+    i18n: {
+      deleteLabel: '{{ .T "automation_delete" }}',
+      runNow: '{{ .T "automation_run_now" }}',
+      enable: '{{ .T "automation_enable" }}',
+      disable: '{{ .T "automation_disable" }}',
+      editLabel: '{{ .T "automation_edit" }}',
+      noTasks: '{{ .T "automation_no_tasks" }}',
+      errorTasks: '{{ .T "automation_error_tasks" }}',
+      taskCreateFailed: '{{ .T "automation_task_create_failed" }}',
+      taskCreated: '{{ .T "automation_task_created" }}',
+      taskDeleteConfirm: '{{ .T "automation_task_delete_confirm" }}',
+      taskDeleteFailed: '{{ .T "automation_task_delete_failed" }}',
+      taskDeleted: '{{ .T "automation_task_deleted" }}',
+      taskRunFailed: '{{ .T "automation_task_run_failed" }}',
+      taskRunSuccess: '{{ .T "automation_task_run_success" }}',
+      taskUpdateFailed: '{{ .T "automation_task_update_failed" }}',
+      taskUpdated: '{{ .T "automation_task_updated" }}',
+      taskPreviewEmpty: '{{ .T "automation_task_preview_empty" }}',
+      taskEnabled: '{{ .T "automation_task_enabled" }}',
+      taskDisabled: '{{ .T "automation_disable" }}',
+      statusOn: '{{ .T "automation_status_on" }}',
+      statusOff: '{{ .T "automation_status_off" }}',
+      manualSyncUsers: '{{ .T "automation_manual_sync_users" }}',
+      manualSyncLdap: '{{ .T "automation_manual_sync_ldap" }}',
+      manualCleanupResets: '{{ .T "automation_manual_cleanup_resets" }}',
+      taskTypeSyncUsers: '{{ .T "automation_task_type_sync_users" }}',
+      taskTypeSyncLdapUsers: '{{ .T "automation_task_type_sync_ldap_users" }}',
+      taskTypeCleanupResets: '{{ .T "automation_task_type_cleanup_resets" }}',
+      quickTaskMissing: '{{ .T "automation_manual_task_missing" }}',
+      quickTaskRunning: '{{ .T "automation_manual_task_running" }}',
+      quickTaskFailed: '{{ .T "automation_manual_task_failed" }}',
+      quickTaskSuccess: '{{ .T "automation_manual_task_success" }}'
+    },
+    taskTypeDescriptions: {
+      sync_users: '{{ .T "automation_type_sync_users_desc" }}',
+      sync_ldap_users: '{{ .T "automation_type_sync_ldap_users_desc" }}',
+      cleanup_resets: '{{ .T "automation_type_cleanup_resets_desc" }}',
+    },
+  };
 </script>
 <script src="/static/js/pages/settings.js" nonce="{{ .ScriptNonce }}"></script>
+<script src="/static/js/pages/scheduler.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

@@ -33,6 +33,22 @@ func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *AdminHandler) LDAPPage(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.AdminUsername = sess.Username
+	td.IsAdmin = true
+	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.Section = "ldap"
+	if err := h.renderer.Render(w, "admin/ldap.html", td); err != nil {
+		slog.Error("Erreur rendu ldap page", "error", err)
+		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur"), http.StatusInternalServerError)
+	}
+}
+
 func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))

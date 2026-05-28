@@ -1851,8 +1851,21 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('[data-tab-target]').forEach((btn) => {
-            btn.addEventListener('click', () => switchTab(btn.dataset.tabTarget || 'general'));
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.tabTarget || 'general';
+                switchTab(target);
+                if (target === 'general') {
+                    history.replaceState(null, '', window.location.pathname);
+                } else {
+                    history.replaceState(null, '', `#${target}`);
+                }
+            });
         });
+
+        const requestedTab = String(window.location.hash || '').replace(/^#/, '').trim();
+        if (requestedTab && document.getElementById(`tab-${requestedTab}`) && document.getElementById(`panel-${requestedTab}`)) {
+            switchTab(requestedTab);
+        }
 
         [
             ['form-general', 'general'],
