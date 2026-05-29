@@ -71,7 +71,7 @@
             const createBtn = document.getElementById('create-btn');
             if (createBtn) createBtn.disabled = true;
             const output = document.getElementById('inv-preview-output');
-            if (output) output.innerHTML = 'Aucun aperçu généré.';
+            if (output) output.innerHTML = JG.esc(i18n.previewEmpty || 'Aucun apercu genere.');
         }
 
         async function copyLinkToClipboard(link) {
@@ -488,7 +488,7 @@
                     <div><strong>Message</strong><br>${JG.esc(data.email_message || 'Message standard JellyGate')}</div>
                 </div>`;
             }
-            setWizardStep(5);
+            document.getElementById('inv-preview-output')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         async function loadInvitations() {
@@ -640,8 +640,8 @@
         async function submitCreate(event) {
             event.preventDefault();
             if (!previewConfirmed) {
-                JG.toast('Générez et validez l’aperçu avant de créer le lien.', 'error');
-                setWizardStep(5);
+                JG.toast(i18n.previewRequired || 'Generez et validez l apercu avant de creer le lien.', 'error');
+                document.getElementById('inv-preview-output')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 return;
             }
             const btn = document.getElementById('create-btn');

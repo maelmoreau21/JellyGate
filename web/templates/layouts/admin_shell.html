@@ -66,14 +66,20 @@
                 {{ end }}
 
                 <a href="/admin/profiles" class="jg-nav-item {{ if eq $current "profiles" }}active{{ end }}">
-                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H4v-2a4 4 0 014-4h1m0-4a4 4 0 100-8 4 4 0 000 8zm8 0a4 4 0 100-8 4 4 0 000 8z" /></svg>
+                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="4" y="5" width="16" height="14" rx="2" ry="2" stroke-width="2"></rect>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9h5M8 13h3M15 13h1.5M15 16h1.5"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v3M14.5 9.5h3"></path>
+                    </svg>
                     <span class="jg-nav-label">Profils</span>
                 </a>
 
+                {{ if .LDAPEnabled }}
                 <a href="/admin/ldap" class="jg-nav-item {{ if eq $current "ldap" }}active{{ end }}">
                     <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 20h12M8 20V9m8 11V9M5 9h14l-2-5H7L5 9zm3 4h2m4 0h2" /></svg>
                     <span class="jg-nav-label">{{ .T "settings_tab_ldap" }}</span>
                 </a>
+                {{ end }}
 
                 <a href="/admin/security" class="jg-nav-item {{ if eq $current "security" }}active{{ end }}">
                     <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v5c0 4.418-2.91 8.32-7 9-4.09-.68-7-4.582-7-9V7l7-4z" /></svg>

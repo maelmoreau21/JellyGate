@@ -8,6 +8,8 @@
         activeTab: 'rights',
         dirty: false,
         hydrating: false,
+        search: '',
+        filter: 'all',
     };
 
     const els = {};
@@ -81,6 +83,8 @@
     function hydrateEls() {
         [
             'profiles-list', 'profiles-count', 'profiles-save-btn', 'profile-new-btn', 'profile-form',
+            'profiles-stat-total', 'profiles-stat-admin', 'profiles-stat-sponsor', 'profiles-stat-temporary',
+            'profile-search', 'profile-filter-kind', 'profile-drawer', 'profile-drawer-overlay', 'profile-drawer-close',
             'profile-index', 'profile-id', 'profile-name', 'profile-description', 'profile-admin',
             'profile-hidden', 'profile-disabled', 'profile-all-folders', 'profile-download', 'profile-remote',
             'profile-playback', 'profile-audio-transcode', 'profile-video-transcode', 'profile-remux',
@@ -94,7 +98,7 @@
             'profile-target-preset', 'profile-quota-day', 'profile-quota-month', 'profile-link-days',
             'profile-max-uses', 'profile-temp-default', 'profile-temp-max', 'profile-allowed-targets',
             'profile-allowed-temp-targets', 'profile-is-temporary', 'profile-account-default',
-            'profile-account-max', 'profile-devices', 'profile-channels',
+            'profile-account-max', 'profile-devices', 'profile-channels', 'profile-ldap-groups',
             'profile-delete-btn', 'profile-editor-title', 'profile-editor-subtitle', 'profile-tabs',
             'profile-active-menu-name', 'profile-dirty-indicator',
         ].forEach((id) => { els[id] = qs(id); });
@@ -118,6 +122,7 @@
     }
 
     function renderTabs(focusActive = false) {
+        if (!document.querySelector('[data-profile-tab-target]')) return;
         document.querySelectorAll('[data-profile-tab]').forEach((panel) => {
             const active = panel.dataset.profileTab === state.activeTab;
             panel.classList.toggle('hidden', !active);
@@ -135,24 +140,80 @@
         }
     }
 
+    function profileLibrariesLabel(preset) {
+        if (preset.enable_all_folders) return t('allLibraries', 'Toutes bibliotheques');
+        return t('libraryCount', '{count} bibliotheque(s)').replace('{count}', String((preset.enabled_folder_ids || []).length));
+    }
+
+    function updateStats() {
+        const presets = state.presets || [];
+        const adminCount = presets.filter((preset) => preset.is_administrator).length;
+        const sponsorCount = presets.filter((preset) => preset.can_invite || preset.can_create_invitations).length;
+        const temporaryCount = presets.filter((preset) => preset.is_temporary).length;
+        if (els['profiles-stat-total']) els['profiles-stat-total'].textContent = String(presets.length);
+        if (els['profiles-stat-admin']) els['profiles-stat-admin'].textContent = String(adminCount);
+        if (els['profiles-stat-sponsor']) els['profiles-stat-sponsor'].textContent = String(sponsorCount);
+        if (els['profiles-stat-temporary']) els['profiles-stat-temporary'].textContent = String(temporaryCount);
+    }
+
+    function filteredPresets() {
+        const term = String(state.search || '').trim().toLowerCase();
+        const kind = state.filter || 'all';
+        return state.presets
+            .map((preset, index) => ({ preset, index }))
+            .filter(({ preset }) => {
+                if (!term) return true;
+                return [preset.id, preset.name, preset.description]
+                    .some((value) => String(value || '').toLowerCase().includes(term));
+            })
+            .filter(({ preset }) => {
+                if (kind === 'admin') return !!preset.is_administrator;
+                if (kind === 'sponsor') return !!(preset.can_invite || preset.can_create_invitations);
+                if (kind === 'temporary') return !!preset.is_temporary;
+                return true;
+            });
+    }
+
     function renderList() {
         if (!els['profiles-list']) return;
-        els['profiles-count'].textContent = String(state.presets.length);
-        els['profiles-list'].innerHTML = state.presets.map((preset, index) => {
-            const active = index === state.selected ? 'active' : '';
-            const libs = preset.enable_all_folders
-                ? t('allLibraries', 'Toutes bibliotheques')
-                : t('libraryCount', '{count} bibliotheque(s)').replace('{count}', String((preset.enabled_folder_ids || []).length));
+        updateStats();
+        const rows = filteredPresets();
+        if (els['profiles-count']) {
+            els['profiles-count'].textContent = rows.length === state.presets.length
+                ? String(state.presets.length)
+                : `${rows.length}/${state.presets.length}`;
+        }
+        if (!rows.length) {
+            els['profiles-list'].innerHTML = `<tr><td colspan="5" class="text-center py-16 text-jg-text-muted">${JG.esc(t('noMatch', 'Aucun resultat'))}</td></tr>`;
+            return;
+        }
+        els['profiles-list'].innerHTML = rows.map(({ preset, index }) => {
+            const active = index === state.selected ? 'is-selected' : '';
+            const libs = profileLibrariesLabel(preset);
             const admin = preset.is_administrator ? `<span class="jg-ds-tag danger">${JG.esc(t('tagAdmin', 'Admin'))}</span>` : '';
             const invite = (preset.can_invite || preset.can_create_invitations) ? `<span class="jg-ds-tag">${JG.esc(t('tagSponsor', 'Parrain'))}</span>` : '';
             const temp = preset.is_temporary ? `<span class="jg-ds-tag">${JG.esc(t('tagTemporary', 'Temp'))}</span>` : '';
-            return `<button type="button" class="jg-profile-card ${active}" data-index="${index}" aria-current="${index === state.selected ? 'true' : 'false'}">
-                <span>
-                    <strong>${JG.esc(presetName(preset))}</strong>
-                    <small>${JG.esc(preset.description || libs)}</small>
-                </span>
-                <span class="jg-profile-badges">${admin}${invite}${temp}</span>
-            </button>`;
+            const rights = [
+                preset.enable_remote_access !== false ? t('profiles_field_remote', 'Remote') : '',
+                preset.enable_download ? t('tagDownload', 'Download') : '',
+                preset.enable_media_playback !== false ? t('profiles_field_playback', 'Lecture') : '',
+            ].filter(Boolean).join(' / ') || '-';
+            const inviteLabel = (preset.can_invite || preset.can_create_invitations)
+                ? `${t('tagSponsor', 'Parrain')}${preset.invite_quota_day ? ` / ${preset.invite_quota_day}/j` : ''}`
+                : t('none', 'Aucun');
+            return `<tr class="jg-profile-row ${active}" data-profile-index="${index}" aria-current="${index === state.selected ? 'true' : 'false'}">
+                <td data-label="${JG.esc(t('tableName', 'Profil'))}" class="px-4 py-4">
+                    <div class="font-bold text-jg-text">${JG.esc(presetName(preset))}</div>
+                    <div class="text-xs text-jg-text-muted mt-1">${JG.esc(preset.description || preset.id || '')}</div>
+                    <div class="jg-profile-badges mt-2 justify-start">${admin}${invite}${temp}</div>
+                </td>
+                <td data-label="${JG.esc(t('tableAccess', 'Acces'))}" class="px-4 py-4 text-xs font-bold text-jg-text-muted">${JG.esc(rights)}</td>
+                <td data-label="${JG.esc(t('tableLibraries', 'Bibliotheques'))}" class="px-4 py-4 text-xs font-bold text-jg-text-muted">${JG.esc(libs)}</td>
+                <td data-label="${JG.esc(t('tableInvites', 'Invitations'))}" class="px-4 py-4 text-xs font-bold text-jg-text-muted">${JG.esc(inviteLabel)}</td>
+                <td data-label="${JG.esc(t('tableActions', 'Actions'))}" class="px-6 py-4 text-right">
+                    <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm profile-row-edit" data-profile-index="${index}">${JG.esc(t('edit', 'Modifier'))}</button>
+                </td>
+            </tr>`;
         }).join('');
     }
 
@@ -381,6 +442,7 @@
         setList('profile-allowed-temp-targets', preset.allowed_temporary_preset_ids);
         setList('profile-devices', preset.enabled_devices);
         setList('profile-channels', [...(preset.enabled_channels || []), ...(preset.blocked_channels || []).map((v) => `!${v}`)]);
+        setList('profile-ldap-groups', preset.ldap_groups);
         renderLibraryPicker(preset);
         renderList();
         renderTabs();
@@ -484,7 +546,20 @@
             is_temporary: !!els['profile-is-temporary'].checked,
             default_account_duration_days: num('profile-account-default'),
             max_account_duration_days: num('profile-account-max'),
+            ldap_groups: els['profile-ldap-groups'] ? list('profile-ldap-groups') : (current.ldap_groups || []),
         };
+    }
+
+    function openDrawer() {
+        els['profile-drawer']?.classList.add('open');
+        els['profile-drawer-overlay']?.classList.add('open');
+        els['profile-drawer']?.setAttribute('aria-hidden', 'false');
+    }
+
+    function closeDrawer() {
+        els['profile-drawer']?.classList.remove('open');
+        els['profile-drawer-overlay']?.classList.remove('open');
+        els['profile-drawer']?.setAttribute('aria-hidden', 'true');
     }
 
     async function load(preferredID = '') {
@@ -549,6 +624,7 @@
         });
         state.selected = state.presets.length - 1;
         fillForm();
+        openDrawer();
         setDirty(true);
     }
 
@@ -575,11 +651,12 @@
         load();
 
         els['profiles-list']?.addEventListener('click', (event) => {
-            const card = event.target.closest('.jg-profile-card');
-            if (!card) return;
+            const target = event.target.closest('[data-profile-index]');
+            if (!target) return;
             state.presets[state.selected] = collectForm();
-            state.selected = parseInt(card.dataset.index || '0', 10) || 0;
+            state.selected = parseInt(target.dataset.profileIndex || '0', 10) || 0;
             fillForm();
+            openDrawer();
         });
 
         els['profile-tabs']?.addEventListener('click', (event) => {
@@ -610,6 +687,16 @@
         });
         els['profiles-save-btn']?.addEventListener('click', saveAll);
         els['profile-new-btn']?.addEventListener('click', addProfile);
+        els['profile-drawer-close']?.addEventListener('click', closeDrawer);
+        els['profile-drawer-overlay']?.addEventListener('click', closeDrawer);
+        els['profile-search']?.addEventListener('input', () => {
+            state.search = els['profile-search'].value || '';
+            renderList();
+        });
+        els['profile-filter-kind']?.addEventListener('change', () => {
+            state.filter = els['profile-filter-kind'].value || 'all';
+            renderList();
+        });
         els['profile-delete-btn']?.addEventListener('click', deleteProfile);
         els['profile-all-folders']?.addEventListener('change', () => {
             updateLibraryAccessState();

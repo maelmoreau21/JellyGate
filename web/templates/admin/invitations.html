@@ -175,8 +175,8 @@
 {{/* ── Create Modal ─────────────────────────────────────────────────── */}}
 <div id="create-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" data-modal-close="create-modal"></div>
-    <div class="jg-card jg-glass invitation-create-modal relative z-10 flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
-        <div class="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between p-6 lg:p-7 border-b border-jg-border bg-white/[0.02]">
+    <div class="jg-card jg-glass invitation-create-modal jg-invite-one-page relative z-10 flex flex-col shadow-2xl animate-in fade-in zoom-in duration-200">
+        <div class="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between p-6 lg:p-7 pr-16 border-b border-jg-border bg-white/[0.02]">
             <div class="space-y-2">
                 <div class="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-cyan-200">
                     <span class="w-2 h-2 rounded-full bg-cyan-300"></span>
@@ -185,7 +185,7 @@
                 <h2 class="text-2xl lg:text-3xl font-bold tracking-tight">{{ .T "invitations_create_title" }}</h2>
                 <div id="invite-policy-summary" class="text-sm text-jg-text-muted font-medium"></div>
             </div>
-            <button data-modal-close="create-modal" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted hover:text-rose-400 transition-colors">
+            <button data-modal-close="create-modal" class="absolute right-5 top-5 p-2 rounded-lg hover:bg-white/5 text-jg-text-muted hover:text-rose-400 transition-colors">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
         </div>
@@ -202,7 +202,7 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-7">
                     <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="1">
-                        <h3 class="text-sm font-bold uppercase tracking-widest text-sky-300">Profil Jellyfin cible</h3>
+                        <h3 class="text-sm font-bold uppercase tracking-widest text-sky-300">{{ .T "invitations_section_profile_access" }}</h3>
                         <div>
                             <label class="jg-label">{{ .T "invitations_user_profile_label" }}</label>
                             <select id="inv-policy-preset" class="jg-input jg-select-premium h-11 bg-black/20 hover:bg-black/40 text-sm">
@@ -210,17 +210,17 @@
                             </select>
                             <div id="inv-profile-summary" class="text-xs text-jg-text-muted mt-2"></div>
                         </div>
-                    </section>
-
-                    <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="2">
-                        <h3 class="text-sm font-bold uppercase tracking-widest text-teal-300">Bibliothèques et droits</h3>
+                        <div class="h-px bg-jg-border"></div>
+                        <div class="space-y-3">
+                            <h4 class="text-xs font-bold uppercase tracking-widest text-teal-300">{{ .T "invitations_section_profile_overrides" }}</h4>
                         <label class="flex items-center gap-2 text-sm">
                             <input type="checkbox" id="inv-enable-downloads" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
-                            Autoriser le téléchargement
+                            {{ .T "invitations_download_override" }}
                         </label>
                         <div>
-                            <div class="jg-label">Bibliothèques Jellyfin</div>
+                            <div class="jg-label">{{ .T "invitations_libraries_override" }}</div>
                             <div id="inv-libraries" class="jg-library-picker compact"></div>
+                        </div>
                         </div>
                     </section>
 
@@ -313,7 +313,7 @@
                         </div>
                     </section>
 
-                    <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="5">
+                    <section class="jg-wizard-pane jg-invite-preview-panel rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="5">
                         <h3 class="text-sm font-bold uppercase tracking-widest text-amber-300">{{ .T "invitations_preview_title" }}</h3>
                         <p class="text-xs text-jg-text-muted leading-relaxed">{{ .T "invitations_preview_help" }}</p>
                         <button id="inv-preview-btn" type="button" class="jg-btn jg-btn-ghost h-11 w-full">{{ .T "invitations_preview_generate" }}</button>
@@ -433,6 +433,8 @@
             securityLoadFailed: '{{ .T "invitations_security_load_failed" }}',
             securitySaveFailed: '{{ .T "invitations_security_save_failed" }}',
             securitySaved: '{{ .T "invitations_security_saved" }}',
+            previewEmpty: '{{ .T "invitations_preview_empty" }}',
+            previewRequired: '{{ .T "invitations_preview_required" }}',
         },
     };
 </script>

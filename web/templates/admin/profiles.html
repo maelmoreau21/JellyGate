@@ -3,7 +3,7 @@
 {{ define "title" }}{{ .T "profiles_page_title" }} - JellyGate{{ end }}
 
 {{ define "admin_content" }}
-<div class="jg-page-header jg-ds-header">
+<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
     <div>
         <div class="jg-ds-kicker">JellyGate</div>
         <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "profiles_heading" }}</h1>
@@ -11,188 +11,240 @@
     </div>
     <div class="flex flex-wrap items-center gap-3">
         <button id="profile-new-btn" class="jg-btn jg-btn-ghost h-11 px-4">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
             {{ .T "profiles_new" }}
         </button>
         <button id="profiles-save-btn" class="jg-btn jg-btn-primary h-11 px-5 font-bold uppercase tracking-widest">{{ .T "btn_save" }}</button>
     </div>
 </div>
 
-<div class="jg-ds-layout">
-    <section class="jg-ds-panel">
-        <div class="jg-ds-panel-head">
-            <div>
-                <h2>{{ .T "profiles_active_title" }}</h2>
-                <p>{{ .T "profiles_active_desc" }}</p>
-            </div>
-            <span id="profiles-count" class="jg-ds-pill">0</span>
-        </div>
-        <div id="profiles-list" class="jg-profile-list"></div>
-    </section>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-jg-border-strong">
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ .T "profiles_stat_total" }}</div>
+        <div class="text-2xl font-extrabold" id="profiles-stat-total">0</div>
+    </div>
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-rose-400">
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ .T "profiles_stat_admin" }}</div>
+        <div class="text-2xl font-extrabold text-rose-400" id="profiles-stat-admin">0</div>
+    </div>
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-amber-400">
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ .T "profiles_stat_sponsor" }}</div>
+        <div class="text-2xl font-extrabold text-amber-400" id="profiles-stat-sponsor">0</div>
+    </div>
+    <div class="jg-card jg-glass p-5 border-l-4 border-l-cyan-400">
+        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ .T "profiles_stat_temporary" }}</div>
+        <div class="text-2xl font-extrabold text-cyan-400" id="profiles-stat-temporary">0</div>
+    </div>
+</div>
 
-    <aside class="jg-ds-panel jg-profile-editor">
-        <div class="jg-ds-panel-head">
-            <div>
-                <h2 id="profile-editor-title">{{ .T "profiles_editor_select" }}</h2>
-                <p id="profile-editor-subtitle">{{ .T "profiles_editor_help" }}</p>
+<div class="space-y-6">
+    <div class="jg-card p-5 shadow-xl border-white/5">
+        <div class="flex flex-col md:flex-row md:items-center gap-5">
+            <div class="relative flex-1 group">
+                <input type="text" id="profile-search" class="jg-input h-14 pl-16 text-sm rounded-2xl w-full transition-all focus:border-jg-accent/40 bg-white/5" style="padding-left: 4rem !important" placeholder='{{ .T "profiles_search_placeholder" }}'>
+                <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-jg-text-muted group-focus-within:text-jg-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
+            <div class="jg-filter-group min-w-[220px]">
+                <label class="jg-filter-label" for="profile-filter-kind">{{ .T "filters" }}</label>
+                <select id="profile-filter-kind" class="jg-input jg-select-premium h-11 text-xs">
+                    <option value="all">{{ .T "profiles_filter_all" }}</option>
+                    <option value="admin">{{ .T "profiles_filter_admin" }}</option>
+                    <option value="sponsor">{{ .T "profiles_filter_sponsor" }}</option>
+                    <option value="temporary">{{ .T "profiles_filter_temp" }}</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="jg-card p-0 overflow-hidden shadow-2xl relative border-white/5">
+        <div class="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <h2 class="font-bold text-xl text-jg-text">{{ .T "profiles_active_title" }}</h2>
+                <span id="profiles-count" class="px-2.5 py-0.5 rounded-full bg-jg-accent/10 text-jg-accent text-xs font-black">0</span>
+            </div>
+            <p class="text-xs text-jg-text-muted max-w-2xl">{{ .T "profiles_active_desc" }}</p>
+        </div>
+        <div class="jg-table-container mt-4 overflow-x-auto w-full border border-jg-border rounded">
+            <table class="jg-table jg-users-table jg-profiles-table min-w-full w-full text-sm text-left align-middle">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-4">{{ .T "profiles_table_name" }}</th>
+                        <th class="px-4 py-4">{{ .T "profiles_table_access" }}</th>
+                        <th class="px-4 py-4">{{ .T "profiles_table_libraries" }}</th>
+                        <th class="px-4 py-4">{{ .T "profiles_table_invites" }}</th>
+                        <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
+                    </tr>
+                </thead>
+                <tbody id="profiles-list" class="divide-y divide-jg-border bg-black/5">
+                    <tr>
+                        <td colspan="5" class="text-center py-20 text-jg-text-muted">{{ .T "loading" }}...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="profile-drawer-overlay" class="jg-drawer-overlay"></div>
+<aside id="profile-drawer" class="jg-drawer jg-profile-drawer" aria-hidden="true">
+    <div class="jg-drawer-header">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-lg bg-jg-accent/10 text-jg-accent flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2" stroke-width="2"></rect><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9h5M8 13h3M15 13h1.5M15 16h1.5"></path></svg>
+            </div>
+            <div class="min-w-0">
+                <h2 id="profile-editor-title" class="text-lg font-bold text-jg-text truncate">{{ .T "profiles_editor_select" }}</h2>
+                <p id="profile-editor-subtitle" class="text-[10px] text-jg-text-muted uppercase tracking-widest font-black truncate">{{ .T "profiles_editor_help" }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
             <span id="profile-dirty-indicator" class="jg-profile-dirty hidden">{{ .T "profiles_unsaved_changes" }}</span>
+            <button id="profile-drawer-close" type="button" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted hover:text-jg-text" aria-label='{{ .T "users_close" }}'>
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
         </div>
+    </div>
 
-        <form id="profile-form" class="space-y-5">
-            <input type="hidden" id="profile-index">
+    <form id="profile-form" class="jg-drawer-body space-y-6">
+        <input type="hidden" id="profile-index">
+
+        <section class="jg-profile-edit-section">
+            <div class="jg-profile-section-head">
+                <h3>{{ .T "profiles_section_identity" }}</h3>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label><span class="jg-label">{{ .T "profiles_field_id" }}</span><input id="profile-id" class="jg-input h-11" placeholder='{{ .T "profiles_field_id_placeholder" }}'></label>
                 <label><span class="jg-label">{{ .T "profiles_field_name" }}</span><input id="profile-name" class="jg-input h-11" placeholder='{{ .T "profiles_field_name_placeholder" }}'></label>
             </div>
             <label><span class="jg-label">{{ .T "profiles_field_description" }}</span><textarea id="profile-description" class="jg-input min-h-20 py-3" placeholder='{{ .T "profiles_field_description_placeholder" }}'></textarea></label>
+        </section>
 
-            <div class="jg-profile-tabs-wrap">
-                <div id="profile-active-menu" class="jg-profile-active-menu" aria-live="polite">
-                    <span>{{ .T "profiles_active_menu_label" }}</span>
-                    <strong id="profile-active-menu-name">{{ .T "profiles_tab_rights" }}</strong>
-                </div>
-                <div id="profile-tabs" class="jg-profile-tabs" role="tablist" aria-label='{{ .T "profiles_tabs_label" }}'>
-                    <button id="profile-tab-rights" type="button" class="jg-profile-tab active" data-profile-tab-target="rights" role="tab" aria-selected="true" aria-controls="profile-panel-rights">
-                        <span class="jg-profile-tab-label">{{ .T "profiles_tab_rights" }}</span>
-                        <span class="jg-profile-tab-active-badge">{{ .T "profiles_tab_active_badge" }}</span>
-                    </button>
-                    <button id="profile-tab-libraries" type="button" class="jg-profile-tab" data-profile-tab-target="libraries" role="tab" aria-selected="false" aria-controls="profile-panel-libraries" tabindex="-1">
-                        <span class="jg-profile-tab-label">{{ .T "profiles_tab_libraries" }}</span>
-                        <span class="jg-profile-tab-active-badge">{{ .T "profiles_tab_active_badge" }}</span>
-                    </button>
-                    <button id="profile-tab-home" type="button" class="jg-profile-tab" data-profile-tab-target="home" role="tab" aria-selected="false" aria-controls="profile-panel-home" tabindex="-1">
-                        <span class="jg-profile-tab-label">{{ .T "profiles_tab_home" }}</span>
-                        <span class="jg-profile-tab-active-badge">{{ .T "profiles_tab_active_badge" }}</span>
-                    </button>
-                    <button id="profile-tab-security" type="button" class="jg-profile-tab" data-profile-tab-target="security" role="tab" aria-selected="false" aria-controls="profile-panel-security" tabindex="-1">
-                        <span class="jg-profile-tab-label">{{ .T "profiles_tab_security" }}</span>
-                        <span class="jg-profile-tab-active-badge">{{ .T "profiles_tab_active_badge" }}</span>
-                    </button>
-                    <button id="profile-tab-invites" type="button" class="jg-profile-tab" data-profile-tab-target="invites" role="tab" aria-selected="false" aria-controls="profile-panel-invites" tabindex="-1">
-                        <span class="jg-profile-tab-label">{{ .T "profiles_tab_invites" }}</span>
-                        <span class="jg-profile-tab-active-badge">{{ .T "profiles_tab_active_badge" }}</span>
-                    </button>
-                    <button id="profile-tab-ldap" type="button" class="jg-profile-tab" data-profile-tab-target="ldap" role="tab" aria-selected="false" aria-controls="profile-panel-ldap" tabindex="-1">
-                        <span class="jg-profile-tab-label">{{ .T "profiles_tab_ldap" }}</span>
-                        <span class="jg-profile-tab-active-badge">{{ .T "profiles_tab_active_badge" }}</span>
-                    </button>
-                </div>
+        <section class="jg-profile-edit-section">
+            <div class="jg-profile-section-head">
+                <h3>{{ .T "profiles_section_access" }}</h3>
             </div>
+            <div class="jg-ds-field-grid">
+                <label class="jg-ds-check"><input id="profile-admin" type="checkbox"><span>{{ .T "profiles_field_admin" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-hidden" type="checkbox"><span>{{ .T "profiles_field_hidden" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-disabled" type="checkbox"><span>{{ .T "profiles_field_disabled" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-remote" type="checkbox"><span>{{ .T "profiles_field_remote" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-download" type="checkbox"><span>{{ .T "profiles_field_download" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-playback" type="checkbox"><span>{{ .T "profiles_field_playback" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-audio-transcode" type="checkbox"><span>{{ .T "profiles_field_audio_transcode" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-video-transcode" type="checkbox"><span>{{ .T "profiles_field_video_transcode" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-remux" type="checkbox"><span>{{ .T "profiles_field_remux" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-public-sharing" type="checkbox"><span>{{ .T "profiles_field_public_sharing" }}</span></label>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label><span class="jg-label">{{ .T "profiles_field_sessions" }}</span><input id="profile-sessions" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_bitrate" }}</span><input id="profile-bitrate" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_syncplay" }}</span><input id="profile-syncplay" class="jg-input h-11" placeholder="CreateAndJoinGroups"></label>
+            </div>
+        </section>
 
-            <section id="profile-panel-rights" class="profile-tab-panel space-y-4" data-profile-tab="rights" role="tabpanel" aria-labelledby="profile-tab-rights" tabindex="0">
-                <div class="jg-ds-field-grid">
-                    <label class="jg-ds-check"><input id="profile-admin" type="checkbox"><span>{{ .T "profiles_field_admin" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-hidden" type="checkbox"><span>{{ .T "profiles_field_hidden" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-remote" type="checkbox"><span>{{ .T "profiles_field_remote" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-download" type="checkbox"><span>{{ .T "profiles_field_download" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-playback" type="checkbox"><span>{{ .T "profiles_field_playback" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-audio-transcode" type="checkbox"><span>{{ .T "profiles_field_audio_transcode" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-video-transcode" type="checkbox"><span>{{ .T "profiles_field_video_transcode" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-remux" type="checkbox"><span>{{ .T "profiles_field_remux" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-live-tv" type="checkbox"><span>{{ .T "profiles_field_live_tv" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-live-tv-management" type="checkbox"><span>{{ .T "profiles_field_live_tv_management" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-public-sharing" type="checkbox"><span>{{ .T "profiles_field_public_sharing" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-content-deletion" type="checkbox"><span>{{ .T "profiles_field_content_deletion" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-sync-transcoding" type="checkbox"><span>{{ .T "profiles_field_sync_transcode" }}</span></label>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <label><span class="jg-label">{{ .T "profiles_field_sessions" }}</span><input id="profile-sessions" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_bitrate" }}</span><input id="profile-bitrate" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_syncplay" }}</span><input id="profile-syncplay" class="jg-input h-11" placeholder="CreateAndJoinGroups"></label>
-                </div>
-                <details class="rounded-lg border border-jg-border bg-white/[0.02] p-4">
-                    <summary class="cursor-pointer text-sm font-bold text-jg-text">Options avancees</summary>
-                    <div class="mt-4 space-y-3">
-                        <label class="jg-ds-check"><input id="profile-disabled" type="checkbox"><span>{{ .T "profiles_field_disabled" }}</span></label>
-                        <p class="text-xs text-jg-text-muted">Cette option garde le comportement actuel : le compte Jellyfin est cree en etat desactive. Les droits du profil restent appliques, mais le compte ne peut pas etre utilise tant qu'il n'est pas reactive dans Jellyfin.</p>
-                    </div>
-                </details>
-            </section>
+        <section class="jg-profile-edit-section">
+            <div class="jg-profile-section-head">
+                <h3>{{ .T "profiles_section_libraries" }}</h3>
+            </div>
+            <label class="jg-ds-check"><input id="profile-all-folders" type="checkbox"><span>{{ .T "profiles_field_all_libraries" }}</span></label>
+            <div>
+                <div class="jg-label">{{ .T "profiles_field_libraries" }}</div>
+                <div id="profile-libraries" class="overflow-x-auto rounded-lg border border-white/10 bg-black/10"></div>
+            </div>
+        </section>
 
-            <section id="profile-panel-libraries" class="profile-tab-panel space-y-4 hidden" data-profile-tab="libraries" role="tabpanel" aria-labelledby="profile-tab-libraries" tabindex="0" hidden>
-                <label class="jg-ds-check"><input id="profile-all-folders" type="checkbox"><span>{{ .T "profiles_field_all_libraries" }}</span></label>
-                <div>
-                    <div class="jg-label">{{ .T "profiles_field_libraries" }}</div>
-                    <div id="profile-libraries" class="overflow-x-auto rounded-lg border border-white/10 bg-black/10"></div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label><span class="jg-label">{{ .T "profiles_field_blocked_folders" }}</span><textarea id="profile-blocked-folders" class="jg-input min-h-20 py-3"></textarea></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_deletion_folders" }}</span><textarea id="profile-deletion-folders" class="jg-input min-h-20 py-3"></textarea></label>
-                </div>
-            </section>
-
-            <section id="profile-panel-home" class="profile-tab-panel space-y-4 hidden" data-profile-tab="home" role="tabpanel" aria-labelledby="profile-tab-home" tabindex="0" hidden>
-                <div>
-                    <div class="jg-label">{{ .T "profiles_field_home_sections" }}</div>
-                    <div id="profile-home-sections" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
-                </div>
-                <div class="jg-ds-field-grid">
-                    <label class="jg-ds-check"><input id="profile-hide-played-latest" type="checkbox"><span>{{ .T "automation_home_hide_played_latest" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-display-missing-episodes" type="checkbox"><span>{{ .T "automation_home_display_missing" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-backdrops" type="checkbox"><span>{{ .T "profiles_field_backdrops" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-theme-songs" type="checkbox"><span>{{ .T "profiles_field_theme_songs" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-theme-videos" type="checkbox"><span>{{ .T "profiles_field_theme_videos" }}</span></label>
-                </div>
-                <label><span class="jg-label">{{ .T "profiles_field_page_size" }}</span><input id="profile-page-size" type="number" min="0" class="jg-input h-11"></label>
-            </section>
-
-            <section id="profile-panel-security" class="profile-tab-panel space-y-4 hidden" data-profile-tab="security" role="tabpanel" aria-labelledby="profile-tab-security" tabindex="0" hidden>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <label><span class="jg-label">{{ .T "profiles_field_disable_days" }}</span><input id="profile-disable-days" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_delete_days" }}</span><input id="profile-delete-days" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_parental_rating" }}</span><input id="profile-parental-rating" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_invalid_login" }}</span><input id="profile-invalid-login" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_lockout" }}</span><input id="profile-login-lockout" type="number" min="0" class="jg-input h-11"></label>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label><span class="jg-label">{{ .T "profiles_field_allowed_tags" }}</span><textarea id="profile-allowed-tags" class="jg-input min-h-20 py-3"></textarea></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_blocked_tags" }}</span><textarea id="profile-blocked-tags" class="jg-input min-h-20 py-3"></textarea></label>
-                </div>
-            </section>
-
-            <section id="profile-panel-invites" class="profile-tab-panel space-y-4 hidden" data-profile-tab="invites" role="tabpanel" aria-labelledby="profile-tab-invites" tabindex="0" hidden>
-                <div class="jg-ds-field-grid">
-                    <label class="jg-ds-check"><input id="profile-can-invite" type="checkbox"><span>{{ .T "profiles_field_can_invite" }}</span></label>
-                    <label class="jg-ds-check"><input id="profile-can-temp-invite" type="checkbox"><span>{{ .T "profiles_field_can_temp_invite" }}</span></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_target_profile" }}</span><select id="profile-target-preset" class="jg-input h-11"></select></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_quota_day" }}</span><input id="profile-quota-day" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_quota_month" }}</span><input id="profile-quota-month" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_link_days" }}</span><input id="profile-link-days" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_link_uses" }}</span><input id="profile-max-uses" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_temp_default" }}</span><input id="profile-temp-default" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_temp_max" }}</span><input id="profile-temp-max" type="number" min="0" class="jg-input h-11"></label>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label><span class="jg-label">{{ .T "profiles_field_allowed_targets" }}</span><textarea id="profile-allowed-targets" class="jg-input min-h-20 py-3"></textarea></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_allowed_temp_targets" }}</span><textarea id="profile-allowed-temp-targets" class="jg-input min-h-20 py-3"></textarea></label>
-                </div>
-            </section>
-
-            <section id="profile-panel-ldap" class="profile-tab-panel space-y-4 hidden" data-profile-tab="ldap" role="tabpanel" aria-labelledby="profile-tab-ldap" tabindex="0" hidden>
+        <section class="jg-profile-edit-section">
+            <div class="jg-profile-section-head">
+                <h3>{{ .T "profiles_section_invitations" }}</h3>
+            </div>
+            <div class="jg-ds-field-grid">
+                <label class="jg-ds-check"><input id="profile-can-invite" type="checkbox"><span>{{ .T "profiles_field_can_invite" }}</span></label>
+                <label class="jg-ds-check"><input id="profile-can-temp-invite" type="checkbox"><span>{{ .T "profiles_field_can_temp_invite" }}</span></label>
                 <label class="jg-ds-check"><input id="profile-is-temporary" type="checkbox"><span>{{ .T "profiles_field_is_temporary" }}</span></label>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label><span class="jg-label">{{ .T "profiles_field_account_default" }}</span><input id="profile-account-default" type="number" min="0" class="jg-input h-11"></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_account_max" }}</span><input id="profile-account-max" type="number" min="0" class="jg-input h-11"></label>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <label><span class="jg-label">{{ .T "profiles_field_devices" }}</span><textarea id="profile-devices" class="jg-input min-h-20 py-3"></textarea></label>
-                    <label><span class="jg-label">{{ .T "profiles_field_channels" }}</span><textarea id="profile-channels" class="jg-input min-h-20 py-3"></textarea></label>
-                </div>
-            </section>
-
-            <div class="flex justify-between gap-3 pt-2">
-                <button id="profile-delete-btn" type="button" class="jg-btn jg-btn-danger h-11 px-4">{{ .T "profiles_delete" }}</button>
+                <label><span class="jg-label">{{ .T "profiles_field_target_profile" }}</span><select id="profile-target-preset" class="jg-input jg-select-premium h-11"></select></label>
+                <label><span class="jg-label">{{ .T "profiles_field_quota_day" }}</span><input id="profile-quota-day" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_quota_month" }}</span><input id="profile-quota-month" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_link_days" }}</span><input id="profile-link-days" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_link_uses" }}</span><input id="profile-max-uses" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_account_default" }}</span><input id="profile-account-default" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_account_max" }}</span><input id="profile-account-max" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_temp_default" }}</span><input id="profile-temp-default" type="number" min="0" class="jg-input h-11"></label>
+                <label><span class="jg-label">{{ .T "profiles_field_temp_max" }}</span><input id="profile-temp-max" type="number" min="0" class="jg-input h-11"></label>
             </div>
-        </form>
-    </aside>
-</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label><span class="jg-label">{{ .T "profiles_field_allowed_targets" }}</span><textarea id="profile-allowed-targets" class="jg-input min-h-20 py-3"></textarea></label>
+                <label><span class="jg-label">{{ .T "profiles_field_allowed_temp_targets" }}</span><textarea id="profile-allowed-temp-targets" class="jg-input min-h-20 py-3"></textarea></label>
+            </div>
+        </section>
+
+        <details class="jg-profile-advanced">
+            <summary>{{ .T "profiles_section_advanced" }}</summary>
+            <div class="space-y-6 mt-5">
+                <section class="jg-profile-edit-section">
+                    <div class="jg-profile-section-head"><h3>{{ .T "profiles_tab_home" }}</h3></div>
+                    <div>
+                        <div class="jg-label">{{ .T "profiles_field_home_sections" }}</div>
+                        <div id="profile-home-sections" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div>
+                    </div>
+                    <div class="jg-ds-field-grid">
+                        <label class="jg-ds-check"><input id="profile-hide-played-latest" type="checkbox"><span>{{ .T "automation_home_hide_played_latest" }}</span></label>
+                        <label class="jg-ds-check"><input id="profile-display-missing-episodes" type="checkbox"><span>{{ .T "automation_home_display_missing" }}</span></label>
+                        <label class="jg-ds-check"><input id="profile-backdrops" type="checkbox"><span>{{ .T "profiles_field_backdrops" }}</span></label>
+                        <label class="jg-ds-check"><input id="profile-theme-songs" type="checkbox"><span>{{ .T "profiles_field_theme_songs" }}</span></label>
+                        <label class="jg-ds-check"><input id="profile-theme-videos" type="checkbox"><span>{{ .T "profiles_field_theme_videos" }}</span></label>
+                    </div>
+                    <label><span class="jg-label">{{ .T "profiles_field_page_size" }}</span><input id="profile-page-size" type="number" min="0" class="jg-input h-11"></label>
+                </section>
+
+                <section class="jg-profile-edit-section">
+                    <div class="jg-profile-section-head"><h3>{{ .T "profiles_tab_security" }}</h3></div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <label><span class="jg-label">{{ .T "profiles_field_disable_days" }}</span><input id="profile-disable-days" type="number" min="0" class="jg-input h-11"></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_delete_days" }}</span><input id="profile-delete-days" type="number" min="0" class="jg-input h-11"></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_parental_rating" }}</span><input id="profile-parental-rating" type="number" min="0" class="jg-input h-11"></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_invalid_login" }}</span><input id="profile-invalid-login" type="number" min="0" class="jg-input h-11"></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_lockout" }}</span><input id="profile-login-lockout" type="number" min="0" class="jg-input h-11"></label>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label><span class="jg-label">{{ .T "profiles_field_allowed_tags" }}</span><textarea id="profile-allowed-tags" class="jg-input min-h-20 py-3"></textarea></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_blocked_tags" }}</span><textarea id="profile-blocked-tags" class="jg-input min-h-20 py-3"></textarea></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_blocked_folders" }}</span><textarea id="profile-blocked-folders" class="jg-input min-h-20 py-3"></textarea></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_deletion_folders" }}</span><textarea id="profile-deletion-folders" class="jg-input min-h-20 py-3"></textarea></label>
+                    </div>
+                </section>
+
+                <section class="jg-profile-edit-section">
+                    <div class="jg-profile-section-head"><h3>{{ .T "profiles_tab_ldap" }}</h3></div>
+                    <div class="jg-ds-field-grid">
+                        <label class="jg-ds-check"><input id="profile-live-tv" type="checkbox"><span>{{ .T "profiles_field_live_tv" }}</span></label>
+                        <label class="jg-ds-check"><input id="profile-live-tv-management" type="checkbox"><span>{{ .T "profiles_field_live_tv_management" }}</span></label>
+                        <label class="jg-ds-check"><input id="profile-content-deletion" type="checkbox"><span>{{ .T "profiles_field_content_deletion" }}</span></label>
+                        <label class="jg-ds-check"><input id="profile-sync-transcoding" type="checkbox"><span>{{ .T "profiles_field_sync_transcode" }}</span></label>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <label><span class="jg-label">{{ .T "profiles_field_devices" }}</span><textarea id="profile-devices" class="jg-input min-h-20 py-3"></textarea></label>
+                        <label><span class="jg-label">{{ .T "profiles_field_channels" }}</span><textarea id="profile-channels" class="jg-input min-h-20 py-3"></textarea></label>
+                        {{ if .LDAPEnabled }}
+                        <label class="md:col-span-2"><span class="jg-label">{{ .T "profiles_field_ldap_groups" }}</span><textarea id="profile-ldap-groups" class="jg-input min-h-20 py-3"></textarea></label>
+                        {{ end }}
+                    </div>
+                </section>
+            </div>
+        </details>
+    </form>
+
+    <div class="jg-drawer-footer flex flex-col sm:flex-row gap-3">
+        <button id="profile-delete-btn" type="button" class="jg-btn jg-btn-danger h-12 px-4 sm:w-auto">{{ .T "profiles_delete" }}</button>
+        <button type="submit" form="profile-form" class="jg-btn jg-btn-primary h-12 px-6 flex-1 font-bold uppercase tracking-widest">{{ .T "btn_save" }}</button>
+    </div>
+</aside>
 {{ end }}
 
 {{ define "scripts" }}
 <script nonce="{{ .ScriptNonce }}">
     window.JGPageProfiles = {
         isAdmin: "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true",
+        ldapEnabled: "{{ if .LDAPEnabled }}true{{ else }}false{{ end }}" === "true",
         i18n: {
             profileFallback: '{{ .T "profiles_profile_fallback" }}',
             none: '{{ .T "profiles_none" }}',
@@ -210,6 +262,13 @@
             saved: '{{ .T "profiles_saved" }}',
             keepOne: '{{ .T "profiles_keep_one" }}',
             draftUpdated: '{{ .T "profiles_draft_updated" }}',
+            tableName: '{{ .T "profiles_table_name" }}',
+            tableAccess: '{{ .T "profiles_table_access" }}',
+            tableLibraries: '{{ .T "profiles_table_libraries" }}',
+            tableInvites: '{{ .T "profiles_table_invites" }}',
+            tableActions: '{{ .T "col_actions" }}',
+            edit: '{{ .T "profiles_edit" }}',
+            noMatch: '{{ .T "users_no_filter_match" }}',
             librariesLoading: '{{ .T "automation_libraries_loading" }}',
             librariesEmpty: '{{ .T "automation_libraries_empty" }}',
             libraryColAccess: '{{ .T "automation_library_col_access" }}',

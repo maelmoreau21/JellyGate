@@ -65,6 +65,20 @@ func TestPreviewInvitationDoesNotCreateInvitation(t *testing.T) {
 	}
 }
 
+func TestLDAPPageRedirectsToSettingsWhenDisabled(t *testing.T) {
+	handler, _ := newTestAdminDataStudioHandler(t)
+
+	rec := httptest.NewRecorder()
+	handler.LDAPPage(rec, newAdminRequest(http.MethodGet, "/admin/ldap", nil))
+
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("LDAPPage status = %d, want %d", rec.Code, http.StatusSeeOther)
+	}
+	if got := rec.Header().Get("Location"); got != "/admin/settings#ldap" {
+		t.Fatalf("LDAPPage redirect = %q, want /admin/settings#ldap", got)
+	}
+}
+
 func TestPreviewInvitationRejectsAdminPresetForNonAdmin(t *testing.T) {
 	handler, db := newTestAdminDataStudioHandler(t)
 	if err := db.SaveInvitationProfileConfig(config.InvitationProfileConfig{PolicyPresetID: "admin"}); err != nil {

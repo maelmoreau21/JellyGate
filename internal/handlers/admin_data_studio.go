@@ -26,6 +26,7 @@ func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "profiles"
 	if err := h.renderer.Render(w, "admin/profiles.html", td); err != nil {
 		slog.Error("Erreur rendu profiles page", "error", err)
@@ -34,6 +35,10 @@ func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) LDAPPage(w http.ResponseWriter, r *http.Request) {
+	if !h.db.IsLDAPEnabled() {
+		http.Redirect(w, r, "/admin/settings#ldap", http.StatusSeeOther)
+		return
+	}
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
@@ -57,6 +62,7 @@ func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "security"
 	if err := h.renderer.Render(w, "admin/security.html", td); err != nil {
 		slog.Error("Erreur rendu security page", "error", err)
@@ -72,6 +78,7 @@ func (h *AdminHandler) PendingActionsPage(w http.ResponseWriter, r *http.Request
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "pending_actions"
 	if err := h.renderer.Render(w, "admin/pending_actions.html", td); err != nil {
 		slog.Error("Erreur rendu pending actions page", "error", err)

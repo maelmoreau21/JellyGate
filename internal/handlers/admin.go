@@ -768,6 +768,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "dashboard"
 
 	if err := h.renderer.Render(w, "admin/dashboard.html", td); err != nil {
@@ -835,6 +836,7 @@ func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "my_account"
 
 	if err := h.renderer.Render(w, "admin/my_account.html", td); err != nil {
@@ -1655,6 +1657,7 @@ func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "users"
 	if err := h.renderer.Render(w, "admin/users.html", td); err != nil {
 		slog.Error("Erreur rendu users page", "error", err)
@@ -1670,6 +1673,7 @@ func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "settings"
 	if err := h.renderer.Render(w, "admin/settings.html", td); err != nil {
 		slog.Error("Erreur rendu settings page", "error", err)
@@ -1685,6 +1689,7 @@ func (h *AdminHandler) EmailTemplatesPage(w http.ResponseWriter, r *http.Request
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "email_templates"
 	if err := h.renderer.Render(w, "admin/email_templates.html", td); err != nil {
 		slog.Error("Erreur rendu email templates page", "error", err)
@@ -1700,6 +1705,7 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 
 	inviteCfg, err := h.db.GetInvitationProfileConfig()
 	if err != nil {
@@ -1782,6 +1788,7 @@ func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
+	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "logs"
 	if err := h.renderer.Render(w, "admin/logs.html", td); err != nil {
 		slog.Error("Erreur rendu logs page", "error", err)
