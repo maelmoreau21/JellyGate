@@ -24,7 +24,7 @@ func normalizeSupportedEmailLang(raw string) string {
 func resolveEmailLanguage(defaultLang, invitationLang, preferredLang, groupName string) string {
 	fallback := normalizeSupportedEmailLang(defaultLang)
 	if fallback == "" {
-		fallback = "fr"
+		fallback = "en"
 	}
 
 	if candidate := normalizeSupportedEmailLang(preferredLang); candidate != "" {
@@ -57,7 +57,7 @@ func loadUserEmailLanguageContextByID(db *database.DB, userID int64) (emailLangu
 }
 
 func loadEmailTemplatesForLanguage(db *database.DB, invitationLang string, ctx emailLanguageContext) (config.EmailTemplatesConfig, string, error) {
-	defaultLang := "fr"
+	defaultLang := "en"
 	if db != nil {
 		defaultLang = db.GetDefaultLang()
 	}

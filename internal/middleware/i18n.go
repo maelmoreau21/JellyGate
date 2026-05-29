@@ -23,13 +23,13 @@ import (
 
 type langContextKey struct{}
 
-// LangFromContext extrait la langue du contexte de requête.
-// Retourne "fr" si aucune langue n'est définie.
+// LangFromContext extracts the language from the request context.
+// Returns "en" if no language is defined.
 func LangFromContext(ctx context.Context) string {
 	if lang, ok := ctx.Value(langContextKey{}).(string); ok && lang != "" {
 		return lang
 	}
-	return "fr"
+	return "en"
 }
 
 // ── Provider ────────────────────────────────────────────────────────────────
@@ -64,11 +64,11 @@ func DetectLanguage(provider DefaultLangProvider) func(http.Handler) http.Handle
 				lang = parseAcceptLanguage(r.Header.Get("Accept-Language"))
 			}
 
-			// 3. Default (depuis la base de données)
+			// 3. Default (from database)
 			if lang == "" {
 				lang = config.NormalizeLanguageTag(provider.GetDefaultLang())
 				if !config.IsSupportedLanguage(lang) {
-					lang = "fr"
+					lang = "en"
 				}
 			}
 

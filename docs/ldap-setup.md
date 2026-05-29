@@ -1,77 +1,77 @@
-# Configuration LDAP avec JellyGate
+# LDAP Configuration with JellyGate
 
-Ce guide explique une configuration LDAP propre avec JellyGate, en mode `hybrid` (LDAP + Jellyfin) ou `ldap_only`.
+This guide explains how to properly configure LDAP with JellyGate, either in `hybrid` mode (LDAP + Jellyfin) or `ldap_only`.
 
-## 1. Prerequis
+## 1. Prerequisites
 
-- Un annuaire LDAP/AD accessible depuis JellyGate.
-- Un compte de service LDAP (bind) avec droits de lecture et creation utilisateur (si provisionning actif).
-- Jellyfin installe et joignable (mode `hybrid`).
-- Groupes LDAP cibles deja crees, par exemple:
-  - `jellyfin` (utilisateurs standards)
-  - `jellyfin-Parrainage` (utilisateurs autorises a inviter)
-  - `jellyfin-administrateur` (comptes admin LDAP, si utilise)
+- A LDAP/AD directory accessible from JellyGate.
+- A LDAP service account (bind) with read and user creation permissions (if provisioning is active).
+- Jellyfin installed and reachable (`hybrid` mode).
+- Target LDAP groups already created, for example:
+  - `jellyfin` (standard users)
+  - `jellyfin-Parrainage` (users authorized to invite)
+  - `jellyfin-administrateur` (LDAP admin accounts, if used)
 
-## 2. Parametrer LDAP dans JellyGate
+## 2. Configure LDAP in JellyGate
 
-Dans `Admin -> Parametres -> LDAP`:
+In `Admin -> Settings -> LDAP`:
 
-1. Active `LDAP`.
-2. Renseigne `Host`, `Port`, `Bind DN`, `Bind password`, `Base DN`.
-3. Garde `username_attribute`, `user_object_class`, `group_member_attr` sur `auto` sauf besoin specifique.
-4. Choisis le mode:
-   - `hybrid`: cree LDAP + Jellyfin
-   - `ldap_only`: cree LDAP uniquement (pas de compte Jellyfin local)
-5. Sauvegarde puis utilise les boutons de test:
-   - Test connexion LDAP
-   - Test recherche utilisateur LDAP
-   - Test authentification Jellyfin via plugin LDAP (si Jellyfin LDAP est configure)
+1. Enable `LDAP`.
+2. Fill in `Host`, `Port`, `Bind DN`, `Bind password`, `Base DN`.
+3. Leave `username_attribute`, `user_object_class`, `group_member_attr` on `auto` unless you have specific needs.
+4. Choose the mode:
+   - `hybrid`: creates both LDAP + Jellyfin accounts
+   - `ldap_only`: creates LDAP accounts only (no local Jellyfin account)
+5. Save and then use the test buttons:
+   - Test LDAP connection
+   - Test LDAP user search
+   - Test Jellyfin authentication via LDAP plugin (if Jellyfin LDAP is configured)
 
-## 3. Associer les groupes LDAP via Automatisation
+## 3. Associate LDAP Groups via Automation
 
-L'affectation de groupes LDAP ne se fait plus dans `Parametres -> LDAP`.
+LDAP group assignment is no longer configured under `Settings -> LDAP`.
 
-Utilise `Admin -> Automatisation -> Presets`:
+Instead, use `Admin -> Automation -> Presets`:
 
-1. Ouvre ou cree un preset.
-2. Renseigne `Groupe LDAP utilisateurs (optionnel)`:
-   - Exemple: `CN=jellyfin,OU=Groups,DC=example,DC=com`
-3. Si le preset peut inviter (`Can invite`), renseigne aussi `Groupe LDAP parrainage (optionnel)`:
-   - Exemple: `CN=jellyfin-Parrainage,OU=Groups,DC=example,DC=com`
-4. Sauvegarde les presets.
+1. Open or create a preset.
+2. Fill in `LDAP User Group (optional)`:
+   - Example: `CN=jellyfin,OU=Groups,DC=example,DC=com`
+3. If the preset can invite (`Can invite`), also fill in `LDAP Sponsor Group (optional)`:
+   - Example: `CN=jellyfin-Parrainage,OU=Groups,DC=example,DC=com`
+4. Save the presets.
 
-JellyGate genere automatiquement les mappings `LDAP -> preset` correspondants.
+JellyGate automatically generates the corresponding `LDAP -> preset` mappings.
 
-## 4. Comportement du provisionning
+## 4. Provisioning Behavior
 
-A l'inscription via invitation:
+Upon registration via invitation:
 
-- JellyGate cree le compte LDAP.
-- Le compte est ajoute par defaut au groupe utilisateur Jellyfin.
-- Les groupes LDAP lies au preset (Automatisation) sont ensuite ajoutes.
-- Si le profil d'invitation autorise le parrainage (`can_invite`), le role LDAP `inviter` est applique.
+- JellyGate creates the LDAP account.
+- The account is added to the Jellyfin user group by default.
+- LDAP groups linked to the preset (Automation) are then added.
+- If the invitation profile allows sponsorship (`can_invite`), the LDAP role `inviter` is applied.
 
-En mode `hybrid`, les droits Jellyfin du preset sont aussi appliques.
+In `hybrid` mode, the preset's Jellyfin permissions are also applied.
 
-## 5. Bonnes pratiques
+## 5. Best Practices
 
-- Toujours commencer avec un preset "standard" minimal.
-- N'activer `can_invite` que pour les profils parrainage.
-- Utiliser des DN complets (`CN=...,OU=...,DC=...`) pour eviter les ambiguities.
-- Verifier les quotas d'invitation et limites de validite dans les presets.
+- Always start with a minimal "standard" preset.
+- Only enable `can_invite` for sponsorship profiles.
+- Use complete DNs (`CN=...,OU=...,DC=...`) to avoid ambiguity.
+- Verify invitation quotas and validity limits in presets.
 
-## 6. Depannage rapide
+## 6. Quick Troubleshooting
 
-- Echec ajout groupe LDAP:
-  - Verifier `group_member_attr` (auto/member/memberUid) et le schema LDAP.
-  - Verifier que le compte de service peut modifier les groupes.
-- Utilisateur cree mais pas de droits Jellyfin:
-  - Verifier le preset cible et les mappings `LDAP -> preset`.
-  - En mode `ldap_only`, c'est normal de ne pas creer un compte Jellyfin local.
-- Auth LDAP KO dans Jellyfin:
-  - Verifier la conf du plugin LDAP Jellyfin et l'URL Jellyfin dans JellyGate.
+- LDAP group addition failure:
+  - Check `group_member_attr` (auto/member/memberUid) and the LDAP schema.
+  - Verify that the service account has permission to modify groups.
+- User created but no Jellyfin permissions:
+  - Check the target preset and `LDAP -> preset` mappings.
+  - In `ldap_only` mode, it is normal that a local Jellyfin account is not created.
+- LDAP authentication failing in Jellyfin:
+  - Check the Jellyfin LDAP plugin configuration and the Jellyfin URL in JellyGate.
 
-## 7. Validation conseillee apres modification
+## 7. Recommended Validation After Modification
 
 ```bash
 npm run build:css

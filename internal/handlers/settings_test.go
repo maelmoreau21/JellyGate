@@ -188,6 +188,10 @@ func TestSettingsHandlerTestJellyfinLDAPAuthUsesSharedAuthFlow(t *testing.T) {
 func TestSettingsHandlerSaveEmailTemplatesSyncsSharedFields(t *testing.T) {
 	handler, db := newTestSettingsHandler(t)
 
+	if err := db.SetSetting(database.SettingDefaultLang, "fr"); err != nil {
+		t.Fatalf("SetSetting(default_lang) error = %v", err)
+	}
+
 	templates, err := db.GetEmailTemplatesConfigByLanguage()
 	if err != nil {
 		t.Fatalf("GetEmailTemplatesConfigByLanguage() error = %v", err)

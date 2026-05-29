@@ -1,6 +1,7 @@
 {
   "name": "jellygate",
   "private": true,
+  "license": "MIT",
   "scripts": {
     "build:css": "node ./scripts/build-css.js",
     "i18n:validate": "node ./scripts/i18n_validate.js",

@@ -63,26 +63,26 @@ func (d *TemplateData) T(key string) string {
 
 // ── Engine ──────────────────────────────────────────────────────────────────
 
-// Engine est le moteur de templates HTML avec support i18n.
+// Engine is the HTML template engine with i18n support.
 type Engine struct {
 	templates    map[string]*template.Template
 	translations map[string]Translations // lang → {key → value}
-	fallbackLang string                  // Langue de fallback (fr)
+	fallbackLang string                  // Fallback language (en)
 	mu           sync.RWMutex
 	dir          string
 }
 
-// NewEngine crée un nouveau moteur de templates.
-// Charge les layouts, les pages et les traductions.
+// NewEngine creates a new template engine.
+// Loads layouts, pages, and translations.
 //
-// Paramètres :
-//   - templatesDir : dossier des templates (web/templates)
-//   - i18nDir      : dossier des traductions (web/i18n)
+// Parameters:
+//   - templatesDir: templates directory (web/templates)
+//   - i18nDir: translations directory (web/i18n)
 func NewEngine(templatesDir, i18nDir string) (*Engine, error) {
 	e := &Engine{
 		templates:    make(map[string]*template.Template),
 		translations: make(map[string]Translations),
-		fallbackLang: "fr",
+		fallbackLang: "en",
 		dir:          templatesDir,
 	}
 
@@ -137,21 +137,21 @@ func (e *Engine) loadTranslations(i18nDir string) error {
 	return nil
 }
 
-// Translate retourne la traduction d'une clé dans la langue demandée.
-// Si la clé n'existe pas dans la langue demandée, effectue un fallback
-// sur le français. Si la clé n'existe nulle part, retourne "[clé]".
+// Translate returns the translation of a key in the requested language.
+// If the key does not exist in the requested language, it falls back
+// to English, then to French. If not found anywhere, it returns "[key]".
 func (e *Engine) Translate(lang, key string) string {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	// 1. Chercher dans la langue demandée
+	// 1. Look in the requested language
 	if trans, ok := e.translations[lang]; ok {
 		if v, ok := trans[key]; ok {
 			return v
 		}
 	}
 
-	// 2. Fallback sur le français
+	// 2. Fallback to English
 	if lang != "en" {
 		if trans, ok := e.translations["en"]; ok {
 			if v, ok := trans[key]; ok {
@@ -160,22 +160,22 @@ func (e *Engine) Translate(lang, key string) string {
 		}
 	}
 
-	// 3. Fallback final sur le français
-	if lang != e.fallbackLang {
-		if trans, ok := e.translations[e.fallbackLang]; ok {
+	// 3. Fallback to French
+	if lang != "fr" {
+		if trans, ok := e.translations["fr"]; ok {
 			if v, ok := trans[key]; ok {
 				return v
 			}
 		}
 	}
 
-	// 4. Clé brute (visible en dev)
+	// 4. Raw key (visible in dev)
 	return "[" + key + "]"
 }
 
-// NewTemplateData crée une TemplateData liée à une langue.
-// La fonction T() résout automatiquement les clés dans la bonne langue
-// avec fallback sur le français.
+// NewTemplateData creates a TemplateData tied to a language.
+// The T() function automatically resolves keys in the correct language
+// with fallback to English/French.
 func (e *Engine) NewTemplateData(lang string) *TemplateData {
 	return &TemplateData{
 		Lang:       lang,

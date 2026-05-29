@@ -21,24 +21,24 @@ services:
       - JELLYGATE_PORT=8097
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
       - JELLYGATE_DATA_DIR=/data
-      - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
+      - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY is required}
       - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
       - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
       - JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY=${JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY:-false}
-      # ── Base SQL (PostgreSQL) ──────────────────────────────────────
+      # ── SQL Database (PostgreSQL) ───────────────────────────────────
       - DB_TYPE=postgres
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER:?❌ POSTGRES_USER est requis}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD est requis}
+      - DB_USER=${POSTGRES_USER:?❌ POSTGRES_USER is required}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD is required}
       - DB_NAME=${POSTGRES_DB:-jellygate}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
 
       # ── Jellyfin ─────────────────────────────────────────────────────
-      - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL est requis}
-      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:?❌ JELLYFIN_API_KEY est requis}
+      - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL is required}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:?❌ JELLYFIN_API_KEY is required}
 
-      # ── Intégrations portail optionnelles (liens/fallback) ──────────
+      # ── Optional portal integrations (links/fallback) ───────────────
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
 
@@ -60,8 +60,8 @@ services:
       - no-new-privileges:true
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-jellygate}
-      - POSTGRES_USER=${POSTGRES_USER:?❌ POSTGRES_USER est requis}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD est requis}
+      - POSTGRES_USER=${POSTGRES_USER:?❌ POSTGRES_USER is required}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD is required}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

@@ -840,7 +840,7 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 		}
 	}
 	if !config.IsSupportedLanguage(previewLang) {
-		previewLang = "fr"
+		previewLang = "en"
 	}
 
 	previewCfg := config.DefaultEmailTemplatesForLanguage(previewLang)

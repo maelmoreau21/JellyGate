@@ -34,7 +34,7 @@ const (
 	SettingInviteProfile               = "invite_profile"                 // JSON: config.InvitationProfileConfig
 	SettingAuthSessionConfig           = "auth_session_config"            // JSON: AuthSessionConfig
 	SettingBackupLastRun               = "backup_last_run"                // Date locale YYYY-MM-DD
-	SettingDefaultLang                 = "default_lang"                   // Langue par defaut du serveur (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
+	SettingDefaultLang                 = "default_lang"                   // Default language of the server (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
 	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
 	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
 )
@@ -117,16 +117,16 @@ func (db *DB) RevokeAuthSessionsBefore(timestamp int64) (AuthSessionConfig, erro
 	return cfg, nil
 }
 
-// GetDefaultLang retourne la langue par défaut du serveur.
-// Retourne "fr" si la clé n'existe pas ou en cas d'erreur.
+// GetDefaultLang returns the default language of the server.
+// Returns "en" if the setting is not found or in case of error.
 func (db *DB) GetDefaultLang() string {
 	val, err := db.GetSetting(SettingDefaultLang)
 	if err != nil || val == "" {
-		return "fr"
+		return "en"
 	}
 	lang := config.NormalizeLanguageTag(val)
 	if !config.IsSupportedLanguage(lang) {
-		return "fr"
+		return "en"
 	}
 	return lang
 }

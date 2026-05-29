@@ -1,33 +1,33 @@
 # =============================================================================
 # JellyGate — Dockerfile (Multi-stage build)
 # =============================================================================
-# Runtime base Postgres 18 pour garantir un major-match pg_dump/pg_restore en Docker.
+# Postgres 18 runtime base to ensure pg_dump/pg_restore major-match in Docker.
 # =============================================================================
 
-# ── Étape 1 : Compilation du binaire Go ─────────────────────────────────────
+# ── Step 1: Go binary compilation ───────────────────────────────────────────
 FROM golang:1.26.3-alpine AS builder
 
-# Arguments injectés automatiquement par Docker Buildx pour le cross-compile
+# Arguments automatically injected by Docker Buildx for cross-compilation
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
 WORKDIR /build
 RUN apk add --no-cache nodejs npm
 
-# Copier les fichiers de dépendances en premier (cache Docker optimisé)
+# Copy dependency files first (optimized Docker cache)
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
-# Dépendances frontend pour générer Tailwind localement
+# Frontend dependencies to generate Tailwind locally
 COPY package.json package-lock.json tailwind.config.js ./
 RUN npm ci
 
-# Copier le reste du code source
+# Copy the rest of the source code
 COPY . .
 RUN npm run build:css
 
-# Compiler le binaire statique (CGO désactivé — SQLite via modernc.org/sqlite)
-# TARGETOS et TARGETARCH sont fournis par Buildx lors du multi-arch build
+# Compile the static binary (CGO disabled — SQLite via modernc.org/sqlite)
+# TARGETOS and TARGETARCH are provided by Buildx during multi-arch build
 RUN CGO_ENABLED=0 \
     GOOS=${TARGETOS} \
     GOARCH=${TARGETARCH} \
@@ -37,40 +37,40 @@ RUN CGO_ENABLED=0 \
       -o /build/jellygate \
       ./cmd/jellygate
 
-# ── Étape 2 : Image finale minimale ─────────────────────────────────────────
+# ── Step 2: Minimal final image ─────────────────────────────────────────────
 FROM postgres:18-alpine
 
-# Certificats TLS + outils utilitaires
+# TLS certificates + utility tools
 RUN apk add --no-cache ca-certificates tzdata wget
 
-# Utilisateur non-root pour la sécurité
+# Non-root user for security
 RUN addgroup -S jellygate && adduser -S jellygate -G jellygate
 
-# Répertoire des données
+# Data directory
 RUN mkdir -p /data && chown jellygate:jellygate /data
 
 WORKDIR /app
 
-# Copier le binaire compilé
+# Copy the compiled binary
 COPY --from=builder --chown=jellygate:jellygate /build/jellygate .
 
-# Copier les assets web (templates, static, locales)
+# Copy the web assets (templates, static, locales)
 COPY --from=builder --chown=jellygate:jellygate /build/web ./web
 
 RUN chmod 0550 /app/jellygate
 
-# Passage en utilisateur non-root
+# Switch to non-root user
 USER jellygate
 
-# Volume pour les données persistantes (SQLite, config)
+# Volume for persistent data (SQLite, config)
 VOLUME ["/data"]
 
-# Port par défaut
+# Default port
 EXPOSE 8097
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8097/ || exit 1
 
-# Point d'entrée
+# Entrypoint
 ENTRYPOINT ["./jellygate"]

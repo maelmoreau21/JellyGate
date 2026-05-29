@@ -612,7 +612,7 @@ func htmlToPlainEmailText(content string) string {
 }
 
 func defaultNoCodeEmailBody(key string) string {
-	return DefaultNoCodeEmailTemplateBodyForLanguage("fr", key)
+	return DefaultNoCodeEmailTemplateBodyForLanguage("en", key)
 }
 
 func emailTemplateValueByKey(cfg EmailTemplatesConfig, templateKey string) string {
@@ -653,13 +653,13 @@ func isKnownDefaultEmailBody(templateKey, content string) bool {
 	if trimmed == "" {
 		return false
 	}
-	defaults := DefaultEmailTemplatesForLanguage("fr")
+	defaults := DefaultEmailTemplatesForLanguage("en")
 	legacy := legacyEmailTemplates()
 	return trimmed == strings.TrimSpace(emailTemplateValueByKey(defaults, templateKey)) || trimmed == strings.TrimSpace(emailTemplateValueByKey(legacy, templateKey))
 }
 
 func buildAutomaticEmailBlock(templateKey string) string {
-	return automaticEmailBlockForLanguage("fr", templateKey)
+	return automaticEmailBlockForLanguage("en", templateKey)
 }
 
 // EditableEmailTemplateBody retire l'habillage HTML standard pour presenter
@@ -694,7 +694,7 @@ func EditableEmailTemplateBodyWithBase(content, baseHeader, baseFooter string) s
 }
 
 func EditableNoCodeEmailTemplateBody(templateKey, content, baseHeader, baseFooter string) string {
-	return EditableNoCodeEmailTemplateBodyForLanguage("fr", templateKey, content, baseHeader, baseFooter)
+	return EditableNoCodeEmailTemplateBodyForLanguage("en", templateKey, content, baseHeader, baseFooter)
 }
 
 func isKnownDefaultEmailBodyForLanguage(lang, templateKey, content string) bool {
@@ -726,7 +726,7 @@ func PrepareEmailTemplateBody(content string) string {
 }
 
 func PrepareEmailTemplateBodyFor(templateKey, content, baseHeader, baseFooter string) string {
-	return PrepareEmailTemplateBodyForLanguage("fr", templateKey, content, baseHeader, baseFooter)
+	return PrepareEmailTemplateBodyForLanguage("en", templateKey, content, baseHeader, baseFooter)
 }
 
 func PrepareEmailTemplateBodyForLanguage(lang, templateKey, content, baseHeader, baseFooter string) string {
@@ -896,9 +896,9 @@ func UpgradeLegacyEmailTemplates(cfg *EmailTemplatesConfig) {
 	}
 }
 
-// DefaultEmailTemplates retourne les traductions de base des modèles d'emails
+// DefaultEmailTemplates returns the basic base translations of email models
 func DefaultEmailTemplates() EmailTemplatesConfig {
-	return DefaultEmailTemplatesForLanguage("fr")
+	return DefaultEmailTemplatesForLanguage("en")
 }
 
 // JellyfinPresetUserConfiguration regroupe les reglages stockes dans

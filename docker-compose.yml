@@ -21,20 +21,20 @@ services:
       - JELLYGATE_PORT=8097
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
       - JELLYGATE_DATA_DIR=/data
-      - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY est requis}
-      - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-fr}
+      - JELLYGATE_SECRET_KEY=${JELLYGATE_SECRET_KEY:?❌ JELLYGATE_SECRET_KEY is required}
+      - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-en}
       - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
       - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
       - JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY=${JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY:-false}
-      # ── Base SQL (SQLite par défaut) ────────────────────────────────
+      # ── SQL Database (SQLite by default) ────────────────────────────
       - DB_TYPE=sqlite
-      # Note: Pour utiliser PostgreSQL, utilisez le fichier docker-compose.postgres.yml
+      # Note: To use PostgreSQL, use the docker-compose.postgres.yml file
 
       # ── Jellyfin ─────────────────────────────────────────────────────
-      - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL est requis}
-      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:?❌ JELLYFIN_API_KEY est requis}
+      - JELLYFIN_URL=${JELLYFIN_URL:?❌ JELLYFIN_URL is required}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:?❌ JELLYFIN_API_KEY is required}
 
-      # ── Intégrations portail optionnelles (liens/fallback) ──────────
+      # ── Optional portal integrations (links/fallback) ───────────────
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
 
