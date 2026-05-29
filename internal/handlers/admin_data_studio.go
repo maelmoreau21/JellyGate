@@ -484,10 +484,6 @@ func (h *AdminHandler) buildInvitationPreview(r *http.Request, sess *session.Pay
 		profile.DisableAfterDays = userDays
 		profile.ForcedUsername = strings.TrimSpace(req.ForcedUsername)
 		profile.CanInvite = preset.CanInvite || preset.CanCreateInvitations || (req.NewUserCanInvite && (sess.IsAdmin || limits.AllowGrant))
-		if len(req.Libraries) > 0 {
-			profile.EnableAllFolders = false
-			profile.EnabledFolderIDs = req.Libraries
-		}
 		if !applyUserExpiry {
 			defaultAccountDuration := preset.DefaultAccountDurationDays
 			if defaultAccountDuration <= 0 {
@@ -542,10 +538,6 @@ func (h *AdminHandler) buildInvitationPreview(r *http.Request, sess *session.Pay
 		profile.UserExpiryDays = accountDurationDays
 		profile.DisableAfterDays = accountDurationDays
 	}
-	if sess.IsAdmin && preset == nil {
-		profile.EnableDownload = req.EnableDownloads
-	}
-
 	links := resolvePortalLinks(h.cfg, h.db)
 	baseURL := strings.TrimSpace(links.JellyGateURL)
 	if baseURL == "" {

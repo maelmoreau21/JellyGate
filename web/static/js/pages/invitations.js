@@ -40,9 +40,7 @@
         let totalPages = 1;
         let pendingDeleteInvitationID = 0;
         let inviteWizardStep = 1;
-        let previewConfirmed = false;
         let invitationPresets = [];
-        let invitationLibraries = [];
 
         function fmt(template, vars) {
             return String(template || '').replace(/\{(\w+)\}/g, (_, key) => (vars && key in vars ? String(vars[key]) : ''));
@@ -67,11 +65,8 @@
         }
 
         function resetInvitationPreview() {
-            previewConfirmed = false;
             const createBtn = document.getElementById('create-btn');
-            if (createBtn) createBtn.disabled = true;
-            const output = document.getElementById('inv-preview-output');
-            if (output) output.innerHTML = JG.esc(i18n.previewEmpty || 'Aucun apercu genere.');
+            if (createBtn) createBtn.disabled = false;
         }
 
         async function copyLinkToClipboard(link) {
@@ -319,35 +314,7 @@
                 const resolved = defaultLang || 'fr';
                 preferredLangInput.value = preferredLangInput.querySelector(`option[value="${resolved}"]`) ? resolved : '';
             }
-            const enableDownloadsInput = document.getElementById('inv-enable-downloads');
-            if (enableDownloadsInput && !document.getElementById('inv-policy-preset')?.value) {
-                enableDownloadsInput.checked = true;
-            }
-
             updateForcedUsernameState();
-        }
-
-        function renderInviteLibraries(preset) {
-            const wrap = document.getElementById('inv-libraries');
-            if (!wrap) return;
-            if (!isAdmin || invitationLibraries.length === 0) {
-                wrap.innerHTML = `<div class="text-xs text-jg-text-muted">${JG.esc(i18n.profileLibrariesFollow || 'Les bibliotheques suivent le profil choisi.')}</div>`;
-                return;
-            }
-            const selected = new Set((preset && preset.enabled_folder_ids) || []);
-            wrap.innerHTML = invitationLibraries.map((library) => {
-                const id = library.id || library.Id || library.ItemId || '';
-                const checked = selected.has(id) ? 'checked' : '';
-                return `<label class="jg-library-option">
-                    <input type="checkbox" value="${JG.esc(id)}" ${checked}>
-                    <span>${JG.esc(library.name || library.Name || id)}</span>
-                </label>`;
-            }).join('');
-            wrap.classList.toggle('opacity-50', !!preset?.enable_all_folders);
-        }
-
-        function selectedInvitationLibraries() {
-            return Array.from(document.querySelectorAll('#inv-libraries input:checked')).map((input) => input.value).filter(Boolean);
         }
 
         function applySelectedInvitePreset() {
@@ -368,9 +335,6 @@
                     summary.textContent = `${preset.name || preset.id}: ${parts.join(' · ')}`;
                 }
             }
-            const downloads = document.getElementById('inv-enable-downloads');
-            if (downloads && preset) downloads.checked = !!preset.enable_download;
-            renderInviteLibraries(preset);
             updateTemporaryInvitationState(preset);
             resetInvitationPreview();
         }
@@ -407,12 +371,8 @@
         }
 
         async function loadInviteWizardData() {
-            const [presetsRes, librariesRes] = await Promise.all([
-                JG.api('/admin/api/automation/presets'),
-                isAdmin ? JG.api('/admin/api/automation/libraries') : Promise.resolve({ data: [] }),
-            ]);
+            const presetsRes = await JG.api('/admin/api/automation/presets');
             invitationPresets = Array.isArray(presetsRes?.data) ? presetsRes.data : [];
-            invitationLibraries = Array.isArray(librariesRes?.data) ? librariesRes.data : [];
 
             const select = document.getElementById('inv-policy-preset');
             if (select) {
@@ -431,64 +391,6 @@
                 if (!isAdmin && targetPresetID) select.value = targetPresetID;
             }
             applySelectedInvitePreset();
-        }
-
-        function collectInvitationPayload() {
-            const maxUses = parseInt(document.getElementById('inv-uses')?.value || '0', 10) || 0;
-            const expiresInDays = parseInt(document.getElementById('inv-expiry-days')?.value || '0', 10) || 0;
-            const userExpiryEnabled = !!document.getElementById('inv-user-expiry-enabled')?.checked;
-            const userExpiryDays = parseInt(document.getElementById('inv-user-expiry-days')?.value || '0', 10) || 0;
-            const isTemporary = !!document.getElementById('inv-is-temporary')?.checked;
-            const accountDurationDays = parseInt(document.getElementById('inv-account-duration-days')?.value || '0', 10) || 0;
-            return {
-                max_uses: maxUses,
-                expires_in_days: expiresInDays,
-                ignore_preset_link_expiry: !!document.getElementById('inv-ignore-link-limit')?.checked,
-                apply_user_expiry: userExpiryEnabled,
-                user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
-                is_temporary: isTemporary,
-                account_duration_days: isTemporary ? accountDurationDays : 0,
-                ignore_preset_user_expiry: !!document.getElementById('inv-ignore-user-expiry-limit')?.checked,
-                new_user_can_invite: !!document.getElementById('inv-new-user-can-invite')?.checked,
-                forced_username: (document.getElementById('inv-forced-user')?.value || '').trim(),
-                send_to_email: (document.getElementById('inv-email')?.value || '').trim(),
-                preferred_lang: normalizeLangTag(document.getElementById('inv-preferred-lang')?.value || ''),
-                policy_preset_id: (document.getElementById('inv-policy-preset')?.value || '').trim(),
-                libraries: isAdmin ? selectedInvitationLibraries() : [],
-                enable_downloads: !!document.getElementById('inv-enable-downloads')?.checked,
-                email_message: (document.getElementById('inv-email-message')?.value || '').trim(),
-            };
-        }
-
-        async function previewInvitation() {
-            const btn = document.getElementById('inv-preview-btn');
-            const output = document.getElementById('inv-preview-output');
-            if (btn) btn.disabled = true;
-            const res = await JG.api('/admin/api/invitations/preview', {
-                method: 'POST',
-                body: JSON.stringify(collectInvitationPayload()),
-            });
-            if (btn) btn.disabled = false;
-            if (!res?.success) {
-                previewConfirmed = false;
-                document.getElementById('create-btn')?.setAttribute('disabled', 'disabled');
-                if (output) output.innerHTML = `<div class="text-rose-300">${JG.esc(res?.message || i18n.unknownError)}</div>`;
-                return;
-            }
-            const data = res.data || {};
-            const profile = data.profile || {};
-            previewConfirmed = true;
-            const createBtn = document.getElementById('create-btn');
-            if (createBtn) createBtn.disabled = false;
-            if (output) {
-                output.innerHTML = `<div class="space-y-3">
-                    <div>${data.public_preview_html || ''}</div>
-                    <div><strong>Lien public</strong><br><code>${JG.esc(data.public_url || '')}</code></div>
-                    <div><strong>${JG.esc(i18n.profileApplied || 'Profil applique')}</strong><br>${JG.esc(profile.preset_id || data.preset?.name || i18n.profileGlobal || 'Profil global')} · ${JG.esc(profile.enable_all_folders ? (i18n.profileAllLibraries || 'toutes bibliotheques') : String(i18n.profileLibraryCount || '{count} bibliotheque(s)').replace('{count}', String((profile.enabled_folder_ids || []).length)))}</div>
-                    <div><strong>Message</strong><br>${JG.esc(data.email_message || 'Message standard JellyGate')}</div>
-                </div>`;
-            }
-            document.getElementById('inv-preview-output')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
         async function loadInvitations() {
@@ -639,11 +541,6 @@
 
         async function submitCreate(event) {
             event.preventDefault();
-            if (!previewConfirmed) {
-                JG.toast(i18n.previewRequired || 'Generez et validez l apercu avant de creer le lien.', 'error');
-                document.getElementById('inv-preview-output')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                return;
-            }
             const btn = document.getElementById('create-btn');
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner"></span>';
@@ -659,7 +556,6 @@
             const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
             const ignoreUserInput = document.getElementById('inv-ignore-user-expiry-limit');
             const policyPresetInput = document.getElementById('inv-policy-preset');
-            const enableDownloadsInput = document.getElementById('inv-enable-downloads');
             const emailMessageInput = document.getElementById('inv-email-message');
             const temporaryInput = document.getElementById('inv-is-temporary');
             const accountDurationInput = document.getElementById('inv-account-duration-days');
@@ -728,8 +624,6 @@
                 send_to_email: (emailInput?.value || '').trim(),
                 preferred_lang: preferredLang,
                 policy_preset_id: (policyPresetInput?.value || '').trim(),
-                libraries: isAdmin ? selectedInvitationLibraries() : [],
-                enable_downloads: !!enableDownloadsInput?.checked,
                 email_message: (emailMessageInput?.value || '').trim(),
             };
 
@@ -874,7 +768,6 @@
 
         document.getElementById('invite-wizard-prev')?.addEventListener('click', () => setWizardStep(inviteWizardStep - 1));
         document.getElementById('invite-wizard-next')?.addEventListener('click', () => setWizardStep(inviteWizardStep + 1));
-        document.getElementById('inv-preview-btn')?.addEventListener('click', previewInvitation);
         document.getElementById('inv-policy-preset')?.addEventListener('change', applySelectedInvitePreset);
         document.getElementById('create-form')?.addEventListener('input', resetInvitationPreview);
         document.getElementById('create-form')?.addEventListener('change', resetInvitationPreview);

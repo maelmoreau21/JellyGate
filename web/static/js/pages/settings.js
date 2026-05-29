@@ -1333,7 +1333,8 @@
             };
         } else if (section === 'ldap') {
             body = collectLDAPPayload();
-            if (body.enabled) {
+            const hasInlineLDAPConfig = !document.getElementById('ldap-fields')?.classList.contains('hidden');
+            if (body.enabled && hasInlineLDAPConfig) {
                 const dryRunOK = await confirmLDAPDryRunBeforeSave(body);
                 if (!dryRunOK) {
                     return;
@@ -1432,6 +1433,9 @@
                     document.cookie = `lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
                 }
                 window.location.reload();
+            }
+            if (section === 'ldap') {
+                window.setTimeout(() => window.location.reload(), 350);
             }
         } else {
             JG.toast((res && res.message) || t('settings_save_error', 'Save failed'), 'error');

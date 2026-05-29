@@ -21,7 +21,6 @@
     --color-emerald-300: oklch(84.5% 0.143 164.978);
     --color-emerald-400: oklch(76.5% 0.177 163.223);
     --color-emerald-500: oklch(69.6% 0.17 162.48);
-    --color-teal-300: oklch(85.5% 0.138 181.071);
     --color-cyan-200: oklch(91.7% 0.08 205.041);
     --color-cyan-300: oklch(86.5% 0.127 207.078);
     --color-cyan-400: oklch(78.9% 0.154 211.53);
@@ -1117,6 +1116,12 @@
       border-color: color-mix(in oklab, var(--color-rose-500) 40%, transparent);
     }
   }
+  .border-sky-400\/20 {
+    border-color: color-mix(in srgb, oklch(74.6% 0.16 232.661) 20%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      border-color: color-mix(in oklab, var(--color-sky-400) 20%, transparent);
+    }
+  }
   .border-sky-400\/25 {
     border-color: color-mix(in srgb, oklch(74.6% 0.16 232.661) 25%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1410,9 +1415,6 @@
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-sky-500) 10%, transparent);
     }
-  }
-  .bg-slate-200 {
-    background-color: var(--color-slate-200);
   }
   .bg-slate-500 {
     background-color: var(--color-slate-500);
@@ -2011,6 +2013,12 @@
       color: color-mix(in oklab, var(--color-sky-100) 80%, transparent);
     }
   }
+  .text-sky-100\/85 {
+    color: color-mix(in srgb, oklch(95.1% 0.026 236.824) 85%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-sky-100) 85%, transparent);
+    }
+  }
   .text-sky-200 {
     color: var(--color-sky-200);
   }
@@ -2043,9 +2051,6 @@
   }
   .text-slate-950 {
     color: var(--color-slate-950);
-  }
-  .text-teal-300 {
-    color: var(--color-teal-300);
   }
   .text-transparent {
     color: transparent;
@@ -2339,11 +2344,6 @@
       background-color: var(--color-jg-accent);
     }
   }
-  .peer-checked\:bg-purple-500 {
-    &:is(:where(.peer):checked ~ *) {
-      background-color: var(--color-purple-500);
-    }
-  }
   .peer-focus\:ring-2 {
     &:is(:where(.peer):focus ~ *) {
       --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
@@ -2355,14 +2355,6 @@
       --tw-ring-color: var(--color-jg-accent);
       @supports (color: color-mix(in lab, red, red)) {
         --tw-ring-color: color-mix(in oklab, var(--color-jg-accent) 50%, transparent);
-      }
-    }
-  }
-  .peer-focus\:ring-purple-500\/50 {
-    &:is(:where(.peer):focus ~ *) {
-      --tw-ring-color: color-mix(in srgb, oklch(62.7% 0.265 303.9) 50%, transparent);
-      @supports (color: color-mix(in lab, red, red)) {
-        --tw-ring-color: color-mix(in oklab, var(--color-purple-500) 50%, transparent);
       }
     }
   }
@@ -2855,6 +2847,11 @@
       justify-content: space-between;
     }
   }
+  .md\:justify-end {
+    @media (width >= 48rem) {
+      justify-content: flex-end;
+    }
+  }
   .md\:self-auto {
     @media (width >= 48rem) {
       align-self: auto;
@@ -3049,11 +3046,6 @@
       @supports (color: color-mix(in lab, red, red)) {
         background-color: color-mix(in oklab, var(--color-black) 10%, transparent);
       }
-    }
-  }
-  .dark\:bg-slate-700 {
-    &:is(.dark *) {
-      background-color: var(--color-slate-700);
     }
   }
   .dark\:bg-white {
@@ -3407,9 +3399,6 @@ html:not(.dark) .jg-data-studio {
 .jg-profiles-table .jg-profile-row td {
   vertical-align: middle;
 }
-.jg-profile-drawer {
-  width: min(760px, calc(100vw - 2rem));
-}
 .jg-profile-edit-section {
   display: grid;
   gap: 1rem;
@@ -3591,19 +3580,30 @@ html:not(.dark) .jg-data-studio {
   display: block !important;
 }
 .jg-invite-one-page #create-form > .grid {
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(320px, 0.95fr);
+  grid-template-columns: minmax(250px, 0.9fr) minmax(500px, 1.45fr) minmax(280px, 1fr);
   align-items: start;
 }
-.jg-invite-one-page .jg-wizard-pane[data-step="1"], .jg-invite-one-page .jg-wizard-pane[data-step="4"] {
+.jg-invite-one-page .jg-wizard-pane[data-step="1"] {
   grid-column: 1;
 }
 .jg-invite-one-page .jg-wizard-pane[data-step="3"] {
   grid-column: 2;
-  grid-row: span 2;
 }
-.jg-invite-one-page .jg-wizard-pane[data-step="5"] {
+.jg-invite-one-page .jg-wizard-pane[data-step="4"] {
   grid-column: 3;
-  grid-row: 1 / span 2;
+}
+@media (min-width: 1181px) {
+  .jg-invite-one-page .jg-wizard-pane[data-step="3"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem 1rem;
+  }
+  .jg-invite-one-page .jg-wizard-pane[data-step="3"] > h3, .jg-invite-one-page .jg-wizard-pane[data-step="3"] > #inv-forced-user-wrap {
+    grid-column: 1 / -1;
+  }
+  .jg-invite-one-page .jg-wizard-pane[data-step="3"] > .rounded-xl {
+    padding: 0.9rem;
+  }
 }
 .jg-invite-preview-panel {
   position: sticky;
@@ -3709,7 +3709,7 @@ html:not(.dark) .jg-data-studio {
     grid-column: auto;
     grid-row: auto;
   }
-  .jg-invite-one-page .jg-wizard-pane[data-step="1"], .jg-invite-one-page .jg-wizard-pane[data-step="4"], .jg-invite-one-page .jg-wizard-pane[data-step="5"] {
+  .jg-invite-one-page .jg-wizard-pane[data-step="1"], .jg-invite-one-page .jg-wizard-pane[data-step="4"] {
     grid-column: auto;
     grid-row: auto;
   }
@@ -5586,6 +5586,9 @@ html:not(.dark) .modal-content {
   overflow-y: auto;
   padding: 1rem;
 }
+#create-modal {
+  padding: 0.5rem !important;
+}
 .modal-content {
   max-width: 420px;
   width: 90%;
@@ -5601,8 +5604,26 @@ html:not(.dark) .modal-content {
 .invitation-create-modal {
   width: min(96vw, 1240px);
   max-width: min(96vw, 1240px);
-  max-height: calc(100vh - 2rem);
+  max-height: calc(100vh - 1rem);
   overflow-y: auto;
+}
+.invitation-create-modal > .relative {
+  padding-top: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+}
+.invitation-create-modal > .relative h2 {
+  font-size: clamp(1.45rem, 2vw, 2rem);
+  line-height: 1.1;
+}
+.invitation-create-modal > .overflow-y-auto {
+  padding-top: 1.25rem !important;
+  padding-bottom: 1.25rem !important;
+}
+.jg-invite-one-page #create-form {
+  gap: 1rem !important;
+}
+.jg-invite-one-page .jg-wizard-pane {
+  padding: 1.25rem !important;
 }
 .jg-public-links {
   border: 1px solid rgba(45, 212, 191, 0.24);
@@ -6266,6 +6287,18 @@ html.dark .jg-filter-group .jg-input, html.dark .jg-filter-group .jg-select-prem
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+.jg-drawer.jg-profile-drawer {
+  left: clamp(1rem, 5vw, 4rem);
+  right: clamp(1rem, 3vw, 2rem);
+  width: auto;
+  max-width: none;
+}
+@media (max-width: 760px) {
+  .jg-drawer.jg-profile-drawer {
+    inset: 0.5rem;
+    border-radius: 18px;
+  }
 }
 html.dark .jg-drawer {
   background: linear-gradient(165deg, rgba(15, 23, 42, 0.94), rgba(2, 6, 23, 0.98));

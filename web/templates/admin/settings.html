@@ -251,22 +251,26 @@
     <div id="panel-ldap" class="tab-panel settings-panel settings-panel-ldap hidden">
       <div class="glass-card p-4 md:p-5">
 
-        {{/* Master Toggle */}}
-        <div class="flex items-center justify-between mb-3 pb-2 border-b border-black/5 dark:border-white/10">
+        <div class="rounded-xl border border-jg-border bg-white/[0.03] p-5 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 class="text-lg font-semibold text-white">{{ .T "settings_ldap_title" }}</h2>
-            
+            <h2 class="text-lg font-semibold text-white">{{ .T "settings_ldap_toggle_title" }}</h2>
+            <p class="text-sm text-jg-text-muted mt-1">{{ .T "settings_ldap_toggle_desc" }}</p>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="ldap-enabled" class="sr-only peer">
-            <div
-              class="w-11 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-purple-500/50 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-500">
-            </div>
+          <label class="inline-flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" id="ldap-enabled" class="form-checkbox w-5 h-5 rounded border-jg-border bg-transparent accent-jg-accent">
+            <span class="text-sm font-bold text-jg-text">{{ .T "settings_ldap_enable_checkbox" }}</span>
           </label>
         </div>
 
+        <div class="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-xl border border-sky-400/20 bg-sky-500/10 p-4">
+          <p class="text-xs text-sky-100/85 leading-relaxed">{{ .T "settings_ldap_config_hint" }}</p>
+          {{ if .LDAPEnabled }}
+          <a href="/admin/ldap" class="jg-btn jg-btn-ghost jg-btn-sm whitespace-nowrap">{{ .T "settings_ldap_open_config" }}</a>
+          {{ end }}
+        </div>
+
         <form id="form-ldap">
-          <div id="ldap-fields" class="space-y-4 transition-opacity">
+          <div id="ldap-fields" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label class="jg-label" for="ldap-host">{{ .T "settings_host_required" }}</label>
@@ -703,6 +707,6 @@
     },
   };
 </script>
-<script src="/static/js/pages/settings.js" nonce="{{ .ScriptNonce }}"></script>
+<script src="/static/js/pages/settings.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 <script src="/static/js/pages/scheduler.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

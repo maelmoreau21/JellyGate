@@ -4849,9 +4849,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	if sess.IsAdmin && !presetApplied {
-		jfProfile.EnableDownload = req.EnableDownloads
-	} else if !presetApplied {
+	if !presetApplied {
 		jfProfile.EnableDownload = inviteCfg.EnableDownloads
 	}
 	jfProfile.RequireEmail = inviteCfg.RequireEmail

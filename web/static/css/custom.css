@@ -337,10 +337,6 @@ html:not(.dark) .jg-data-studio {
     vertical-align: middle;
 }
 
-.jg-profile-drawer {
-    width: min(760px, calc(100vw - 2rem));
-}
-
 .jg-profile-edit-section {
     display: grid;
     gap: 1rem;
@@ -554,23 +550,37 @@ html:not(.dark) .jg-data-studio {
 }
 
 .jg-invite-one-page #create-form > .grid {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1fr) minmax(320px, 0.95fr);
+    grid-template-columns: minmax(250px, 0.9fr) minmax(500px, 1.45fr) minmax(280px, 1fr);
     align-items: start;
 }
 
-.jg-invite-one-page .jg-wizard-pane[data-step="1"],
-.jg-invite-one-page .jg-wizard-pane[data-step="4"] {
+.jg-invite-one-page .jg-wizard-pane[data-step="1"] {
     grid-column: 1;
 }
 
 .jg-invite-one-page .jg-wizard-pane[data-step="3"] {
     grid-column: 2;
-    grid-row: span 2;
 }
 
-.jg-invite-one-page .jg-wizard-pane[data-step="5"] {
+.jg-invite-one-page .jg-wizard-pane[data-step="4"] {
     grid-column: 3;
-    grid-row: 1 / span 2;
+}
+
+@media (min-width: 1181px) {
+    .jg-invite-one-page .jg-wizard-pane[data-step="3"] {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.9rem 1rem;
+    }
+
+    .jg-invite-one-page .jg-wizard-pane[data-step="3"] > h3,
+    .jg-invite-one-page .jg-wizard-pane[data-step="3"] > #inv-forced-user-wrap {
+        grid-column: 1 / -1;
+    }
+
+    .jg-invite-one-page .jg-wizard-pane[data-step="3"] > .rounded-xl {
+        padding: 0.9rem;
+    }
 }
 
 .jg-invite-preview-panel {
@@ -705,8 +715,7 @@ html:not(.dark) .jg-data-studio {
     }
 
     .jg-invite-one-page .jg-wizard-pane[data-step="1"],
-    .jg-invite-one-page .jg-wizard-pane[data-step="4"],
-    .jg-invite-one-page .jg-wizard-pane[data-step="5"] {
+    .jg-invite-one-page .jg-wizard-pane[data-step="4"] {
         grid-column: auto;
         grid-row: auto;
     }
@@ -2929,6 +2938,10 @@ html:not(.dark) .modal-content {
     padding: 1rem;
 }
 
+#create-modal {
+    padding: 0.5rem !important;
+}
+
 .modal-content {
     max-width: 420px;
     width: 90%;
@@ -2946,8 +2959,31 @@ html:not(.dark) .modal-content {
 .invitation-create-modal {
     width: min(96vw, 1240px);
     max-width: min(96vw, 1240px);
-    max-height: calc(100vh - 2rem);
+    max-height: calc(100vh - 1rem);
     overflow-y: auto;
+}
+
+.invitation-create-modal > .relative {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+}
+
+.invitation-create-modal > .relative h2 {
+    font-size: clamp(1.45rem, 2vw, 2rem);
+    line-height: 1.1;
+}
+
+.invitation-create-modal > .overflow-y-auto {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+}
+
+.jg-invite-one-page #create-form {
+    gap: 1rem !important;
+}
+
+.jg-invite-one-page .jg-wizard-pane {
+    padding: 1.25rem !important;
 }
 
 .jg-public-links {
@@ -3702,6 +3738,20 @@ html.dark .jg-filter-group .jg-select-premium {
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+.jg-drawer.jg-profile-drawer {
+    left: clamp(1rem, 5vw, 4rem);
+    right: clamp(1rem, 3vw, 2rem);
+    width: auto;
+    max-width: none;
+}
+
+@media (max-width: 760px) {
+    .jg-drawer.jg-profile-drawer {
+        inset: 0.5rem;
+        border-radius: 18px;
+    }
 }
 
 html.dark .jg-drawer {

@@ -210,18 +210,6 @@
                             </select>
                             <div id="inv-profile-summary" class="text-xs text-jg-text-muted mt-2"></div>
                         </div>
-                        <div class="h-px bg-jg-border"></div>
-                        <div class="space-y-3">
-                            <h4 class="text-xs font-bold uppercase tracking-widest text-teal-300">{{ .T "invitations_section_profile_overrides" }}</h4>
-                        <label class="flex items-center gap-2 text-sm">
-                            <input type="checkbox" id="inv-enable-downloads" class="form-checkbox w-4 h-4 rounded border-jg-border bg-transparent accent-jg-accent">
-                            {{ .T "invitations_download_override" }}
-                        </label>
-                        <div>
-                            <div class="jg-label">{{ .T "invitations_libraries_override" }}</div>
-                            <div id="inv-libraries" class="jg-library-picker compact"></div>
-                        </div>
-                        </div>
                     </section>
 
                     <section class="jg-wizard-pane rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="3">
@@ -313,24 +301,15 @@
                         </div>
                     </section>
 
-                    <section class="jg-wizard-pane jg-invite-preview-panel rounded-2xl border border-jg-border bg-white/5 p-5 lg:p-6 space-y-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset]" data-step="5">
-                        <h3 class="text-sm font-bold uppercase tracking-widest text-amber-300">{{ .T "invitations_preview_title" }}</h3>
-                        <p class="text-xs text-jg-text-muted leading-relaxed">{{ .T "invitations_preview_help" }}</p>
-                        <button id="inv-preview-btn" type="button" class="jg-btn jg-btn-ghost h-11 w-full">{{ .T "invitations_preview_generate" }}</button>
-                        <div id="inv-preview-output" class="jg-preview-shell text-sm text-jg-text-muted">{{ .T "invitations_preview_empty" }}</div>
-                    </section>
                 </div>
 
                 <div class="mt-2 flex flex-col md:flex-row justify-between gap-3 pt-4 border-t border-jg-border">
-                    <div class="flex gap-2">
-                        <button type="button" id="invite-wizard-prev" class="jg-btn jg-btn-ghost h-12 px-5">{{ .T "invitations_prev" }}</button>
-                        <button type="button" id="invite-wizard-next" class="jg-btn jg-btn-ghost h-12 px-5">{{ .T "invitations_next" }}</button>
-                    </div>
-                    <div class="flex flex-col md:flex-row gap-3">
-                    <button type="button" class="jg-btn jg-btn-ghost h-12 px-6" data-modal-close="create-modal">{{ .T "cancel" }}</button>
-                    <button type="submit" class="jg-btn jg-btn-primary h-12 px-8 font-bold uppercase tracking-widest" id="create-btn" disabled>
-                        {{ .T "invitations_create_link" }}
-                    </button>
+                    <div class="flex-1"></div>
+                    <div class="flex flex-col md:flex-row gap-3 md:justify-end">
+                        <button type="button" class="jg-btn jg-btn-ghost h-12 px-6" data-modal-close="create-modal">{{ .T "cancel" }}</button>
+                        <button type="submit" class="jg-btn jg-btn-primary h-12 px-8 font-bold uppercase tracking-widest" id="create-btn">
+                            {{ .T "invitations_create_link" }}
+                        </button>
                     </div>
                 </div>
             </form>
@@ -425,18 +404,14 @@
             userExpiryFuture: '{{ .T "invitations_user_expiry_future" }}',
             created: '{{ .T "invitations_created" }}',
             unknownError: '{{ .T "invitations_unknown_error" }}',
-            profileLibrariesFollow: '{{ .T "invitations_profile_libraries_follow" }}',
             profileGlobal: '{{ .T "invitations_profile_global" }}',
-            profileApplied: '{{ .T "invitations_profile_applied" }}',
             profileAllLibraries: '{{ .T "invitations_profile_all_libraries" }}',
             profileLibraryCount: '{{ .T "invitations_profile_library_count" }}',
             securityLoadFailed: '{{ .T "invitations_security_load_failed" }}',
             securitySaveFailed: '{{ .T "invitations_security_save_failed" }}',
             securitySaved: '{{ .T "invitations_security_saved" }}',
-            previewEmpty: '{{ .T "invitations_preview_empty" }}',
-            previewRequired: '{{ .T "invitations_preview_required" }}',
         },
     };
 </script>
-<script src="/static/js/pages/invitations.js" nonce="{{ .ScriptNonce }}"></script>
+<script src="/static/js/pages/invitations.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}
