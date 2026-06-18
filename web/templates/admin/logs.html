@@ -26,7 +26,7 @@
 
             {{/* Categories Tabs */}}
             <div class="flex bg-black/20 p-1 rounded-xl border border-white/5">
-                <button data-category="app" class="log-category-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-jg-accent text-black">
+                <button data-category="app" class="log-category-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-jg-accent text-always-white">
                     Application
                 </button>
                 <button data-category="system" class="log-category-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-jg-text-muted hover:text-jg-text">
@@ -48,7 +48,7 @@
                 <button id="btn-toggle-filters" class="jg-btn jg-btn-ghost h-12 px-5 flex items-center gap-2 font-bold border border-white/10 rounded-xl hover:bg-white/10 transition-all">
                     <svg class="w-4 h-4 transition-transform duration-300" id="filter-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                     <span>{{ .T "filters" }}</span>
-                    <span id="active-filter-count" class="hidden px-2 py-0.5 rounded-full bg-jg-accent text-black text-[10px] font-black">0</span>
+                    <span id="active-filter-count" class="hidden px-2 py-0.5 rounded-full bg-jg-accent text-always-white text-[10px] font-black">0</span>
                 </button>
             </div>
         </div>

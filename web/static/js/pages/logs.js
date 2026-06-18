@@ -405,10 +405,10 @@
     function updateCategoryTabUI() {
         document.querySelectorAll('.log-category-btn').forEach(btn => {
             if (btn.dataset.category === state.category) {
-                btn.classList.add('bg-jg-accent', 'text-black');
+                btn.classList.add('bg-jg-accent', 'text-always-white');
                 btn.classList.remove('text-jg-text-muted', 'hover:text-jg-text');
             } else {
-                btn.classList.remove('bg-jg-accent', 'text-black');
+                btn.classList.remove('bg-jg-accent', 'text-always-white');
                 btn.classList.add('text-jg-text-muted', 'hover:text-jg-text');
             }
         });

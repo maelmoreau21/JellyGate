@@ -814,14 +814,23 @@ html:not(.dark) .text-slate-400 { color: var(--jg-text-muted) !important; }
 html:not(.dark) .text-slate-500 { color: #64748b !important; }
 html:not(.dark) .text-sky-100,
 html:not(.dark) .text-sky-200,
+html:not(.dark) .text-sky-300,
 html:not(.dark) .text-sky-50\/80 { color: #075985 !important; }
 html:not(.dark) .text-emerald-200,
-html:not(.dark) .text-emerald-300 { color: #047857 !important; }
+html:not(.dark) .text-emerald-300,
+html:not(.dark) .text-emerald-400 { color: #047857 !important; }
 html:not(.dark) .text-amber-200,
-html:not(.dark) .text-amber-300 { color: #b45309 !important; }
+html:not(.dark) .text-amber-300,
+html:not(.dark) .text-amber-400 { color: #b45309 !important; }
 html:not(.dark) .text-rose-200,
 html:not(.dark) .text-rose-300,
+html:not(.dark) .text-rose-400,
 html:not(.dark) .text-red-300 { color: #be123c !important; }
+html:not(.dark) .text-cyan-100,
+html:not(.dark) .text-cyan-200,
+html:not(.dark) .text-cyan-300,
+html:not(.dark) .text-cyan-400 { color: #0891b2 !important; }
+html:not(.dark) .text-purple-400 { color: #7c3aed !important; }
 html:not(.dark) .bg-sky-500\/10 { background-color: rgba(14, 165, 233, 0.08) !important; }
 html:not(.dark) .border-sky-500\/20 { border-color: rgba(14, 165, 233, 0.18) !important; }
 html:not(.dark) .jg-btn-primary,
@@ -837,6 +846,14 @@ html:not(.dark) .jg-btn-ghost:hover {
     background: rgba(79, 70, 229, 0.08);
     color: var(--jg-accent-hover);
     border-color: rgba(79, 70, 229, 0.22);
+}
+html:not(.dark) .jg-select-option:hover {
+    color: var(--jg-accent-cyan) !important;
+    background: rgba(8, 145, 178, 0.08) !important;
+}
+html:not(.dark) .jg-select-option.active {
+    color: #059669 !important;
+    background: rgba(5, 150, 105, 0.08) !important;
 }
 html:not(.dark) .stat-value,
 html:not(.dark) .jg-focus-value,
@@ -1075,6 +1092,26 @@ html:not(.dark) .jg-users-table thead th {
 .bg-clip-text {
     -webkit-background-clip: text !important;
     background-clip: text !important;
+}
+
+.text-always-white {
+    color: #ffffff !important;
+}
+
+.jg-btn-theme-adaptive {
+    background-color: #111827 !important;
+    color: #ffffff !important;
+}
+.jg-btn-theme-adaptive:hover {
+    background-color: #1f2937 !important;
+}
+
+html.dark .jg-btn-theme-adaptive {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+}
+html.dark .jg-btn-theme-adaptive:hover {
+    background-color: #f3f4f6 !important;
 }
 
 .jg-glass-hover:hover {
@@ -2187,7 +2224,6 @@ html:not(.dark) .email-template-multilingual-note {
 }
 
 html:not(.dark) .jg-nav-item svg {
-    color: var(--jg-accent-hover);
     opacity: 0.9;
 }
 

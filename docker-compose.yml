@@ -1,6 +1,7 @@
 services:
   jellygate:
-    image: ghcr.io/maelmoreau21/jellygate:latest
+    build: .
+    image: jellygate:local
     container_name: jellygate
     restart: unless-stopped
     read_only: true

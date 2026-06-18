@@ -26,7 +26,7 @@
                 </div>
 
                 {{ if .Error }}
-                <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 text-xs text-center font-bold uppercase tracking-wider shadow-lg backdrop-blur-sm">
+                <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-200 text-xs text-center font-bold uppercase tracking-wider shadow-lg backdrop-blur-sm">
                     {{ if eq .Error "required" }}{{ .T "login_error_required" }}{{ end }}
                     {{ if eq .Error "invalid" }}{{ .T "login_error_invalid" }}{{ end }}
                     {{ if eq .Error "forbidden" }}{{ .T "login_error_forbidden" }}{{ end }}
@@ -58,7 +58,7 @@
                         </a>
                     </div>
 
-                    <button type="submit" class="jg-btn w-full h-12 bg-gray-900 dark:bg-white text-white dark:text-black font-extrabold tracking-widest uppercase hover:bg-gray-800 dark:hover:bg-gray-200 transition-all rounded-xl shadow-xl hover:-translate-y-0.5 text-xs">
+                    <button type="submit" class="jg-btn jg-btn-theme-adaptive w-full h-12 font-extrabold tracking-widest uppercase transition-all rounded-xl shadow-xl hover:-translate-y-0.5 text-xs">
                         {{ .T "login_submit" }}
                     </button>
                 </form>

@@ -171,7 +171,7 @@
             }
 
             for (let i = startPage; i <= endPage; i++) {
-                const active = i === paginationMeta.page ? 'bg-jg-accent text-black font-bold' : 'hover:bg-white/5';
+                const active = i === paginationMeta.page ? 'bg-jg-accent text-always-white font-bold' : 'hover:bg-white/5';
                 html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl ${active}" data-page="${i}">${i}</button>`;
             }
 

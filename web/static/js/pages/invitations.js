@@ -427,7 +427,7 @@
                 const end = Math.min(meta.total_pages, meta.page + 2);
                 
                 for (let i = start; i <= end; i++) {
-                    const activeClass = i === meta.page ? 'bg-jg-accent text-white shadow-lg shadow-jg-accent/20' : 'bg-jg-bg-secondary text-jg-text-muted hover:text-jg-text border border-jg-border';
+                    const activeClass = i === meta.page ? 'bg-jg-accent text-always-white shadow-lg shadow-jg-accent/20' : 'bg-jg-bg-secondary text-jg-text-muted hover:text-jg-text border border-jg-border';
                     html += `<button class="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs transition-all page-btn" data-page="${i}">${i}</button>`.replace('class="', `class="${activeClass} `);
                 }
                 pageNumbers.innerHTML = html;
