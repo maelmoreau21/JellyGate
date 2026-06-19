@@ -394,7 +394,9 @@
         }
 
         async function loadInvitations() {
-            const res = await JG.api(`/admin/api/invitations?page=${currentPage}&limit=${itemsPerPage}`);
+            const search = encodeURIComponent(document.getElementById('search-invites')?.value || '');
+            const status = encodeURIComponent(document.getElementById('filter-status')?.value || 'all');
+            const res = await JG.api(`/admin/api/invitations?page=${currentPage}&limit=${itemsPerPage}&search=${search}&status=${status}`);
             if (res.success && res.data) {
                 const invitations = res.data.invitations || [];
                 const meta = res.data.meta || {};
@@ -510,6 +512,8 @@
                 const inviteLang = normalizeLangTag(invitation.preferred_lang || '') || defaultLang;
                 
                 const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
+                
+                const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
                 const badge = isOver 
                     ? `<span class="ml-2 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeExpired)}</span>` 
                     : `<span class="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeActive)}</span>`;
@@ -518,9 +522,14 @@
                     <td class="px-6 py-4">
                         <div class="flex items-center gap-3">
                             <code class="px-2.5 py-1.5 bg-jg-bg-secondary border border-jg-border rounded-lg text-jg-accent font-black text-xs tracking-wider select-all shadow-inner">${invitation.code}</code>
-                            <button class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text transition-all action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle)}">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            </button>
+                            <div class="flex items-center gap-1">
+                                <button class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text transition-all action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle)}">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                </button>
+                                <button class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-accent transition-all action-qr-code" data-link="${encodeURIComponent(link)}" title="QR Code">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                </button>
+                            </div>
                         </div>
                     </td>
                     <td class="px-6 py-4 font-black text-jg-text">${invitation.used_count} / ${invitation.max_uses > 0 ? invitation.max_uses : '∞'} ${badge}</td>
@@ -672,6 +681,22 @@
                 return;
             }
 
+            const qrBtn = e.target.closest('.action-qr-code');
+            if (qrBtn) {
+                const link = decodeURIComponent(qrBtn.getAttribute('data-link'));
+                const img = document.getElementById('qr-code-img');
+                if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(link)}`;
+                const qrCopyBtn = document.getElementById('qr-copy-btn');
+                if (qrCopyBtn) {
+                    qrCopyBtn.onclick = () => {
+                        copyLinkToClipboard(link);
+                        JG.closeModal('qr-modal');
+                    };
+                }
+                JG.openModal('qr-modal');
+                return;
+            }
+
             const deleteBtn = e.target.closest('.action-delete-invite');
             if (deleteBtn) {
                 pendingDeleteInvitationID = parseInt(deleteBtn.getAttribute('data-id'), 10);
@@ -723,6 +748,26 @@
         if (itemsPerPageSelect) {
             itemsPerPageSelect.addEventListener('change', () => {
                 itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
+                currentPage = 1;
+                loadInvitations();
+            });
+        }
+
+        const searchInput = document.getElementById('search-invites');
+        if (searchInput) {
+            let searchTimeout;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    currentPage = 1;
+                    loadInvitations();
+                }, 300);
+            });
+        }
+
+        const filterStatus = document.getElementById('filter-status');
+        if (filterStatus) {
+            filterStatus.addEventListener('change', () => {
                 currentPage = 1;
                 loadInvitations();
             });

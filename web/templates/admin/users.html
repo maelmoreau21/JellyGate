@@ -158,29 +158,48 @@
                             </select>
                         </div>
                         <span>{{ .T "logs_per_page_suffix" }}</span>
+                        <span>{{ .T "logs_per_page_suffix" }}</span>
                     </div>
                     
                     <div class="flex items-center gap-1" id="pagination-controls">
                         {{/* Injected via JS */}}
                     </div>
 
+           <div id="selection-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 bg-[#050506]/85 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
+            <div class="flex items-center gap-3 px-4 text-sm font-bold text-jg-text">
+                <span class="w-6 h-6 rounded-full bg-jg-accent/20 text-jg-accent flex items-center justify-center text-xs" id="selection-count">0</span>
+                <span class="hidden sm:inline">{{ .T "users_bulk_selected_suffix" }}</span>
+            </div>
+            <div class="h-8 w-px bg-white/10 mx-1"></div>
+            <div class="flex items-center gap-1">
+                <button class="bulk-quick-action jg-btn jg-btn-ghost jg-btn-sm text-emerald-400 hover:bg-emerald-400/10 hover:text-emerald-300" data-action="activate" title="{{ .T "users_action_activate" }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </button>
+                <button class="bulk-quick-action jg-btn jg-btn-ghost jg-btn-sm text-amber-400 hover:bg-amber-400/10 hover:text-amber-300" data-action="deactivate" title="{{ .T "users_action_deactivate" }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                </button>
+                <button class="bulk-quick-action jg-btn jg-btn-ghost jg-btn-sm text-sky-400 hover:bg-sky-400/10 hover:text-sky-300" data-action="set_expiry" title="{{ .T "users_action_set_expiry" }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </button>
+                <button class="bulk-quick-action jg-btn jg-btn-ghost jg-btn-sm text-indigo-400 hover:bg-indigo-400/10 hover:text-indigo-300" data-action="apply_preset" title="{{ .T "users_action_apply_preset" }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                </button>
+                <div class="h-6 w-px bg-white/10 mx-1"></div>
+                <button class="bulk-quick-action jg-btn jg-btn-ghost jg-btn-sm text-rose-400 hover:bg-rose-400/10 hover:text-rose-300" data-action="delete" title="{{ .T "users_action_delete" }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            </div>
+            <button id="btn-open-bulk" class="ml-2 pl-3 border-l border-white/10 flex items-center gap-2 hover:text-jg-accent transition-colors text-sm pr-2">
+                <span class="hidden sm:inline">{{ .T "users_bulk_title" }}</span>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
+        </div>
+
                     <div class="text-[10px] uppercase tracking-widest font-black text-jg-text-muted/60" id="pagination-info">
                         {{ .T "logs_page_label" }} 1 {{ .T "logs_of_label" }} 1
                     </div>
                 </div>
             </div>
-        </div>
-
-        <div id="selection-bar" class="jg-selection-bar">
-            <div class="flex items-center gap-3">
-                <span class="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center text-xs" id="selection-count">0</span>
-                <span>{{ .T "users_bulk_selected_suffix" }}</span>
-            </div>
-            <div class="h-6 w-px bg-black/20"></div>
-            <button id="btn-open-bulk" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                <span>{{ .T "users_bulk_title" }}</span>
-            </button>
         </div>
 
         {{/* ── Bulk Actions Drawer ───────────────────────────────────────────── */}}
@@ -239,17 +258,7 @@
 
             <div class="jg-drawer-footer">
                 <button id="bulk-preview" class="w-full jg-btn jg-btn-ghost h-12 uppercase tracking-widest font-black border border-white/10">
-                    {{ .T "users_bulk_preview_button" }}
-                </button>
-                <button id="bulk-apply" class="w-full jg-btn jg-btn-primary h-14 uppercase tracking-widest font-black shadow-lg opacity-60 cursor-not-allowed" disabled>
-                    {{ .T "users_apply" }}
-                </button>
-            </div>
-        </div>
-            </div>
-        </div>
-
-{{/* ── Modals ──────────────────────────────────────────────────────────── */}}
+   {{/* ── Modals ──────────────────────────────────────────────────────────── */}}
 <div id="edit-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" tabindex="-1">
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>
     <div class="jg-card jg-glass w-full max-w-xl relative z-10 shadow-2xl animate-in fade-in zoom-in duration-200" role="document">
@@ -364,19 +373,38 @@
     </div>
 </div>
 
-<div id="timeline-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="timeline-modal-title" tabindex="-1">
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>
-    <div class="jg-card jg-glass w-full max-w-3xl relative z-10 flex flex-col max-h-[90vh] animate-in fade-in zoom-in duration-200" role="document">
-        <div class="flex items-start justify-between gap-6 mb-8">
-            <div>
-                <h3 id="timeline-modal-title" class="text-2xl font-bold text-jg-text">{{ .T "users_timeline_title" }}</h3>
-                <div id="timeline-subtitle" class="text-sm text-jg-accent font-semibold mt-1 uppercase tracking-wider"></div>
+<div id="timeline-drawer-overlay" class="jg-drawer-overlay"></div>
+<div id="timeline-drawer" class="jg-drawer">
+    <div class="jg-drawer-header">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <button class="jg-btn jg-btn-ghost jg-btn-sm" id="timeline-close-btn" aria-label="{{ .T "users_close" }}">{{ .T "users_close" }}</button>
+            <div class="overflow-hidden">
+                <h2 id="timeline-modal-title" class="text-lg font-bold">{{ .T "users_timeline_title" }}</h2>
+                <p id="timeline-subtitle" class="text-[10px] text-jg-text-muted uppercase tracking-widest font-black truncate"></p>
+            </div>
         </div>
-        <div id="timeline-list" class="flex-1 overflow-y-auto pr-4 space-y-4">
+        <button id="timeline-close-btn" class="p-2 rounded-lg hover:bg-white/5 text-jg-text-muted">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+    </div>
+    <div class="jg-drawer-body p-6 relative">
+        <div class="absolute left-[39px] top-6 bottom-6 w-px bg-white/5 z-0 hidden" id="timeline-line"></div>
+        <div id="timeline-list" class="space-y-6 relative z-10">
             <div class="text-center py-20 text-jg-text-muted animate-pulse">{{ .T "users_timeline_loading" }}</div>
         </div>
+    </div>
+</div>
+{{ end }}auto" }}'>
+            </div>
+            <div>
+                <label class="jg-label" for="create-preset-id">{{ .T "users_col_preset" }}</label>
+                <select id="create-preset-id" class="jg-input jg-select-premium h-12 font-bold">
+                    <option value="">{{ .T "users_create_no_preset" }}</option>
+                </select>
+                <p class="text-xs text-jg-text-muted leading-relaxed mt-2">{{ .T "users_create_preset_help" }}</p>
+            </div>
     </div>
 </div>
 {{ end }}

@@ -49,6 +49,31 @@
         }
 
         function isExpired(user) {
+            if (Number.isNaN(date.getTime())) return value;
+            return date.toLocaleString();
+        }
+
+        function toDateTimeLocal(value) {
+            if (!value) return '';
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return '';
+            const pad = (n) => `${n}`.padStart(2, '0');
+            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${date.getHours()}:${pad(date.getMinutes())}`;
+        }
+
+        function userStatusBadge(user) {
+            if (user.is_banned) return `<span class="badge badge-danger">${JG.esc(i18n.statusBanned)}</span>`;
+            if (user.is_active) return `<span class="badge badge-success">${JG.esc(i18n.statusActive)}</span>`;
+            return `<span class="badge badge-warning">${JG.esc(i18n.statusInactive)}</span>`;
+        }
+
+        function jellyfinStatusBadge(user) {
+            if (!user.jellyfin_exists) return `<span class="badge badge-muted">${JG.esc(i18n.jellyfinMissing)}</span>`;
+            if (user.jellyfin_disabled) return `<span class="badge badge-warning">${JG.esc(i18n.jellyfinDisabled)}</span>`;
+            return '<span class="badge badge-success">OK</span>';
+        }
+
+        function isExpired(user) {
             if (!user.access_expires_at) return false;
             const date = new Date(user.access_expires_at);
             if (Number.isNaN(date.getTime())) return false;
@@ -63,8 +88,12 @@
             if (selectionCount) selectionCount.textContent = count;
             const selectionBar = document.getElementById('selection-bar');
             if (selectionBar) {
-                if (count > 0) selectionBar.classList.add('active');
-                else { selectionBar.classList.remove('active'); closeBulkDrawer(); }
+                if (count > 0) {
+                    selectionBar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+                } else {
+                    selectionBar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+                    closeBulkDrawer();
+                }
             }
             const checkAll = document.getElementById('check-all');
             if (checkAll) {
@@ -585,6 +614,17 @@
         document.getElementById('btn-open-bulk')?.addEventListener('click', openBulkDrawer);
         document.getElementById('btn-close-bulk')?.addEventListener('click', closeBulkDrawer);
         document.getElementById('bulk-drawer-overlay')?.addEventListener('click', closeBulkDrawer);
+        document.querySelectorAll('.bulk-quick-action').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                const sel = document.getElementById('bulk-action');
+                if (sel) {
+                    sel.value = action;
+                    sel.dispatchEvent(new Event('change'));
+                }
+                openBulkDrawer();
+            });
+        });
 
         document.getElementById('bulk-action')?.addEventListener('change', (e) => {
             const action = e.target.value;
@@ -732,110 +772,5 @@
             }
         });
         document.getElementById('edit-modal')?.addEventListener('click', (e) => { if (e.target.id === 'edit-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('edit-modal'); });
-
-        document.getElementById('btn-open-create-user')?.addEventListener('click', openCreateModal);
-        document.getElementById('create-cancel-btn')?.addEventListener('click', () => JG.closeModal('create-modal'));
-        document.getElementById('create-save-btn')?.addEventListener('click', saveCreatedUser);
-        document.getElementById('create-modal')?.addEventListener('click', (e) => {
-            if (e.target.id === 'create-modal' || e.target.closest('[aria-hidden="true"]')) {
-                JG.closeModal('create-modal');
-            }
-        });
-
-        // Delete Modal
-        function openDeleteModal(uid, user) {
-            pendingDeleteUser = uid;
-            const t = document.getElementById('delete-modal-text');
-            if (t && user) t.textContent = (i18n.deleteConfirmTemplate||'Delete {username}?').replace('{username}', user.username);
-            JG.openModal('delete-modal');
-        }
-        document.getElementById('delete-cancel-btn')?.addEventListener('click', () => { pendingDeleteUser = null; JG.closeModal('delete-modal'); });
-        document.getElementById('delete-confirm-btn')?.addEventListener('click', async () => {
-            if (!pendingDeleteUser) return;
-            const res = await JG.api('/admin/api/users/' + pendingDeleteUser, { method: 'DELETE' });
-            if (res.success) { JG.toast(i18n.deleteSuccess||'OK', 'success'); selectedIds.delete(String(pendingDeleteUser)); pendingDeleteUser = null; JG.closeModal('delete-modal'); await loadUsers(); }
-            else { JG.toast(res.message||i18n.deleteError||'Error', 'error'); }
-        });
-        document.getElementById('delete-modal')?.addEventListener('click', (e) => { if (e.target.id === 'delete-modal' || e.target.closest('[aria-hidden="true"]')) { pendingDeleteUser = null; JG.closeModal('delete-modal'); } });
-
-        // Timeline Modal
-        async function openTimeline(uid, user) {
-            const sub = document.getElementById('timeline-subtitle');
-            if (sub && user) sub.textContent = (i18n.timelineSubtitleTemplate || '{username}').replace('{username}', user.username);
-
-            JG.openModal('timeline-modal');
-            const list = document.getElementById('timeline-list');
-            if (list) list.innerHTML = '<div class="text-center py-20 text-jg-text-muted animate-pulse">' + JG.esc(i18n.timelineLoading || 'Loading timeline...') + '</div>';
-
-            const res = await JG.api(`/admin/api/users/${uid}/timeline`);
-            if (res.success && Array.isArray(res.data)) {
-                if (res.data.length === 0) {
-                    list.innerHTML = `<div class="text-center py-20 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-3xl bg-white/5 uppercase text-[10px] items-center justify-center flex flex-col gap-4">
-                        <svg class="w-12 h-12 opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        ${JG.esc(i18n.timelineEmpty || 'No events found.')}
-                    </div>`;
-                    return;
-                }
-
-                let html = '<div class="space-y-3 pb-4">';
-                res.data.forEach(entry => {
-                    const category = String(entry.category || '').toLowerCase();
-                    const severity = String(entry.severity || '').toLowerCase();
-                    const isFailed = severity === 'error';
-                    const isWarning = severity === 'warning';
-
-                    let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`;
-                    if (category === 'email') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>`;
-                    if (category === 'password') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>`;
-                    if (category === 'invitation') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>`;
-                    if (category === 'security') icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11c1.657 0 3-1.343 3-3S13.657 5 12 5 9 6.343 9 8s1.343 3 3 3zm0 2c-2.761 0-5 1.79-5 4v1h10v-1c0-2.21-2.239-4-5-4z" /></svg>`;
-
-                    const stateClass = isFailed
-                        ? 'text-rose-400 uppercase tracking-widest bg-rose-500/10'
-                        : (isWarning ? 'text-amber-300 uppercase tracking-widest bg-amber-500/10' : 'text-emerald-400 uppercase tracking-widest bg-emerald-500/10');
-                    const stateDotClass = isFailed ? 'bg-rose-400 animate-pulse' : (isWarning ? 'bg-amber-300' : 'bg-emerald-400');
-                    const stateLabel = isFailed
-                        ? (i18n.timelineError || 'ERROR')
-                        : (isWarning ? (i18n.timelineWarning || 'WARNING') : (i18n.statusOk || 'OK'));
-                    const iconWrapClass = isFailed
-                        ? 'bg-rose-500/10 text-rose-400'
-                        : (isWarning ? 'bg-amber-500/10 text-amber-300' : 'bg-jg-accent/10 text-jg-accent');
-
-                    html += `
-                    <div class="group p-4 rounded-2xl bg-white/5 border border-jg-border hover:bg-white/10 hover:border-jg-accent/30 transition-all duration-300">
-                        <div class="flex items-start gap-4">
-                            <div class="w-10 h-10 rounded-xl ${iconWrapClass} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-300">
-                                ${icon}
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex items-center justify-between gap-4 mb-0.5">
-                                    <span class="text-sm font-bold text-jg-text truncate">${JG.esc(entry.message || entry.action)}</span>
-                                    <span class="text-[10px] font-medium text-jg-text-muted uppercase tracking-wider whitespace-nowrap">${fmtDate(entry.at)}</span>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="flex items-center gap-1 text-[10px] font-bold ${stateClass} px-2 py-0.5 rounded-full"><span class="w-1 h-1 rounded-full ${stateDotClass}"></span> ${stateLabel}</span>
-                                    ${entry.category ? `<span class="text-[10px] text-jg-text-muted/80 tracking-wider uppercase">${JG.esc(entry.category)}</span>` : ''}
-                                    ${entry.actor ? `<span class="text-[10px] text-jg-text-muted/60 tracking-wider">${JG.esc(i18n.timelineActorPrefix || 'BY:')} ${JG.esc(entry.actor)}</span>` : ''}
-                                </div>
-                                ${entry.details ? `<div class="mt-2 text-[11px] text-jg-text-muted/80 leading-relaxed bg-black/20 p-2 rounded-lg border border-white/5 select-all font-mono break-all">${JG.esc(entry.details)}</div>` : ''}
-                            </div>
-                        </div>
-                    </div>`;
-                });
-                html += '</div>';
-                list.innerHTML = html;
-
-            } else {
-                list.innerHTML = `<div class="text-center py-20 text-rose-400">${JG.esc(i18n.timelineLoadError || 'Unable to load timeline.')}</div>`;
-            }
-        }
-        document.getElementById('timeline-close-btn')?.addEventListener('click', () => JG.closeModal('timeline-modal'));
-        document.getElementById('timeline-modal')?.addEventListener('click', (e) => { if (e.target.id === 'timeline-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('timeline-modal'); });
-
-        // Initial load
-        (async () => { await Promise.allSettled([loadUsers(), loadPresets()]); })();
-    }
-
-    if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
     else { init(); }
 })();
