@@ -512,8 +512,6 @@
                 const inviteLang = normalizeLangTag(invitation.preferred_lang || '') || defaultLang;
                 
                 const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
-                
-                const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
                 const badge = isOver 
                     ? `<span class="ml-2 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeExpired)}</span>` 
                     : `<span class="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeActive)}</span>`;

@@ -7,7 +7,7 @@ const puppeteer = require('puppeteer');
 const argv = require('minimist')(process.argv.slice(2));
 const host = argv.host || process.env.JELLYGATE_HOST || process.env.JELLYGATE_URL || 'http://localhost:8097';
 let cookie = argv.cookie || process.env.SESSION_COOKIE || '';
-const outdir = argv.outdir || path.join(__dirname, '..', 'tmp', 'screenshots');
+const outdir = argv.outdir || path.join(__dirname, '..', 'docs', 'screenshots');
 
 async function ensureOutDir() {
     fs.mkdirSync(outdir, { recursive: true });
@@ -35,12 +35,31 @@ function tryGenerateCookie() {
 
     await ensureOutDir();
 
-    const browser = await puppeteer.launch({ headless: true });
+    const browser = await puppeteer.launch({
+        headless: 'new',
+        protocolTimeout: 60000,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
     try {
         const page = await browser.newPage();
+        page.on('console', msg => console.log('BROWSER LOG:', msg.text()));
+        page.on('pageerror', err => console.error('BROWSER PAGE ERROR:', err.toString()));
+        await page.setViewport({ width: 1440, height: 900 });
         const urlObj = new URL(host);
         const domain = urlObj.hostname;
         const secure = urlObj.protocol === 'https:';
+
+        // First capture the login page (unauthenticated)
+        const loginTarget = new URL('/admin/login', host).toString();
+        console.log('Capturing login page:', loginTarget);
+        await page.goto(loginTarget, { waitUntil: 'networkidle2', timeout: 30000 });
+        try {
+            await page.waitForSelector('form', { timeout: 10000 });
+        } catch (e) {}
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const loginOutPath = path.join(outdir, 'login.png');
+        await page.screenshot({ path: loginOutPath, fullPage: false });
+        console.log('Saved:', loginOutPath);
 
         // Set cookie for the site so we can access admin pages
         await page.setCookie({
@@ -53,8 +72,11 @@ function tryGenerateCookie() {
         });
 
         const pages = [
-            { path: '/admin/login', name: 'login.png', waitFor: 'form' },
-            { path: '/admin/users', name: 'users.png', waitFor: '#users-tbody' },
+            { path: '/admin/', name: 'dashboard.png', waitFor: 'h2', delay: 18000 },
+            { path: '/admin/users', name: 'users.png', waitFor: '#users-tbody', delay: 18000 },
+            { path: '/admin/invitations', name: 'invitations.png', waitFor: 'table', delay: 2000 },
+            { path: '/admin/logs', name: 'logs.png', waitFor: 'table', delay: 2000 },
+            { path: '/admin/settings', name: 'settings.png', waitFor: 'form', delay: 2000 },
         ];
 
         for (const p of pages) {
@@ -68,8 +90,11 @@ function tryGenerateCookie() {
                     // ignore
                 }
             }
+            // Wait for dynamic AJAX content to load and render
+            const waitTime = p.delay || 3500;
+            await new Promise(resolve => setTimeout(resolve, waitTime));
             const outPath = path.join(outdir, p.name);
-            await page.screenshot({ path: outPath, fullPage: true });
+            await page.screenshot({ path: outPath, fullPage: false });
             console.log('Saved:', outPath);
         }
     } finally {

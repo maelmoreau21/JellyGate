@@ -14,7 +14,7 @@ services:
     ports:
       - "${JELLYGATE_PORT:-8097}:8097"
     volumes:
-      - jellygate_data:/data
+      - ./data:/data
     env_file:
       - .env
     environment:

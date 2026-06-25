@@ -36,7 +36,7 @@
         Promise.all([
             JG.api('/admin/api/users'),
             JG.api('/admin/api/invitations'),
-            JG.api('/admin/api/dashboard/stats'),
+            JG.api('/admin/api/users/dashboard/stats'),
         ]).then(([usersRes, invitationsRes, statsRes]) => {
             if (usersRes && usersRes.success) {
                 const users = (usersRes.data && usersRes.data.users) ? usersRes.data.users : (Array.isArray(usersRes.data) ? usersRes.data : []);

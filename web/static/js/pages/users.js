@@ -772,5 +772,14 @@
             }
         });
         document.getElementById('edit-modal')?.addEventListener('click', (e) => { if (e.target.id === 'edit-modal' || e.target.closest('[aria-hidden="true"]')) JG.closeModal('edit-modal'); });
-    else { init(); }
+
+        // Initial load
+        (async () => { await Promise.allSettled([loadUsers(), loadPresets()]); })();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

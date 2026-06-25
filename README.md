@@ -15,6 +15,31 @@
 
 ---
 
+## Screenshots / Aperçu
+
+<p align="center">
+  <img src="docs/screenshots/dashboard.png" width="100%" alt="JellyGate Dashboard">
+</p>
+
+<details>
+  <summary>📸 More Screenshots / Plus de captures d'écran</summary>
+  <br>
+
+  | Login Page | Users Management |
+  | :---: | :---: |
+  | ![Login Page](docs/screenshots/login.png) | ![Users Management](docs/screenshots/users.png) |
+
+  | Invitations Management | Audit Logs |
+  | :---: | :---: |
+  | ![Invitations Management](docs/screenshots/invitations.png) | ![Audit Logs](docs/screenshots/logs.png) |
+
+  | Settings |
+  | :---: |
+  | ![Settings](docs/screenshots/settings.png) |
+</details>
+
+---
+
 ## Installation (Docker, recommended)
 
 Using Docker Compose is the simplest and recommended way to deploy JellyGate. It keeps the stack stable and easy to update.
