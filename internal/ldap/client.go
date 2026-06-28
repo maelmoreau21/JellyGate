@@ -25,6 +25,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 	"unicode/utf16"
 
 	goldap "github.com/go-ldap/ldap/v3"
@@ -79,32 +80,66 @@ var ldapUsernameTokenPattern = regexp.MustCompile(`(?i)\{username\}`)
 
 // Client encapsule la connexion LDAPS à Active Directory.
 type Client struct {
-	cfg config.LDAPConfig
+	cfg    config.LDAPConfig
+	mu     sync.Mutex
+	conn   *goldap.Conn
+	closed bool
 }
 
 // New crée un nouveau client LDAP à partir de la configuration.
-// La connexion n'est pas établie immédiatement — elle est créée à chaque opération
-// pour éviter les problèmes de connexion stale. Chaque opération ouvre,
-// utilise, et ferme proprement la connexion.
 func New(cfg config.LDAPConfig) *Client {
 	return &Client{cfg: cfg}
 }
 
-// TestConnection vérifie la connectivité réseau + bind LDAP.
-func (c *Client) TestConnection() error {
-	conn, err := c.connect()
-	if err != nil {
-		return fmt.Errorf("ldap.TestConnection: %w", err)
+// Close ferme proprement la connexion LDAP persistante.
+func (c *Client) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.closed = true
+	if c.conn != nil {
+		c.conn.Close()
+		c.conn = nil
 	}
-	defer conn.Close()
-	return nil
 }
 
-// ── Connexion ───────────────────────────────────────────────────────────────
+// isConnAlive vérifie si la connexion actuelle est active en faisant une recherche rapide du Root DSE.
+func (c *Client) isConnAlive() bool {
+	if c.conn == nil {
+		return false
+	}
+	searchRequest := goldap.NewSearchRequest(
+		"",
+		goldap.ScopeBaseObject,
+		goldap.NeverDerefAliases,
+		0,
+		0,
+		false,
+		"(objectClass=*)",
+		[]string{"subschemaSubentry"},
+		nil,
+	)
+	_, err := c.conn.Search(searchRequest)
+	return err == nil
+}
 
-// connect établit une connexion LDAPS authentifiée au serveur.
-// L'appelant DOIT appeler conn.Close() après utilisation.
+// connect récupère la connexion existante si elle est valide, ou en établit une nouvelle.
 func (c *Client) connect() (*goldap.Conn, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.closed {
+		return nil, fmt.Errorf("ldap.connect: le client est fermé")
+	}
+
+	if c.isConnAlive() {
+		return c.conn, nil
+	}
+
+	if c.conn != nil {
+		_ = c.conn.Close()
+		c.conn = nil
+	}
+
 	addr := fmt.Sprintf("%s:%d", c.cfg.Host, c.cfg.Port)
 
 	var conn *goldap.Conn
@@ -136,7 +171,17 @@ func (c *Client) connect() (*goldap.Conn, error) {
 		return nil, fmt.Errorf("ldap.connect: échec du bind avec %q: %w", c.cfg.BindDN, err)
 	}
 
-	return conn, nil
+	c.conn = conn
+	return c.conn, nil
+}
+
+// TestConnection vérifie la connectivité réseau + bind LDAP.
+func (c *Client) TestConnection() error {
+	_, err := c.connect()
+	if err != nil {
+		return fmt.Errorf("ldap.TestConnection: %w", err)
+	}
+	return nil
 }
 
 func allowInsecureLDAPSkipVerify() bool {
@@ -162,7 +207,6 @@ func (c *Client) CreateUser(username, displayName, email, password, role string)
 	if err != nil {
 		return "", fmt.Errorf("ldap.CreateUser: %w", err)
 	}
-	defer conn.Close()
 
 	profile := c.detectDirectoryProfile(conn)
 	loginAttr := c.effectiveUsernameAttribute(profile)
@@ -300,7 +344,6 @@ func (c *Client) DeleteUser(userDN string) error {
 	if err != nil {
 		return fmt.Errorf("ldap.DeleteUser: %w", err)
 	}
-	defer conn.Close()
 
 	delReq := goldap.NewDelRequest(userDN, nil)
 	if err := conn.Del(delReq); err != nil {
@@ -333,7 +376,6 @@ func (c *Client) setUserAccountControl(userDN string, uac int) error {
 	if err != nil {
 		return fmt.Errorf("ldap.setUserAccountControl: %w", err)
 	}
-	defer conn.Close()
 
 	modReq := goldap.NewModifyRequest(userDN, nil)
 	modReq.Replace("userAccountControl", []string{fmt.Sprintf("%d", uac)})
@@ -360,7 +402,6 @@ func (c *Client) UpdateUserContact(userDN, email, phone string) error {
 	if err != nil {
 		return fmt.Errorf("ldap.UpdateUserContact: %w", err)
 	}
-	defer conn.Close()
 
 	if err := c.replaceUserAttribute(conn, userDN, "mail", strings.TrimSpace(email)); err != nil {
 		return fmt.Errorf("ldap.UpdateUserContact: echec mise a jour mail: %w", err)
@@ -457,7 +498,6 @@ func (c *Client) ResetPassword(userDN, newPassword string) error {
 	if err != nil {
 		return fmt.Errorf("ldap.ResetPassword: %w", err)
 	}
-	defer conn.Close()
 
 	encodedPassword, err := encodeADPassword(newPassword)
 	if err != nil {
@@ -503,7 +543,6 @@ func (c *Client) FindUser(username string) (*UserEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ldap.FindUser: %w", err)
 	}
-	defer conn.Close()
 
 	searchDN := strings.TrimSpace(c.cfg.BaseDN)
 	profile := c.detectDirectoryProfile(conn)
@@ -587,7 +626,6 @@ func (c *Client) IsUserAdmin(username string, user *UserEntry) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("ldap.IsUserAdmin: %w", err)
 	}
-	defer conn.Close()
 
 	searchDN := strings.TrimSpace(c.cfg.BaseDN)
 	profile := c.detectDirectoryProfile(conn)
@@ -1036,7 +1074,6 @@ func (c *Client) GetGroupMembers(groupDN string) ([]UserEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("ldap.GetGroupMembers: %w", err)
 	}
-	defer conn.Close()
 
 	profile := c.detectDirectoryProfile(conn)
 	searchDN := strings.TrimSpace(c.cfg.BaseDN)
@@ -1364,7 +1401,6 @@ func (c *Client) AddUserToGroup(userDN, groupRef string) error {
 	if err != nil {
 		return fmt.Errorf("ldap.AddUserToGroup: %w", err)
 	}
-	defer conn.Close()
 
 	if err := c.addToGroupByRef(conn, userDN, groupRef); err != nil {
 		return fmt.Errorf("ldap.AddUserToGroup: %w", err)

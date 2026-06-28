@@ -152,23 +152,29 @@ func (h *AdminHandler) countSecurityEvents(category, eventType, since string) in
 		args = append(args, eventType)
 	}
 	var count int
-	_ = h.db.QueryRow("SELECT COUNT(1) FROM security_events WHERE "+strings.Join(where, " AND "), args...).Scan(&count)
+	if err := h.db.QueryRow("SELECT COUNT(1) FROM security_events WHERE "+strings.Join(where, " AND "), args...).Scan(&count); err != nil {
+		slog.Error("AdminHandler: erreur comptage evenements de securite", "error", err)
+	}
 	return count
 }
 
 func (h *AdminHandler) countSecurityDistinctIP(eventType, since string) int {
 	var count int
-	_ = h.db.QueryRow(
+	if err := h.db.QueryRow(
 		`SELECT COUNT(DISTINCT ip) FROM security_events WHERE event_type = ? AND created_at >= ? AND ip IS NOT NULL AND ip <> ''`,
 		eventType,
 		since,
-	).Scan(&count)
+	).Scan(&count); err != nil {
+		slog.Error("AdminHandler: erreur comptage IP distinctes de securite", "error", err)
+	}
 	return count
 }
 
 func (h *AdminHandler) countCriticalUnresolvedEvents() int {
 	var count int
-	_ = h.db.QueryRow(`SELECT COUNT(1) FROM security_events WHERE severity = ? AND resolved = ?`, "critical", false).Scan(&count)
+	if err := h.db.QueryRow(`SELECT COUNT(1) FROM security_events WHERE severity = ? AND resolved = ?`, "critical", false).Scan(&count); err != nil {
+		slog.Error("AdminHandler: erreur comptage evenements critiques non resolus", "error", err)
+	}
 	return count
 }
 
@@ -194,7 +200,9 @@ func (h *AdminHandler) readSecurityEvents(page, limit int, category, severity, s
 	}
 
 	var total int
-	_ = h.db.QueryRow("SELECT COUNT(1) FROM security_events "+whereClause, args...).Scan(&total)
+	if err := h.db.QueryRow("SELECT COUNT(1) FROM security_events "+whereClause, args...).Scan(&total); err != nil {
+		slog.Error("AdminHandler: erreur comptage total evenements de securite", "error", err)
+	}
 
 	offset := (page - 1) * limit
 	queryArgs := append(append([]interface{}{}, args...), limit, offset)

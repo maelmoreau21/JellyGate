@@ -91,9 +91,9 @@ func New(dbCfg config.DatabaseConfig, dataDir, secretKey string) (*DB, error) {
 			}
 		}
 
-		// SQLite: une seule connexion en ecriture.
-		conn.SetMaxOpenConns(1)
-		conn.SetMaxIdleConns(1)
+		// SQLite: augmentation des connexions ouvertes grâce au mode WAL
+		conn.SetMaxOpenConns(10)
+		conn.SetMaxIdleConns(5)
 		conn.SetConnMaxLifetime(0)
 
 	case DialectPostgres:

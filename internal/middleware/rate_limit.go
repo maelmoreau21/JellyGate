@@ -23,18 +23,31 @@ type inMemoryRateLimiter struct {
 }
 
 func newInMemoryRateLimiter(limit int, window time.Duration) *inMemoryRateLimiter {
-	return &inMemoryRateLimiter{
+	limiter := &inMemoryRateLimiter{
 		window:  window,
 		limit:   limit,
 		buckets: make(map[string]*rateBucket),
+	}
+	go limiter.startCleanupLoop()
+	return limiter
+}
+
+func (l *inMemoryRateLimiter) startCleanupLoop() {
+	ticker := time.NewTicker(2 * time.Minute)
+	for now := range ticker.C {
+		l.mu.Lock()
+		for key, b := range l.buckets {
+			if now.After(b.ResetAt.Add(l.window)) {
+				delete(l.buckets, key)
+			}
+		}
+		l.mu.Unlock()
 	}
 }
 
 func (l *inMemoryRateLimiter) allow(key string, now time.Time) (bool, int, time.Time) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-
-	l.cleanupLocked(now)
 
 	b, exists := l.buckets[key]
 	if !exists || now.After(b.ResetAt) {
@@ -53,14 +66,6 @@ func (l *inMemoryRateLimiter) allow(key string, now time.Time) (bool, int, time.
 
 	b.Count++
 	return true, l.limit - b.Count, b.ResetAt
-}
-
-func (l *inMemoryRateLimiter) cleanupLocked(now time.Time) {
-	for key, b := range l.buckets {
-		if now.After(b.ResetAt.Add(l.window)) {
-			delete(l.buckets, key)
-		}
-	}
 }
 
 // RateLimitByIP applique une limitation simple par IP pour les routes sensibles.

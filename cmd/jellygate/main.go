@@ -141,6 +141,9 @@ func main() {
 
 	// Callbacks de rechargement à chaud
 	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
+		if ldClient != nil {
+			ldClient.Close()
+		}
 		if c.Enabled {
 			ldClient = jgldap.New(c)
 			slog.Info("🔄 Client LDAP rechargé", "host", c.Host)
@@ -471,13 +474,28 @@ func main() {
 
 	slog.Info("Signal d'arrêt reçu, arrêt gracieux...", "signal", sig)
 
-	// Laisser 10 secondes pour terminer les requêtes en cours
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	// Annuler le contexte global pour arrêter les routines d'arrière-plan (scheduler, etc.)
+	cancelMain()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	// Laisser 10 secondes pour terminer les requêtes en cours
+	ctxShutdown, cancelShutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelShutdown()
+
+	if err := srv.Shutdown(ctxShutdown); err != nil {
 		slog.Error("Erreur lors de l'arrêt du serveur", "error", err)
-		os.Exit(1)
+	}
+
+	// Fermer proprement le client LDAP
+	if ldClient != nil {
+		ldClient.Close()
+		slog.Info("Client LDAP fermé proprement")
+	}
+
+	// Fermer proprement la base de données
+	if err := db.Close(); err != nil {
+		slog.Error("Erreur lors de la fermeture de la base de données", "error", err)
+	} else {
+		slog.Info("Base de données fermée proprement")
 	}
 
 	slog.Info("✅ JellyGate arrêté proprement")

@@ -13,10 +13,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"html"
 	"html/template"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	gomail "github.com/wneessen/go-mail"
@@ -144,7 +147,7 @@ func (m *Mailer) SendMail(to, subject, templateName string, data interface{}) er
 	msg.SetBodyString(gomail.TypeTextHTML, htmlBody)
 
 	// Ajouter une version texte brut (fallback)
-	// TODO: Générer un texte brut à partir du HTML (strip tags)
+	msg.AddAlternativeString(gomail.TypeTextPlain, stripHTMLTags(htmlBody))
 
 	// ── 3. Envoyer via le client SMTP ───────────────────────────────────
 	client, err := m.newClient()
@@ -203,6 +206,7 @@ func (m *Mailer) SendTemplateString(to, subject, tplString string, data interfac
 	msg.SetMessageID()
 	msg.SetDate()
 	msg.SetBodyString(gomail.TypeTextHTML, htmlBody)
+	msg.AddAlternativeString(gomail.TypeTextPlain, stripHTMLTags(htmlBody))
 
 	// 3. Envoyer
 	client, err := m.newClient()
@@ -243,6 +247,7 @@ func (m *Mailer) SendRawHTML(to, subject, htmlBody string) error {
 	msg.SetMessageID()
 	msg.SetDate()
 	msg.SetBodyString(gomail.TypeTextHTML, htmlBody)
+	msg.AddAlternativeString(gomail.TypeTextPlain, stripHTMLTags(htmlBody))
 
 	client, err := m.newClient()
 	if err != nil {
@@ -325,3 +330,24 @@ func (m *Mailer) renderTemplate(templateName string, data interface{}) (string, 
 
 	return buf.String(), nil
 }
+
+var htmlTagRegex = regexp.MustCompile("<[^>]*>")
+
+func stripHTMLTags(src string) string {
+	s := src
+	// Remplacer les balises <br> et <p> par des sauts de ligne pour un formatage minimal
+	s = regexp.MustCompile(`(?i)<br\s*/?>`).ReplaceAllString(s, "\n")
+	s = regexp.MustCompile(`(?i)</?p\s*/?>`).ReplaceAllString(s, "\n\n")
+
+	// Supprimer toutes les autres balises HTML
+	s = htmlTagRegex.ReplaceAllString(s, "")
+
+	// Décoder les entités HTML (ex: &eacute;, &nbsp;, &lt;)
+	s = html.UnescapeString(s)
+
+	// Remplacer les sauts de lignes multiples par au plus deux sauts de ligne
+	s = regexp.MustCompile(`\n{3,}`).ReplaceAllString(s, "\n\n")
+
+	return strings.TrimSpace(s)
+}
+

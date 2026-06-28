@@ -61,6 +61,7 @@ func (s *Service) Start(ctx context.Context) {
 		defer ticker.Stop()
 		time.Sleep(7 * time.Second)
 		s.runDueTasks()
+		s.runDailyInternalCleanup(time.Now())
 
 		for {
 			select {
@@ -68,13 +69,23 @@ func (s *Service) Start(ctx context.Context) {
 				return
 			case <-ticker.C:
 				s.runDueTasks()
-				// Tâches internes automatiques quotidiennes (vers minuit)
-				if time.Now().Hour() == 0 && time.Now().Minute() == 5 {
-					s.checkExpiringAccounts()
-				}
+				s.runDailyInternalCleanup(time.Now())
 			}
 		}
 	}()
+}
+
+func (s *Service) runDailyInternalCleanup(now time.Time) {
+	todayStr := now.Format("2006-01-02")
+	lastRun, err := s.db.GetSetting("daily_check_last_run")
+	if err == nil && lastRun == todayStr {
+		return
+	}
+
+	slog.Info("Scheduler: execution de checkExpiringAccounts quotidien", "date", todayStr)
+	s.checkExpiringAccounts()
+
+	_ = s.db.SetSetting("daily_check_last_run", todayStr)
 }
 
 func (s *Service) RunTaskNow(taskID int64) error {
@@ -94,9 +105,7 @@ func (s *Service) runDueTasks() {
 	rows, err := s.db.Query(
 		`SELECT id, name, task_type, enabled, hour, minute, payload, last_run_at, created_by, created_at, updated_at
 		 FROM scheduled_tasks
-		 WHERE enabled = TRUE AND hour = ? AND minute = ?`,
-		now.Hour(),
-		now.Minute(),
+		 WHERE enabled = TRUE`,
 	)
 	if err != nil {
 		slog.Error("Scheduler: lecture des taches impossible", "error", err)
@@ -110,9 +119,14 @@ func (s *Service) runDueTasks() {
 			continue
 		}
 
+		scheduledToday := time.Date(now.Year(), now.Month(), now.Day(), task.Hour, task.Minute, 0, 0, now.Location())
+		if now.Before(scheduledToday) {
+			continue
+		}
+
 		if task.LastRunAt != "" {
 			if t, err := parseDateTime(task.LastRunAt); err == nil {
-				if sameLocalDay(t, now) {
+				if sameLocalDay(t, now) || t.After(scheduledToday) {
 					continue
 				}
 			}
@@ -455,7 +469,7 @@ func scanTask(scanner interface {
 func parseDateTime(raw string) (time.Time, error) {
 	formats := []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02T15:04:05"}
 	for _, f := range formats {
-		if t, err := time.Parse(f, raw); err == nil {
+		if t, err := time.ParseInLocation(f, raw, time.Local); err == nil {
 			return t, nil
 		}
 	}

@@ -43,7 +43,6 @@ func CSRFTokenFromContext(ctx context.Context) string {
 func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			nonce, _ := generateCSRFToken()
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -51,16 +50,26 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 			w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
 			w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+
+			if RequestIsHTTPS(r, baseURL) {
+				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			}
+
+			// Optimisation : Pas de génération de nonce CSP pour les fichiers statiques
+			if strings.HasPrefix(r.URL.Path, "/static/") {
+				csp := "default-src 'self'; script-src 'self'; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://flagcdn.com; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+				w.Header().Set("Content-Security-Policy", csp)
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			nonce, _ := generateCSRFToken()
 			csp := "default-src 'self'; script-src 'self'"
 			if strings.TrimSpace(nonce) != "" {
 				csp += " 'nonce-" + nonce + "'"
 			}
 			csp += "; script-src-attr 'none'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://flagcdn.com; connect-src 'self'; worker-src 'self'; manifest-src 'self'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
 			w.Header().Set("Content-Security-Policy", csp)
-
-			if RequestIsHTTPS(r, baseURL) {
-				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
-			}
 
 			ctx := context.WithValue(r.Context(), scriptNonceContextKey{}, strings.TrimSpace(nonce))
 			next.ServeHTTP(w, r.WithContext(ctx))
