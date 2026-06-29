@@ -1302,16 +1302,42 @@ html.dark .glass-card:hover {
 
 html.dark .jg-input {
     background: linear-gradient(135deg, rgba(13, 21, 38, 0.98), rgba(24, 34, 54, 0.95));
+    border-color: rgba(255, 255, 255, 0.22); /* Enhanced contrast for dark mode */
+}
+
+.jg-input:hover {
+    border-color: rgba(15, 23, 42, 0.24);
+}
+
+html.dark .jg-input:hover {
+    border-color: rgba(255, 255, 255, 0.38); /* Subtle border brightness on hover in dark mode */
 }
 
 .jg-input:focus {
     border-color: var(--jg-accent-hover);
-    box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+    box-shadow: 0 0 0 3px var(--jg-focus-ring); /* Cleaned up to use theme variables */
     background: var(--jg-bg-primary);
 }
 
 html.dark .jg-input:focus {
     background: linear-gradient(135deg, rgba(10, 17, 31, 0.98), rgba(15, 118, 110, 0.08));
+    border-color: var(--jg-accent-cyan);
+}
+
+/* Password visibility toggle styling */
+.jg-password-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.jg-password-toggle {
+    color: var(--jg-text-muted);
+    transition: var(--jg-transition);
+}
+
+.jg-password-toggle:hover {
+    color: var(--jg-text);
+    transform: scale(1.05);
 }
 
 .jg-input.is-valid {
