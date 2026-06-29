@@ -5,7 +5,7 @@
 # =============================================================================
 
 # ── Step 1: Go binary compilation ───────────────────────────────────────────
-FROM golang:1.26.3-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 
 # Arguments automatically injected by Docker Buildx for cross-compilation
 ARG TARGETOS=linux
