@@ -1098,21 +1098,7 @@ html:not(.dark) .jg-users-table thead th {
     color: #ffffff !important;
 }
 
-.jg-btn-theme-adaptive {
-    background-color: #111827 !important;
-    color: #ffffff !important;
-}
-.jg-btn-theme-adaptive:hover {
-    background-color: #1f2937 !important;
-}
 
-html.dark .jg-btn-theme-adaptive {
-    background-color: #ffffff !important;
-    color: #111827 !important;
-}
-html.dark .jg-btn-theme-adaptive:hover {
-    background-color: #f3f4f6 !important;
-}
 
 .jg-glass-hover:hover {
     background: rgba(255, 255, 255, 0.05);
