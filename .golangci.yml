@@ -1,0 +1,22 @@
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck     # checks for unchecked errors
+    - gosimple     # simplifies code constructs
+    - govet        # standard go vet checks
+    - ineffassign  # detects ineffectual assignments
+    - staticcheck  # static analysis checks
+    - typecheck    # parses and type-checks code
+    - unused       # checks for unused constants, variables, functions and types
+    - gofmt        # checks if code is gofmt-ed
+    - gosec        # security scanner for Go code
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

@@ -40,8 +40,19 @@ RUN CGO_ENABLED=0 \
 # ── Step 2: Minimal final image ─────────────────────────────────────────────
 FROM postgres:18-alpine
 
-# TLS certificates + utility tools
-RUN apk add --no-cache ca-certificates tzdata wget
+# TLS certificates + utility tools + Postgres server cleanup to minimize image size
+RUN apk add --no-cache ca-certificates tzdata wget \
+    && rm -rf /usr/local/bin/postgres \
+              /usr/local/bin/initdb \
+              /usr/local/bin/pg_ctl \
+              /usr/local/bin/pg_controldata \
+              /usr/local/bin/pg_resetwal \
+              /usr/local/bin/pg_receivewal \
+              /usr/local/bin/pg_recvlogical \
+              /usr/local/bin/pg_waldump \
+              /usr/local/lib/postgresql \
+              /usr/local/share/postgresql \
+              /var/lib/postgresql
 
 # Non-root user for security
 RUN addgroup -S jellygate && adduser -S jellygate -G jellygate
