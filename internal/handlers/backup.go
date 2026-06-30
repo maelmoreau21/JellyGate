@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
+	"mime"
 	"net/http"
 	"os"
 	"strconv"
@@ -91,7 +91,7 @@ func (h *BackupHandler) DownloadBackup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/zip")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", st.Name()))
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": st.Name()}))
 	w.Header().Set("Content-Length", strconv.FormatInt(st.Size(), 10))
 	http.ServeContent(w, r, st.Name(), st.ModTime(), f)
 }

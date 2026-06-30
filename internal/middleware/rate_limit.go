@@ -20,6 +20,7 @@ type inMemoryRateLimiter struct {
 	window  time.Duration
 	limit   int
 	buckets map[string]*rateBucket
+	stopCh  chan struct{}
 }
 
 func newInMemoryRateLimiter(limit int, window time.Duration) *inMemoryRateLimiter {
@@ -27,6 +28,7 @@ func newInMemoryRateLimiter(limit int, window time.Duration) *inMemoryRateLimite
 		window:  window,
 		limit:   limit,
 		buckets: make(map[string]*rateBucket),
+		stopCh:  make(chan struct{}),
 	}
 	go limiter.startCleanupLoop()
 	return limiter
@@ -34,14 +36,30 @@ func newInMemoryRateLimiter(limit int, window time.Duration) *inMemoryRateLimite
 
 func (l *inMemoryRateLimiter) startCleanupLoop() {
 	ticker := time.NewTicker(2 * time.Minute)
-	for now := range ticker.C {
-		l.mu.Lock()
-		for key, b := range l.buckets {
-			if now.After(b.ResetAt.Add(l.window)) {
-				delete(l.buckets, key)
+	defer ticker.Stop()
+	for {
+		select {
+		case now := <-ticker.C:
+			l.mu.Lock()
+			for key, b := range l.buckets {
+				if now.After(b.ResetAt.Add(l.window)) {
+					delete(l.buckets, key)
+				}
 			}
+			l.mu.Unlock()
+		case <-l.stopCh:
+			return
 		}
-		l.mu.Unlock()
+	}
+}
+
+// Stop terminates the cleanup goroutine.
+func (l *inMemoryRateLimiter) Stop() {
+	select {
+	case <-l.stopCh:
+		// already stopped
+	default:
+		close(l.stopCh)
 	}
 }
 

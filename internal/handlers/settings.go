@@ -1143,20 +1143,22 @@ func (h *SettingsHandler) SaveEmailTemplates(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	rawBody, err := io.ReadAll(r.Body)
+	rawBody, err := io.ReadAll(io.LimitReader(r.Body, 2<<20)) // 2 MB max to prevent DoS
 	if err != nil {
+		slog.Warn("Erreur lecture corps SaveEmailTemplates", "error", err)
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
-			Message: "Lecture du corps impossible: " + err.Error(),
+			Message: h.tr(r, "common_bad_request", "Requete invalide"),
 		})
 		return
 	}
 
 	var payload saveEmailTemplatesInput
 	if err := json.Unmarshal(rawBody, &payload); err != nil {
+		slog.Warn("JSON invalide SaveEmailTemplates", "error", err)
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
-			Message: "JSON invalide : " + err.Error(),
+			Message: h.tr(r, "common_bad_request", "Requete invalide"),
 		})
 		return
 	}

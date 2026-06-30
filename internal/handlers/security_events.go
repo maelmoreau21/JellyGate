@@ -10,18 +10,30 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 )
 
+// requestIP extracts the client IP from the request.
+// It only trusts proxy headers (X-Forwarded-For, X-Real-IP) when trustProxy
+// is true. Without this guard, any client can forge these headers to
+// falsify audit logs and potentially bypass IP-based rate limiting.
 func requestIP(r *http.Request) string {
+	return requestIPTrusted(r, false)
+}
+
+func requestIPTrusted(r *http.Request, trustProxy bool) string {
 	if r == nil {
 		return ""
 	}
-	if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
-		parts := strings.Split(forwarded, ",")
-		if len(parts) > 0 {
-			return strings.TrimSpace(parts[0])
+	if trustProxy {
+		if forwarded := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); forwarded != "" {
+			parts := strings.Split(forwarded, ",")
+			if len(parts) > 0 {
+				if ip := strings.TrimSpace(parts[0]); ip != "" {
+					return ip
+				}
+			}
 		}
-	}
-	if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
-		return realIP
+		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
+			return realIP
+		}
 	}
 	host, _, err := net.SplitHostPort(strings.TrimSpace(r.RemoteAddr))
 	if err == nil {

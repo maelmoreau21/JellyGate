@@ -343,7 +343,7 @@ func (c *Client) CreateUser(name, password string) (*User, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("jellyfin.CreateUser: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -371,7 +371,7 @@ func (c *Client) DeleteUser(userID string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("jellyfin.DeleteUser: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -397,11 +397,11 @@ func (c *Client) GetUserImage(userID string) ([]byte, string, error) {
 		if resp.StatusCode == http.StatusNotFound {
 			return nil, "", fmt.Errorf("jellyfin.GetUserImage: image non trouvée (404)")
 		}
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, "", fmt.Errorf("jellyfin.GetUserImage: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20)) // 10 MB max for images
 	if err != nil {
 		return nil, "", fmt.Errorf("jellyfin.GetUserImage: erreur lecture flux: %w", err)
 	}
@@ -435,7 +435,7 @@ func (c *Client) SetUserImage(userID string, contentType string, data []byte) er
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("jellyfin.SetUserImage: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -462,7 +462,7 @@ func (c *Client) SetUserPolicy(userID string, policy Policy) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("jellyfin.SetUserPolicy: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -489,7 +489,7 @@ func (c *Client) SetUserConfiguration(userID string, configuration map[string]in
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("jellyfin.SetUserConfiguration: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -505,7 +505,7 @@ func (c *Client) getDisplayPreferences(userID string) (map[string]interface{}, e
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("jellyfin.GetDisplayPreferences: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -533,7 +533,7 @@ func (c *Client) setDisplayPreferences(userID string, preferences map[string]int
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("jellyfin.SetDisplayPreferences: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -559,7 +559,7 @@ func (c *Client) UpdateUserPassword(userID, currentPassword, newPassword string)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return fmt.Errorf("jellyfin.UpdateUserPassword: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -748,7 +748,7 @@ func (c *Client) GetUser(userID string) (*User, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("jellyfin.GetUser: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -769,7 +769,7 @@ func (c *Client) GetUsers() ([]User, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("jellyfin.GetUsers: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -796,7 +796,7 @@ func (c *Client) GetUsersBatch(ids []string) ([]User, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("jellyfin.GetUsersBatch: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 
@@ -817,7 +817,7 @@ func (c *Client) GetLibraries() ([]Library, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		return nil, fmt.Errorf("jellyfin.GetLibraries: HTTP %d — %s", resp.StatusCode, string(body))
 	}
 

@@ -264,7 +264,7 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 		Expires:  sessionExpiresAt,
 		HttpOnly: true,
 		Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL),
-		SameSite: http.SameSiteLaxMode,
+		SameSite: http.SameSiteStrictMode,
 	})
 
 	if preferredLang := h.resolvePreferredLang(authUserID, authUsername); preferredLang != "" {

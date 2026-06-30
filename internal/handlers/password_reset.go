@@ -320,35 +320,35 @@ func (h *PasswordResetHandler) SubmitReset(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var errors []string
+	var resetErrors []string
 
 	if h.ldClient != nil && user.LdapDN != "" {
 		if err := h.ldClient.ResetPassword(user.LdapDN, password); err != nil {
 			slog.Error("Erreur reset LDAP", "dn", user.LdapDN, "error", err)
-			errors = append(errors, fmt.Sprintf("AD: %s", err.Error()))
+			resetErrors = append(resetErrors, fmt.Sprintf("AD: %s", err.Error()))
 		}
 	}
 
 	if user.JellyfinID != "" {
 		if err := h.jfClient.ResetPassword(user.JellyfinID, password); err != nil {
 			slog.Error("Erreur reset Jellyfin", "jellyfin_id", user.JellyfinID, "error", err)
-			errors = append(errors, fmt.Sprintf("Jellyfin: %s", err.Error()))
+			resetErrors = append(resetErrors, fmt.Sprintf("Jellyfin: %s", err.Error()))
 		}
 	}
 
-	if user.LdapDN != "" && user.JellyfinID != "" && len(errors) == 2 {
-		slog.Error("Reset MDP échoué sur TOUS les services", "username", user.Username, "errors", errors)
+	if user.LdapDN != "" && user.JellyfinID != "" && len(resetErrors) == 2 {
+		slog.Error("Reset MDP échoué sur TOUS les services", "username", user.Username, "errors", resetErrors)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "reset_error_generic", "Error during reset. Please try again or contact the administrator.")})
 		return
 	}
 
-	partial := len(errors) > 0
+	partial := len(resetErrors) > 0
 	_ = h.db.LogAction(
 		fmt.Sprintf("reset.%s", map[bool]string{true: "partial", false: "success"}[partial]),
 		user.Username,
 		"",
 		fmt.Sprintf(`{"user_id":%d,"jellyfin_id":"%s","ldap_dn":"%s","errors":%d}`,
-			user.ID, user.JellyfinID, user.LdapDN, len(errors)),
+			user.ID, user.JellyfinID, user.LdapDN, len(resetErrors)),
 	)
 
 	slog.Info("Réinitialisation MDP terminée", "username", user.Username, "partial", partial)
