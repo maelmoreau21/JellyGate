@@ -350,4 +350,3 @@ func stripHTMLTags(src string) string {
 
 	return strings.TrimSpace(s)
 }
-

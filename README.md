@@ -114,6 +114,7 @@ Open `http://localhost:8097/admin/login` and sign in with your Jellyfin admin ac
 | `JELLYGATE_PORT` | No | `8097` | HTTP port |
 | `JELLYGATE_BASE_URL` | No | `http://localhost:8097` | Public base URL |
 | `JELLYGATE_DATA_DIR` | No | `/data` | Data directory inside the container |
+| `JELLYGATE_TRUST_PROXY_HEADERS` | No | `false` | Trust proxy headers (X-Forwarded-For, etc.) for client IP detection |
 | `JELLYFIN_URL` | Yes | - | Jellyfin URL |
 | `JELLYFIN_API_KEY` | Yes | - | Jellyfin API key |
 | `DB_TYPE` | No | `sqlite` | `sqlite` or `postgres` |

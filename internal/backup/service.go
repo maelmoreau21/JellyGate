@@ -219,13 +219,13 @@ func safeArchiveName(name string) (string, error) {
 }
 
 func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var info BackupInfo
 	if s == nil || s.db == nil {
 		return info, fmt.Errorf("service backup indisponible")
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if err := s.ensureDirs(); err != nil {
 		return info, fmt.Errorf("création des dossiers backup: %w", err)
 	}
@@ -388,12 +388,12 @@ func extractBackupEntry(archivePath, entryName, outputPath string) error {
 }
 
 func (s *Service) RestorePostgresBackup(name string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s == nil || s.db == nil {
 		return fmt.Errorf("service backup indisponible")
 	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if !s.db.IsPostgres() {
 		return fmt.Errorf("restauration postgresql non supportee avec %q", s.db.Driver())
 	}

@@ -258,8 +258,7 @@ func (h *InvitationHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Reque
 	code := chi.URLParam(r, "code")
 	title := h.tr(r, "verify_email_title", "Email verification")
 	statusCode := http.StatusOK
-	heading := h.tr(r, "verify_email_success_heading", "Email verified")
-	message := h.tr(r, "verify_email_success_message", "Your email address has been confirmed. You can now sign in normally.")
+	var heading, message string
 
 	record, _, profile, status, handled, err := h.loadPendingInviteContext(code)
 	if handled {

@@ -75,10 +75,6 @@ func (l *inMemoryRateLimiter) allow(key string, now time.Time) (bool, int, time.
 
 	b.LastSeen = now
 	if b.Count >= l.limit {
-		remaining := int(b.ResetAt.Sub(now).Seconds())
-		if remaining < 0 {
-			remaining = 0
-		}
 		return false, 0, b.ResetAt
 	}
 
