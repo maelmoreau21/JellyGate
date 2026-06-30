@@ -983,6 +983,22 @@ html:not(.dark) .jg-users-table thead th {
     justify-content: center;
 }
 
+/* Hide actions by default on desktop/devices supporting hover, show them on hover/focus with a slide animation */
+@media (hover: hover) and (min-width: 761px) {
+    .jg-users-table tbody tr .jg-row-actions {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(10px);
+        transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .jg-users-table tbody tr:hover .jg-row-actions,
+    .jg-users-table tbody tr:focus-within .jg-row-actions {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
+    }
+}
+
 @media (max-width: 760px) {
     .jg-users-table {
         min-width: 0;
@@ -4223,4 +4239,34 @@ html:not(.dark) .hover\:bg-white:hover {
     font-size: 0.75rem;
     line-height: 1.35;
     margin-top: 0.15rem;
+}
+
+/* ── Stylized Custom Tooltips ─────────────────────────────────────────────────── */
+.jg-tooltip {
+    position: absolute;
+    background: rgba(15, 23, 42, 0.95); /* slate-900 */
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 0.45rem 0.8rem;
+    border-radius: 0.5rem; /* rounded-lg */
+    font-size: 0.725rem;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 10000;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.6);
+    white-space: nowrap;
+    animation: tooltipFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+@keyframes tooltipFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

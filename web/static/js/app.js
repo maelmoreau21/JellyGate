@@ -439,6 +439,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 7. Password visibility toggles
     JG.initPasswordToggles();
+
+    // 8. Dynamic tooltips
+    JG.initTooltips();
 });
 
 // ── Theme toggle ────────────────────────────────────────────────────────────
@@ -482,17 +485,23 @@ JG.initPasswordToggles = function () {
         if (input.dataset.hasPasswordToggle) return;
         input.dataset.hasPasswordToggle = 'true';
 
-        const parent = input.parentElement;
-        if (!parent) return;
+        // Create a wrapper div specifically for the input to ensure the toggle button
+        // is vertically centered relative to the input field, ignoring sibling labels/help text.
+        const wrapper = document.createElement('div');
+        wrapper.className = 'jg-password-wrapper relative w-full';
 
-        // Apply wrapper class and right padding for the button
-        parent.classList.add('jg-password-wrapper');
+        // Insert wrapper before input in DOM
+        input.parentNode.insertBefore(wrapper, input);
+        // Move input inside wrapper
+        wrapper.appendChild(input);
+
+        // Add right padding for the button
         input.classList.add('pr-10');
 
         // Create toggle button
         const button = document.createElement('button');
         button.type = 'button';
-        button.className = 'absolute right-3 top-1/2 -translate-y-1/2 jg-password-toggle focus:outline-none flex items-center justify-center p-1';
+        button.className = 'absolute right-3 top-1/2 -translate-y-1/2 jg-password-toggle focus:outline-none flex items-center justify-center p-1 z-10';
         button.title = 'Afficher le mot de passe';
         button.setAttribute('aria-label', 'Afficher le mot de passe');
 
@@ -511,7 +520,7 @@ JG.initPasswordToggles = function () {
         `;
 
         button.innerHTML = showIcon;
-        parent.appendChild(button);
+        wrapper.appendChild(button);
 
         button.addEventListener('click', (e) => {
             e.preventDefault();
@@ -530,3 +539,94 @@ JG.initPasswordToggles = function () {
         });
     });
 };
+
+// ── Stylized tooltips ────────────────────────────────────────────────────────
+JG.initTooltips = function () {
+    const tooltip = document.createElement('div');
+    tooltip.className = 'jg-tooltip hidden';
+    document.body.appendChild(tooltip);
+
+    let activeTrigger = null;
+
+    // Helper to determine if we should convert the browser's native title
+    function shouldConvertTitle(trigger) {
+        if (!trigger.hasAttribute('title')) return false;
+        
+        // Convert for buttons, links, custom selects trigger, or elements with action classes
+        return trigger.classList.contains('jg-btn') || 
+               trigger.classList.contains('bulk-quick-action') || 
+               trigger.closest('.jg-row-actions') ||
+               trigger.closest('.jg-users-actions') ||
+               trigger.closest('.jg-select-trigger') ||
+               trigger.hasAttribute('data-tooltip-force');
+    }
+
+    document.addEventListener('mouseover', (e) => {
+        let target = e.target.closest('[data-tooltip], [title]');
+        if (!target) {
+            tooltip.classList.add('hidden');
+            activeTrigger = null;
+            return;
+        }
+
+        // Convert title to data-tooltip to avoid default browser styling
+        if (shouldConvertTitle(target)) {
+            target.setAttribute('data-tooltip', target.getAttribute('title'));
+            target.removeAttribute('title');
+        }
+
+        const text = target.getAttribute('data-tooltip');
+        if (!text) {
+            tooltip.classList.add('hidden');
+            activeTrigger = null;
+            return;
+        }
+
+        if (target === activeTrigger) return;
+        activeTrigger = target;
+
+        tooltip.textContent = text;
+        tooltip.classList.remove('hidden');
+
+        // Position the tooltip
+        const rect = target.getBoundingClientRect();
+        const tooltipRect = tooltip.getBoundingClientRect();
+
+        // Center horizontally and position above
+        let top = rect.top + window.scrollY - tooltipRect.height - 8;
+        let left = rect.left + window.scrollX + (rect.width - tooltipRect.width) / 2;
+
+        // Boundary safety checks
+        if (left < 8) left = 8;
+        if (left + tooltipRect.width > window.innerWidth - 8) {
+            left = window.innerWidth - tooltipRect.width - 8;
+        }
+        if (rect.top - tooltipRect.height - 8 < 8) {
+            // Position below if it overflows above the viewport
+            top = rect.bottom + window.scrollY + 8;
+        }
+
+        tooltip.style.top = `${top}px`;
+        tooltip.style.left = `${left}px`;
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const trigger = e.target.closest('[data-tooltip]');
+        if (trigger && trigger === activeTrigger) {
+            tooltip.classList.add('hidden');
+            activeTrigger = null;
+        }
+    });
+
+    // Clean up on scroll or click
+    window.addEventListener('scroll', () => {
+        tooltip.classList.add('hidden');
+        activeTrigger = null;
+    }, { passive: true });
+
+    document.addEventListener('click', () => {
+        tooltip.classList.add('hidden');
+        activeTrigger = null;
+    });
+};
+
