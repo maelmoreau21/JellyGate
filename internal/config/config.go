@@ -406,7 +406,7 @@ var emailTagPattern = regexp.MustCompile(`(?is)<[^>]+>`)
 var emailAnchorPattern = regexp.MustCompile(`(?is)<a\b[^>]*href=(?:"([^"]*)"|'([^']*)'|([^\s>]+))[^>]*>(.*?)</a>`)
 var plainEmailVariablePattern = regexp.MustCompile(`{{\s*\.[A-Za-z0-9_]+\s*}}`)
 
-const defaultEmailLogoPath = "/static/img/logos/jellygate.svg"
+const defaultEmailLogoPath = "/static/img/icons/icon-192.png"
 
 const legacyEmailLogoPath = "/static/img/logos/jellyfin.svg"
 
@@ -414,7 +414,7 @@ const legacyGradientEmailHeader = `
 <div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
 	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dde3ec;border-radius:12px;overflow:hidden;">
 		<tr>
-			<td style="background:linear-gradient(135deg,#22d3ee,#10b981);color:#000000;padding:22px 28px;font-size:20px;font-weight:700;">JellyGate</td>
+			<td style="background:#0ea5e9;background:linear-gradient(135deg,#22d3ee,#10b981);color:#000000;padding:22px 28px;font-size:20px;font-weight:700;">JellyGate</td>
 		</tr>
 		<tr>
 			<td style="padding:24px 28px;color:#0f172a;line-height:1.6;font-size:15px;">
@@ -424,12 +424,12 @@ const defaultEmailCardStyle = `
 <div style="font-family:Segoe UI,Arial,sans-serif;background:#f3f6fb;padding:24px;">
 	<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #dde3ec;border-radius:12px;overflow:hidden;">
 		<tr>
-			<td style="background:linear-gradient(135deg,#22d3ee,#10b981);padding:18px 24px;">
+			<td style="background:#10b981;background:linear-gradient(135deg,#22d3ee,#10b981);padding:18px 24px;">
 				<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
 					<tr>
 						<td style="color:#ffffff;font-size:22px;font-weight:800;letter-spacing:-0.02em;">JellyGate</td>
 						<td align="right">
-							<div style="display:inline-block;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:12px;padding:6px 10px;backdrop-filter:blur(8px);">
+							<div style="display:inline-block;background:#ffffff;background:rgba(255,255,255,0.15);border:1px solid #ffffff;border:1px solid rgba(255,255,255,0.25);border-radius:12px;padding:6px 10px;">
 								<img src="{{.EmailLogoURL}}" alt="JellyGate" style="max-height:24px;width:auto;display:block;">
 							</div>
 						</td>

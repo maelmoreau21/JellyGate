@@ -256,8 +256,16 @@
                 </div>
             </div>
 
-            <div class="jg-drawer-footer">
-                <button id="bulk-preview" class="w-full jg-btn jg-btn-ghost h-12 uppercase tracking-widest font-black border border-white/10">
+            <div class="jg-drawer-footer flex gap-3">
+                <button id="bulk-preview" class="flex-1 jg-btn jg-btn-ghost h-12 uppercase tracking-widest font-black border border-white/10">
+                    {{ .T "users_bulk_preview_button" }}
+                </button>
+                <button id="bulk-apply" class="flex-1 jg-btn jg-btn-primary h-12 uppercase tracking-widest font-black" disabled>
+                    {{ .T "users_apply" }}
+                </button>
+            </div>
+        </div>
+
    {{/* ── Modals ──────────────────────────────────────────────────────────── */}}
 <div id="edit-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title" tabindex="-1">
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" aria-hidden="true"></div>

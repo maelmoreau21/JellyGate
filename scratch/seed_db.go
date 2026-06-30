@@ -42,19 +42,19 @@ func main() {
 
 	// 2. Insérer des utilisateurs
 	users := []struct {
-		jellyfinID        string
-		username          string
-		email             string
-		emailVerified     bool
-		groupName         string
-		invitedBy         string
-		isActive          bool
-		isBanned          bool
-		canInvite         bool
-		preferredLang     string
-		accessExpiresAt   sql.NullTime
-		expiredAt         sql.NullTime
-		createdAt         time.Time
+		jellyfinID      string
+		username        string
+		email           string
+		emailVerified   bool
+		groupName       string
+		invitedBy       string
+		isActive        bool
+		isBanned        bool
+		canInvite       bool
+		preferredLang   string
+		accessExpiresAt sql.NullTime
+		expiredAt       sql.NullTime
+		createdAt       time.Time
 	}{
 		{
 			jellyfinID:    "admin-uuid-1234",

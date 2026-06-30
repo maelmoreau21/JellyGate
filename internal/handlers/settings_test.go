@@ -482,7 +482,7 @@ func TestSettingsHandlerPreviewEmailTemplateUsesJellyGateBranding(t *testing.T) 
 	if !strings.Contains(resp.Data.HTML, "linear-gradient(135deg,#22d3ee,#10b981)") {
 		t.Fatalf("preview should contain restored gradient header")
 	}
-	if !strings.Contains(resp.Data.HTML, "/static/img/logos/jellygate.svg") {
+	if !strings.Contains(resp.Data.HTML, "/static/img/icons/icon-192.png") {
 		t.Fatalf("preview should use JellyGate logo, got %q", resp.Data.HTML)
 	}
 	if !strings.Contains(resp.Data.HTML, "Media Lab") {

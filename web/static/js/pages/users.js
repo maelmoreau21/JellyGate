@@ -48,30 +48,7 @@
             return '<span class="badge badge-success">OK</span>';
         }
 
-        function isExpired(user) {
-            if (Number.isNaN(date.getTime())) return value;
-            return date.toLocaleString();
-        }
 
-        function toDateTimeLocal(value) {
-            if (!value) return '';
-            const date = new Date(value);
-            if (Number.isNaN(date.getTime())) return '';
-            const pad = (n) => `${n}`.padStart(2, '0');
-            return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${date.getHours()}:${pad(date.getMinutes())}`;
-        }
-
-        function userStatusBadge(user) {
-            if (user.is_banned) return `<span class="badge badge-danger">${JG.esc(i18n.statusBanned)}</span>`;
-            if (user.is_active) return `<span class="badge badge-success">${JG.esc(i18n.statusActive)}</span>`;
-            return `<span class="badge badge-warning">${JG.esc(i18n.statusInactive)}</span>`;
-        }
-
-        function jellyfinStatusBadge(user) {
-            if (!user.jellyfin_exists) return `<span class="badge badge-muted">${JG.esc(i18n.jellyfinMissing)}</span>`;
-            if (user.jellyfin_disabled) return `<span class="badge badge-warning">${JG.esc(i18n.jellyfinDisabled)}</span>`;
-            return '<span class="badge badge-success">OK</span>';
-        }
 
         function isExpired(user) {
             if (!user.access_expires_at) return false;

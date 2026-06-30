@@ -92,7 +92,7 @@ func normalizeEmailServerNameData(data map[string]string) {
 func resolveEmailLogoURL(data map[string]string, configuredLogo string) string {
 	logoPath := strings.TrimSpace(configuredLogo)
 	if logoPath == "" {
-		logoPath = "/static/img/logos/jellygate.svg"
+		logoPath = "/static/img/icons/icon-192.png"
 	}
 	if data == nil {
 		return logoPath

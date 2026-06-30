@@ -4,8 +4,8 @@ package main
 
 import (
 	"fmt"
-	"time"
 	"github.com/maelmoreau21/JellyGate/internal/session"
+	"time"
 )
 
 func main() {
