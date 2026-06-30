@@ -30,7 +30,7 @@ func assertModernJellyfinAuth(t *testing.T, r *http.Request, token string) {
 		`Client="JellyGate"`,
 		`Device="Server"`,
 		`DeviceId="jellygate-server"`,
-		`Version="1.4.0"`,
+		`Version="` + config.AppVersion + `"`,
 	}
 	if token != "" {
 		required = append(required, `Token="`+token+`"`)
