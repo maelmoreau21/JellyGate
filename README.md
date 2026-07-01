@@ -15,7 +15,11 @@
 
 ---
 
-## Screenshots / Aperçu
+## Overview
+
+JellyGate centralizes invitations, account creation, password resets, LDAP / Active Directory integration, and administrative workflows for Jellyfin.
+
+## Screenshots
 
 <p align="center">
   <img src="docs/screenshots/dashboard.png" width="100%" alt="JellyGate Dashboard">
@@ -40,7 +44,7 @@
 
 ---
 
-## Installation (Docker, recommended)
+## Installation
 
 Using Docker Compose is the simplest and recommended way to deploy JellyGate. It keeps the stack stable and easy to update.
 
@@ -91,7 +95,7 @@ Open `http://localhost:8097/admin/login` and sign in with your Jellyfin admin ac
 
 ---
 
-## Core features
+## Features
 
 | Area | Details |
 |---|---|
@@ -106,7 +110,7 @@ Open `http://localhost:8097/admin/login` and sign in with your Jellyfin admin ac
 
 ---
 
-## Environment variables
+## Configuration
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
@@ -129,13 +133,13 @@ Optional integrations (URLs + API keys):
 
 ---
 
-## Languages
+## Localization
 
 Language selection is automatic in this order: `lang` cookie > `Accept-Language` header > `default_lang`. A language selector is also available in the UI.
 
 ---
 
-## Development and validation (optional)
+## Development
 
 ```bash
 npm run build:css     # Build Tailwind CSS

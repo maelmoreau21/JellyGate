@@ -1,48 +1,88 @@
-# CLAUDE - Agent Guidelines and JellyGate Project Context
+# JellyGate - Instructions For AI Agents
 <p align="center">
   <img src="../../logo.svg" width="128" height="128" alt="JellyGate Logo">
 </p>
 
 Last updated: 2026-05-26 (Final Version)
 
-Purpose
-- Provide concise, actionable guidance for a Claude assistant working on this repo, and consolidate the product/technical context in a single file.
+Read this document before changing the project.
 
-Core rules
-- **Final Version**: The project is in its final phase. Prioritize stability, performance, and visual consistency.
-- Read and use the "Project Context" section (below) as the authority before any decision, code change, or PR proposal.
-- Discover project conventions first: Go 1.26+, `html/template`, i18n JSON under `web/i18n`, Tailwind CSS (local build via `npm run build:css`).
-- Provide a short plan (3-6 steps) for any non-trivial task and use the TODO tracking tool to keep steps visible.
-- Do not modify the "Project Context" section without explicit approval: propose changes in comments or a PR.
-- "Link, don't embed": link to existing documentation rather than duplicating it.
-- **Docker First**: Docker install is the only officially recommended method for production. Any change impacting deployment must be verified in `docker-compose.yml` and the `Dockerfile`.
-- Preserve i18n compatibility: after any template/label change, check every `web/i18n/*.json` file (10 languages: fr, en, de, es, it, nl, pl, pt-br, ru, zh) and run `go run ./cmd/i18ncheck` when relevant.
+## Canonical Stack
+
+- Backend: Go 1.26+, `net/http`, Chi v5
+- Templates: `html/template`
+- Frontend: HTML, local Tailwind build, vanilla JS, custom CSS
+- Database: SQLite (`modernc.org/sqlite`) or PostgreSQL
+- LDAP: `go-ldap/ldap/v3`
+- Jellyfin: REST API
+- Email: `wneessen/go-mail`
+- Notifications: Discord, Telegram, Matrix
+- CI/CD: GitHub Actions, Docker Buildx, GHCR
+
+## Working Rules
+
+- **Final Version**: the project is in its final phase. Prioritize stability, performance, and visual consistency.
+- Treat the "Project Context" section below as the authority before any decision, code change, or PR proposal.
+- Discover project conventions first, then keep changes aligned with the existing stack.
+- Do not modify the "Project Context" section without explicit approval.
+- Link to existing documentation rather than duplicating it.
+- **Docker First**: Docker is the only officially recommended production path. Verify deployment-impacting changes in `docker-compose.yml` and the `Dockerfile`.
+- Preserve i18n compatibility: after any template or label change, check every `web/i18n/*.json` file and run `go run ./cmd/i18ncheck` when relevant.
 - Recommended local validation: run `go build ./...` and `go test ./...` after Go changes; for CSS, run `npm run build:css`.
-- Encoding: save JSON files as UTF-8 without BOM (important for `zh.json`).
-- Security: never commit secrets in clear text in the repo.
+- Save JSON files as UTF-8 without BOM.
+- Never commit secrets in clear text.
+- Do not commit or push changes unless the user explicitly asks.
 
-- Do not commit or push changes to the repo unless the user explicitly asks. This includes commits, pushes, and tag creation: do not act on the repo without a clear instruction.
+## Project Map
 
-Quick commands
+- `cmd/generate_session/`: secret generation tool
+- `cmd/i18ncheck/`: i18n CI check
+- `cmd/i18ncoverage/`: i18n coverage stats
+- `cmd/jellygate/`: HTTP entrypoint
+- `internal/backup/`: backup / restore
+- `internal/config/`: runtime config and domain structs
+- `internal/database/`: migrations, SQL access, settings
+- `internal/handlers/`: admin/public pages and API
+- `internal/integrations/`: third-party provisioning
+- `internal/jellyfin/`: Jellyfin client
+- `internal/ldap/`: LDAP / AD client
+- `internal/mail/`: SMTP mailer
+- `internal/middleware/`: auth, i18n, security, rate limit
+- `internal/notify/`: webhooks
+- `internal/render/`: rendering + translations
+- `internal/scheduler/`: periodic tasks
+- `internal/session/`: signed cookies
+- `scripts/build-css.js`: Tailwind build
+- `scripts/i18n_inspect.js`: manual i18n audit
+- `scripts/run_screenshots.ps1`: screenshots tool
+- `scripts/screenshots.js`: screenshots engine
+- `web/i18n/`: locale JSON
+- `web/static/`: css, js, favicon
+- `web/templates/`: pages, layouts, emails
+
+## Quick Commands
+
 - `npm run build:css`
 - `go build ./...`
 - `go test ./...`
 - `go run ./cmd/i18ncheck`
 
-Prompt examples (templates)
+## Prompt Examples
+
 - "Before any change, propose a 3-step plan and list the files to edit."
 - "Prepare the proposed diff for a PR, list tests to run, and validation commands."
 - "Check i18n parity for the key 'invite-policy-summary' and propose fixes if keys are missing."
 
-Expected behavior
+## Expected Behavior
+
 - Stay brief, factual, and action-oriented.
 - Ask clarifying questions for any impactful change.
-- Propose PRs/patches when possible and list validation commands.
+- Propose PRs or patches when possible and list validation commands.
 
-Notes
-- This file follows the bootstrap described in `init.prompt.md`: discover conventions, explore the code, generate or merge (prefer links), and iterate with feedback.
+## Notes
 
-If you want additional rules (git hooks, commit conventions, CI checks), tell me and I will add them here.
+- This file follows the bootstrap described in `init.prompt.md`: discover conventions, explore the code, generate or merge, and iterate with feedback.
+- If you want additional rules such as git hooks, commit conventions, or CI checks, add them here.
 
 ---
 
