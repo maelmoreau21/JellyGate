@@ -3,6 +3,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -95,6 +96,7 @@ func New(dbCfg config.DatabaseConfig, dataDir, secretKey string) (*DB, error) {
 		conn.SetMaxOpenConns(10)
 		conn.SetMaxIdleConns(5)
 		conn.SetConnMaxLifetime(0)
+		conn.SetConnMaxIdleTime(5 * time.Minute)
 
 	case DialectPostgres:
 		dsn, err := buildPostgresDSN(dbCfg)
@@ -108,8 +110,9 @@ func New(dbCfg config.DatabaseConfig, dataDir, secretKey string) (*DB, error) {
 		}
 
 		conn.SetMaxOpenConns(25)
-		conn.SetMaxIdleConns(5)
+		conn.SetMaxIdleConns(10)
 		conn.SetConnMaxLifetime(30 * time.Minute)
+		conn.SetConnMaxIdleTime(5 * time.Minute)
 
 	default:
 		return nil, fmt.Errorf("type de base non supporte: %s", driver)
@@ -191,6 +194,11 @@ func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return db.conn.Exec(db.prepareQuery(query), args...)
 }
 
+// ExecContext exécute une requête SQL avec un contexte annulation.
+func (db *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return db.conn.ExecContext(ctx, db.prepareQuery(query), args...)
+}
+
 // Query exécute une requête SELECT en adaptant le dialecte SQL.
 func (db *DB) Query(query string, args ...interface{}) (*Rows, error) {
 	rows, err := db.conn.Query(db.prepareQuery(query), args...)
@@ -203,6 +211,11 @@ func (db *DB) Query(query string, args ...interface{}) (*Rows, error) {
 // QueryRow exécute une requête SELECT avec un seul résultat.
 func (db *DB) QueryRow(query string, args ...interface{}) *Row {
 	return &Row{inner: db.conn.QueryRow(db.prepareQuery(query), args...)}
+}
+
+// QueryRowContext exécute une requête SELECT avec un seul résultat et un contexte.
+func (db *DB) QueryRowContext(ctx context.Context, query string, args ...interface{}) *Row {
+	return &Row{inner: db.conn.QueryRowContext(ctx, db.prepareQuery(query), args...)}
 }
 
 // Begin démarre une transaction SQL adaptée au dialecte actif.

@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -89,7 +90,7 @@ func (c *Client) authenticateByNameAttempt(attempt authenticateByNameAttempt) (*
 		return nil, fmt.Errorf("jellyfin.AuthenticateByName: erreur de serialisation: %w", err)
 	}
 
-	resp, err := c.doRequestWithToken(http.MethodPost, attempt.Path, reqBody, "")
+	resp, err := c.doRequestWithToken(context.Background(), http.MethodPost, attempt.Path, reqBody, "")
 	if err != nil {
 		c.recordAuthAttempt(AuthAttemptSummary{
 			Endpoint:     attempt.Path,
@@ -235,7 +236,7 @@ func (c *Client) getUserWithToken(userID, token string) (*User, error) {
 		return nil, fmt.Errorf("token vide")
 	}
 
-	resp, err := c.doRequestWithToken(http.MethodGet, fmt.Sprintf("/Users/%s", url.PathEscape(userID)), nil, token)
+	resp, err := c.doRequestWithToken(context.Background(), http.MethodGet, fmt.Sprintf("/Users/%s", url.PathEscape(userID)), nil, token)
 	if err != nil {
 		return nil, err
 	}
@@ -252,13 +253,13 @@ func (c *Client) getUserWithToken(userID, token string) (*User, error) {
 	return &user, nil
 }
 
-func (c *Client) doRequestWithToken(method, path string, body []byte, token string) (*http.Response, error) {
+func (c *Client) doRequestWithToken(ctx context.Context, method, path string, body []byte, token string) (*http.Response, error) {
 	var reqBody io.Reader
 	if body != nil {
 		reqBody = bytes.NewReader(body)
 	}
 
-	req, err := http.NewRequest(method, c.baseURL+path, reqBody)
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("erreur de creation de la requete %s %s: %w", method, path, err)
 	}

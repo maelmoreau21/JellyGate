@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -46,6 +47,9 @@ func (l *inMemoryRateLimiter) startCleanupLoop() {
 					delete(l.buckets, key)
 				}
 			}
+			if len(l.buckets) > 20000 {
+				l.buckets = make(map[string]*rateBucket)
+			}
 			l.mu.Unlock()
 		case <-l.stopCh:
 			return
@@ -89,7 +93,8 @@ func RateLimitByIP(limit int, window time.Duration) func(http.Handler) http.Hand
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := clientIP(r)
-			allowed, remaining, resetAt := limiter.allow(ip+"|"+r.URL.Path, time.Now().UTC())
+			key := fmt.Sprintf("%s|%s|%s", ip, strings.TrimSpace(r.UserAgent()), r.URL.Path)
+			allowed, remaining, resetAt := limiter.allow(key, time.Now().UTC())
 
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
 			w.Header().Set("X-RateLimit-Remaining", strconv.Itoa(remaining))

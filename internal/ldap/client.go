@@ -621,6 +621,9 @@ func (c *Client) IsUserAdmin(username string, user *UserEntry) (bool, error) {
 	if adminFilter == "" {
 		return false, nil
 	}
+	if err := validateLDAPFilter(adminFilter); err != nil {
+		return false, fmt.Errorf("ldap.IsUserAdmin: invalid admin filter: %w", err)
+	}
 
 	conn, err := c.connect()
 	if err != nil {
@@ -689,6 +692,79 @@ func normalizeLDAPFilter(filter string) string {
 		return trimmed
 	}
 	return "(" + trimmed + ")"
+}
+
+func validateLDAPFilter(filter string) error {
+	trimmed := strings.TrimSpace(filter)
+	if trimmed == "" {
+		return nil
+	}
+	if strings.Contains(trimmed, "\x00") {
+		return fmt.Errorf("invalid null byte")
+	}
+	if strings.Contains(trimmed, "\n") || strings.Contains(trimmed, "\r") {
+		return fmt.Errorf("invalid control characters")
+	}
+	if strings.Contains(trimmed, "( ") || strings.Contains(trimmed, " )") {
+		return fmt.Errorf("invalid whitespace")
+	}
+	if strings.Count(trimmed, "(") != strings.Count(trimmed, ")") {
+		return fmt.Errorf("unbalanced parentheses")
+	}
+
+	if !strings.HasPrefix(trimmed, "(") {
+		return fmt.Errorf("filter must start with '('")
+	}
+
+	end, err := parseLDAPFilterStructure(trimmed, 0)
+	if err != nil {
+		return err
+	}
+	if end != len(trimmed) {
+		remainder := strings.TrimSpace(trimmed[end:])
+		if remainder != "" {
+			return fmt.Errorf("unexpected trailing content")
+		}
+	}
+	return nil
+}
+
+func parseLDAPFilterStructure(filter string, start int) (int, error) {
+	if start >= len(filter) {
+		return start, fmt.Errorf("empty filter")
+	}
+	if filter[start] != '(' {
+		return start, fmt.Errorf("filter must start with '('")
+	}
+
+	depth := 0
+	for idx := start; idx < len(filter); idx++ {
+		switch filter[idx] {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 {
+				content := strings.TrimSpace(filter[start+1 : idx])
+				if content == "" {
+					return idx + 1, fmt.Errorf("empty filter")
+				}
+				if strings.HasPrefix(content, "&") || strings.HasPrefix(content, "|") || strings.HasPrefix(content, "!") {
+					if len(content) == 1 {
+						return idx + 1, fmt.Errorf("composite filter missing subfilters")
+					}
+					if strings.ContainsRune(content, '*') {
+						return idx + 1, fmt.Errorf("invalid composite filter")
+					}
+				}
+				return idx + 1, nil
+			}
+			if depth < 0 {
+				return idx + 1, fmt.Errorf("unbalanced parentheses")
+			}
+		}
+	}
+	return len(filter), fmt.Errorf("unterminated filter")
 }
 
 func replaceUsernameToken(filter, escapedUsername string) (string, bool) {
@@ -778,9 +854,16 @@ func (c *Client) buildUsernameLookupClause(lookupAttrs []string, escapedUsername
 func (c *Client) buildUserLookupFilter(username, profile string, lookupAttrs []string) string {
 	escapedUsername := goldap.EscapeFilter(strings.TrimSpace(username))
 	usernameClause := c.buildUsernameLookupClause(lookupAttrs, escapedUsername)
+	userObjectClass := c.effectiveUserObjectClass(profile)
 
 	configuredFilter := normalizeLDAPFilter(c.cfg.SearchFilter)
 	if configuredFilter != "" {
+		if err := validateLDAPFilter(configuredFilter); err != nil {
+			if userObjectClass != "" {
+				return fmt.Sprintf("(&(objectClass=%s)%s)", goldap.EscapeFilter(userObjectClass), usernameClause)
+			}
+			return fmt.Sprintf("(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))%s)", usernameClause)
+		}
 		replacedFilter, hasToken := replaceUsernameToken(configuredFilter, escapedUsername)
 		if hasToken {
 			return replacedFilter
@@ -788,7 +871,6 @@ func (c *Client) buildUserLookupFilter(username, profile string, lookupAttrs []s
 		return fmt.Sprintf("(&%s%s)", replacedFilter, usernameClause)
 	}
 
-	userObjectClass := c.effectiveUserObjectClass(profile)
 	if userObjectClass != "" {
 		return fmt.Sprintf("(&(objectClass=%s)%s)", goldap.EscapeFilter(userObjectClass), usernameClause)
 	}

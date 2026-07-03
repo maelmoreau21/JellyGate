@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -116,7 +117,7 @@ func (c *Client) LogDiagnostics() {
 
 func (c *Client) fetchSystemInfo(path, token string) (systemInfoResponse, int, string, error) {
 	var info systemInfoResponse
-	resp, err := c.doRequestWithToken(http.MethodGet, path, nil, token)
+	resp, err := c.doRequestWithToken(context.Background(), http.MethodGet, path, nil, token)
 	if err != nil {
 		return info, 0, "", err
 	}
