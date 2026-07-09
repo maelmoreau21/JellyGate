@@ -1,8 +1,10 @@
 {
   "name": "jellygate",
+  "version": "1.5.0",
   "private": true,
   "license": "MIT",
   "scripts": {
+    "version": "node ./scripts/sync-version.js && git add internal/config/version.go",
     "build:css": "node ./scripts/build-css.js",
     "i18n:validate": "node ./scripts/i18n_validate.js",
     "secrets:check": "node ./scripts/prevent_secrets_commit.js",

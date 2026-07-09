@@ -1,0 +1,45 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Create or Replace Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Get version from package.json
+        id: get_version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create or Recreate GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="v${{ steps.get_version.outputs.VERSION }}"
+          
+          # Check if the release already exists
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            echo "Release $TAG_NAME already exists. Deleting it to recreate..."
+            gh release delete "$TAG_NAME" --yes
+            
+            # Delete the remote git tag to force-recreate it at the current main commit
+            git push origin :refs/tags/"$TAG_NAME" || true
+          fi
+          
+          echo "Creating new release $TAG_NAME..."
+          gh release create "$TAG_NAME" \
+            --target main \
+            --title "$TAG_NAME" \
+            --generate-notes
