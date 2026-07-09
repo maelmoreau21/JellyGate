@@ -93,7 +93,7 @@ func RateLimitByIP(limit int, window time.Duration) func(http.Handler) http.Hand
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ip := clientIP(r)
-			key := fmt.Sprintf("%s|%s|%s", ip, strings.TrimSpace(r.UserAgent()), r.URL.Path)
+			key := fmt.Sprintf("%s|%s", ip, r.URL.Path)
 			allowed, remaining, resetAt := limiter.allow(key, time.Now().UTC())
 
 			w.Header().Set("X-RateLimit-Limit", strconv.Itoa(limit))
