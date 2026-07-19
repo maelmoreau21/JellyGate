@@ -1258,7 +1258,26 @@ func (h *AdminHandler) LogsAPI(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 		csvWriter.Flush()
+		return
 	}
+
+	totalPages := 1
+	if total > 0 {
+		totalPages = int(math.Ceil(float64(total) / float64(limit)))
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: map[string]interface{}{
+			"logs": logs,
+			"meta": map[string]interface{}{
+				"total":       total,
+				"page":        page,
+				"limit":       limit,
+				"total_pages": totalPages,
+			},
+		},
+	})
 }
 
 func extractRequestIDFromDetails(details string) string {
