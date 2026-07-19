@@ -551,7 +551,7 @@ func (s *Service) checkExpiringAccounts() {
 	rows, err := s.db.Query(`
 		SELECT username, access_expires_at 
 		FROM users 
-		WHERE is_active = 1 
+		WHERE is_active = TRUE 
 		  AND access_expires_at IS NOT NULL 
 		  AND date(access_expires_at) = date('now', '+2 days')
 	`)

@@ -93,17 +93,17 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if status == "active" {
-		whereParts = append(whereParts, "is_active = 1 AND is_banned = 0")
+		whereParts = append(whereParts, "is_active = TRUE AND is_banned = FALSE")
 	} else if status == "inactive" {
-		whereParts = append(whereParts, "is_active = 0 AND is_banned = 0")
+		whereParts = append(whereParts, "is_active = FALSE AND is_banned = FALSE")
 	} else if status == "banned" {
-		whereParts = append(whereParts, "is_banned = 1")
+		whereParts = append(whereParts, "is_banned = TRUE")
 	}
 
 	if invite == "enabled" {
-		whereParts = append(whereParts, "can_invite = 1")
+		whereParts = append(whereParts, "can_invite = TRUE")
 	} else if invite == "disabled" {
-		whereParts = append(whereParts, "can_invite = 0")
+		whereParts = append(whereParts, "can_invite = FALSE")
 	}
 
 	if extra == "with-email" {
@@ -137,10 +137,10 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	if err := h.db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&totalGlobal); err != nil {
 		slog.Error("AdminHandler: erreur comptage total utilisateurs", "error", err)
 	}
-	if err := h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE can_invite = 1`).Scan(&invitersCount); err != nil {
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE can_invite = TRUE`).Scan(&invitersCount); err != nil {
 		slog.Error("AdminHandler: erreur comptage inviters", "error", err)
 	}
-	if err := h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_active = 1 AND access_expires_at IS NOT NULL AND access_expires_at > CURRENT_TIMESTAMP`).Scan(&expiringCount); err != nil {
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM users WHERE is_active = TRUE AND access_expires_at IS NOT NULL AND access_expires_at > CURRENT_TIMESTAMP`).Scan(&expiringCount); err != nil {
 		slog.Error("AdminHandler: erreur comptage utilisateurs expirant", "error", err)
 	}
 
@@ -1028,7 +1028,7 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.db.Exec(
 		`INSERT INTO users
 			(jellyfin_id, username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, profile_apply_status, profile_apply_error, profile_applied_at, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, '', ?, datetime('now'), datetime('now'))`,
+		 VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, '', ?, datetime('now'), datetime('now'))`,
 		created.ID,
 		req.Username,
 		req.Email,
@@ -1236,7 +1236,7 @@ func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = h.db.Exec(`UPDATE users SET is_active = 0, is_banned = 1, updated_at = datetime('now') WHERE id = ?`, userID)
+	_, err = h.db.Exec(`UPDATE users SET is_active = FALSE, is_banned = TRUE, updated_at = datetime('now') WHERE id = ?`, userID)
 	if err != nil {
 		slog.Error("Erreur bannissement utilisateur", "id", userID, "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de mise à jour"})
