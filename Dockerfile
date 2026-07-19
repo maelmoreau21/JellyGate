@@ -20,7 +20,7 @@ RUN go mod download && go mod verify
 
 # Frontend dependencies to generate Tailwind locally
 COPY package.json package-lock.json tailwind.config.js ./
-RUN npm ci
+RUN PUPPETEER_SKIP_DOWNLOAD=true npm ci
 
 # Copy the rest of the source code
 COPY . .
