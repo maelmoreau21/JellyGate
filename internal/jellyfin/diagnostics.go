@@ -90,8 +90,34 @@ func (c *Client) Diagnostics() AuthDiagnostics {
 }
 
 // LogDiagnostics writes a safe one-line Jellyfin diagnostic to logs.
+// It retries a few times at startup if Jellyfin is unreachable (common in
+// Docker when JellyGate starts before Jellyfin is fully ready).
 func (c *Client) LogDiagnostics() {
-	diag := c.Diagnostics()
+	const maxRetries = 5
+
+	var diag AuthDiagnostics
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		diag = c.Diagnostics()
+
+		// If public endpoint is reachable (status > 0), no need to retry.
+		if diag.PublicStatus > 0 {
+			break
+		}
+
+		// If it's a connection error and we haven't exhausted retries, wait and retry.
+		if attempt < maxRetries && diag.PublicError != "" {
+			delay := time.Duration(1<<uint(attempt+1)) * time.Second // 2s, 4s, 8s, 16s, 32s
+			slog.Info("Jellyfin non disponible, nouvelle tentative...",
+				"attempt", attempt+1,
+				"max_retries", maxRetries,
+				"retry_in", delay.String(),
+			)
+			time.Sleep(delay)
+			continue
+		}
+		break
+	}
+
 	attrs := []any{
 		"base_url", diag.BaseURL,
 		"api_key_configured", diag.APIKeyConfigured,
