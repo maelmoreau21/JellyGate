@@ -12,19 +12,19 @@ ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 
 WORKDIR /build
-RUN apk add --no-cache nodejs npm
+RUN apk add --no-cache nodejs pnpm
 
 # Copy dependency files first (optimized Docker cache)
 COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 # Frontend dependencies to generate Tailwind locally
-COPY package.json package-lock.json tailwind.config.js ./
-RUN PUPPETEER_SKIP_DOWNLOAD=true npm ci
+COPY package.json pnpm-lock.yaml tailwind.config.js ./
+RUN PUPPETEER_SKIP_DOWNLOAD=true pnpm install --frozen-lockfile
 
 # Copy the rest of the source code
 COPY . .
-RUN npm run build:css
+RUN pnpm run build:css
 
 # Compile the static binary (CGO disabled — SQLite via modernc.org/sqlite)
 # TARGETOS and TARGETARCH are provided by Buildx during multi-arch build

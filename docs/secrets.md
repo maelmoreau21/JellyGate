@@ -47,5 +47,5 @@ On Windows, PowerShell hook (`.githooks/pre-commit.ps1`) is provided and `git co
 
 ## Scripts
 
-- `npm run secrets:check` — locally scan staged files for incriminating `JELLYGATE_SECRET_KEY` / `JELLYFIN_API_KEY` entries.
-- `npm run hooks:install` — convenience script to set `core.hooksPath` to `.githooks` (runs `git config core.hooksPath .githooks`).
+- `pnpm secrets:check` — locally scan staged files for incriminating `JELLYGATE_SECRET_KEY` / `JELLYFIN_API_KEY` entries.
+- `pnpm hooks:install` — convenience script to set `core.hooksPath` to `.githooks` (runs `git config core.hooksPath .githooks`).

@@ -150,7 +150,7 @@ Language selection is automatic in this order: `lang` cookie > `Accept-Language`
 ## Development
 
 ```bash
-npm run build:css     # Build Tailwind CSS
+pnpm build:css        # Build Tailwind CSS
 go build ./...        # Compile check
 go test ./...         # Run tests
 go run ./cmd/i18ncheck # Verify translations
