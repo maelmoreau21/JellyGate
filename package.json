@@ -19,5 +19,10 @@
     "postcss": "^8.5.16",
     "puppeteer": "^25.2.1",
     "tailwindcss": "^4.3.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "puppeteer"
+    ]
   }
 }
