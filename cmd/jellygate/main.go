@@ -35,13 +35,16 @@ import (
 )
 
 func main() {
+	// ── 0. Fuseau horaire global en UTC ─────────────────────────────────────
+	time.Local = time.UTC
+
 	// ── 1. Initialiser le logger structuré ──────────────────────────────────
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	}))
 	slog.SetDefault(logger)
 
-	slog.Info("🚀 Démarrage de JellyGate...")
+	slog.Info("🚀 Démarrage de JellyGate (timezone: UTC)...")
 
 	// ── 2. Charger la configuration ─────────────────────────────────────────
 	cfg, err := config.Load()

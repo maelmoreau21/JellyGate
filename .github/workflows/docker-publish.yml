@@ -66,6 +66,29 @@ jobs:
             # Tag vX.Y.Z → vX.Y.Z
             type=semver,pattern={{version}}
 
+      # ── 5b. Test d'intégration avant publication ─────────────────────────
+      - name: Build local image for validation
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: jellygate:publish-test
+          cache-from: type=gha
+
+      - name: Smoke test container
+        run: |
+          docker run -d \
+            --name jellygate-publish-test \
+            -p 8097:8097 \
+            -e JELLYGATE_SECRET_KEY=12345678901234567890123456789012 \
+            -e JELLYFIN_URL=http://localhost:8096 \
+            -e JELLYFIN_API_KEY=dummykeyforci \
+            jellygate:publish-test
+          
+          sleep 4
+          curl -f http://localhost:8097/health || curl -f http://localhost:8097/
+          docker rm -f jellygate-publish-test || true
+
       # ── 6. Build & Push multi-architecture ──────────────────────────────
       - name: Build and push Docker image
         uses: docker/build-push-action@v7

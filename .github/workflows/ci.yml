@@ -51,3 +51,46 @@ jobs:
         with:
           version: v2.12.2
           only-new-issues: true
+
+  docker-smoke-test:
+    name: Docker Build & Health Check Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Build Docker Image
+        run: docker build -t jellygate:ci-test .
+
+      - name: Run Docker Container
+        run: |
+          docker run -d \
+            --name jellygate-smoke \
+            -p 8097:8097 \
+            -e JELLYGATE_SECRET_KEY=12345678901234567890123456789012 \
+            -e JELLYFIN_URL=http://localhost:8096 \
+            -e JELLYFIN_API_KEY=dummykeyforci \
+            jellygate:ci-test
+
+      - name: Verify HTTP Health Check
+        run: |
+          echo "Attente du démarrage du conteneur..."
+          for i in {1..15}; do
+            if curl -s -f http://localhost:8097/health > /dev/null || curl -s -f http://localhost:8097/ > /dev/null; then
+              echo "✅ Conteneur démarré et répond correctement !"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "❌ Le conteneur n'a pas répondu à temps."
+          exit 1
+
+      - name: Display Container Logs
+        if: always()
+        run: docker logs jellygate-smoke
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f jellygate-smoke || true
+

@@ -158,6 +158,7 @@ func buildPostgresDSN(cfg config.DatabaseConfig) (string, error) {
 	}
 	q := u.Query()
 	q.Set("sslmode", sslMode)
+	q.Set("timezone", "UTC")
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }

@@ -1498,7 +1498,7 @@ func Load() (*Config, error) {
 		TrustProxyHeaders: getEnvBool("JELLYGATE_TRUST_PROXY_HEADERS", false),
 
 		Database: DatabaseConfig{
-			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", "sqlite"))),
+			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", ""))),
 			Host:     strings.TrimSpace(getEnv("DB_HOST", "")),
 			Port:     getEnvInt("DB_PORT", 5432),
 			User:     strings.TrimSpace(getEnv("DB_USER", "")),
@@ -1555,7 +1555,11 @@ func (c *Config) validate() error {
 	}
 
 	if c.Database.Type == "" {
-		c.Database.Type = "sqlite"
+		if c.Database.Host != "" {
+			c.Database.Type = "postgres"
+		} else {
+			c.Database.Type = "sqlite"
+		}
 	}
 	if c.Database.Type != "sqlite" && c.Database.Type != "postgres" {
 		errs = append(errs, "DB_TYPE doit etre 'sqlite' ou 'postgres'")
