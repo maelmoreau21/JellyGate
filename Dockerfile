@@ -19,7 +19,7 @@ COPY go.mod go.sum ./
 RUN go mod download && go mod verify
 
 # Frontend dependencies to generate Tailwind locally
-COPY package.json pnpm-lock.yaml .npmrc* tailwind.config.js ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc* tailwind.config.js ./
 RUN PUPPETEER_SKIP_DOWNLOAD=true pnpm install --frozen-lockfile --config.minimum-release-age=0
 
 # Copy the rest of the source code

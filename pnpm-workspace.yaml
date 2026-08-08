@@ -1,0 +1,8 @@
+# pnpm workspace configuration
+# Not a monorepo — single package at root
+packages: []
+
+# pnpm v10+/v11: Allow puppeteer's install script
+# (skipped via PUPPETEER_SKIP_DOWNLOAD in Docker anyway)
+allowBuilds:
+  puppeteer: true
