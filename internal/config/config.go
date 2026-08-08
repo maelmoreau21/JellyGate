@@ -1490,7 +1490,7 @@ func Load() (*Config, error) {
 		Port:              getEnvInt("JELLYGATE_PORT", 8097),
 		BaseURL:           getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
 		DataDir:           getEnv("JELLYGATE_DATA_DIR", "/data"),
-		SecretKey:         getEnv("JELLYGATE_SECRET", getEnv("JELLYGATE_SECRET_KEY", "")),
+		SecretKey:         getEnv("JELLYGATE_SECRET", ""),
 		TLSCert:           getEnv("JELLYGATE_TLS_CERT", ""),
 		TLSKey:            getEnv("JELLYGATE_TLS_KEY", ""),
 		DefaultLang:       NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
