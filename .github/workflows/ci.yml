@@ -88,9 +88,8 @@ jobs:
 
       - name: Display Container Logs
         if: always()
-        run: docker logs jellygate-smoke
+        run: docker logs jellygate-smoke 2>&1 || true
 
       - name: Cleanup
         if: always()
-        run: docker rm -f jellygate-smoke || true
-
+        run: docker rm -f jellygate-smoke 2>/dev/null || true

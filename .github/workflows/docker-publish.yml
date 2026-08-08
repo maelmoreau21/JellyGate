@@ -1,13 +1,13 @@
 # =============================================================================
-# JellyGate — Docker Publish (Multi-arch)
+# JellyGate — Docker Publish & Integration (Multi-arch)
 # =============================================================================
 #
 # Déclenché sur :
-#   - Push sur main → tag "latest"
+#   - Push / PR sur main & develop
 #   - Nouveau tag vX.Y.Z → tags "vX.Y.Z" et "latest"
 #
 # Compile pour linux/amd64 et linux/arm64 via QEMU + Docker Buildx.
-# Publie sur GitHub Container Registry (ghcr.io).
+# Publie sur GitHub Container Registry (ghcr.io) uniquement lors des push.
 # =============================================================================
 
 name: Docker Publish
@@ -16,7 +16,8 @@ on:
   push:
     branches: [main, develop]
     tags: ['v*.*.*']
-  # Permet de lancer manuellement
+  pull_request:
+    branches: [main, develop]
   workflow_dispatch:
 
 env:
@@ -46,6 +47,7 @@ jobs:
 
       # ── 4. Connexion à GHCR ─────────────────────────────────────────────
       - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
         uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
@@ -59,11 +61,8 @@ jobs:
         with:
           images: ${{ env.IMAGE_NAME }}
           tags: |
-            # Push sur main → latest
             type=raw,value=latest,enable={{is_default_branch}}
-            # Push sur develop → unstable
             type=raw,value=unstable,enable=${{ github.ref == 'refs/heads/develop' }}
-            # Tag vX.Y.Z → vX.Y.Z
             type=semver,pattern={{version}}
 
       # ── 5b. Test d'intégration avant publication ─────────────────────────
@@ -87,14 +86,18 @@ jobs:
           
           sleep 4
           curl -f http://localhost:8097/health || curl -f http://localhost:8097/
-          docker rm -f jellygate-publish-test || true
+          docker rm -f jellygate-publish-test 2>/dev/null || true
 
-      # ── 6. Build & Push multi-architecture ──────────────────────────────
+      - name: Display Container Logs on Failure
+        if: failure()
+        run: docker logs jellygate-publish-test 2>&1 || true
+
+      # ── 6. Build & Push multi-architecture (seulement lors d'un Push) ───
       - name: Build and push Docker image
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: true
+          push: ${{ github.event_name != 'pull_request' }}
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
