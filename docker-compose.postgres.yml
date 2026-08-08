@@ -18,6 +18,7 @@ services:
       - .env
     environment:
       # ── Application ──────────────────────────────────────────────────
+      - TZ=${TZ:-UTC}
       - JELLYGATE_PORT=8097
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
       - JELLYGATE_DATA_DIR=/data
@@ -26,12 +27,13 @@ services:
       - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
       - JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY=${JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY:-false}
       # ── SQL Database (PostgreSQL) ───────────────────────────────────
-      - DB_TYPE=postgres
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER:?❌ POSTGRES_USER is required}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD is required}
-      - DB_NAME=${POSTGRES_DB:-jellygate}
+      # If DB_HOST is set, DB_TYPE=postgres is automatically detected!
+      - DB_TYPE=${DB_TYPE:-postgres}
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-${POSTGRES_USER:?❌ POSTGRES_USER or DB_USER is required}}
+      - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD or DB_PASSWORD is required}}
+      - DB_NAME=${DB_NAME:-${POSTGRES_DB:-jellygate}}
       - DB_SSLMODE=${DB_SSLMODE:-disable}
 
       # ── Jellyfin ─────────────────────────────────────────────────────
@@ -59,13 +61,14 @@ services:
     security_opt:
       - no-new-privileges:true
     environment:
-      - POSTGRES_DB=${POSTGRES_DB:-jellygate}
-      - POSTGRES_USER=${POSTGRES_USER:?❌ POSTGRES_USER is required}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD is required}
+      - POSTGRES_DB=${POSTGRES_DB:-${DB_NAME:-jellygate}}
+      - POSTGRES_USER=${POSTGRES_USER:-${DB_USER:?❌ POSTGRES_USER is required}}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-${DB_PASSWORD:?❌ POSTGRES_PASSWORD is required}}
+      - TZ=${TZ:-UTC}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jellygate} -d ${POSTGRES_DB:-jellygate}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-${DB_USER:-jellygate}} -d ${POSTGRES_DB:-${DB_NAME:-jellygate}}"]
       interval: 10s
       timeout: 5s
       retries: 5

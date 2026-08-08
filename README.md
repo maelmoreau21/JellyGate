@@ -118,13 +118,21 @@ Open `http://localhost:8097/admin/login` and sign in with your Jellyfin admin ac
 | `JELLYGATE_PORT` | No | `8097` | HTTP port |
 | `JELLYGATE_BASE_URL` | No | `http://localhost:8097` | Public base URL |
 | `JELLYGATE_DATA_DIR` | No | `/data` | Data directory inside the container |
+| `TZ` | No | `UTC` | Timezone (JellyGate uses UTC for logs and timestamps) |
 | `JELLYGATE_TRUST_PROXY_HEADERS` | No | `false` | Trust proxy headers (X-Forwarded-For, etc.) for client IP detection |
 | `JELLYFIN_URL` | Yes | - | Jellyfin URL |
 | `JELLYFIN_API_KEY` | Yes | - | Jellyfin API key |
-| `DB_TYPE` | No | `sqlite` | `sqlite` or `postgres` |
+| `DB_TYPE` | No | Auto-detected | `sqlite` or `postgres`. Auto-detects `postgres` if `DB_HOST` is set |
+| `DB_HOST` | If Postgres | - | PostgreSQL server hostname or IP |
+| `DB_PORT` | No | `5432` | PostgreSQL server port |
+| `DB_NAME` | If Postgres | `jellygate` | PostgreSQL database name |
+| `DB_USER` | If Postgres | - | PostgreSQL database username |
+| `DB_PASSWORD` | If Postgres | - | PostgreSQL database password |
+| `DB_SSLMODE` | No | `disable` | PostgreSQL SSL mode (`disable`, `require`, `verify-full`) |
 
 > [!NOTE]
-> LDAP, SMTP, webhooks, and email templates are configured in the admin UI.
+> If you provide `DB_HOST` in your environment, JellyGate automatically switches to `postgres` mode even if `DB_TYPE` is not explicitly set.
+> LDAP, SMTP, webhooks, and email templates are configured directly in the admin UI.
 
 Optional integrations (URLs + API keys):
 - `JELLYSEERR_URL` / `JELLYSEERR_API_KEY`

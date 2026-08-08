@@ -87,7 +87,7 @@ func main() {
 	// ── 3b. Initialiser les clients de service à partir des settings DB ──
 	jfClient := jellyfin.New(cfg.Jellyfin)
 	slog.Info("Client Jellyfin initialisé")
-	jfClient.LogDiagnostics()
+	go jfClient.LogDiagnostics()
 
 	// LDAP (optionnel — chargé depuis la base)
 	ldapCfg, _ := db.GetLDAPConfig()
