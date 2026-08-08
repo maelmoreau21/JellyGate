@@ -6,3 +6,7 @@ packages: []
 # (skipped via PUPPETEER_SKIP_DOWNLOAD in Docker anyway)
 allowBuilds:
   puppeteer: true
+
+# Disable minimum release age policy (pnpm v11 supply chain check)
+# Without this, `pnpm run` commands fail on recently-published transitive deps
+minimumReleaseAge: 0
