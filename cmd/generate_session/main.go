@@ -8,7 +8,7 @@ import (
 )
 
 // main génère une clé secrète aléatoire de 32 octets (64 caractères hex)
-// utilisable pour la variable JELLYGATE_SECRET_KEY.
+// utilisable pour la variable JELLYGATE_SECRET.
 func main() {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {

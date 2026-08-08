@@ -6,7 +6,7 @@ import (
 
 func TestDatabaseTypeAutoDetection(t *testing.T) {
 	t.Run("defaults to sqlite when DB_TYPE and DB_HOST are empty", func(t *testing.T) {
-		t.Setenv("JELLYGATE_SECRET_KEY", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
 		t.Setenv("JELLYFIN_URL", "http://localhost:8096")
 		t.Setenv("JELLYFIN_API_KEY", "dummykey")
 		t.Setenv("DB_TYPE", "")
@@ -22,7 +22,7 @@ func TestDatabaseTypeAutoDetection(t *testing.T) {
 	})
 
 	t.Run("auto detects postgres when DB_HOST is present and DB_TYPE is empty", func(t *testing.T) {
-		t.Setenv("JELLYGATE_SECRET_KEY", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
 		t.Setenv("JELLYFIN_URL", "http://localhost:8096")
 		t.Setenv("JELLYFIN_API_KEY", "dummykey")
 		t.Setenv("DB_TYPE", "")

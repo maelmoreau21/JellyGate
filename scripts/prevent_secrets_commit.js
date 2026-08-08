@@ -16,7 +16,7 @@ const files = listStagedFiles();
 if (!files.length) process.exit(0);
 
 const secrets = [
-  { key: 'JELLYGATE_SECRET_KEY', re: /^JELLYGATE_SECRET_KEY\s*=\s*(.+)$/m },
+  { key: 'JELLYGATE_SECRET', re: /^JELLYGATE_SECRET(?:_KEY)?\s*=\s*(.+)$/m },
   { key: 'JELLYFIN_API_KEY', re: /^JELLYFIN_API_KEY\s*=\s*(.+)$/m }
 ];
 

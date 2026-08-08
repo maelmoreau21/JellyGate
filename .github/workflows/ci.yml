@@ -68,7 +68,7 @@ jobs:
           docker run -d \
             --name jellygate-smoke \
             -p 8097:8097 \
-            -e JELLYGATE_SECRET_KEY=12345678901234567890123456789012 \
+            -e JELLYGATE_SECRET=12345678901234567890123456789012 \
             -e JELLYFIN_URL=http://localhost:8096 \
             -e JELLYFIN_API_KEY=dummykeyforci \
             jellygate:ci-test

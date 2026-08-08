@@ -6,7 +6,7 @@ Do not commit secrets (API keys, private keys, secret tokens) into the repositor
 - Keep real secrets in a local file ignored by Git: ` .env.local` (already in `.gitignore`).
 - Use the provided pre-commit hook to avoid accidentally committing secrets.
 
-## Generating `JELLYGATE_SECRET_KEY`
+## Generating `JELLYGATE_SECRET`
 
 Recommended length: 32 bytes (hex encoded → 64 hex chars).
 
@@ -25,7 +25,7 @@ print(binascii.hexlify(os.urandom(32)).decode())
 PY
 ```
 
-Copy the result into ` .env.local` as `JELLYGATE_SECRET_KEY=<generated>`.
+Copy the result into ` .env.local` as `JELLYGATE_SECRET=<generated>`.
 
 ## Git hooks
 
@@ -47,5 +47,5 @@ On Windows, PowerShell hook (`.githooks/pre-commit.ps1`) is provided and `git co
 
 ## Scripts
 
-- `pnpm secrets:check` — locally scan staged files for incriminating `JELLYGATE_SECRET_KEY` / `JELLYFIN_API_KEY` entries.
+- `pnpm secrets:check` — locally scan staged files for incriminating `JELLYGATE_SECRET` / `JELLYFIN_API_KEY` entries.
 - `pnpm hooks:install` — convenience script to set `core.hooksPath` to `.githooks` (runs `git config core.hooksPath .githooks`).

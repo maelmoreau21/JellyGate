@@ -63,7 +63,7 @@ Edit `.env` with your settings:
 
 ```bash
 # Required: secret key for session signing
-JELLYGATE_SECRET_KEY=generate_a_random_key_here
+JELLYGATE_SECRET=generate_a_random_key_here
 
 # Jellyfin
 JELLYFIN_URL=http://your-jellyfin:8096
@@ -114,10 +114,11 @@ Open `http://localhost:8097/admin/login` and sign in with your Jellyfin admin ac
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
-| `JELLYGATE_SECRET_KEY` | Yes | - | Session signing key (min 32 chars) |
+| `JELLYGATE_SECRET` | Yes | - | Session signing key (min 32 chars) |
 | `JELLYGATE_PORT` | No | `8097` | HTTP port |
 | `JELLYGATE_BASE_URL` | No | `http://localhost:8097` | Public base URL |
 | `JELLYGATE_DATA_DIR` | No | `/data` | Data directory inside the container |
+| `PUID` / `PGID` | No | `1000` | User and Group ID for container permissions (`user: "${PUID}:${PGID}"`) |
 | `TZ` | No | `UTC` | Timezone (JellyGate uses UTC for logs and timestamps) |
 | `JELLYGATE_TRUST_PROXY_HEADERS` | No | `false` | Trust proxy headers (X-Forwarded-For, etc.) for client IP detection |
 | `JELLYFIN_URL` | Yes | - | Jellyfin URL |

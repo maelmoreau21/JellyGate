@@ -1490,7 +1490,7 @@ func Load() (*Config, error) {
 		Port:              getEnvInt("JELLYGATE_PORT", 8097),
 		BaseURL:           getEnv("JELLYGATE_BASE_URL", "http://localhost:8097"),
 		DataDir:           getEnv("JELLYGATE_DATA_DIR", "/data"),
-		SecretKey:         getEnv("JELLYGATE_SECRET_KEY", ""),
+		SecretKey:         getEnv("JELLYGATE_SECRET", getEnv("JELLYGATE_SECRET_KEY", "")),
 		TLSCert:           getEnv("JELLYGATE_TLS_CERT", ""),
 		TLSKey:            getEnv("JELLYGATE_TLS_KEY", ""),
 		DefaultLang:       NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
@@ -1533,9 +1533,9 @@ func (c *Config) validate() error {
 
 	// Application
 	if c.SecretKey == "" {
-		errs = append(errs, "JELLYGATE_SECRET_KEY est requis")
+		errs = append(errs, "JELLYGATE_SECRET est requis")
 	} else if len(c.SecretKey) < 32 {
-		errs = append(errs, "JELLYGATE_SECRET_KEY doit faire au minimum 32 caractères")
+		errs = append(errs, "JELLYGATE_SECRET doit faire au minimum 32 caractères")
 	}
 	if err := validateHTTPURL(c.BaseURL); err != nil {
 		errs = append(errs, "JELLYGATE_BASE_URL doit etre une URL http/https valide: "+err.Error())
