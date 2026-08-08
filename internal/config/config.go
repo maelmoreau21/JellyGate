@@ -1501,9 +1501,9 @@ func Load() (*Config, error) {
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", ""))),
 			Host:     strings.TrimSpace(getEnv("DB_HOST", "")),
 			Port:     getEnvInt("DB_PORT", 5432),
-			User:     strings.TrimSpace(getEnv("DB_USER", "")),
-			Password: getEnv("DB_PASSWORD", ""),
-			Name:     strings.TrimSpace(getEnv("DB_NAME", "jellygate")),
+			User:     strings.TrimSpace(getEnv("DB_USER", getEnv("JELLYGATE_DB_USER", getEnv("POSTGRES_USER", "")))),
+			Password: getEnv("DB_PASSWORD", getEnv("JELLYGATE_DB_PASSWORD", getEnv("POSTGRES_PASSWORD", ""))),
+			Name:     strings.TrimSpace(getEnv("DB_NAME", getEnv("JELLYGATE_DB_NAME", getEnv("POSTGRES_DB", "jellygate")))),
 			SSLMode:  strings.TrimSpace(strings.ToLower(getEnv("DB_SSLMODE", "disable"))),
 		},
 
