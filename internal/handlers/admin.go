@@ -26,6 +26,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
@@ -185,23 +187,25 @@ type BulkUsersActionRequest struct {
 
 // AdminHandler gère les endpoints d'administration.
 type AdminHandler struct {
-	cfg      *config.Config
-	db       *database.DB
-	jfClient *jellyfin.Client
-	ldClient *jgldap.Client
-	mailer   *mail.Mailer
-	renderer *render.Engine
+	cfg        *config.Config
+	db         *database.DB
+	jfClient   *jellyfin.Client
+	ldClient   *jgldap.Client
+	authClient authentik.Client
+	mailer     *mail.Mailer
+	renderer   *render.Engine
 }
 
 // NewAdminHandler crée un nouveau handler d'administration.
-func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
+func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, auth authentik.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
 	return &AdminHandler{
-		cfg:      cfg,
-		db:       db,
-		jfClient: jf,
-		ldClient: ld,
-		mailer:   m,
-		renderer: renderer,
+		cfg:        cfg,
+		db:         db,
+		jfClient:   jf,
+		ldClient:   ld,
+		authClient: auth,
+		mailer:     m,
+		renderer:   renderer,
 	}
 }
 
@@ -1298,6 +1302,61 @@ func extractRequestIDFromDetails(details string) string {
 	return strings.TrimSpace(rest[:end])
 }
 
+// SetUserQuotaRequest payload pour l'ajustement administrateur des quotas.
+type SetUserQuotaRequest struct {
+	CustomQuota *int `json:"custom_quota"`
+	BonusQuota  int  `json:"bonus_quota"`
+	MalusQuota  int  `json:"malus_quota"`
+}
+
+// SetUserQuota permet à un administrateur d'ajuster les quotas d'un parrain.
+func (h *AdminHandler) SetUserQuota(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || userID <= 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID d'utilisateur invalide"})
+		return
+	}
+
+	var req SetUserQuotaRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
+		return
+	}
+
+	if err := h.db.SetUserQuotaOverrides(r.Context(), userID, req.CustomQuota, req.BonusQuota, req.MalusQuota); err != nil {
+		slog.Error("Erreur mise à jour quota utilisateur", "user_id", userID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de données"})
+		return
+	}
+
+	calc, err := h.db.CalculateUserQuota(r.Context(), userID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur calcul quota"})
+		return
+	}
+
+	actor := "system"
+	if sess := session.FromContext(r.Context()); sess != nil {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("user.quota.updated", actor, idStr, fmt.Sprintf(`{"bonus":%d,"malus":%d}`, req.BonusQuota, req.MalusQuota))
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Quota utilisateur mis à jour", Data: calc})
+}
+
+// GetReferrals renvoie l'arbre complet de parrainage pour la vue administrateur.
+func (h *AdminHandler) GetReferrals(w http.ResponseWriter, r *http.Request) {
+	referrals, err := h.db.GetAllReferrals(r.Context())
+	if err != nil {
+		slog.Error("Erreur récupération liste des parrainages", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de données"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: referrals})
+}
+
 // writeJSON écrit une réponse JSON avec le code HTTP donné.
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1306,6 +1365,6 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
-		slog.Error("Erreur d'encodage JSON", "error", err)
+		slog.Error("Erreur encodage JSON", "error", err)
 	}
 }

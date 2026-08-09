@@ -489,6 +489,36 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN preset_id TEXT`) // NEW
 		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN used BOOLEAN NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN authentik_id TEXT`)
+		_, _ = db.conn.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_authentik_id ON users(authentik_id)`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN custom_quota INTEGER`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN bonus_quota INTEGER NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN malus_quota INTEGER NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN invited_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN authentik_invitation_id TEXT`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN authentik_group_id TEXT NOT NULL DEFAULT 'jellyfin-users'`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN accepted_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN activated_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN revoked_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN email TEXT NOT NULL DEFAULT ''`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN created_by_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`)
+		_, _ = db.conn.Exec(`CREATE TABLE IF NOT EXISTS referrals (
+			id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+			sponsor_user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			godchild_user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+			godchild_authentik_id   TEXT,
+			invitation_id           INTEGER REFERENCES invitations(id) ON DELETE SET NULL,
+			status                  TEXT NOT NULL DEFAULT 'pending',
+			accepted_at             DATETIME,
+			activated_at            DATETIME,
+			revoked_at              DATETIME,
+			created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`)
+		_, _ = db.conn.Exec(`CREATE INDEX IF NOT EXISTS idx_referrals_sponsor ON referrals(sponsor_user_id)`)
+		_, _ = db.conn.Exec(`CREATE INDEX IF NOT EXISTS idx_referrals_godchild ON referrals(godchild_user_id)`)
+		_, _ = db.conn.Exec(`CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status)`)
 	} else {
 		// Postgres: on utilise IF NOT EXISTS pour la compatibilité (9.6+)
 		queries := []string{
@@ -522,6 +552,36 @@ func (db *DB) migrate() error {
 			`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS preset_id TEXT`,
 			`ALTER TABLE pending_invite_signups ADD COLUMN IF NOT EXISTS used BOOLEAN NOT NULL DEFAULT FALSE`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS authentik_id TEXT`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_authentik_id ON users(authentik_id)`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_quota INTEGER`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS bonus_quota INTEGER NOT NULL DEFAULT 0`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS malus_quota INTEGER NOT NULL DEFAULT 0`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS authentik_invitation_id TEXT`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS authentik_group_id TEXT NOT NULL DEFAULT 'jellyfin-users'`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`,
+			`CREATE TABLE IF NOT EXISTS referrals (
+				id                      SERIAL PRIMARY KEY,
+				sponsor_user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				godchild_user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+				godchild_authentik_id   TEXT,
+				invitation_id           INTEGER REFERENCES invitations(id) ON DELETE SET NULL,
+				status                  TEXT NOT NULL DEFAULT 'pending',
+				accepted_at             TIMESTAMPTZ,
+				activated_at            TIMESTAMPTZ,
+				revoked_at              TIMESTAMPTZ,
+				created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+			`CREATE INDEX IF NOT EXISTS idx_referrals_sponsor ON referrals(sponsor_user_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_referrals_godchild ON referrals(godchild_user_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status)`,
 		}
 		for _, q := range queries {
 			if _, err := db.conn.Exec(q); err != nil {

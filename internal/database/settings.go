@@ -37,6 +37,7 @@ const (
 	SettingDefaultLang                 = "default_lang"                   // Default language of the server (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
 	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
 	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
+	SettingAuthentikConfig             = "authentik_config"               // JSON: config.AuthentikConfig
 )
 
 // AuthSessionConfig controle la duree des sessions persistantes et la
@@ -231,6 +232,48 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 		return fmt.Errorf("SavePortalLinksConfig marshal: %w", err)
 	}
 	return db.SetSetting(SettingPortalLinks, string(data))
+}
+
+// ── Authentik Config ─────────────────────────────────────────────────────────
+
+// GetAuthentikConfig récupère la configuration Authentik OIDC depuis la base.
+func (db *DB) GetAuthentikConfig() (config.AuthentikConfig, error) {
+	cfg := config.AuthentikConfig{
+		Enabled:    false,
+		UserGroup:  "jellygate-users",
+		AdminGroup: "jellygate-admins",
+	}
+
+	raw, err := db.GetSetting(SettingAuthentikConfig)
+	if err != nil {
+		return cfg, err
+	}
+	if raw == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config Authentik", "error", err)
+		return cfg, nil
+	}
+
+	if cfg.UserGroup == "" {
+		cfg.UserGroup = "jellygate-users"
+	}
+	if cfg.AdminGroup == "" {
+		cfg.AdminGroup = "jellygate-admins"
+	}
+
+	return cfg, nil
+}
+
+// SaveAuthentikConfig sauvegarde la configuration Authentik dans la base.
+func (db *DB) SaveAuthentikConfig(cfg config.AuthentikConfig) error {
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SaveAuthentikConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingAuthentikConfig, string(data))
 }
 
 // ── LDAP Config ─────────────────────────────────────────────────────────────

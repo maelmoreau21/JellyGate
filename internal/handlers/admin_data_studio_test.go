@@ -23,7 +23,7 @@ func newTestAdminDataStudioHandler(t *testing.T) (*AdminHandler, *database.DB) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	return NewAdminHandler(&config.Config{BaseURL: "https://gate.example"}, db, nil, nil, nil, nil), db
+	return NewAdminHandler(&config.Config{BaseURL: "https://gate.example"}, db, nil, nil, nil, nil, nil), db
 }
 
 func decodeAPIData(t *testing.T, rec *httptest.ResponseRecorder) map[string]interface{} {

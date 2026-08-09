@@ -19,6 +19,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/backup"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
@@ -29,6 +30,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
+	"github.com/maelmoreau21/JellyGate/internal/oidc"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/scheduler"
 	"github.com/maelmoreau21/JellyGate/internal/session"
@@ -129,9 +131,36 @@ func main() {
 	slog.Info("Moteur de rendu HTML initialisé")
 
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
-	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, renderEngine)
+	authentikCfg := cfg.Authentik
+	if db != nil {
+		if dbAuthCfg, err := db.GetAuthentikConfig(); err == nil && dbAuthCfg.URL != "" {
+			if authentikCfg.URL == "" {
+				authentikCfg.URL = dbAuthCfg.URL
+			}
+			if authentikCfg.IssuerURL == "" {
+				authentikCfg.IssuerURL = dbAuthCfg.IssuerURL
+			}
+			if authentikCfg.ClientID == "" {
+				authentikCfg.ClientID = dbAuthCfg.ClientID
+			}
+			if authentikCfg.ClientSecret == "" {
+				authentikCfg.ClientSecret = dbAuthCfg.ClientSecret
+			}
+			if authentikCfg.APIToken == "" {
+				authentikCfg.APIToken = dbAuthCfg.APIToken
+			}
+			if dbAuthCfg.Enabled {
+				authentikCfg.Enabled = true
+			}
+		}
+	}
+	oidcClient := oidc.NewClient(authentikCfg)
+	authentikClient := authentik.NewClient(authentikCfg)
+
+	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, oidcClient, authentikClient, renderEngine)
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, provisioner, mailer, notifier, renderEngine)
-	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
+	inviteHandler.SetAuthentikClient(authentikClient)
+	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, authentikClient, mailer, renderEngine)
 	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db, jfClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
@@ -244,6 +273,14 @@ func main() {
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", inviteHandler.VerifyEmailSubmit)
 	})
 
+	// Routes d'authentification OIDC (publiques)
+	r.Route("/auth", func(r chi.Router) {
+		r.Get("/login", authHandler.LoginRedirect)
+		r.Get("/callback", authHandler.Callback)
+		r.Get("/logout", authHandler.Logout)
+		r.Post("/logout", authHandler.Logout)
+	})
+
 	// ── Routes admin (authentification requise) ─────────────────────────────
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(jgmw.EnsureCSRFCookie(cfg.BaseURL))
@@ -336,6 +373,8 @@ func main() {
 					r.Post("/{id}/invite-toggle", adminHandler.ToggleUserInvite)
 					r.Post("/{id}/ban", adminHandler.BanUser)
 					r.Delete("/{id}", adminHandler.DeleteUser)
+					r.Post("/{id}/quota", adminHandler.SetUserQuota)
+					r.Get("/referrals", adminHandler.GetReferrals)
 					r.Post("/{id}/extend", adminHandler.ExtendAccess)
 				})
 

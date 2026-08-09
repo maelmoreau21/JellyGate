@@ -54,11 +54,13 @@ const (
 // Le cookie est signé (HMAC-SHA256) mais pas chiffré — ne jamais y mettre
 // de données sensibles (mots de passe, tokens Jellyfin).
 type Payload struct {
-	UserID   string `json:"uid"` // ID Jellyfin de l'utilisateur
-	Username string `json:"usr"` // Nom d'utilisateur
-	IsAdmin  bool   `json:"adm"` // Est administrateur Jellyfin
-	Exp      int64  `json:"exp"` // Timestamp d'expiration (Unix)
-	Iat      int64  `json:"iat"` // Timestamp de creation (Unix)
+	UserID      string `json:"uid"`           // ID local / Jellyfin de l'utilisateur
+	AuthentikID string `json:"sid,omitempty"` // Claim 'sub' (UUID) Authentik
+	Username    string `json:"usr"`           // Nom d'utilisateur
+	Email       string `json:"eml,omitempty"` // Email synchronisé
+	IsAdmin     bool   `json:"adm"`           // Est administrateur (piloté par groupe OIDC ou legacy)
+	Exp         int64  `json:"exp"`           // Timestamp d'expiration (Unix)
+	Iat         int64  `json:"iat"`           // Timestamp de création (Unix)
 }
 
 // ── Signature et vérification ───────────────────────────────────────────────

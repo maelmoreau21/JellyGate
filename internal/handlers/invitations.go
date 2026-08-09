@@ -13,6 +13,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -26,6 +27,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/integrations"
@@ -106,6 +108,7 @@ type InvitationHandler struct {
 	db          *database.DB
 	jfClient    *jellyfin.Client
 	ldClient    *jgldap.Client
+	authClient  authentik.Client
 	provisioner *integrations.Client
 	mailer      *mail.Mailer
 	notifier    *notify.Notifier
@@ -113,7 +116,7 @@ type InvitationHandler struct {
 	abuse       *inviteAbuseTracker
 }
 
-// NewInvitationHandler crÃƒÂ©e un nouveau handler d'invitations.
+// NewInvitationHandler crée un nouveau handler d'invitations.
 func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, provisioner *integrations.Client, m *mail.Mailer, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
 	return &InvitationHandler{
 		cfg:         cfg,
@@ -128,7 +131,10 @@ func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Clie
 	}
 }
 
-// SetLDAPClient remplace le client LDAP (rechargement ÃƒÂ  chaud).
+// SetAuthentikClient définit le client Authentik.
+func (h *InvitationHandler) SetAuthentikClient(auth authentik.Client) { h.authClient = auth }
+
+// SetLDAPClient remplace le client LDAP (rechargement à chaud).
 func (h *InvitationHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 
 // SetMailer remplace le mailer SMTP (rechargement ÃƒÂ  chaud).
@@ -883,7 +889,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}
 
 	slog.Info("Ã°Å¸â€™Â¾ Ãƒâ€°tape 4/5 : Enregistrement SQLite", "username", form.Username)
-	if err := h.registerUser(form, inv, provisionPlan.EffectiveProfile, jellyfinID, userDN, ldapProvisionRole, emailVerified); err != nil {
+	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, jellyfinID, userDN, ldapProvisionRole, emailVerified); err != nil {
 		slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 4/5 ÃƒÂ©chouÃƒÂ©e : enregistrement SQLite", "username", form.Username, "error", err)
 		slog.Warn("Ã°Å¸â€�â€ž Rollback : suppression Jellyfin + LDAP")
 
@@ -1010,14 +1016,14 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}, nil
 }
 
-// registerUser insÃƒÂ¨re l'utilisateur dans SQLite et incrÃƒÂ©mente le compteur
-// d'utilisation de l'invitation. Les deux opÃƒÂ©rations sont dans une transaction.
-func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, profile jellyfin.InviteProfile, jellyfinID, ldapDN, ldapRole string, emailVerified bool) error {
+// registerUser insère l'utilisateur dans SQLite et incrémente le compteur
+// d'utilisation de l'invitation. Les deux opérations sont dans une transaction.
+func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormData, inv *invitation, profile jellyfin.InviteProfile, jellyfinID, ldapDN, ldapRole string, emailVerified bool) error {
 	tx, err := h.db.Begin()
 	if err != nil {
-		return fmt.Errorf("impossible de dÃƒÂ©marrer la transaction: %w", err)
+		return fmt.Errorf("impossible de démarrer la transaction: %w", err)
 	}
-	defer tx.Rollback() // No-op si Commit() a ÃƒÂ©tÃƒÂ© appelÃƒÂ©
+	defer tx.Rollback() // No-op si Commit() a été appelé
 
 	disableAfterDays := profile.DisableAfterDays
 	if disableAfterDays <= 0 {
@@ -1078,7 +1084,7 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, preferredLang, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID, profileApplyStatus, profileAppliedAt,
 	)
 	if err != nil {
-		return fmt.Errorf("impossible d'insÃƒÂ©rer l'utilisateur %q: %w", form.Username, err)
+		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)
 	}
 
 	// Commit de la transaction
@@ -1086,12 +1092,50 @@ func (h *InvitationHandler) registerUser(form *inviteFormData, inv *invitation, 
 		return fmt.Errorf("impossible de valider la transaction: %w", err)
 	}
 
-	slog.Info("Utilisateur enregistrÃƒÂ© dans SQLite",
+	slog.Info("Utilisateur enregistré dans SQLite",
 		"username", form.Username,
 		"jellyfin_id", jellyfinID,
 		"ldap_dn", ldapDN,
 		"invitation_id", inv.ID,
 	)
+
+	// Post-registration: link Authentik identity and referral tree
+	var newUserID int64
+	_ = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, form.Username).Scan(&newUserID)
+
+	var sponsorUserID int64
+	_ = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, inv.CreatedBy).Scan(&sponsorUserID)
+
+	var authentikID string
+	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
+		authResp, authErr := h.authClient.CreateUser(ctx, authentik.UserCreatePayload{
+			Username: form.Username,
+			Email:    form.Email,
+			IsActive: true,
+		})
+		if authErr == nil && authResp != nil {
+			authentikID = authResp.ID
+			if sponsorUserID > 0 {
+				_, _ = h.db.Exec(`UPDATE users SET authentik_id = ?, invited_by_id = ? WHERE id = ?`, authentikID, sponsorUserID, newUserID)
+			} else {
+				_, _ = h.db.Exec(`UPDATE users SET authentik_id = ? WHERE id = ?`, authentikID, newUserID)
+			}
+		}
+	} else if sponsorUserID > 0 {
+		_, _ = h.db.Exec(`UPDATE users SET invited_by_id = ? WHERE id = ?`, sponsorUserID, newUserID)
+	}
+
+	// Link referral record
+	var referralID int64
+	errRef := h.db.QueryRow(`SELECT id FROM referrals WHERE invitation_id = ? AND status = 'pending' LIMIT 1`, inv.ID).Scan(&referralID)
+	if errRef == nil && referralID > 0 {
+		_ = h.db.UpdateReferralStatus(ctx, referralID, "accepted", &newUserID, authentikID)
+	} else if sponsorUserID > 0 {
+		ref, errCreate := h.db.CreateReferral(ctx, sponsorUserID, inv.ID, form.Email)
+		if errCreate == nil && ref != nil {
+			_ = h.db.UpdateReferralStatus(ctx, ref.ID, "accepted", &newUserID, authentikID)
+		}
+	}
 
 	return nil
 }

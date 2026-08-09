@@ -35,7 +35,7 @@ func TestLoginPageRedirectsWhenSessionCookieValid(t *testing.T) {
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: cookieValue})
 	rec := httptest.NewRecorder()
 
-	NewAuthHandler(&config.Config{SecretKey: secret}, nil, nil, nil).LoginPage(rec, req)
+	NewAuthHandler(&config.Config{SecretKey: secret}, nil, nil, nil, nil, nil).LoginPage(rec, req)
 
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
@@ -65,7 +65,7 @@ func TestAuthHandlerRejectsRevokedSessionCookie(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/admin/login", nil)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: cookieValue})
-	handler := NewAuthHandler(&config.Config{SecretKey: testAuthSecret}, db, nil, nil)
+	handler := NewAuthHandler(&config.Config{SecretKey: testAuthSecret}, db, nil, nil, nil, nil)
 
 	if handler.hasValidSession(req) {
 		t.Fatalf("revoked session should not be accepted")
@@ -385,7 +385,7 @@ func newAuthTestHandler(db *database.DB, jellyfinURL string) *AuthHandler {
 	return NewAuthHandler(&config.Config{
 		BaseURL:   "http://jellygate.local",
 		SecretKey: testAuthSecret,
-	}, db, jfClient, nil)
+	}, db, jfClient, nil, nil, nil)
 }
 
 func newLoginSubmitRequest(username, password string, remember bool) *http.Request {

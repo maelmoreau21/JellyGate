@@ -275,6 +275,20 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Verification quota parrainage JellyGate
+	var sponsorUserID int64
+	_ = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, sess.Username).Scan(&sponsorUserID)
+	if sponsorUserID > 0 {
+		calc, qErr := h.db.CalculateUserQuota(r.Context(), sponsorUserID)
+		if qErr == nil && calc != nil && calc.RemainingQuota <= 0 {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: fmt.Sprintf(h.tr(r, "admin_quota_reached", "Quota d'invitations épuisé (%d/%d)"), calc.UsedQuota, calc.TotalQuota),
+			})
+			return
+		}
+	}
+
 	code, err := generateSecureToken(12)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_invite_gen_failed", "Impossible de generer un code d'invitation")})
@@ -293,8 +307,9 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 
 	var expiresAt interface{}
 	var expiresAtResponse interface{}
+	var resolvedExpiry time.Time
 	if validityDays > 0 {
-		resolvedExpiry := now.AddDate(0, 0, validityDays)
+		resolvedExpiry = now.AddDate(0, 0, validityDays)
 		expiresAt = resolvedExpiry
 		expiresAtResponse = resolvedExpiry.Format(time.RFC3339)
 	}
@@ -322,10 +337,24 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	}
 	profileJSON, _ := json.Marshal(profile)
 
-	_, err = h.db.Exec(`
-		INSERT INTO invitations (code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, profile_id, profile_snapshot, is_temporary, account_duration_days)
-		VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
-		code, "Parrainage de "+sess.Username, maxUses, string(profileJSON), expiresAt, sess.Username,
+	// Invoquer l'API Authentik pour créer une invitation Stage si Authentik est configuré
+	var authentikInvID string
+	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
+		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, resolvedExpiry, map[string]interface{}{
+			"sponsor": sess.Username,
+			"code":    code,
+		})
+		if authErr == nil {
+			authentikInvID = invID
+		} else {
+			slog.Warn("Création token invitation Authentik échouée (fallback local)", "error", authErr)
+		}
+	}
+
+	res, err := h.db.Exec(`
+		INSERT INTO invitations (code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_by_user_id, authentik_invitation_id, profile_id, profile_snapshot, is_temporary, account_duration_days)
+		VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		code, "Parrainage de "+sess.Username, maxUses, string(profileJSON), expiresAt, sess.Username, sponsorUserID, authentikInvID,
 		strings.TrimSpace(strings.ToLower(profile.PresetID)), string(profileJSON), profile.IsTemporary, profile.AccountDurationDays)
 
 	if err != nil {
@@ -334,16 +363,22 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	invitationID, _ := res.LastInsertId()
+	if sponsorUserID > 0 {
+		_, _ = h.db.CreateReferral(r.Context(), sponsorUserID, invitationID, "")
+	}
+
 	_ = h.db.LogAction("invite.created.sponsor", sess.Username, code, fmt.Sprintf(`{"target_preset":"%s","max_uses":%d,"validity_days":%d}`, targetPreset.ID, maxUses, validityDays))
 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_invite_created", "Lien de parrainage créé"), Data: map[string]interface{}{
-		"code":               code,
-		"max_uses":           maxUses,
-		"expires_at":         expiresAtResponse,
-		"target_preset_id":   targetPreset.ID,
-		"target_preset_name": targetPreset.Name,
-		"link_validity_days": validityDays,
-		"invite_url":         strings.TrimRight(requestBaseURL(r), "/") + "/invite/" + code,
+		"code":                    code,
+		"max_uses":                maxUses,
+		"expires_at":              expiresAtResponse,
+		"authentik_invitation_id": authentikInvID,
+		"target_preset_id":        targetPreset.ID,
+		"target_preset_name":      targetPreset.Name,
+		"link_validity_days":      validityDays,
+		"invite_url":              strings.TrimRight(requestBaseURL(r), "/") + "/invite/" + code,
 	}})
 }
 
@@ -393,8 +428,8 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 		presetID  sql.NullString
 	)
 	err := h.db.QueryRow(
-		`SELECT can_invite, preset_id FROM users WHERE jellyfin_id = ?`,
-		sess.UserID,
+		`SELECT can_invite, preset_id FROM users WHERE (jellyfin_id = ? AND jellyfin_id != '') OR CAST(id AS TEXT) = ? OR username = ? LIMIT 1`,
+		sess.UserID, sess.UserID, sess.Username,
 	).Scan(&canInvite, &presetID)
 	if err != nil && err != sql.ErrNoRows {
 		return limits, err
