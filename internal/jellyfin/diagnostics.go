@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -207,9 +206,4 @@ func diagnosticError(err error, detail string) string {
 		return sanitizeHTTPDetail(err.Error())
 	}
 	return ""
-}
-
-func readHTTPDetail(body io.Reader) string {
-	raw, _ := io.ReadAll(io.LimitReader(body, 4096))
-	return strings.TrimSpace(string(raw))
 }

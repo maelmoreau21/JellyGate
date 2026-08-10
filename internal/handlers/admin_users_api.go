@@ -743,29 +743,15 @@ func (h *AdminHandler) applyGroupMappingToUser(rec *adminUserRecord, groupName s
 			return fmt.Errorf("maj preset_id via mapping: %w", err)
 		}
 	}
-
-	// Si c'est un groupe LDAP et que LDAP est activé, on ajoute l'utilisateur au groupe LDAP s'il en manque
-	if mapping.Source == "ldap" && h.ldClient != nil && strings.TrimSpace(rec.LDAPDN) != "" && strings.TrimSpace(mapping.LDAPGroupDN) != "" {
-		if err := h.ldClient.AddUserToGroup(rec.LDAPDN, mapping.LDAPGroupDN); err != nil {
-			return fmt.Errorf("assignation groupe ldap: %w", err)
-		}
-	}
-
 	return nil
 }
 
 func (h *AdminHandler) setUserActiveState(rec *adminUserRecord, newActive bool, actor string) ([]string, error) {
 	var partialErrors []string
 
-	if h.ldClient != nil && rec.LDAPDN != "" {
-		var err error
-		if newActive {
-			err = h.ldClient.EnableUser(rec.LDAPDN)
-		} else {
-			err = h.ldClient.DisableUser(rec.LDAPDN)
-		}
-		if err != nil {
-			partialErrors = append(partialErrors, fmt.Sprintf("LDAP: %s", err.Error()))
+	if h.authClient != nil && rec.AuthentikID.Valid && rec.AuthentikID.String != "" {
+		if err := h.authClient.SetUserActiveStatusByString(context.Background(), rec.AuthentikID.String, newActive); err != nil {
+			partialErrors = append(partialErrors, fmt.Sprintf("Authentik: %s", err.Error()))
 		}
 	}
 
@@ -813,9 +799,11 @@ func (h *AdminHandler) setUserActiveState(rec *adminUserRecord, newActive bool, 
 func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]string, error) {
 	var partialErrors []string
 
-	if h.ldClient != nil && rec.LDAPDN != "" {
-		if err := h.ldClient.DeleteUser(rec.LDAPDN); err != nil {
-			partialErrors = append(partialErrors, fmt.Sprintf("LDAP: %s", err.Error()))
+	if h.authClient != nil && rec.AuthentikID.Valid && rec.AuthentikID.String != "" {
+		if pk, err := strconv.ParseInt(rec.AuthentikID.String, 10, 64); err == nil && pk > 0 {
+			if err := h.authClient.DeleteUser(context.Background(), pk); err != nil {
+				partialErrors = append(partialErrors, fmt.Sprintf("Authentik: %s", err.Error()))
+			}
 		}
 	}
 

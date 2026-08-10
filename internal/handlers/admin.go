@@ -31,7 +31,6 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
@@ -191,30 +190,37 @@ type AdminHandler struct {
 	cfg        *config.Config
 	db         *database.DB
 	jfClient   *jellyfin.Client
-	ldClient   *jgldap.Client
 	authClient authentik.Client
 	mailer     *mail.Mailer
 	renderer   *render.Engine
 }
 
 // NewAdminHandler crée un nouveau handler d'administration.
-func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, auth authentik.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
+func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, auth authentik.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
 	return &AdminHandler{
 		cfg:        cfg,
 		db:         db,
 		jfClient:   jf,
-		ldClient:   ld,
 		authClient: auth,
 		mailer:     m,
 		renderer:   renderer,
 	}
 }
 
-// SetLDAPClient remplace le client LDAP (rechargement à chaud).
-func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
-
 // SetMailer remplace le Mailer SMTP (rechargement à chaud).
 func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
+
+func (h *AdminHandler) tr(r *http.Request, key, fallback string) string {
+	if h.renderer == nil {
+		return fallback
+	}
+	lang := jgmw.LangFromContext(r.Context())
+	value := h.renderer.Translate(lang, key)
+	if value == "["+key+"]" {
+		return fallback
+	}
+	return value
+}
 
 func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, lang, templateKey, templateBody string, emailCfg config.EmailTemplatesConfig, extra map[string]string) error {
 	if rec == nil {
@@ -408,40 +414,6 @@ func normalizePhoneForLDAP(raw string) string {
 	return normalized
 }
 
-func (h *AdminHandler) syncUserContactToLDAP(userID int64) error {
-	if userID <= 0 || h.ldClient == nil {
-		return nil
-	}
-
-	var (
-		ldapDN          sql.NullString
-		email           sql.NullString
-		contactTelegram sql.NullString
-	)
-
-	err := h.db.QueryRow(
-		`SELECT ldap_dn, email, contact_telegram FROM users WHERE id = ?`,
-		userID,
-	).Scan(&ldapDN, &email, &contactTelegram)
-	if err == sql.ErrNoRows {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("lecture contact utilisateur: %w", err)
-	}
-
-	userDN := strings.TrimSpace(ldapDN.String)
-	if userDN == "" {
-		return nil
-	}
-
-	return h.ldClient.UpdateUserContact(
-		userDN,
-		strings.TrimSpace(email.String),
-		normalizePhoneForLDAP(contactTelegram.String),
-	)
-}
-
 // — Background Jobs ———————————————————————————————————————————————————————————————————
 
 // StartExpirationJob lance une routine en arrière-plan qui vérifie périodiquement
@@ -606,7 +578,7 @@ func (h *AdminHandler) runExpirationCheck() {
 
 	// Rechercher les utilisateurs actifs dont access_expires_at est dépassé.
 	rows, err := h.db.Query(`
-		SELECT id, username, email, jellyfin_id, ldap_dn, access_expires_at, expiry_action, expiry_delete_after_days
+		SELECT id, username, email, jellyfin_id, authentik_id, access_expires_at, expiry_action, expiry_delete_after_days
 		FROM users
 		WHERE is_active = TRUE
 		  AND access_expires_at IS NOT NULL
@@ -622,7 +594,7 @@ func (h *AdminHandler) runExpirationCheck() {
 		Username        string
 		Email           string
 		JellyfinID      string
-		LDAPDN          string
+		AuthentikID     sql.NullString
 		ExpiresAt       string
 		ExpiryAction    string
 		DeleteAfterDays int
@@ -631,13 +603,13 @@ func (h *AdminHandler) runExpirationCheck() {
 	usersToProcess := make([]expiredUser, 0)
 	for rows.Next() {
 		var u expiredUser
-		var email, jfID, ldDN, expiresAt, expiryAction sql.NullString
-		if err := rows.Scan(&u.ID, &u.Username, &email, &jfID, &ldDN, &expiresAt, &expiryAction, &u.DeleteAfterDays); err != nil {
+		var email, jfID, authID, expiresAt, expiryAction sql.NullString
+		if err := rows.Scan(&u.ID, &u.Username, &email, &jfID, &authID, &expiresAt, &expiryAction, &u.DeleteAfterDays); err != nil {
 			continue
 		}
 		u.Email = email.String
 		u.JellyfinID = jfID.String
-		u.LDAPDN = ldDN.String
+		u.AuthentikID = authID
 		u.ExpiresAt = expiresAt.String
 		u.ExpiryAction = normalizeExpiryAction(expiryAction.String)
 		usersToProcess = append(usersToProcess, u)
@@ -670,9 +642,9 @@ func (h *AdminHandler) runExpirationCheck() {
 
 		slog.Info("Desactivation automatique de l'utilisateur (Expire)", "user", u.Username, "policy", u.ExpiryAction)
 
-		if h.ldClient != nil && u.LDAPDN != "" {
-			if err := h.ldClient.DisableUser(u.LDAPDN); err != nil {
-				slog.Error("Erreur lors de la desactivation LDAP (Expiration)", "error", err)
+		if h.authClient != nil && u.AuthentikID.Valid && u.AuthentikID.String != "" {
+			if err := h.authClient.SetUserActiveStatusByString(context.Background(), u.AuthentikID.String, false); err != nil {
+				slog.Error("Erreur lors de la desactivation Authentik (Expiration)", "error", err)
 			}
 		}
 
@@ -805,16 +777,13 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Test LDAP (si activé)
-	ldapCfg, _ := h.db.GetLDAPConfig()
-	if ldapCfg.Enabled {
-		client := jgldap.New(ldapCfg)
-		if err := client.TestConnection(); err == nil {
-			health["ldap"] = true
+	// Test Authentik (si activé)
+	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
+		if _, err := h.authClient.ListUsers(r.Context()); err == nil {
+			health["authentik"] = true
+		} else {
+			health["authentik"] = false
 		}
-	} else {
-		// Pas d'erreur si désactivé, on peut mettre true ou le retirer.
-		health["ldap"] = true
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -836,7 +805,6 @@ func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "my_account"
 
 	if err := h.renderer.Render(w, "admin/my_account.html", td); err != nil {

@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -17,7 +18,6 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	"github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
 )
@@ -167,172 +167,89 @@ func (s *Service) cleanupClosedInvitations() error {
 
 func (s *Service) executeTask(task TaskRecord) error {
 	now := time.Now().Format("2006-01-02 15:04:05")
+	_ = now
 
 	switch strings.TrimSpace(task.TaskType) {
-	case "sync_users":
-		if s.jf == nil {
-			return fmt.Errorf("client Jellyfin indisponible")
-		}
-		jfUsers, err := s.jf.GetUsers()
-		if err != nil {
-			return err
-		}
-		added := 0
-		for _, ju := range jfUsers {
-			res, err := s.db.Exec(`INSERT OR IGNORE INTO users (jellyfin_id, username, is_active) VALUES (?, ?, ?)`, ju.ID, ju.Name, !ju.Policy.IsDisabled)
-			if err != nil {
-				continue
-			}
-			if n, _ := res.RowsAffected(); n > 0 {
-				added++
-			}
-		}
-		_ = s.db.LogAction("task.sync_users", "scheduler", task.Name, fmt.Sprintf("%d nouveaux utilisateurs", added))
-
-	case "sync_ldap_users":
-		if s.jf == nil {
-			return fmt.Errorf("client Jellyfin indisponible")
-		}
-		ldapCfg, err := s.db.GetLDAPConfig()
-		if err != nil || !ldapCfg.Enabled {
-			return fmt.Errorf("LDAP non configure ou desactive")
-		}
-		ldapClient := ldap.New(ldapCfg)
-		ldapBaseGroup := resolveLDAPBaseGroup(ldapCfg)
-
-		mappings, err := s.db.GetGroupPolicyMappings()
-		if err != nil {
-			return err
-		}
-
-		presets, err := s.db.GetJellyfinPolicyPresets()
-		if err != nil {
-			return err
-		}
-		presetMap := make(map[string]config.JellyfinPolicyPreset)
-		for _, p := range presets {
-			presetMap[strings.ToLower(p.ID)] = p
-		}
-
-		totalCreated := 0
-		totalUpdated := 0
-		processedLDAPUsers := map[string]struct{}{}
-		for _, m := range mappings {
-			if m.Source != "ldap" || m.LDAPGroupDN == "" {
-				continue
-			}
-
-			members, err := ldapClient.GetGroupMembers(m.LDAPGroupDN)
-			if err != nil {
-				slog.Warn("Scheduler: impossible de lister les membres LDAP", "group", m.LDAPGroupDN, "error", err)
-				continue
-			}
-
-			preset, ok := presetMap[strings.ToLower(m.PolicyPresetID)]
-			if !ok {
-				slog.Warn("Scheduler: preset introuvable pour mapping LDAP", "preset", m.PolicyPresetID)
-				continue
-			}
-
-			for _, member := range members {
-				memberKey := strings.ToLower(strings.TrimSpace(member.Username))
-				if memberKey == "" {
-					continue
-				}
-				if _, alreadyProcessed := processedLDAPUsers[memberKey]; alreadyProcessed {
-					continue
-				}
-				processedLDAPUsers[memberKey] = struct{}{}
-
-				if strings.TrimSpace(member.DN) != "" {
-					if err := ldapClient.AddUserToGroup(member.DN, ldapBaseGroup); err != nil {
-						slog.Warn("Scheduler: impossible d'assurer l'appartenance au groupe LDAP de base", "user", member.Username, "group", ldapBaseGroup, "error", err)
-					}
-				}
-
-				var dbUser struct {
-					ID       int64
-					JFID     string
-					PresetID string
-					LDAPDN   string
-				}
-				err := s.db.QueryRow(`SELECT id, jellyfin_id, preset_id, ldap_dn FROM users WHERE username = ?`, member.Username).Scan(&dbUser.ID, &dbUser.JFID, &dbUser.PresetID, &dbUser.LDAPDN)
-
-				if err == sql.ErrNoRows {
-					mirrorPassword, err := schedulerRandomPassword()
-					if err != nil {
-						slog.Error("Scheduler: impossible de generer le mot de passe miroir Jellyfin", "user", member.Username, "error", err)
-						continue
-					}
-					jfUser, err := s.jf.CreateUser(member.Username, mirrorPassword)
-					if err != nil {
-						slog.Error("Scheduler: echec creation Jellyfin pour utilisateur LDAP", "user", member.Username, "error", err)
-						continue
-					}
-					profileStatus := "applied"
-					profileError := ""
-					var appliedAt interface{} = time.Now()
-					if err := s.applyPresetToJellyfin(jfUser.ID, preset, ldapCfg); err != nil {
-						profileStatus = "failed"
-						profileError = err.Error()
-						appliedAt = nil
-						slog.Warn("Scheduler: echec application preset", "user", member.Username, "error", err)
-					}
-					_, _ = s.db.Exec(`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, preset_id, is_active, profile_apply_status, profile_apply_error, profile_applied_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, jfUser.ID, member.Username, member.Email, member.DN, m.GroupName, preset.ID, !member.IsDisabled, profileStatus, profileError, appliedAt)
-					totalCreated++
-				} else if err == nil {
-					if dbUser.PresetID != preset.ID || dbUser.LDAPDN != member.DN {
-						// Pour un compte existant, la sync LDAP ne force plus les droits Jellyfin.
-						// Elle garde seulement l'association locale; le forçage passe par l'action admin explicite.
-						profileStatus := "pending"
-						profileError := ""
-						var appliedAt interface{}
-						if strings.TrimSpace(dbUser.JFID) != "" {
-							if err := s.applyPresetToJellyfin(dbUser.JFID, preset, ldapCfg); err != nil {
-								profileStatus = "failed"
-								profileError = err.Error()
-							} else {
-								profileStatus = "applied"
-								appliedAt = time.Now()
-							}
-						}
-						_, _ = s.db.Exec(`UPDATE users SET preset_id = ?, ldap_dn = ?, group_name = ?, profile_apply_status = ?, profile_apply_error = ?, profile_applied_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, preset.ID, member.DN, m.GroupName, profileStatus, profileError, appliedAt, dbUser.ID)
-						totalUpdated++
-					}
-				}
-			}
-		}
-		_ = s.db.LogAction("task.sync_ldap_users", "scheduler", task.Name, fmt.Sprintf("%d imports, %d mises a jour", totalCreated, totalUpdated))
-
 	case "cleanup_resets":
 		res, err := s.db.Exec(`DELETE FROM password_resets WHERE used = TRUE OR expires_at < (CURRENT_TIMESTAMP - INTERVAL '24 hours')`)
 		if err != nil {
 			return err
 		}
 		n, _ := res.RowsAffected()
-		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, fmt.Sprintf("%d tokens nettoyes", n))
-
-	case "dispatch_campaigns":
-		_, _ = s.db.Exec(`UPDATE scheduled_tasks SET enabled = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, task.ID)
-		_ = s.db.LogAction("task.dispatch_campaigns.disabled", "scheduler", task.Name, "Type de tache retire avec la suppression de la messagerie")
+		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, fmt.Sprintf("%d jetons nettoyés", n))
 
 	case "create_backup":
 		if s.backup == nil {
-			return fmt.Errorf("service backup indisponible")
+			return fmt.Errorf("service de backup indisponible")
 		}
-		if _, err := s.backup.CreateBackup("automation"); err != nil {
+		path, err := s.backup.CreateBackup("scheduled")
+		if err != nil {
 			return err
 		}
-		backupCfg, _ := s.db.GetBackupConfig()
-		_ = s.backup.ApplyRetention(backupCfg.RetentionCount)
-		_ = s.db.LogAction("task.create_backup", "scheduler", task.Name, "Sauvegarde executee")
+		_ = s.db.LogAction("task.create_backup", "scheduler", task.Name, fmt.Sprintf("Sauvegarde créée: %s", path))
+
+	case "send_broadcast":
+		payload := strings.TrimSpace(task.Payload)
+		if payload == "" {
+			return fmt.Errorf("payload de message vide pour broadcast")
+		}
+		var msg struct {
+			Title          string   `json:"title"`
+			Content        string   `json:"content"`
+			Type           string   `json:"type"`
+			TargetAudience string   `json:"target_audience"`
+			TargetPresetID string   `json:"target_preset_id"`
+			Channels       []string `json:"channels"`
+		}
+		if err := json.Unmarshal([]byte(payload), &msg); err != nil {
+			return fmt.Errorf("payload JSON invalide: %w", err)
+		}
+		targetPresetID := strings.TrimSpace(strings.ToLower(msg.TargetPresetID))
+
+		rows, err := s.db.Query(`SELECT username, email, is_active, can_invite, COALESCE(preset_id, '') FROM users`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		sentCount := 0
+		for rows.Next() {
+			var username, email, userPresetID string
+			var isActive, canInvite bool
+			if err := rows.Scan(&username, &email, &isActive, &canInvite, &userPresetID); err != nil {
+				continue
+			}
+			if !matchesAudience(msg.TargetAudience, isActive, canInvite) {
+				continue
+			}
+			if targetPresetID != "" && !strings.EqualFold(strings.TrimSpace(userPresetID), targetPresetID) {
+				continue
+			}
+
+			_, _ = s.db.Exec(`INSERT INTO user_messages (username, title, content, type, target_preset_id, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`, username, msg.Title, msg.Content, msg.Type, targetPresetID)
+			sentCount++
+		}
+		_ = s.db.LogAction("task.send_broadcast", "scheduler", task.Name, fmt.Sprintf("Message diffusé à %d utilisateur(s)", sentCount))
 
 	default:
-		return fmt.Errorf("type de tache non supporte: %s", task.TaskType)
+		slog.Warn("Scheduler: type de tâche inconnu ou désactivé", "type", task.TaskType)
 	}
 
-	_, err := s.db.Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, now, task.ID)
-	return err
+	_, _ = s.db.Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = ? WHERE id = ?`, now, now, task.ID)
+	return nil
+}
+
+func matchesAudience(targetAudience string, isActive, canInvite bool) bool {
+	switch strings.ToLower(strings.TrimSpace(targetAudience)) {
+	case "active", "active_users":
+		return isActive
+	case "inactive", "inactive_users":
+		return !isActive
+	case "sponsors", "inviters":
+		return canInvite
+	default:
+		return true
+	}
 }
 
 func (s *Service) dispatchCampaignMessages() error {

@@ -74,8 +74,8 @@ func TestLDAPPageRedirectsToSettingsWhenDisabled(t *testing.T) {
 	if rec.Code != http.StatusSeeOther {
 		t.Fatalf("LDAPPage status = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
-	if got := rec.Header().Get("Location"); got != "/admin/settings#ldap" {
-		t.Fatalf("LDAPPage redirect = %q, want /admin/settings#ldap", got)
+	if got := rec.Header().Get("Location"); got != "/admin/settings" {
+		t.Fatalf("LDAPPage redirect = %q, want /admin/settings", got)
 	}
 }
 

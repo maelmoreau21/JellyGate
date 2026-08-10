@@ -169,7 +169,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	newEmail := strings.TrimSpace(currentEmail.String)
 	newPendingEmail := strings.TrimSpace(currentPending.String)
 	newEmailVerified := emailVerified
-	shouldSendVerification := false
 	if req.Email != nil {
 		requestedEmail := strings.TrimSpace(*req.Email)
 		if requestedEmail != "" {
@@ -186,12 +185,8 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 			newEmailVerified = false
 		case strings.EqualFold(requestedEmail, newEmail):
 			newPendingEmail = ""
-			if !emailVerified {
-				shouldSendVerification = true
-			}
 		default:
 			newPendingEmail = requestedEmail
-			shouldSendVerification = true
 		}
 	}
 	newDiscord := strings.TrimSpace(currentDiscord.String)
@@ -274,19 +269,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	message := h.tr(r, "admin_profile_updated", "Profile updated")
-	if shouldSendVerification {
-		if err := sendEmailVerification(r, h.cfg, h.db, h.mailer, userID, true); err != nil {
-			slog.Error("Erreur envoi verification email apres mise a jour profil", "user_id", userID, "error", err)
-			message = h.tr(r, "admin_profile_updated_email_failed", "Profile updated, but verification email could not be sent")
-		} else {
-			message = h.tr(r, "admin_profile_updated_email_sent", "Profile updated, verification email sent")
-		}
-	}
-
-	if err := h.syncUserContactToLDAP(userID); err != nil {
-		slog.Warn("Synchronisation LDAP du profil partielle", "user_id", userID, "error", err)
-		message += " (LDAP sync pending)"
-	}
 
 	if req.PreferredLang != nil {
 		if strings.TrimSpace(newPreferredLang) == "" {
@@ -413,37 +395,12 @@ func isAllowedAvatarContentType(contentType string) bool {
 	}
 }
 
-// UpdateMyPassword change le mot de passe de l'utilisateur sur Jellyfin.
+// UpdateMyPassword informe l'utilisateur que la gestion du mot de passe est déléguée à Authentik SSO.
 func (h *AdminHandler) UpdateMyPassword(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin indisponible")})
-		return
-	}
-
-	var req struct {
-		CurrentPassword string `json:"current_password"`
-		NewPassword     string `json:"new_password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_invalid_json", "Payload JSON invalide")})
-		return
-	}
-
-	if req.NewPassword == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_password_required", "Le nouveau mot de passe est obligatoire")})
-		return
-	}
-
-	if err := h.jfClient.UpdateUserPassword(sess.UserID, req.CurrentPassword, req.NewPassword); err != nil {
-		slog.Warn("Échec changement mot de passe", "username", sess.Username, "error", err)
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_password_failed", "Échec : ") + err.Error()})
-		return
-	}
-
-	_ = h.db.LogAction("user.password.updated", sess.Username, sess.Username, "Changement de mot de passe")
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_password_updated", "Mot de passe mis à jour avec succès")})
+	writeJSON(w, http.StatusBadRequest, APIResponse{
+		Success: false,
+		Message: h.tr(r, "admin_password_managed_by_authentik", "La gestion du mot de passe s'effectue directement sur le portail Authentik."),
+	})
 }
 
 // ResendEmailVerification renvoie un code de vérification à l'utilisateur connecté.
@@ -463,28 +420,8 @@ func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if emailVerified && pendingEmail == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_email_already_verified", "Votre email est déjà vérifié")})
-		return
-	}
-
-	targetEmail := email
-	usePending := false
-	if pendingEmail != "" {
-		targetEmail = pendingEmail
-		usePending = true
-	}
-
-	if targetEmail == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_email_not_set", "Aucune adresse email configurée")})
-		return
-	}
-
-	if err := sendEmailVerification(r, h.cfg, h.db, h.mailer, id, usePending); err != nil {
-		slog.Error("Erreur renvoi verification email", "user_id", id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_mail_send_failed", "Erreur lors de l'envoi de l'email")})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_email_verification_sent", "Verification email sent")})
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: h.tr(r, "admin_email_managed_by_authentik", "La vérification d'email s'effectue directement sur le portail Authentik."),
+	})
 }

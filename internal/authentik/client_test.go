@@ -131,7 +131,7 @@ func TestAuthentikClient(t *testing.T) {
 	})
 
 	t.Run("CreateInvitationStageToken", func(t *testing.T) {
-		invID, err := cli.CreateInvitationStageToken(context.Background(), "JG-TEST", time.Now().Add(24*time.Hour), map[string]interface{}{"sponsor": "bob"})
+		invID, err := cli.CreateInvitationStageToken(context.Background(), "JG-TEST", time.Now().Add(24*time.Hour), map[string]interface{}{"sponsor": "bob"}, true, "enrollment-flow-slug")
 		if err != nil {
 			t.Fatalf("CreateInvitationStageToken failed: %v", err)
 		}

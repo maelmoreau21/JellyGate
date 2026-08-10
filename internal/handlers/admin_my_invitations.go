@@ -340,10 +340,11 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	// Invoquer l'API Authentik pour créer une invitation Stage si Authentik est configuré
 	var authentikInvID string
 	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
+		flowSlug := h.cfg.Authentik.EnrollmentFlowSlug
 		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, resolvedExpiry, map[string]interface{}{
 			"sponsor": sess.Username,
 			"code":    code,
-		})
+		}, true, flowSlug)
 		if authErr == nil {
 			authentikInvID = invID
 		} else {

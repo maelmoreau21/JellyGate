@@ -294,3 +294,26 @@ func (db *DB) queryReferralNodes(ctx context.Context, query string, args ...inte
 
 	return nodes, nil
 }
+
+// ReconcileReferralForOIDCUser associe un utilisateur OIDC connecté à son enregistrement de parrainage.
+func (db *DB) ReconcileReferralForOIDCUser(ctx context.Context, userID int64, authentikID, email string) error {
+	if userID <= 0 || strings.TrimSpace(authentikID) == "" {
+		return nil
+	}
+
+	var referralID int64
+	err := db.QueryRowContext(ctx, `
+		SELECT r.id FROM referrals r
+		LEFT JOIN invitations inv ON inv.id = r.invitation_id
+		LEFT JOIN users gu ON gu.id = r.godchild_user_id
+		WHERE (r.godchild_user_id = ? OR r.godchild_authentik_id = ? OR (TRIM(?) <> '' AND LOWER(gu.email) = LOWER(?)))
+		  AND r.status IN ('pending', 'accepted')
+		ORDER BY r.created_at DESC LIMIT 1`,
+		userID, authentikID, email, email,
+	).Scan(&referralID)
+
+	if err == nil && referralID > 0 {
+		return db.UpdateReferralStatus(ctx, referralID, "active", &userID, authentikID)
+	}
+	return nil
+}

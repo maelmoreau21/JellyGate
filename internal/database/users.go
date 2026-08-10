@@ -138,10 +138,16 @@ func (db *DB) SyncOIDCUser(ctx context.Context, authentikID, username, email str
 
 	newID, err := res.LastInsertId()
 	if err != nil || newID <= 0 {
-		return db.GetUserByAuthentikID(ctx, authentikID)
+		user, err = db.GetUserByAuthentikID(ctx, authentikID)
+	} else {
+		user, err = db.GetUserByID(ctx, newID)
 	}
 
-	return db.GetUserByID(ctx, newID)
+	if err == nil && user != nil {
+		_ = db.ReconcileReferralForOIDCUser(ctx, user.ID, authentikID, email)
+	}
+
+	return user, err
 }
 
 func (db *DB) queryUserRow(ctx context.Context, query string, args ...interface{}) (*User, error) {

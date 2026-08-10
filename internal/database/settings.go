@@ -390,14 +390,9 @@ func (db *DB) SaveLDAPConfig(cfg config.LDAPConfig) error {
 	return db.SetSetting(SettingLDAPConfig, enc)
 }
 
-// IsLDAPEnabled vérifie rapidement si l'intégration LDAP est activée.
+// IsLDAPEnabled renvoie toujours false (obsolète après migration Authentik).
 func (db *DB) IsLDAPEnabled() bool {
-	cfg, err := db.GetLDAPConfig()
-	if err != nil {
-		slog.Warn("Erreur lecture config LDAP", "error", err)
-		return false
-	}
-	return cfg.Enabled
+	return false
 }
 
 // ── SMTP Config ─────────────────────────────────────────────────────────────

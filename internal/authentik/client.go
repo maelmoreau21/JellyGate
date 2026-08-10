@@ -49,10 +49,11 @@ type Client interface {
 	CreateRecoveryLink(ctx context.Context, authentikPK int64) (recoveryLink string, err error)
 	AddUserToGroup(ctx context.Context, userPK int64, groupID string) error
 	SetUserActiveStatus(ctx context.Context, userPK int64, active bool) error
+	SetUserActiveStatusByString(ctx context.Context, authentikID string, active bool) error
 	DeleteUser(ctx context.Context, userPK int64) error
 	ListUsers(ctx context.Context) ([]UserResponse, error)
 
-	CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}) (invitationID string, err error)
+	CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (invitationID string, err error)
 	ListInvitationStageTokens(ctx context.Context) ([]InvitationTokenResponse, error)
 	DeleteInvitationStageToken(ctx context.Context, invitationID string) error
 }
@@ -191,6 +192,19 @@ func (c *client) SetUserActiveStatus(ctx context.Context, userPK int64, active b
 	return nil
 }
 
+func (c *client) SetUserActiveStatusByString(ctx context.Context, authentikID string, active bool) error {
+	endpoint := fmt.Sprintf("/api/v3/core/users/%s/", url.PathEscape(authentikID))
+	payload := map[string]bool{"is_active": active}
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodPatch, endpoint, payload)
+	if err != nil {
+		return err
+	}
+	if statusCode != http.StatusOK {
+		return fmt.Errorf("set user active status returned status %d: %s", statusCode, string(respBody))
+	}
+	return nil
+}
+
 func (c *client) DeleteUser(ctx context.Context, userPK int64) error {
 	endpoint := fmt.Sprintf("/api/v3/core/users/%d/", userPK)
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodDelete, endpoint, nil)
@@ -227,15 +241,19 @@ func (c *client) ListUsers(ctx context.Context) ([]UserResponse, error) {
 	return users, nil
 }
 
-func (c *client) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}) (string, error) {
+func (c *client) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
 	payload := map[string]interface{}{
-		"name": name,
+		"name":       name,
+		"single_use": singleUse,
 	}
 	if !expiresAt.IsZero() {
 		payload["expires"] = expiresAt.Format(time.RFC3339)
 	}
 	if fixedData != nil {
 		payload["fixed_data"] = fixedData
+	}
+	if strings.TrimSpace(flow) != "" {
+		payload["flow"] = strings.TrimSpace(flow)
 	}
 
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, "/api/v3/stages/invitation/invitations/", payload)

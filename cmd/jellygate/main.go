@@ -27,7 +27,6 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/handlers"
 	"github.com/maelmoreau21/JellyGate/internal/integrations"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
@@ -92,16 +91,6 @@ func main() {
 	slog.Info("Client Jellyfin initialisé")
 	go jfClient.LogDiagnostics()
 
-	// LDAP (optionnel — chargé depuis la base)
-	ldapCfg, _ := db.GetLDAPConfig()
-	var ldClient *jgldap.Client
-	if ldapCfg.Enabled {
-		ldClient = jgldap.New(ldapCfg)
-		slog.Info("Client LDAP initialisé", "host", ldapCfg.Host)
-	} else {
-		slog.Info("Intégration LDAP désactivée")
-	}
-
 	// SMTP (optionnel — chargé depuis la base)
 	smtpCfg, _ := db.GetSMTPConfig()
 	var mailer *mail.Mailer
@@ -159,9 +148,9 @@ func main() {
 	authentikClient := authentik.NewClient(authentikCfg)
 
 	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, oidcClient, authentikClient, renderEngine)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, provisioner, mailer, notifier, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, provisioner, mailer, notifier, renderEngine)
 	inviteHandler.SetAuthentikClient(authentikClient)
-	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, authentikClient, mailer, renderEngine)
+	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, authentikClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db, jfClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
@@ -169,22 +158,6 @@ func main() {
 	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService, jfClient)
 	authSessionValidator := func(sess *session.Payload) bool {
 		return authSessionAllowed(db, sess)
-	}
-
-	// Callbacks de rechargement à chaud
-	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
-		if ldClient != nil {
-			ldClient.Close()
-		}
-		if c.Enabled {
-			ldClient = jgldap.New(c)
-			slog.Info("🔄 Client LDAP rechargé", "host", c.Host)
-		} else {
-			ldClient = nil
-			slog.Info("🔄 Intégration LDAP désactivée")
-		}
-		inviteHandler.SetLDAPClient(ldClient)
-		adminHandler.SetLDAPClient(ldClient)
 	}
 	settingsHandler.OnSMTPReload = func(c config.SMTPConfig) {
 		if c.Host != "" {
@@ -365,10 +338,8 @@ func main() {
 					r.Get("/{id}/avatar", adminHandler.UserAvatar)
 					r.Get("/{id}/timeline", adminHandler.UserTimeline)
 					r.Post("/bulk", adminHandler.BulkUsersAction)
-					r.Post("/sync", adminHandler.SyncJellyfinUsers)
 					r.Patch("/{id}", adminHandler.UpdateUser)
 					r.Post("/{id}/toggle", adminHandler.ToggleUser)
-					r.Post("/{id}/password-reset/send", adminHandler.SendUserPasswordReset)
 					r.Post("/{id}/invite-toggle", adminHandler.ToggleUserInvite)
 					r.Post("/{id}/ban", adminHandler.BanUser)
 					r.Delete("/{id}", adminHandler.DeleteUser)
@@ -384,11 +355,6 @@ func main() {
 					r.Post("/general/fetch-server-name", settingsHandler.FetchJellyfinServerName)
 					r.Post("/auth-session", settingsHandler.SaveAuthSession)
 					r.Post("/auth-session/revoke", settingsHandler.RevokeAuthSessions)
-					r.Post("/ldap", settingsHandler.SaveLDAP)
-					r.Post("/ldap/dry-run", settingsHandler.LDAPDryRun)
-					r.Post("/ldap/test-connection", settingsHandler.TestLDAPConnection)
-					r.Post("/ldap/test-user", settingsHandler.TestLDAPUserLookup)
-					r.Post("/ldap/test-jellyfin-auth", settingsHandler.TestJellyfinLDAPAuth)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)

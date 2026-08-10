@@ -13,6 +13,7 @@ package jellyfin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -867,90 +868,63 @@ func (c *Client) GetSystemInfo() (map[string]interface{}, error) {
 	return info, nil
 }
 
-// ResetPassword réinitialise le mot de passe d'un utilisateur Jellyfin.
-//
-// Utilisé lors de la récupération de mot de passe (en complément de l'AD).
-func (c *Client) ResetPassword(userID, newPassword string) error {
-	if c == nil {
-		return fmt.Errorf("jellyfin.ResetPassword: client nil")
-	}
-	if userID == "" {
-		return fmt.Errorf("jellyfin.ResetPassword: userID vide")
+func (c *Client) doRequestWithToken(ctx context.Context, method, path string, body []byte, token string) (*http.Response, error) {
+	var reqBody io.Reader
+	if body != nil {
+		reqBody = bytes.NewReader(body)
 	}
 
-	passwordPath := fmt.Sprintf("/Users/%s/Password", userID)
-
-	// Étape 1 : Réinitialiser le mot de passe (le supprime)
-	resetBody, _ := json.Marshal(map[string]bool{"ResetPassword": true})
-	resp, err := c.doRequest(http.MethodPost, passwordPath, resetBody)
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reqBody)
 	if err != nil {
-		return fmt.Errorf("jellyfin.ResetPassword: reset — %w", err)
-	}
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		err := jellyfinHTTPError("jellyfin.ResetPassword: reset", resp)
-		_ = resp.Body.Close()
-		return err
-	}
-	_ = resp.Body.Close()
-
-	// Étape 2 : Définir le nouveau mot de passe
-	attempts := []struct {
-		shape   string
-		payload map[string]string
-	}{
-		{
-			shape: "CurrentPassword/NewPassword",
-			payload: map[string]string{
-				"CurrentPassword": "",
-				"NewPassword":     newPassword,
-			},
-		},
-		{
-			shape: "CurrentPw/NewPw",
-			payload: map[string]string{
-				"CurrentPw": "",
-				"NewPw":     newPassword,
-			},
-		},
+		return nil, fmt.Errorf("erreur de création de la requête %s %s: %w", method, path, err)
 	}
 
-	var lastErr error
-	for idx, attempt := range attempts {
-		body, err := json.Marshal(attempt.payload) // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
-		if err != nil {
-			return fmt.Errorf("jellyfin.ResetPassword: set %s: erreur de serialisation: %w", attempt.shape, err)
-		}
-		resp2, err := c.doRequest(http.MethodPost, passwordPath, body)
-		if err != nil {
-			return fmt.Errorf("jellyfin.ResetPassword: set %s: %w", attempt.shape, err)
-		}
-		if resp2.StatusCode == http.StatusOK || resp2.StatusCode == http.StatusNoContent {
-			_ = resp2.Body.Close()
-			slog.Info("Mot de passe Jellyfin reinitialise", "id", userID, "payload_shape", attempt.shape)
-			return nil
-		}
-		lastErr = jellyfinHTTPError("jellyfin.ResetPassword: set "+attempt.shape, resp2)
-		_ = resp2.Body.Close()
-		if idx == len(attempts)-1 || !shouldTryNextPasswordPayload(resp2.StatusCode) {
-			break
-		}
+	if token != "" {
+		req.Header.Set("Authorization", AuthorizationHeader(token))
+	} else {
+		req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
 	}
-	if lastErr != nil {
-		return lastErr
+	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
 	}
-	return fmt.Errorf("jellyfin.ResetPassword: set impossible")
+
+	client := c.httpClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("erreur de connexion à Jellyfin %s %s: %w", method, path, err)
+	}
+	return resp, nil
+}
+
+func readHTTPDetail(r io.Reader) string {
+	if r == nil {
+		return ""
+	}
+	b, _ := io.ReadAll(io.LimitReader(r, 2048))
+	return strings.TrimSpace(string(b))
+}
+
+func sanitizeHTTPDetail(detail string) string {
+	return strings.TrimSpace(detail)
+}
+
+func jellyfinHTTPError(operation string, resp *http.Response) error {
+	return jellyfinHTTPStatusError(operation, resp.StatusCode, readHTTPDetail(resp.Body))
+}
+
+func jellyfinHTTPStatusError(operation string, status int, detail string) error {
+	detail = strings.TrimSpace(detail)
+	if detail == "" {
+		return fmt.Errorf("%s: HTTP %d", operation, status)
+	}
+	return fmt.Errorf("%s: HTTP %d: %s", operation, status, sanitizeHTTPDetail(detail))
 }
 
 // ── Méthode interne ─────────────────────────────────────────────────────────
-
-func shouldTryNextPasswordPayload(status int) bool {
-	switch status {
-	case http.StatusBadRequest, http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity, http.StatusInternalServerError:
-		return true
-	default:
-		return false
-	}
-}
 
 // doRequest exécute une requête HTTP vers l'API Jellyfin.
 // Ajoute automatiquement le header d'authentification API key.

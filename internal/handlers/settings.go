@@ -31,7 +31,6 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
@@ -46,7 +45,6 @@ type SettingsHandler struct {
 	renderer *render.Engine
 
 	// Callbacks de rechargement à chaud
-	OnLDAPReload     func(config.LDAPConfig)
 	OnSMTPReload     func(config.SMTPConfig)
 	OnWebhooksReload func(config.WebhooksConfig)
 }

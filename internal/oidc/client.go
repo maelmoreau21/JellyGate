@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
@@ -28,6 +29,7 @@ const (
 	CookieVerifier = "jellygate_oidc_verifier"
 	CookiePath     = "/"
 	CookieTTL      = 10 * time.Minute
+	ClockSkew      = 60 * time.Second
 )
 
 // Claims représente les informations extraites de l'ID Token / UserInfo OIDC.
@@ -53,7 +55,7 @@ type Client interface {
 	DetermineUserRole(groups []string) (isAdmin bool, hasAccess bool)
 }
 
-// JSONWebKey representa une clé JWKS.
+// JSONWebKey représente une clé JWKS.
 type JSONWebKey struct {
 	Kty string `json:"kty"`
 	Kid string `json:"kid"`
@@ -63,7 +65,7 @@ type JSONWebKey struct {
 	E   string `json:"e"`
 }
 
-// JWKSResponse représence le document JWKS.
+// JWKSResponse représente le document JWKS.
 type JWKSResponse struct {
 	Keys []JSONWebKey `json:"keys"`
 }
@@ -74,6 +76,9 @@ type oidcClient struct {
 	jwksCache  map[string]*rsa.PublicKey
 	jwksMu     sync.RWMutex
 	jwksLast   time.Time
+	discCache  *DiscoveryMetadata
+	discMu     sync.RWMutex
+	discLast   time.Time
 }
 
 // NewClient crée une nouvelle instance du client OIDC.
@@ -109,7 +114,10 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 	setTempCookie(w, CookieNonce, nonce, isHTTPS)
 	setTempCookie(w, CookieVerifier, codeVerifier, isHTTPS)
 
-	authEndpoint := c.getAuthEndpoint()
+	authEndpoint, err := c.getAuthEndpoint(r.Context())
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve auth endpoint: %w", err)
+	}
 	u, err := url.Parse(authEndpoint)
 	if err != nil {
 		return "", fmt.Errorf("invalid authorization endpoint: %w", err)
@@ -153,14 +161,18 @@ func (c *oidcClient) HandleCallback(r *http.Request) (*Claims, error) {
 		return nil, errors.New("missing code_verifier cookie in OIDC callback")
 	}
 
-	nonceCookie, _ := r.Cookie(CookieNonce)
-	expectedNonce := ""
-	if nonceCookie != nil {
-		expectedNonce = nonceCookie.Value
+	nonceCookie, err := r.Cookie(CookieNonce)
+	if err != nil || nonceCookie.Value == "" {
+		return nil, errors.New("missing nonce cookie in OIDC callback")
 	}
+	expectedNonce := nonceCookie.Value
 
 	// Échange du code d'autorisation contre des jetons
-	tokenEndpoint := c.getTokenEndpoint()
+	tokenEndpoint, err := c.getTokenEndpoint(r.Context())
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve token endpoint: %w", err)
+	}
+
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
@@ -232,6 +244,14 @@ func (c *oidcClient) ValidateIDToken(ctx context.Context, rawIDToken string, exp
 		return nil, fmt.Errorf("invalid JWT header JSON: %w", err)
 	}
 
+	// Rejet strict des algorithmes non supportés
+	if header.Alg != "RS256" {
+		return nil, fmt.Errorf("unsupported JWT algorithm %q: only RS256 is accepted", header.Alg)
+	}
+	if header.Kid == "" {
+		return nil, errors.New("missing 'kid' header in JWT ID token")
+	}
+
 	payloadBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("invalid JWT payload base64: %w", err)
@@ -242,17 +262,20 @@ func (c *oidcClient) ValidateIDToken(ctx context.Context, rawIDToken string, exp
 		return nil, fmt.Errorf("invalid JWT payload JSON: %w", err)
 	}
 
-	// 1. Validation Expiration
-	now := time.Now().Unix()
-	if claims.Expiration > 0 && now >= claims.Expiration {
+	// 1. Validation Expiration (avec tolérance Clock Skew)
+	now := time.Now()
+	if claims.Expiration > 0 && now.After(time.Unix(claims.Expiration, 0).Add(ClockSkew)) {
 		return nil, errors.New("ID token has expired")
+	}
+	if claims.IssuedAt > 0 && now.Before(time.Unix(claims.IssuedAt, 0).Add(-ClockSkew)) {
+		return nil, errors.New("ID token issued in the future")
 	}
 
 	// 2. Validation Issuer
 	if c.cfg.IssuerURL != "" {
 		expectedIssuer := strings.TrimRight(c.cfg.IssuerURL, "/")
 		actualIssuer := strings.TrimRight(claims.Issuer, "/")
-		if actualIssuer != expectedIssuer && !strings.HasPrefix(actualIssuer, expectedIssuer) {
+		if actualIssuer != expectedIssuer {
 			return nil, fmt.Errorf("invalid token issuer: expected %s, got %s", expectedIssuer, actualIssuer)
 		}
 	}
@@ -264,24 +287,32 @@ func (c *oidcClient) ValidateIDToken(ctx context.Context, rawIDToken string, exp
 		}
 	}
 
-	// 4. Validation Nonce
-	if expectedNonce != "" && claims.Nonce != "" && !hmac.Equal([]byte(claims.Nonce), []byte(expectedNonce)) {
-		return nil, errors.New("mismatched nonce in ID token")
+	// 4. Validation Nonce obligatoire
+	if expectedNonce != "" {
+		if claims.Nonce == "" {
+			return nil, errors.New("missing nonce claim in ID token when expected")
+		}
+		if !hmac.Equal([]byte(claims.Nonce), []byte(expectedNonce)) {
+			return nil, errors.New("mismatched nonce in ID token")
+		}
 	}
 
-	// 5. Validation Signature via JWKS if RS256/ES256
-	if header.Alg == "RS256" && header.Kid != "" {
-		pubKey, err := c.getJWKSKey(ctx, header.Kid)
-		if err == nil && pubKey != nil {
-			hashed := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
-			sig, err := base64.RawURLEncoding.DecodeString(parts[2])
-			if err != nil {
-				return nil, fmt.Errorf("invalid JWT signature base64: %w", err)
-			}
-			if err := rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], sig); err != nil {
-				return nil, fmt.Errorf("JWT RSA signature verification failed: %w", err)
-			}
-		}
+	// 5. Validation Signature via JWKS (OBLIGATOIRE - pas de fallback silencieux)
+	pubKey, err := c.getJWKSKey(ctx, header.Kid)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch JWKS key kid %s: %w", header.Kid, err)
+	}
+	if pubKey == nil {
+		return nil, fmt.Errorf("public key for kid %s is nil", header.Kid)
+	}
+
+	hashed := sha256.Sum256([]byte(parts[0] + "." + parts[1]))
+	sig, err := base64.RawURLEncoding.DecodeString(parts[2])
+	if err != nil {
+		return nil, fmt.Errorf("invalid JWT signature base64: %w", err)
+	}
+	if err := rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, hashed[:], sig); err != nil {
+		return nil, fmt.Errorf("JWT RSA signature verification failed: %w", err)
 	}
 
 	if claims.Sub == "" {
@@ -318,26 +349,36 @@ func (c *oidcClient) DetermineUserRole(groups []string) (isAdmin bool, hasAccess
 		}
 	}
 
-	// Si aucun groupe n'est spécifié mais que des groupes existent ou si aucun groupe n'est configuré
-	if len(groups) == 0 {
-		return false, true
-	}
-
+	// SÉCURITÉ : Aucun groupe autorisé présent -> Accès strictement refusé
 	return false, hasAccess
 }
 
-func (c *oidcClient) getAuthEndpoint() string {
-	if c.cfg.URL != "" {
-		return strings.TrimRight(c.cfg.URL, "/") + "/application/o/authorize/"
+func (c *oidcClient) getAuthEndpoint(ctx context.Context) (string, error) {
+	meta, err := c.getDiscoveryMetadata(ctx)
+	if err == nil && meta.AuthorizationEndpoint != "" {
+		return meta.AuthorizationEndpoint, nil
 	}
-	return strings.TrimRight(c.cfg.IssuerURL, "/") + "/application/o/authorize/"
+	if c.cfg.URL != "" {
+		return strings.TrimRight(c.cfg.URL, "/") + "/application/o/authorize/", nil
+	}
+	if c.cfg.IssuerURL != "" {
+		return strings.TrimRight(c.cfg.IssuerURL, "/") + "/application/o/authorize/", nil
+	}
+	return "", errors.New("unable to resolve OIDC authorization endpoint")
 }
 
-func (c *oidcClient) getTokenEndpoint() string {
-	if c.cfg.URL != "" {
-		return strings.TrimRight(c.cfg.URL, "/") + "/application/o/token/"
+func (c *oidcClient) getTokenEndpoint(ctx context.Context) (string, error) {
+	meta, err := c.getDiscoveryMetadata(ctx)
+	if err == nil && meta.TokenEndpoint != "" {
+		return meta.TokenEndpoint, nil
 	}
-	return strings.TrimRight(c.cfg.IssuerURL, "/") + "/application/o/token/"
+	if c.cfg.URL != "" {
+		return strings.TrimRight(c.cfg.URL, "/") + "/application/o/token/", nil
+	}
+	if c.cfg.IssuerURL != "" {
+		return strings.TrimRight(c.cfg.IssuerURL, "/") + "/application/o/token/", nil
+	}
+	return "", errors.New("unable to resolve OIDC token endpoint")
 }
 
 func (c *oidcClient) getJWKSKey(ctx context.Context, kid string) (*rsa.PublicKey, error) {
@@ -350,9 +391,18 @@ func (c *oidcClient) getJWKSKey(ctx context.Context, kid string) (*rsa.PublicKey
 		return key, nil
 	}
 
-	jwksURL := strings.TrimRight(c.cfg.IssuerURL, "/") + "/jwks/"
-	if c.cfg.URL != "" {
+	// Tentative de résolution de l'URL JWKS via Auto-Discovery
+	jwksURL := ""
+	if meta, err := c.getDiscoveryMetadata(ctx); err == nil && meta.JWKSURI != "" {
+		jwksURL = meta.JWKSURI
+	} else if c.cfg.IssuerURL != "" {
+		jwksURL = strings.TrimRight(c.cfg.IssuerURL, "/") + "/jwks/"
+	} else if c.cfg.URL != "" {
 		jwksURL = strings.TrimRight(c.cfg.URL, "/") + "/application/o/jellygate/jwks/"
+	}
+
+	if jwksURL == "" {
+		return nil, errors.New("JWKS URL could not be resolved")
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, jwksURL, nil)
@@ -390,7 +440,7 @@ func (c *oidcClient) getJWKSKey(ctx context.Context, kid string) (*rsa.PublicKey
 
 	key, ok = c.jwksCache[kid]
 	if !ok {
-		return nil, fmt.Errorf("key kid %s not found in JWKS", kid)
+		return nil, fmt.Errorf("key kid %s not found in JWKS from %s", kid, jwksURL)
 	}
 	return key, nil
 }
@@ -414,10 +464,6 @@ func parseRSAPublicKey(nStr, eStr string) (*rsa.PublicKey, error) {
 	return &rsa.PublicKey{N: n, E: e}, nil
 }
 
-func cryptoHashSHA256() int {
-	return 5 // crypto.SHA256 value in crypto package
-}
-
 func checkAudience(aud interface{}, clientID string) bool {
 	switch v := aud.(type) {
 	case string:
@@ -439,8 +485,8 @@ func calculateS256Challenge(verifier string) string {
 
 func generateRandomString(length int) (string, error) {
 	b := make([]byte, length)
-	for i := range b {
-		b[i] = byte(time.Now().UnixNano() + int64(i*31))
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("failed to read cryptographically secure random bytes: %w", err)
 	}
 	return base64.RawURLEncoding.EncodeToString(b)[:length], nil
 }
@@ -457,3 +503,4 @@ func setTempCookie(w http.ResponseWriter, name, value string, secure bool) {
 		SameSite: http.SameSiteLaxMode,
 	})
 }
+
