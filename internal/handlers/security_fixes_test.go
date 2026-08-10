@@ -8,7 +8,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -209,81 +208,6 @@ func TestInviteVerificationGetDoesNotCreatePendingAccount(t *testing.T) {
 	}
 }
 
-func TestConsumeResetTokenIsSingleUse(t *testing.T) {
-	_, db := newTestSettingsHandler(t)
-	if _, err := db.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, is_active)
-		 VALUES (?, ?, ?, TRUE)`,
-		"reset-jf", "resetuser", "reset@example.com",
-	); err != nil {
-		t.Fatalf("insert user: %v", err)
-	}
-	var userID int64
-	if err := db.QueryRow(`SELECT id FROM users WHERE username = ?`, "resetuser").Scan(&userID); err != nil {
-		t.Fatalf("read user id: %v", err)
-	}
-	res, err := db.Exec(
-		`INSERT INTO password_resets (user_id, code, used, expires_at)
-		 VALUES (?, ?, FALSE, ?)`,
-		userID, "reset-token", time.Now().Add(time.Hour).Format("2006-01-02 15:04:05"),
-	)
-	if err != nil {
-		t.Fatalf("insert reset token: %v", err)
-	}
-	resetID, err := res.LastInsertId()
-	if err != nil {
-		t.Fatalf("LastInsertId: %v", err)
-	}
-	handler := NewPasswordResetHandler(&config.Config{}, db, nil, nil, nil, nil)
-
-	if err := handler.consumeResetToken(resetID); err != nil {
-		t.Fatalf("first consumeResetToken() error = %v", err)
-	}
-	if err := handler.consumeResetToken(resetID); err == nil {
-		t.Fatalf("second consumeResetToken() error = nil, want replay failure")
-	}
-}
-
-func TestResetTokenValidationErrorsDoNotLeakRawToken(t *testing.T) {
-	_, db := newTestSettingsHandler(t)
-	if _, err := db.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, is_active)
-		 VALUES (?, ?, ?, TRUE)`,
-		"reset-jf", "resetuser", "reset@example.com",
-	); err != nil {
-		t.Fatalf("insert user: %v", err)
-	}
-	var userID int64
-	if err := db.QueryRow(`SELECT id FROM users WHERE username = ?`, "resetuser").Scan(&userID); err != nil {
-		t.Fatalf("read user id: %v", err)
-	}
-
-	if _, err := db.Exec(
-		`INSERT INTO password_resets (user_id, code, used, expires_at)
-		 VALUES (?, ?, TRUE, ?)`,
-		userID, "used-raw-reset-token", time.Now().Add(time.Hour).Format("2006-01-02 15:04:05"),
-	); err != nil {
-		t.Fatalf("insert used token: %v", err)
-	}
-	if _, err := db.Exec(
-		`INSERT INTO password_resets (user_id, code, used, expires_at)
-		 VALUES (?, ?, FALSE, ?)`,
-		userID, "expired-raw-reset-token", time.Now().Add(-time.Hour).Format("2006-01-02 15:04:05"),
-	); err != nil {
-		t.Fatalf("insert expired token: %v", err)
-	}
-
-	handler := NewPasswordResetHandler(&config.Config{}, db, nil, nil, nil, nil)
-	for _, token := range []string{"missing-raw-reset-token", "used-raw-reset-token", "expired-raw-reset-token"} {
-		_, _, err := handler.getValidResetToken(token)
-		if err == nil {
-			t.Fatalf("getValidResetToken(%q) error = nil, want failure", token)
-		}
-		if strings.Contains(err.Error(), token) {
-			t.Fatalf("getValidResetToken(%q) leaked raw token in error: %v", token, err)
-		}
-	}
-}
 
 func TestVerifyEmailGetDoesNotConsumeAccountVerification(t *testing.T) {
 	_, db := newTestSettingsHandler(t)

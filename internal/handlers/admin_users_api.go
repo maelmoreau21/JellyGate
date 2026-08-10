@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -848,21 +849,11 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 		return fmt.Errorf("utilisateur sans email")
 	}
 
-	token, err := generateSecureToken(resetTokenLength)
-	if err != nil {
-		return fmt.Errorf("génération du token: %w", err)
-	}
-
-	expiresAt := time.Now().Add(resetTokenExpiry)
-	_, err = h.db.Exec(
-		`INSERT INTO password_resets (user_id, code, used, expires_at)
-		 VALUES (?, ?, FALSE, ?)`,
-		rec.ID,
-		token,
-		expiresAt.Format("2006-01-02 15:04:05"),
-	)
-	if err != nil {
-		return fmt.Errorf("insertion du token en base: %w", err)
+	recoveryURL := ""
+	if h.authClient != nil && rec.AuthentikID.Valid && rec.AuthentikID.String != "" {
+		if link, err := h.authClient.CreateRecoveryLink(context.Background(), rec.ID); err == nil && link != "" {
+			recoveryURL = link
+		}
 	}
 
 	links := resolvePortalLinks(h.cfg, h.db)
@@ -870,7 +861,15 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	if publicBaseURL == "" && h.cfg != nil {
 		publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
 	}
-	resetURL := fmt.Sprintf("%s/reset/%s", publicBaseURL, token)
+
+	if recoveryURL == "" {
+		if h.cfg != nil && h.cfg.Authentik.URL != "" {
+			recoveryURL = strings.TrimRight(h.cfg.Authentik.URL, "/") + "/flow/initial-setup/"
+		} else {
+			recoveryURL = publicBaseURL + "/auth/login"
+		}
+	}
+
 	mailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(h.db, "", emailLanguageContext{
 		PreferredLang: rec.PreferredLang,
 		GroupName:     rec.GroupName,
@@ -880,15 +879,15 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	}
 	tpl := mailCfg.PasswordReset
 	if tpl == "" {
-		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe : {{.ResetLink}}"
+		tpl = "Bonjour {{.Username}},\n\nVoici votre lien de réinitialisation de mot de passe Authentik : {{.ResetLink}}"
 	}
 	subject := firstNonEmpty(mailCfg.PasswordResetSubject, config.DefaultEmailTemplatesForLanguage(usedLang).PasswordResetSubject)
 
 	data := map[string]string{
 		"Username":           rec.Username,
-		"ResetLink":          resetURL,
-		"ResetURL":           resetURL,
-		"ResetCode":          token,
+		"ResetLink":          recoveryURL,
+		"ResetURL":           recoveryURL,
+		"ResetCode":          "",
 		"ExpiresIn":          config.DefaultEmailPreviewDurationForLanguage(usedLang),
 		"HelpURL":            publicBaseURL,
 		"JellyGateURL":       publicBaseURL,

@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -161,7 +162,6 @@ func main() {
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, provisioner, mailer, notifier, renderEngine)
 	inviteHandler.SetAuthentikClient(authentikClient)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, authentikClient, mailer, renderEngine)
-	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db, jfClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
@@ -185,7 +185,6 @@ func main() {
 		}
 		inviteHandler.SetLDAPClient(ldClient)
 		adminHandler.SetLDAPClient(ldClient)
-		resetHandler.SetLDAPClient(ldClient)
 	}
 	settingsHandler.OnSMTPReload = func(c config.SMTPConfig) {
 		if c.Host != "" {
@@ -196,7 +195,6 @@ func main() {
 			}
 			mailer = newMailer
 			inviteHandler.SetMailer(mailer)
-			resetHandler.SetMailer(mailer)
 			adminHandler.SetMailer(mailer)
 			schedulerService.SetMailer(mailer)
 			slog.Info("🔄 Client SMTP rechargé", "host", c.Host)
@@ -260,12 +258,13 @@ func main() {
 		r.With(jgmw.RateLimitByIP(15, 5*time.Minute)).Post("/{code}", inviteHandler.InviteSubmit)
 	})
 
-	// Routes de réinitialisation de mot de passe (publiques)
-	r.Route("/reset", func(r chi.Router) {
-		r.Get("/", resetHandler.RequestPage)
-		r.With(jgmw.RateLimitByIP(10, 10*time.Minute)).Post("/request", resetHandler.SubmitRequest)
-		r.Get("/{code}", resetHandler.ResetPage)
-		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", resetHandler.SubmitReset)
+	// Redirection de la réinitialisation de mot de passe vers Authentik
+	r.Get("/reset/*", func(w http.ResponseWriter, r *http.Request) {
+		if authentikCfg.URL != "" {
+			http.Redirect(w, r, strings.TrimRight(authentikCfg.URL, "/")+"/flow/initial-setup/", http.StatusFound)
+		} else {
+			http.Redirect(w, r, "/auth/login", http.StatusFound)
+		}
 	})
 
 	r.Route("/verify-email", func(r chi.Router) {

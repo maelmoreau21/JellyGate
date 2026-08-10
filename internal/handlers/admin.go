@@ -105,6 +105,7 @@ type adminUserRecord struct {
 	PendingEmail       string
 	EmailVerified      bool
 	JellyfinID         string
+	AuthentikID        sql.NullString
 	LDAPDN             string // FIXED
 	GroupName          string
 	PresetID           string // NEW
