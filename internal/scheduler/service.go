@@ -182,11 +182,11 @@ func (s *Service) executeTask(task TaskRecord) error {
 		if s.backup == nil {
 			return fmt.Errorf("service de backup indisponible")
 		}
-		path, err := s.backup.CreateBackup("scheduled")
+		info, err := s.backup.CreateBackup("scheduled")
 		if err != nil {
 			return err
 		}
-		_ = s.db.LogAction("task.create_backup", "scheduler", task.Name, fmt.Sprintf("Sauvegarde créée: %s", path))
+		_ = s.db.LogAction("task.create_backup", "scheduler", task.Name, fmt.Sprintf("Sauvegarde créée: %s", info.Name))
 
 	case "send_broadcast":
 		payload := strings.TrimSpace(task.Payload)

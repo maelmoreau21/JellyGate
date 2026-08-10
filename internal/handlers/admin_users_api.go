@@ -931,18 +931,6 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	password := strings.TrimSpace(req.Password)
-	generatedPassword := ""
-	if password == "" {
-		token, err := generateSecureToken(18)
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible de generer un mot de passe temporaire"})
-			return
-		}
-		password = token
-		generatedPassword = token
-	}
-
 	inviteCfg, _ := h.db.GetInvitationProfileConfig()
 	if req.PolicyPresetID == "" {
 		req.PolicyPresetID = strings.TrimSpace(inviteCfg.PolicyPresetID)
@@ -957,6 +945,11 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 		preset = resolvedPreset
 		req.PolicyPresetID = resolvedPreset.ID
+	}
+
+	effectiveCanInvite := req.CanInvite
+	if preset != nil && preset.CanInvite {
+		effectiveCanInvite = true
 	}
 
 	effectiveDisableAfterDays := req.DisableAfterDays
@@ -976,25 +969,6 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		expiryAt = time.Now().AddDate(0, 0, effectiveDisableAfterDays)
 	}
 
-	created, err := h.jfClient.CreateUser(req.Username, password)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Creation Jellyfin echouee: " + err.Error()})
-		return
-	}
-
-	if preset != nil {
-		if err := h.applyPresetProfileToJellyfin(created.ID, preset); err != nil {
-			_ = h.jfClient.DeleteUser(created.ID)
-			writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Application du preset impossible: " + err.Error()})
-			return
-		}
-	}
-
-	effectiveCanInvite := req.CanInvite
-	if preset != nil && preset.CanInvite {
-		effectiveCanInvite = true
-	}
-
 	storedExpiry := ""
 	var expiryValue interface{}
 	if !expiryAt.IsZero() {
@@ -1012,11 +986,10 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	emailVerified := strings.TrimSpace(req.Email) == ""
-	if _, err := h.db.Exec(
+	res, err := h.db.Exec(
 		`INSERT INTO users
-			(jellyfin_id, username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, profile_apply_status, profile_apply_error, profile_applied_at, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, ?, '', ?, datetime('now'), datetime('now'))`,
-		created.ID,
+			(username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, profile_apply_status, profile_apply_error, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, 'pending', '', datetime('now'), datetime('now'))`,
 		req.Username,
 		req.Email,
 		emailVerified,
@@ -1026,17 +999,14 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		req.PolicyPresetID,
 		expiryAction,
 		deleteAfterDays,
-		map[bool]string{true: "applied", false: "pending"}[preset != nil],
-		map[bool]interface{}{true: time.Now(), false: nil}[preset != nil],
-	); err != nil {
-		_ = h.jfClient.DeleteUser(created.ID)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible d'enregistrer l'utilisateur"})
+	)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Impossible d'enregistrer l'utilisateur en base"})
 		return
 	}
 
-	var createdID int64
-	_ = h.db.QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, created.ID).Scan(&createdID)
-	rec := &adminUserRecord{ID: createdID, Username: req.Username, Email: req.Email, JellyfinID: created.ID, CanInvite: effectiveCanInvite}
+	createdID, _ := res.LastInsertId()
+	rec := &adminUserRecord{ID: createdID, Username: req.Username, Email: req.Email, CanInvite: effectiveCanInvite}
 	if storedExpiry != "" {
 		rec.AccessExpiresAt = sql.NullString{String: storedExpiry, Valid: true}
 	}
@@ -1068,17 +1038,14 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		"id":                createdID,
 		"username":          req.Username,
 		"email":             req.Email,
-		"jellyfin_id":       created.ID,
 		"preset_id":         req.PolicyPresetID,
 		"can_invite":        effectiveCanInvite,
 		"access_expires_at": storedExpiry,
 		"welcome_sent":      welcomeSent,
-	}
-	if generatedPassword != "" {
-		respData["temporary_password"] = generatedPassword
+		"auth_provider":     "authentik_sso",
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Utilisateur cree", Data: respData})
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Utilisateur pré-créé (connexion déléguée à Authentik SSO)", Data: respData})
 }
 
 // UpdateUser met à jour les informations éditables d'un utilisateur (email, parrainage, expiration).

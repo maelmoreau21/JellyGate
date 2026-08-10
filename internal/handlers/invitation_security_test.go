@@ -11,7 +11,7 @@ import (
 
 func TestInvitationSecurityConfigRoundTrip(t *testing.T) {
 	_, db := newTestSettingsHandler(t)
-	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
+	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil)
 
 	payload := config.AntiAbuseConfig{
 		Enabled:       true,

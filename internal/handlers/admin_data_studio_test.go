@@ -10,7 +10,6 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -23,7 +22,7 @@ func newTestAdminDataStudioHandler(t *testing.T) (*AdminHandler, *database.DB) {
 	t.Cleanup(func() {
 		_ = db.Close()
 	})
-	return NewAdminHandler(&config.Config{BaseURL: "https://gate.example"}, db, nil, nil, nil, nil, nil), db
+	return NewAdminHandler(&config.Config{BaseURL: "https://gate.example"}, db, nil, nil, nil, nil), db
 }
 
 func decodeAPIData(t *testing.T, rec *httptest.ResponseRecorder) map[string]interface{} {
@@ -156,44 +155,6 @@ func TestPendingActionsReturnsExpectedBuckets(t *testing.T) {
 	data := decodeAPIData(t, rec)
 	summary := data["summary"].(map[string]interface{})
 	if summary["expiring_accounts"].(float64) != 1 || summary["unverified_emails"].(float64) != 1 || summary["expiring_invitations"].(float64) != 1 || summary["smtp_errors"].(float64) != 1 {
-		t.Fatalf("summary = %#v", summary)
-	}
-}
-
-func TestLDAPDryRunUsesSimulatedLookupWithoutWrites(t *testing.T) {
-	handler, db := newTestSettingsHandler(t)
-	if _, err := db.Exec(`INSERT INTO users (jellyfin_id, username, ldap_dn, is_active) VALUES (?, ?, ?, ?)`, "jf-sync", "sync", "cn=sync,dc=example", true); err != nil {
-		t.Fatalf("insert sync user: %v", err)
-	}
-	if _, err := db.Exec(`INSERT INTO users (jellyfin_id, username, ldap_dn, is_active) VALUES (?, ?, ?, ?)`, "jf-conflict", "conflict", "cn=old,dc=example", true); err != nil {
-		t.Fatalf("insert conflict user: %v", err)
-	}
-
-	original := runLDAPDryRunLookup
-	runLDAPDryRunLookup = func(cfg config.LDAPConfig, mappings []config.GroupPolicyMapping, limit int) ([]ldapDryRunLookupItem, []string, error) {
-		return []ldapDryRunLookupItem{
-			{Mapping: mappings[0], User: jgldap.UserEntry{Username: "new", DN: "cn=new,dc=example", Email: "new@example.com"}},
-			{Mapping: mappings[0], User: jgldap.UserEntry{Username: "sync", DN: "cn=sync,dc=example", Email: "sync@example.com"}},
-			{Mapping: mappings[0], User: jgldap.UserEntry{Username: "conflict", DN: "cn=conflict,dc=example", Email: "conflict@example.com"}},
-		}, nil, nil
-	}
-	t.Cleanup(func() { runLDAPDryRunLookup = original })
-
-	body := []byte(`{
-		"host":"ldap.example",
-		"bind_dn":"cn=admin,dc=example",
-		"bind_password":"secret",
-		"base_dn":"dc=example",
-		"group_mappings":[{"group_name":"jellyfin","source":"ldap","ldap_group_dn":"cn=jellyfin,dc=example","policy_preset_id":"family"}]
-	}`)
-	rec := httptest.NewRecorder()
-	handler.LDAPDryRun(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/ldap/dry-run", body))
-	if rec.Code != http.StatusOK {
-		t.Fatalf("LDAPDryRun status = %d, body=%s", rec.Code, rec.Body.String())
-	}
-	data := decodeAPIData(t, rec)
-	summary := data["summary"].(map[string]interface{})
-	if summary["would_create"].(float64) != 1 || summary["would_sync"].(float64) != 1 || summary["blocking_conflicts"].(float64) != 1 {
 		t.Fatalf("summary = %#v", summary)
 	}
 }

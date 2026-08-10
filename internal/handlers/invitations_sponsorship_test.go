@@ -45,6 +45,10 @@ func (m *mockAuthentikClient) SetUserActiveStatus(ctx context.Context, userPK in
 	return nil
 }
 
+func (m *mockAuthentikClient) SetUserActiveStatusByString(ctx context.Context, authentikID string, active bool) error {
+	return nil
+}
+
 func (m *mockAuthentikClient) DeleteUser(ctx context.Context, userPK int64) error {
 	return nil
 }
@@ -53,7 +57,7 @@ func (m *mockAuthentikClient) ListUsers(ctx context.Context) ([]authentik.UserRe
 	return nil, nil
 }
 
-func (m *mockAuthentikClient) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}) (string, error) {
+func (m *mockAuthentikClient) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
 	return "stage-pk-123", nil
 }
 
@@ -104,7 +108,7 @@ func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 
 	t.Run("Create Sponsor Invitation", func(t *testing.T) {
 		renderEngine, _ := newTestRenderEngine(t)
-		adminHandler := NewAdminHandler(cfg, db, nil, nil, mockAuthentik, nil, renderEngine)
+		adminHandler := NewAdminHandler(cfg, db, nil, mockAuthentik, nil, renderEngine)
 
 		sessCookie, _ := session.Sign(session.Payload{
 			UserID:   "1",
@@ -141,7 +145,7 @@ func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 
 	t.Run("Admin Set Quota Overrides", func(t *testing.T) {
 		renderEngine, _ := newTestRenderEngine(t)
-		adminHandler := NewAdminHandler(cfg, db, nil, nil, mockAuthentik, nil, renderEngine)
+		adminHandler := NewAdminHandler(cfg, db, nil, mockAuthentik, nil, renderEngine)
 
 		payloadData, _ := json.Marshal(map[string]interface{}{
 			"bonus_quota": 5,
@@ -174,7 +178,7 @@ func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 
 	t.Run("Get Referral Tree", func(t *testing.T) {
 		renderEngine, _ := newTestRenderEngine(t)
-		adminHandler := NewAdminHandler(cfg, db, nil, nil, mockAuthentik, nil, renderEngine)
+		adminHandler := NewAdminHandler(cfg, db, nil, mockAuthentik, nil, renderEngine)
 
 		req := httptest.NewRequest(http.MethodGet, "/admin/api/users/referrals", nil)
 		rec := httptest.NewRecorder()

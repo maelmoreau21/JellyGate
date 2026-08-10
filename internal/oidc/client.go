@@ -53,6 +53,7 @@ type Client interface {
 	HandleCallback(r *http.Request) (*Claims, error)
 	ValidateIDToken(ctx context.Context, rawIDToken string, expectedNonce string) (*Claims, error)
 	DetermineUserRole(groups []string) (isAdmin bool, hasAccess bool)
+	GetEndSessionURL(ctx context.Context) string
 }
 
 // JSONWebKey représente une clé JWKS.
@@ -504,3 +505,16 @@ func setTempCookie(w http.ResponseWriter, name, value string, secure bool) {
 	})
 }
 
+func (c *oidcClient) GetEndSessionURL(ctx context.Context) string {
+	meta, err := c.getDiscoveryMetadata(ctx)
+	if err == nil && meta != nil && strings.TrimSpace(meta.EndSessionEndpoint) != "" {
+		return meta.EndSessionEndpoint
+	}
+	if strings.TrimSpace(c.cfg.IssuerURL) != "" {
+		return strings.TrimRight(strings.TrimSpace(c.cfg.IssuerURL), "/") + "/end-session/"
+	}
+	if strings.TrimSpace(c.cfg.URL) != "" {
+		return strings.TrimRight(strings.TrimSpace(c.cfg.URL), "/") + "/application/o/jellygate/end-session/"
+	}
+	return "/auth/login"
+}

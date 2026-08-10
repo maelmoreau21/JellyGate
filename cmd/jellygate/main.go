@@ -148,7 +148,7 @@ func main() {
 	authentikClient := authentik.NewClient(authentikCfg)
 
 	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, oidcClient, authentikClient, renderEngine)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, provisioner, mailer, notifier, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, nil, provisioner, mailer, notifier, renderEngine)
 	inviteHandler.SetAuthentikClient(authentikClient)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, authentikClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db, jfClient, renderEngine)
@@ -490,12 +490,6 @@ func main() {
 
 	if err := srv.Shutdown(ctxShutdown); err != nil {
 		slog.Error("Erreur lors de l'arrêt du serveur", "error", err)
-	}
-
-	// Fermer proprement le client LDAP
-	if ldClient != nil {
-		ldClient.Close()
-		slog.Info("Client LDAP fermé proprement")
 	}
 
 	// Fermer proprement la base de données

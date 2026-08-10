@@ -29,7 +29,7 @@ func TestCreateInvitationRejectsPrivilegedFieldsForNonAdmin(t *testing.T) {
 		t.Fatalf("insert sponsor user: %v", err)
 	}
 
-	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
+	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil)
 	body, err := json.Marshal(CreateInvitationRequest{MaxUses: 1, GroupName: "admin"})
 	if err != nil {
 		t.Fatalf("marshal request: %v", err)
@@ -72,7 +72,7 @@ func TestCreateInvitationAllowsSponsorTargetProfile(t *testing.T) {
 		t.Fatalf("insert sponsor user: %v", err)
 	}
 
-	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
+	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil)
 	body, _ := json.Marshal(CreateInvitationRequest{MaxUses: 1, PolicyPresetID: "member"})
 	req := httptest.NewRequest(http.MethodPost, "/admin/api/invitations", bytes.NewReader(body))
 	req = req.WithContext(session.NewContext(req.Context(), &session.Payload{UserID: "sponsor-jf", Username: "sponsor"}))
@@ -108,7 +108,7 @@ func TestCreateInvitationRejectsTemporaryWhenSponsorProfileDisallows(t *testing.
 		t.Fatalf("insert sponsor user: %v", err)
 	}
 
-	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
+	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil)
 	body, _ := json.Marshal(CreateInvitationRequest{MaxUses: 1, PolicyPresetID: "temp", IsTemporary: true, AccountDurationDays: 7})
 	req := httptest.NewRequest(http.MethodPost, "/admin/api/invitations", bytes.NewReader(body))
 	req = req.WithContext(session.NewContext(req.Context(), &session.Payload{UserID: "sponsor-jf", Username: "sponsor"}))

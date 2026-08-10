@@ -44,17 +44,6 @@ type emailVerificationRecord struct {
 	ExpiresAt time.Time
 }
 
-func (h *AdminHandler) tr(r *http.Request, key, fallback string) string {
-	if h.renderer == nil {
-		return fallback
-	}
-	lang := jgmw.LangFromContext(r.Context())
-	value := h.renderer.Translate(lang, key)
-	if value == "["+key+"]" {
-		return fallback
-	}
-	return value
-}
 
 func defaultEmailVerificationTemplate() string {
 	return `<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Verify your email address</h2>
@@ -435,9 +424,7 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 			message = h.tr(r, "verify_email_invalid_message", "This verification link is invalid or no longer available.")
 		}
 	} else if target != nil {
-		if syncErr := h.syncUserContactToLDAP(target.UserID); syncErr != nil {
-			slog.Warn("Synchronisation LDAP apres verification email partielle", "user_id", target.UserID, "error", syncErr)
-		}
+		// LDAP sync removed
 	}
 
 	renderEmailVerificationPage(
