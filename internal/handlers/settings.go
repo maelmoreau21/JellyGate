@@ -28,10 +28,10 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
@@ -41,14 +41,14 @@ import (
 
 // SettingsHandler gère les routes de configuration.
 type SettingsHandler struct {
-	db       *database.DB
-	jfClient *jellyfin.Client
-	renderer *render.Engine
+	db         *database.DB
+	jfClient   *jellyfin.Client
+	authClient authentik.Client
+	renderer   *render.Engine
 
 	// Callbacks de rechargement à chaud
 	OnSMTPReload     func(config.SMTPConfig)
 	OnWebhooksReload func(config.WebhooksConfig)
-	OnLDAPReload     func(config.LDAPConfig)
 }
 
 func (h *SettingsHandler) tr(r *http.Request, key, fallback string) string {
@@ -64,8 +64,8 @@ func (h *SettingsHandler) tr(r *http.Request, key, fallback string) string {
 }
 
 // NewSettingsHandler crée un nouveau handler de paramètres.
-func NewSettingsHandler(db *database.DB, jf *jellyfin.Client, renderer *render.Engine) *SettingsHandler {
-	return &SettingsHandler{db: db, jfClient: jf, renderer: renderer}
+func NewSettingsHandler(db *database.DB, jf *jellyfin.Client, authClient authentik.Client, renderer *render.Engine) *SettingsHandler {
+	return &SettingsHandler{db: db, jfClient: jf, authClient: authClient, renderer: renderer}
 }
 
 const maskedSecretValue = "********"
@@ -151,224 +151,61 @@ func (h *SettingsHandler) ensureAdmin(w http.ResponseWriter, r *http.Request) bo
 	return true
 }
 
-type ldapUserTestInput struct {
-	config.LDAPConfig
-	Username string `json:"username"`
-}
-
-type jellyfinLDAPAuthTestInput struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
-	if isMaskedSecret(input.BindPassword) || input.BindPassword == "" {
-		existing, _ := h.db.GetLDAPConfig()
-		input.BindPassword = existing.BindPassword
-	}
-	if input.Port == 0 {
-		input.Port = 636
-	}
-	input.SearchFilter = strings.TrimSpace(input.SearchFilter)
-	if input.SearchFilter == "" {
-		input.SearchFilter = "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))"
-	}
-	input.SearchAttributes = strings.TrimSpace(input.SearchAttributes)
-	if input.SearchAttributes == "" {
-		input.SearchAttributes = "uid,sAMAccountName,cn,userPrincipalName,mail"
-	}
-	input.UIDAttribute = strings.TrimSpace(input.UIDAttribute)
-	if input.UIDAttribute == "" {
-		input.UIDAttribute = "uid"
-	}
-	if strings.TrimSpace(input.UserOU) == "" {
-		input.UserOU = "CN=Users"
-	}
-	input.UsernameAttribute = strings.TrimSpace(input.UsernameAttribute)
-	if input.UsernameAttribute == "" {
-		input.UsernameAttribute = "auto"
-	}
-	input.AdminFilter = strings.TrimSpace(input.AdminFilter)
-	input.UserObjectClass = strings.TrimSpace(input.UserObjectClass)
-	if input.UserObjectClass == "" {
-		input.UserObjectClass = "auto"
-	}
-	input.GroupMemberAttr = strings.TrimSpace(input.GroupMemberAttr)
-	if input.GroupMemberAttr == "" {
-		input.GroupMemberAttr = "auto"
-	}
-
-	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
-	if input.ProvisionMode == "" {
-		input.ProvisionMode = "hybrid"
-	}
-	input.JellyfinLDAPAuthProviderID = strings.TrimSpace(input.JellyfinLDAPAuthProviderID)
-	if input.JellyfinLDAPAuthProviderID == "" {
-		input.JellyfinLDAPAuthProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin"
-	}
-	input.JellyfinLDAPPasswordResetProviderID = strings.TrimSpace(input.JellyfinLDAPPasswordResetProviderID)
-	if input.JellyfinLDAPPasswordResetProviderID == "" {
-		input.JellyfinLDAPPasswordResetProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider"
-	}
-
-	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
-	input.InviterGroup = strings.TrimSpace(input.InviterGroup)
-	input.AdministratorsGroup = strings.TrimSpace(input.AdministratorsGroup)
-	if input.JellyfinGroup == "" {
-		input.JellyfinGroup = "jellyfin"
-	}
-	if input.InviterGroup == "" {
-		input.InviterGroup = "jellyfin-Parrainage"
-	}
-	if input.AdministratorsGroup == "" {
-		input.AdministratorsGroup = "jellyfin-administrateur"
-	}
-	input.UserGroup = input.JellyfinGroup
-}
-
-func validateLDAPMinimalConfig(input config.LDAPConfig) error {
-	if strings.TrimSpace(input.Host) == "" {
-		return fmt.Errorf("host LDAP requis") // This is internal error, handled by caller
-	}
-	if strings.TrimSpace(input.BindDN) == "" {
-		return fmt.Errorf("bind_dn requis")
-	}
-	if strings.TrimSpace(input.BindPassword) == "" {
-		return fmt.Errorf("bind_password requis")
-	}
-	if strings.TrimSpace(input.BaseDN) == "" {
-		return fmt.Errorf("base_dn requis")
-	}
-	return nil
-}
-
-// TestLDAPConnection teste la connexion et le bind LDAP sans sauvegarder la configuration.
-func (h *SettingsHandler) TestLDAPConnection(w http.ResponseWriter, r *http.Request) {
+// SaveAuthentik sauvegarde la configuration Authentik OIDC et API.
+func (h *SettingsHandler) SaveAuthentik(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
 	}
 
-	var input config.LDAPConfig
+	var input config.AuthentikConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
 		return
 	}
 
-	h.normalizeLDAPInput(&input)
-	if err := validateLDAPMinimalConfig(input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+	existing, _ := h.db.GetAuthentikConfig()
+	if isMaskedSecret(input.APIToken) || input.APIToken == "" {
+		input.APIToken = existing.APIToken
+	}
+	if isMaskedSecret(input.ClientSecret) || input.ClientSecret == "" {
+		input.ClientSecret = existing.ClientSecret
+	}
+
+	if err := h.db.SaveAuthentikConfig(input); err != nil {
+		slog.Error("Erreur sauvegarde config Authentik", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de sauvegarde"})
 		return
 	}
 
-	client := jgldap.New(input)
-	if err := client.TestConnection(); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_connection", "Echec connexion LDAP") + ": " + err.Error()})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "settings_success_ldap_connection", "Connexion LDAP OK (reseau + bind)")})
+	slog.Info("Configuration Authentik sauvegardée avec succès", "url", input.URL, "enabled", input.Enabled)
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Configuration Authentik sauvegardée"})
 }
 
-// TestLDAPUserLookup teste la recherche d'un utilisateur LDAP via l'attribut
-// de login configure (ex: sAMAccountName, uid).
-func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Request) {
+// GetAuthentikHealth renvoie le diagnostic complet et structuré de l'intégration Authentik.
+func (h *SettingsHandler) GetAuthentikHealth(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
 	}
 
-	var input ldapUserTestInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
-		return
-	}
-
-	h.normalizeLDAPInput(&input.LDAPConfig)
-	if err := validateLDAPMinimalConfig(input.LDAPConfig); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
-		return
-	}
-
-	username := strings.TrimSpace(input.Username)
-	if username == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "username de test requis"})
-		return
-	}
-
-	client := jgldap.New(input.LDAPConfig)
-	entry, isAdmin, err := client.ResolveUserAccess(username)
+	cfg, err := h.db.GetAuthentikConfig()
 	if err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_lookup", "Echec recherche LDAP") + ": " + err.Error()})
-		return
-	}
-	if entry == nil {
-		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_user_not_found", "Utilisateur LDAP introuvable")})
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture configuration Authentik"})
 		return
 	}
 
+	var client authentik.Client = h.authClient
+	if client == nil || cfg.URL != "" {
+		client = authentik.NewClient(cfg)
+	}
+
+	health := client.CheckHealth(r.Context(), cfg)
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: h.tr(r, "settings_success_ldap_user_found", "Utilisateur LDAP trouve (filtre d'acces applique)"),
-		Data: map[string]interface{}{
-			"dn":            entry.DN,
-			"username":      entry.Username,
-			"uid":           entry.UID,
-			"username_attr": entry.UsernameAttribute,
-			"display_name":  entry.DisplayName,
-			"email":         entry.Email,
-			"upn":           entry.UPN,
-			"is_disabled":   entry.IsDisabled,
-			"is_admin":      isAdmin,
-			"search_filter": input.SearchFilter,
-			"admin_filter":  input.AdminFilter,
-		},
+		Data:    health,
 	})
 }
 
-// TestJellyfinLDAPAuth vÃ©rifie que l'authentification LDAP via le plugin Jellyfin fonctionne.
-func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Request) {
-	if !h.ensureAdmin(w, r) {
-		return
-	}
-
-	var input jellyfinLDAPAuthTestInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
-		return
-	}
-
-	username := strings.TrimSpace(input.Username)
-	password := input.Password
-	if username == "" || password == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "username et mot de passe de test requis"})
-		return
-	}
-
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Client Jellyfin non configure"})
-		return
-	}
-
-	authUser, err := h.jfClient.AuthenticateByName(username, password)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Connexion Jellyfin impossible: " + err.Error()})
-		return
-	}
-	if authUser == nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "settings_error_jellyfin_response_invalid", "Reponse Jellyfin invalide")})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Message: h.tr(r, "settings_success_jellyfin_auth", "Authentification Jellyfin via LDAP plugin OK"),
-		Data: map[string]interface{}{
-			"jellyfin_user_id": authUser.ID,
-			"jellyfin_name":    authUser.Name,
-		},
-	})
-}
-
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Structures de rÃƒÂ©ponse Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// ── Structures de réponse ─────────────────────────────────────────────────────────────
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
@@ -380,7 +217,7 @@ type settingsResponse struct {
 	PortalLinks                       config.PortalLinksConfig               `json:"portal_links"`
 	InvitationProfile                 config.InvitationProfileConfig         `json:"invitation_profile"`
 	AuthSession                       database.AuthSessionConfig             `json:"auth_session"`
-	LDAP                              config.LDAPConfig                      `json:"ldap"`
+	Authentik                         config.AuthentikConfig                 `json:"authentik"`
 	SMTP                              config.SMTPConfig                      `json:"smtp"`
 	Webhooks                          config.WebhooksConfig                  `json:"webhooks"`
 	Backup                            config.BackupConfig                    `json:"backup"`
@@ -493,12 +330,12 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	defaultLang := h.db.GetDefaultLang()
 
-	ldapCfg, err := h.db.GetLDAPConfig()
+	authentikCfg, err := h.db.GetAuthentikConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config LDAP", "error", err)
+		slog.Error("Erreur lecture config Authentik", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: h.tr(r, "settings_error_ldap_read", "Erreur lecture configuration LDAP"),
+			Message: "Erreur lecture configuration Authentik",
 		})
 		return
 	}
@@ -563,10 +400,13 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Masquer le mot de passe LDAP et SMTP dans la rÃƒÂ©ponse
-	maskedLDAP := ldapCfg
-	if maskedLDAP.BindPassword != "" {
-		maskedLDAP.BindPassword = maskedSecretValue
+	// Masquer le token API et le client secret Authentik ainsi que le mot de passe SMTP dans la réponse
+	maskedAuthentik := authentikCfg
+	if maskedAuthentik.APIToken != "" {
+		maskedAuthentik.APIToken = maskedSecretValue
+	}
+	if maskedAuthentik.ClientSecret != "" {
+		maskedAuthentik.ClientSecret = maskedSecretValue
 	}
 	maskedSMTP := smtpCfg
 	if maskedSMTP.Password != "" {
@@ -602,7 +442,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			PortalLinks:                       portalLinks,
 			InvitationProfile:                 inviteProfileCfg,
 			AuthSession:                       authSessionCfg,
-			LDAP:                              maskedLDAP,
+			Authentik:                         maskedAuthentik,
 			SMTP:                              maskedSMTP,
 			Webhooks:                          maskedWebhooksConfig(webhooksCfg),
 			Backup:                            backupCfg,
@@ -918,68 +758,7 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/settings/ldap Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
-// SaveLDAP sauvegarde la configuration LDAP.
-func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
-	if !h.ensureAdmin(w, r) {
-		return
-	}
-
-	var input config.LDAPConfig
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{
-			Success: false,
-			Message: "JSON invalide : " + err.Error(),
-		})
-		return
-	}
-
-	// Si le mot de passe est masquÃƒÂ© (pas changÃƒÂ©), conserver l'ancien
-	h.normalizeLDAPInput(&input)
-
-	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
-	if input.ProvisionMode == "" {
-		input.ProvisionMode = "hybrid"
-	}
-	if input.ProvisionMode != "hybrid" && input.ProvisionMode != "ldap_only" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{
-			Success: false,
-			Message: "Mode LDAP invalide: hybrid ou ldap_only",
-		})
-		return
-	}
-
-	// Compatibilite: user_group reste renseigne pour les anciennes versions/exports.
-	input.UserGroup = input.JellyfinGroup
-
-	if err := h.db.SaveLDAPConfig(input); err != nil {
-		slog.Error("Erreur sauvegarde config LDAP", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur de sauvegarde",
-		})
-		return
-	}
-
-	slog.Info("Configuration LDAP sauvegardÃ©e",
-		"enabled", input.Enabled,
-		"host", input.Host,
-		"provision_mode", input.ProvisionMode,
-	)
-
-	// Rechargement ÃƒÂ  chaud
-	if h.OnLDAPReload != nil {
-		h.OnLDAPReload(input)
-	}
-
-	_ = h.db.LogAction("settings.ldap.saved", "", "", "")
-
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Message: "Configuration LDAP sauvegardÃ©e",
-	})
-}
 
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/settings/smtp Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 

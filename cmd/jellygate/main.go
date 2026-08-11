@@ -148,10 +148,10 @@ func main() {
 	authentikClient := authentik.NewClient(authentikCfg)
 
 	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, oidcClient, authentikClient, renderEngine)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, nil, provisioner, mailer, notifier, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, provisioner, mailer, notifier, renderEngine)
 	inviteHandler.SetAuthentikClient(authentikClient)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, authentikClient, mailer, renderEngine)
-	settingsHandler := handlers.NewSettingsHandler(db, jfClient, renderEngine)
+	settingsHandler := handlers.NewSettingsHandler(db, jfClient, authentikClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
 	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer, notifier)
@@ -323,7 +323,7 @@ func main() {
 
 				r.Get("/users", adminHandler.UsersPage)
 				r.Get("/profiles", adminHandler.ProfilesPage)
-				r.Get("/ldap", adminHandler.LDAPPage)
+				r.Get("/authentik", adminHandler.AuthentikPage)
 				r.Get("/security", adminHandler.SecurityPage)
 				r.Get("/pending-actions", adminHandler.PendingActionsPage)
 				r.Get("/automation", func(w http.ResponseWriter, r *http.Request) {
@@ -355,6 +355,9 @@ func main() {
 					r.Post("/general/fetch-server-name", settingsHandler.FetchJellyfinServerName)
 					r.Post("/auth-session", settingsHandler.SaveAuthSession)
 					r.Post("/auth-session/revoke", settingsHandler.RevokeAuthSessions)
+					r.Post("/authentik", settingsHandler.SaveAuthentik)
+					r.Get("/authentik/health", settingsHandler.GetAuthentikHealth)
+					r.Post("/authentik/test", settingsHandler.GetAuthentikHealth)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)

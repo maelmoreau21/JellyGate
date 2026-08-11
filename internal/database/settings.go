@@ -239,9 +239,10 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 // GetAuthentikConfig récupère la configuration Authentik OIDC depuis la base.
 func (db *DB) GetAuthentikConfig() (config.AuthentikConfig, error) {
 	cfg := config.AuthentikConfig{
-		Enabled:    false,
-		UserGroup:  "jellygate-users",
-		AdminGroup: "jellygate-admins",
+		Enabled:           false,
+		UserGroup:         "jellygate-users",
+		AdminGroup:        "jellygate-admins",
+		JellyfinUserGroup: "jellyfin-users",
 	}
 
 	raw, err := db.GetSetting(SettingAuthentikConfig)
@@ -263,6 +264,9 @@ func (db *DB) GetAuthentikConfig() (config.AuthentikConfig, error) {
 	if cfg.AdminGroup == "" {
 		cfg.AdminGroup = "jellygate-admins"
 	}
+	if cfg.JellyfinUserGroup == "" {
+		cfg.JellyfinUserGroup = "jellyfin-users"
+	}
 
 	return cfg, nil
 }
@@ -276,123 +280,13 @@ func (db *DB) SaveAuthentikConfig(cfg config.AuthentikConfig) error {
 	return db.SetSetting(SettingAuthentikConfig, string(data))
 }
 
-// ── LDAP Config ─────────────────────────────────────────────────────────────
-
-// GetLDAPConfig récupère la configuration LDAP depuis la base.
-// Retourne une config par défaut (Enabled=false) si non configurée.
-func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
-	cfg := config.LDAPConfig{
-		Enabled:                             false,
-		Port:                                636,
-		UseTLS:                              true,
-		SearchFilter:                        "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))",
-		SearchAttributes:                    "uid,sAMAccountName,cn,userPrincipalName,mail",
-		UIDAttribute:                        "uid",
-		UsernameAttribute:                   "auto",
-		AdminFilter:                         "",
-		AdminFilterMemberUID:                false,
-		UserObjectClass:                     "auto",
-		GroupMemberAttr:                     "auto",
-		UserOU:                              "CN=Users",
-		ProvisionMode:                       "hybrid",
-		JellyfinGroup:                       "jellyfin",
-		InviterGroup:                        "jellyfin-Parrainage",
-		AdministratorsGroup:                 "jellyfin-administrateur",
-		JellyfinLDAPAuthProviderID:          "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin",
-		JellyfinLDAPPasswordResetProviderID: "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider",
-	}
-
-	raw, err := db.GetSetting(SettingLDAPConfig)
+// IsAuthentikEnabled indique si l'intégration Authentik est activée.
+func (db *DB) IsAuthentikEnabled() bool {
+	cfg, err := db.GetAuthentikConfig()
 	if err != nil {
-		return cfg, err
+		return false
 	}
-	if raw == "" {
-		return cfg, nil
-	}
-
-	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
-		slog.Warn("Erreur de parsing de la config LDAP", "error", err)
-		return cfg, nil
-	}
-
-	cfg.ProvisionMode = strings.ToLower(strings.TrimSpace(cfg.ProvisionMode))
-	if cfg.ProvisionMode == "" {
-		cfg.ProvisionMode = "hybrid"
-	}
-	if cfg.ProvisionMode != "hybrid" && cfg.ProvisionMode != "ldap_only" {
-		cfg.ProvisionMode = "hybrid"
-	}
-
-	cfg.UsernameAttribute = strings.TrimSpace(cfg.UsernameAttribute)
-	if cfg.UsernameAttribute == "" {
-		cfg.UsernameAttribute = "auto"
-	}
-
-	cfg.SearchFilter = strings.TrimSpace(cfg.SearchFilter)
-	if cfg.SearchFilter == "" {
-		cfg.SearchFilter = "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))"
-	}
-
-	cfg.SearchAttributes = strings.TrimSpace(cfg.SearchAttributes)
-	if cfg.SearchAttributes == "" {
-		cfg.SearchAttributes = "uid,sAMAccountName,cn,userPrincipalName,mail"
-	}
-
-	cfg.UIDAttribute = strings.TrimSpace(cfg.UIDAttribute)
-	if cfg.UIDAttribute == "" {
-		cfg.UIDAttribute = "uid"
-	}
-
-	cfg.AdminFilter = strings.TrimSpace(cfg.AdminFilter)
-
-	cfg.UserObjectClass = strings.TrimSpace(cfg.UserObjectClass)
-	if cfg.UserObjectClass == "" {
-		cfg.UserObjectClass = "auto"
-	}
-
-	cfg.GroupMemberAttr = strings.TrimSpace(cfg.GroupMemberAttr)
-	if cfg.GroupMemberAttr == "" {
-		cfg.GroupMemberAttr = "auto"
-	}
-
-	if strings.TrimSpace(cfg.JellyfinGroup) == "" {
-		cfg.JellyfinGroup = strings.TrimSpace(cfg.UserGroup)
-	}
-	if strings.TrimSpace(cfg.JellyfinGroup) == "" {
-		cfg.JellyfinGroup = "jellyfin"
-	}
-	if strings.TrimSpace(cfg.InviterGroup) == "" {
-		cfg.InviterGroup = "jellyfin-Parrainage"
-	}
-	if strings.TrimSpace(cfg.AdministratorsGroup) == "" {
-		cfg.AdministratorsGroup = "jellyfin-administrateur"
-	}
-	if strings.TrimSpace(cfg.JellyfinLDAPAuthProviderID) == "" {
-		cfg.JellyfinLDAPAuthProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin"
-	}
-	if strings.TrimSpace(cfg.JellyfinLDAPPasswordResetProviderID) == "" {
-		cfg.JellyfinLDAPPasswordResetProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider"
-	}
-
-	return cfg, nil
-}
-
-// SaveLDAPConfig sauvegarde la configuration LDAP dans la base.
-func (db *DB) SaveLDAPConfig(cfg config.LDAPConfig) error {
-	data, err := json.Marshal(cfg)
-	if err != nil {
-		return fmt.Errorf("SaveLDAPConfig marshal: %w", err)
-	}
-	enc, err := db.encrypt(string(data))
-	if err != nil {
-		return fmt.Errorf("SaveLDAPConfig encrypt: %w", err)
-	}
-	return db.SetSetting(SettingLDAPConfig, enc)
-}
-
-// IsLDAPEnabled renvoie toujours false (obsolète après migration Authentik).
-func (db *DB) IsLDAPEnabled() bool {
-	return false
+	return cfg.Enabled
 }
 
 // ── SMTP Config ─────────────────────────────────────────────────────────────

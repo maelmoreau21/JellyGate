@@ -26,7 +26,7 @@ func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "profiles"
 	if err := h.renderer.Render(w, "admin/profiles.html", td); err != nil {
 		slog.Error("Erreur rendu profiles page", "error", err)
@@ -34,8 +34,29 @@ func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *AdminHandler) LDAPPage(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/admin/settings", http.StatusSeeOther)
+func (h *AdminHandler) AuthentikPage(w http.ResponseWriter, r *http.Request) {
+	if !h.db.IsAuthentikEnabled() {
+		http.Redirect(w, r, "/admin/settings#authentik", http.StatusSeeOther)
+		return
+	}
+
+	sess := session.FromContext(r.Context())
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	links := resolvePortalLinks(h.cfg, h.db)
+	td.Data["JellyfinURL"] = links.JellyfinURL
+	td.AdminUsername = sess.Username
+	td.IsAdmin = true
+	td.CanInvite = true
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
+	td.Section = "authentik"
+
+	cfg, _ := h.db.GetAuthentikConfig()
+	td.Data["AuthentikConfig"] = cfg
+
+	if err := h.renderer.Render(w, "admin/authentik.html", td); err != nil {
+		slog.Error("Erreur rendu authentik page", "error", err)
+		http.Redirect(w, r, "/admin/settings#authentik", http.StatusSeeOther)
+	}
 }
 
 func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
@@ -46,7 +67,7 @@ func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "security"
 	if err := h.renderer.Render(w, "admin/security.html", td); err != nil {
 		slog.Error("Erreur rendu security page", "error", err)
@@ -62,7 +83,7 @@ func (h *AdminHandler) PendingActionsPage(w http.ResponseWriter, r *http.Request
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "pending_actions"
 	if err := h.renderer.Render(w, "admin/pending_actions.html", td); err != nil {
 		slog.Error("Erreur rendu pending actions page", "error", err)

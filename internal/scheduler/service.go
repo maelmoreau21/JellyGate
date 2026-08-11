@@ -2,9 +2,7 @@ package scheduler
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -15,7 +13,6 @@ import (
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/backup"
-	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
@@ -427,36 +424,7 @@ func (s *Service) loadTask(taskID int64) (TaskRecord, error) {
 	return t, nil
 }
 
-func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinPolicyPreset, ldapCfg config.LDAPConfig) error {
-	if s.jf == nil {
-		return fmt.Errorf("client Jellyfin nul")
-	}
 
-	profile := jellyfin.InviteProfileFromPolicyPreset(&preset)
-	profile.LDAPAuthProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPAuthProviderID)
-	profile.LDAPPasswordResetProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPPasswordResetProviderID)
-
-	return s.jf.ApplyInviteProfile(jfUserID, profile)
-}
-
-func schedulerRandomPassword() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-func resolveLDAPBaseGroup(cfg config.LDAPConfig) string {
-	baseGroup := strings.TrimSpace(cfg.JellyfinGroup)
-	if baseGroup == "" {
-		baseGroup = strings.TrimSpace(cfg.UserGroup)
-	}
-	if baseGroup == "" {
-		baseGroup = "jellyfin"
-	}
-	return baseGroup
-}
 
 func (s *Service) checkExpiringAccounts() {
 	if s.notifier == nil {

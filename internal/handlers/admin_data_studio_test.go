@@ -64,17 +64,17 @@ func TestPreviewInvitationDoesNotCreateInvitation(t *testing.T) {
 	}
 }
 
-func TestLDAPPageRedirectsToSettingsWhenDisabled(t *testing.T) {
+func TestAuthentikPageRedirectsToSettingsWhenDisabled(t *testing.T) {
 	handler, _ := newTestAdminDataStudioHandler(t)
 
 	rec := httptest.NewRecorder()
-	handler.LDAPPage(rec, newAdminRequest(http.MethodGet, "/admin/ldap", nil))
+	handler.AuthentikPage(rec, newAdminRequest(http.MethodGet, "/admin/authentik", nil))
 
 	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("LDAPPage status = %d, want %d", rec.Code, http.StatusSeeOther)
+		t.Fatalf("AuthentikPage status = %d, want %d", rec.Code, http.StatusSeeOther)
 	}
-	if got := rec.Header().Get("Location"); got != "/admin/settings" {
-		t.Fatalf("LDAPPage redirect = %q, want /admin/settings", got)
+	if got := rec.Header().Get("Location"); got != "/admin/settings#authentik" {
+		t.Fatalf("AuthentikPage redirect = %q, want /admin/settings#authentik", got)
 	}
 }
 

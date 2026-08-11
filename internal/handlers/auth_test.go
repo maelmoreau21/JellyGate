@@ -86,28 +86,7 @@ func TestLoginSubmitRedirectsToOIDC(t *testing.T) {
 
 const testAuthSecret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
-func saveUnavailableLDAPConfig(t *testing.T, db *database.DB) {
-	t.Helper()
 
-	err := db.SaveLDAPConfig(config.LDAPConfig{
-		Enabled:         true,
-		Host:            "127.0.0.1",
-		Port:            1,
-		UseTLS:          false,
-		BindDN:          "cn=readonly,dc=example,dc=com",
-		BindPassword:    "secret",
-		BaseDN:          "dc=example,dc=com",
-		SearchFilter:    "(uid={username})",
-		ProvisionMode:   "hybrid",
-		JellyfinGroup:   "jellyfin",
-		InviterGroup:    "jellyfin-Parrainage",
-		UserObjectClass: "auto",
-		GroupMemberAttr: "auto",
-	})
-	if err != nil {
-		t.Fatalf("SaveLDAPConfig() error = %v", err)
-	}
-}
 
 func newAuthTestDB(t *testing.T) *database.DB {
 	t.Helper()

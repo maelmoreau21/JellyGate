@@ -43,14 +43,35 @@ type InvitationTokenResponse struct {
 	FixedData map[string]interface{} `json:"fixed_data"`
 }
 
+// HealthComponent représente le résultat de contrôle d'un composant Authentik.
+type HealthComponent struct {
+	Status  string            `json:"status"` // "ok", "error", "warning"
+	Message string            `json:"message"`
+	Details map[string]string `json:"details,omitempty"`
+}
+
+// HealthCheckResult récapitule la santé globale de l'intégration Authentik.
+type HealthCheckResult struct {
+	OverallStatus string                     `json:"overall_status"` // "ok", "error", "warning"
+	LastChecked   time.Time                  `json:"last_checked"`
+	Components    map[string]HealthComponent `json:"components"`
+}
+
 // Client interface de l'API Authentik REST.
 type Client interface {
+	CheckHealth(ctx context.Context, cfg config.AuthentikConfig) *HealthCheckResult
+	CheckAPI(ctx context.Context) HealthComponent
+	CheckOIDC(ctx context.Context, issuerURL string) HealthComponent
+	CheckEnrollment(ctx context.Context, flowSlug string) HealthComponent
+	CheckGroups(ctx context.Context, groups []string) HealthComponent
+
 	CreateUser(ctx context.Context, payload UserCreatePayload) (*UserResponse, error)
 	CreateRecoveryLink(ctx context.Context, authentikPK int64) (recoveryLink string, err error)
 	AddUserToGroup(ctx context.Context, userPK int64, groupID string) error
 	SetUserActiveStatus(ctx context.Context, userPK int64, active bool) error
 	SetUserActiveStatusByString(ctx context.Context, authentikID string, active bool) error
 	DeleteUser(ctx context.Context, userPK int64) error
+	DeleteUserByString(ctx context.Context, authentikID string) error
 	ListUsers(ctx context.Context) ([]UserResponse, error)
 
 	CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (invitationID string, err error)
@@ -310,7 +331,272 @@ func (c *client) DeleteInvitationStageToken(ctx context.Context, invitationID st
 	return nil
 }
 
+func (c *client) DeleteUserByString(ctx context.Context, authentikID string) error {
+	if strings.TrimSpace(authentikID) == "" {
+		return fmt.Errorf("authentikID cannot be empty")
+	}
+	endpoint := fmt.Sprintf("/api/v3/core/users/%s/", url.PathEscape(authentikID))
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodDelete, endpoint, nil)
+	if err != nil {
+		return err
+	}
+	if statusCode != http.StatusNoContent && statusCode != http.StatusOK {
+		return fmt.Errorf("delete user returned status %d: %s", statusCode, string(respBody))
+	}
+	return nil
+}
+
 // UserPKString convertit un PK entier en string pour les helpers d'URL.
 func UserPKString(pk int64) string {
 	return strconv.FormatInt(pk, 10)
 }
+
+func (c *client) CheckAPI(ctx context.Context) HealthComponent {
+	if c.baseURL == "" {
+		return HealthComponent{
+			Status:  "error",
+			Message: "URL Authentik non configurée",
+		}
+	}
+	if c.apiToken == "" {
+		return HealthComponent{
+			Status:  "error",
+			Message: "Token API Authentik non configuré",
+		}
+	}
+
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/core/users/me/", nil)
+	if err != nil {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Connexion API impossible: %v", err),
+		}
+	}
+
+	if statusCode == http.StatusOK {
+		var user UserResponse
+		_ = json.Unmarshal(respBody, &user)
+		return HealthComponent{
+			Status:  "ok",
+			Message: "Connexion API REST OK",
+			Details: map[string]string{
+				"authenticated_as": user.Username,
+				"url":              c.baseURL,
+			},
+		}
+	}
+
+	if statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Token API invalide ou permissions insuffisantes (HTTP %d)", statusCode),
+			Details: map[string]string{"http_code": strconv.Itoa(statusCode)},
+		}
+	}
+
+	return HealthComponent{
+		Status:  "error",
+		Message: fmt.Sprintf("Erreur API Authentik HTTP %d: %s", statusCode, string(respBody)),
+		Details: map[string]string{"http_code": strconv.Itoa(statusCode)},
+	}
+}
+
+func (c *client) CheckOIDC(ctx context.Context, issuerURL string) HealthComponent {
+	issuer := strings.TrimRight(issuerURL, "/")
+	if issuer == "" && c.baseURL != "" {
+		issuer = c.baseURL + "/application/o/jellygate"
+	}
+	if issuer == "" {
+		return HealthComponent{
+			Status:  "error",
+			Message: "OIDC Issuer URL non configurée",
+		}
+	}
+
+	discoveryURL := issuer + "/.well-known/openid-configuration"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, discoveryURL, nil)
+	if err != nil {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Erreur préparation requête Discovery: %v", err),
+		}
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Discovery OIDC inaccessible (%s): %v", discoveryURL, err),
+		}
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Discovery OIDC HTTP %d depuis %s", resp.StatusCode, discoveryURL),
+		}
+	}
+
+	var meta struct {
+		Issuer                string `json:"issuer"`
+		AuthorizationEndpoint string `json:"authorization_endpoint"`
+		TokenEndpoint         string `json:"token_endpoint"`
+		JWKSURI               string `json:"jwks_uri"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&meta); err != nil {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Erreur de decodage JSON OIDC Discovery: %v", err),
+		}
+	}
+
+	return HealthComponent{
+		Status:  "ok",
+		Message: "OIDC Discovery OK",
+		Details: map[string]string{
+			"issuer":                 meta.Issuer,
+			"authorization_endpoint": meta.AuthorizationEndpoint,
+			"token_endpoint":         meta.TokenEndpoint,
+			"jwks_uri":               meta.JWKSURI,
+		},
+	}
+}
+
+func (c *client) CheckEnrollment(ctx context.Context, flowSlug string) HealthComponent {
+	slug := strings.TrimSpace(flowSlug)
+	if slug == "" {
+		slug = "default-enrollment-flow"
+	}
+
+	endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(slug))
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return HealthComponent{
+			Status:  "warning",
+			Message: fmt.Sprintf("Vérification du flow d'enrollment impossible: %v", err),
+			Details: map[string]string{"flow_slug": slug},
+		}
+	}
+
+	if statusCode == http.StatusOK {
+		return HealthComponent{
+			Status:  "ok",
+			Message: fmt.Sprintf("Flow d'enrollment '%s' accessible", slug),
+			Details: map[string]string{"flow_slug": slug},
+		}
+	}
+
+	if statusCode == http.StatusNotFound {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Flow d'enrollment '%s' introuvable dans Authentik", slug),
+			Details: map[string]string{"flow_slug": slug},
+		}
+	}
+
+	return HealthComponent{
+		Status:  "warning",
+		Message: fmt.Sprintf("Réponse inattendue lors de la vérification du flow '%s' (HTTP %d): %s", slug, statusCode, string(respBody)),
+		Details: map[string]string{"flow_slug": slug, "http_code": strconv.Itoa(statusCode)},
+	}
+}
+
+func (c *client) CheckGroups(ctx context.Context, groups []string) HealthComponent {
+	var checkedGroups []string
+	for _, g := range groups {
+		g = strings.TrimSpace(g)
+		if g != "" {
+			checkedGroups = append(checkedGroups, g)
+		}
+	}
+	if len(checkedGroups) == 0 {
+		return HealthComponent{
+			Status:  "warning",
+			Message: "Aucun groupe configuré pour vérification",
+		}
+	}
+
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/core/groups/", nil)
+	if err != nil {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Impossible de lister les groupes Authentik: %v", err),
+		}
+	}
+	if statusCode != http.StatusOK {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Erreur listing groupes Authentik HTTP %d: %s", statusCode, string(respBody)),
+		}
+	}
+
+	var pageResp struct {
+		Results []struct {
+			Name string `json:"name"`
+		} `json:"results"`
+	}
+	_ = json.Unmarshal(respBody, &pageResp)
+
+	existingGroups := make(map[string]bool)
+	for _, item := range pageResp.Results {
+		existingGroups[item.Name] = true
+	}
+
+	var missing []string
+	details := make(map[string]string)
+	for _, g := range checkedGroups {
+		if existingGroups[g] {
+			details[g] = "présent"
+		} else {
+			details[g] = "MANQUANT"
+			missing = append(missing, g)
+		}
+	}
+
+	if len(missing) > 0 {
+		return HealthComponent{
+			Status:  "error",
+			Message: fmt.Sprintf("Groupe(s) Authentik manquant(s): %s", strings.Join(missing, ", ")),
+			Details: details,
+		}
+	}
+
+	return HealthComponent{
+		Status:  "ok",
+		Message: "Tous les groupes requis existent dans Authentik",
+		Details: details,
+	}
+}
+
+func (c *client) CheckHealth(ctx context.Context, cfg config.AuthentikConfig) *HealthCheckResult {
+	res := &HealthCheckResult{
+		OverallStatus: "ok",
+		LastChecked:   time.Now(),
+		Components:    make(map[string]HealthComponent),
+	}
+
+	apiComp := c.CheckAPI(ctx)
+	res.Components["api"] = apiComp
+
+	oidcComp := c.CheckOIDC(ctx, cfg.IssuerURL)
+	res.Components["oidc_discovery"] = oidcComp
+
+	enrollComp := c.CheckEnrollment(ctx, cfg.EnrollmentFlowSlug)
+	res.Components["enrollment_flow"] = enrollComp
+
+	groupsComp := c.CheckGroups(ctx, []string{cfg.UserGroup, cfg.AdminGroup, cfg.JellyfinUserGroup})
+	res.Components["groups"] = groupsComp
+
+	for _, comp := range res.Components {
+		if comp.Status == "error" {
+			res.OverallStatus = "error"
+			break
+		} else if comp.Status == "warning" && res.OverallStatus != "error" {
+			res.OverallStatus = "warning"
+		}
+	}
+
+	return res
+}
+

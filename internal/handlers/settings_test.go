@@ -13,7 +13,6 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -28,7 +27,7 @@ func newTestSettingsHandler(t *testing.T) (*SettingsHandler, *database.DB) {
 		_ = db.Close()
 	})
 
-	return NewSettingsHandler(db, nil, nil), db
+	return NewSettingsHandler(db, nil, nil, nil), db
 }
 
 func newAdminRequest(method, target string, body []byte) *http.Request {
@@ -113,77 +112,41 @@ func TestSettingsHandlerSaveAndRevokeAuthSession(t *testing.T) {
 	}
 }
 
-func TestSettingsHandlerTestJellyfinLDAPAuthUsesSharedAuthFlow(t *testing.T) {
-	handler, _ := newTestSettingsHandler(t)
-	requests := map[string]int{}
+func TestSettingsHandlerSaveAuthentik(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests[r.Method+" "+r.URL.Path]++
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
-			if strings.Contains(r.Header.Get("Authorization"), "Token=") {
-				t.Fatalf("authenticate request should not include a token: %q", r.Header.Get("Authorization"))
-			}
-			var payload struct {
-				Username string `json:"Username"`
-				Pw       string `json:"Pw"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				t.Fatalf("decode auth payload: %v", err)
-			}
-			if payload.Username != "ldap-user" || payload.Pw != "secret" {
-				t.Fatalf("auth payload = %+v, want ldap-user/secret", payload)
-			}
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"User": map[string]string{
-					"Id":   "jf-user",
-					"Name": "ldap-user",
-				},
-				"AccessToken": "session-token",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/jf-user":
-			if !strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`) {
-				t.Fatalf("policy refresh Authorization = %q, want session token", r.Header.Get("Authorization"))
-			}
-			_ = json.NewEncoder(w).Encode(jellyfin.User{
-				ID:   "jf-user",
-				Name: "ldap-user",
-			})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
-		}
-	}))
-	defer server.Close()
-
-	handler.jfClient = jellyfin.New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
-	body, err := json.Marshal(jellyfinLDAPAuthTestInput{Username: "ldap-user", Password: "secret"})
+	body, err := json.Marshal(config.AuthentikConfig{
+		Enabled:                  true,
+		URL:                      "https://auth.example.com",
+		IssuerURL:                "https://auth.example.com/application/o/jellygate/",
+		ClientID:                 "jellygate",
+		ClientSecret:             "secret123",
+		RedirectURL:              "https://jellygate.example.com/auth/callback",
+		APIToken:                 "ak-token-12345",
+		UserGroup:                "jellygate-users",
+		AdminGroup:               "jellygate-admins",
+		JellyfinUserGroup:        "jellyfin-users",
+		EnrollmentFlowSlug:       "default-enrollment-flow",
+	})
 	if err != nil {
 		t.Fatalf("json.Marshal() error = %v", err)
 	}
 
 	rec := httptest.NewRecorder()
-	handler.TestJellyfinLDAPAuth(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/ldap/test-jellyfin-auth", body))
+	handler.SaveAuthentik(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/authentik", body))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("TestJellyfinLDAPAuth status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+		t.Fatalf("SaveAuthentik status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
-	var resp struct {
-		Success bool                   `json:"success"`
-		Data    map[string]interface{} `json:"data"`
+	saved, err := db.GetAuthentikConfig()
+	if err != nil {
+		t.Fatalf("GetAuthentikConfig() error = %v", err)
 	}
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode response: %v", err)
-	}
-	if !resp.Success {
-		t.Fatalf("response success = false")
-	}
-	if resp.Data["jellyfin_user_id"] != "jf-user" || resp.Data["jellyfin_name"] != "ldap-user" {
-		t.Fatalf("response data = %#v, want Jellyfin user details", resp.Data)
-	}
-	if requests[http.MethodPost+" /Users/AuthenticateByName"] != 1 || requests[http.MethodGet+" /Users/jf-user"] != 1 {
-		t.Fatalf("unexpected request counts: %#v", requests)
+	if !saved.Enabled || saved.URL != "https://auth.example.com" || saved.UserGroup != "jellygate-users" {
+		t.Fatalf("saved Authentik config mismatch: %+v", saved)
 	}
 }
+
 
 func TestSettingsHandlerSaveEmailTemplatesSyncsSharedFields(t *testing.T) {
 	handler, db := newTestSettingsHandler(t)

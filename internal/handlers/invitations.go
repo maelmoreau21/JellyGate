@@ -32,7 +32,6 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/integrations"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
@@ -107,7 +106,6 @@ type InvitationHandler struct {
 	cfg         *config.Config
 	db          *database.DB
 	jfClient    *jellyfin.Client
-	ldClient    *jgldap.Client
 	authClient  authentik.Client
 	provisioner *integrations.Client
 	mailer      *mail.Mailer
@@ -117,12 +115,11 @@ type InvitationHandler struct {
 }
 
 // NewInvitationHandler crée un nouveau handler d'invitations.
-func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, provisioner *integrations.Client, m *mail.Mailer, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
+func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, provisioner *integrations.Client, m *mail.Mailer, n *notify.Notifier, renderer *render.Engine) *InvitationHandler {
 	return &InvitationHandler{
 		cfg:         cfg,
 		db:          db,
 		jfClient:    jf,
-		ldClient:    ld,
 		provisioner: provisioner,
 		mailer:      m,
 		notifier:    n,
@@ -133,9 +130,6 @@ func NewInvitationHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Clie
 
 // SetAuthentikClient définit le client Authentik.
 func (h *InvitationHandler) SetAuthentikClient(auth authentik.Client) { h.authClient = auth }
-
-// SetLDAPClient remplace le client LDAP (rechargement à chaud).
-func (h *InvitationHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
 
 // SetMailer remplace le mailer SMTP (rechargement ÃƒÂ  chaud).
 func (h *InvitationHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
@@ -537,25 +531,31 @@ func resolveInviteUsernamePolicy(profile jellyfin.InviteProfile) (int, int) {
 	return minLength, maxLength
 }
 
+const (
+	ProvisionRoleUser    = "user"
+	ProvisionRoleInviter = "inviter"
+	ProvisionRoleAdmin   = "admin"
+)
+
 func resolveLDAPProvisionRole(profile jellyfin.InviteProfile) string {
 	if profile.CanInvite {
-		return jgldap.ProvisionRoleInviter
+		return ProvisionRoleInviter
 	}
 
 	groupName := strings.ToLower(strings.TrimSpace(profile.GroupName))
 	switch groupName {
 	case "admin", "admins", "administrator", "administrators":
-		return jgldap.ProvisionRoleAdmin
+		return ProvisionRoleAdmin
 	case "inviter", "inviters", "parrainage", "sponsor", "sponsors":
-		return jgldap.ProvisionRoleInviter
+		return ProvisionRoleInviter
 	default:
-		return jgldap.ProvisionRoleUser
+		return ProvisionRoleUser
 	}
 }
 
 func roleAllowsInvites(role string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(role))
-	return normalized == jgldap.ProvisionRoleInviter || normalized == jgldap.ProvisionRoleAdmin
+	return normalized == ProvisionRoleInviter || normalized == ProvisionRoleAdmin
 }
 
 func resolveInvitePasswordPolicy(profile jellyfin.InviteProfile) invitePasswordPolicy {
@@ -756,263 +756,38 @@ func (h *InvitationHandler) ensureInviteUsernameAvailable(r *http.Request, usern
 }
 
 func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitation, form *inviteFormData, profile jellyfin.InviteProfile, emailVerified bool) (*inviteSignupResult, error) {
-	ldapCfg, _ := h.db.GetLDAPConfig()
-	ldapMirrorMode := h.ldClient != nil && ldapCfg.Enabled
-	if h.jfClient == nil {
-		return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_unavailable", "Service Jellyfin indisponible")), true)
-	}
-
-	jellyfinPassword := form.Password
-	if ldapMirrorMode {
-		randomMirrorPassword, tokenErr := generateSecureToken(32)
-		if tokenErr != nil {
-			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_mirror_password", "Impossible de preparer le compte miroir Jellyfin")), true)
+	if h.authClient != nil {
+		cfg, _ := h.db.GetAuthentikConfig()
+		if cfg.Enabled {
+			expiresAt := time.Now().Add(24 * time.Hour)
+			if inv.ExpiresAt.Valid {
+				expiresAt = inv.ExpiresAt.Time
+			}
+			fixedData := map[string]interface{}{
+				"email": form.Email,
+			}
+			if _, err := h.authClient.CreateInvitationStageToken(r.Context(), form.Username, expiresAt, fixedData, true, cfg.EnrollmentFlowSlug); err != nil {
+				slog.Error("Erreur création token invitation Authentik", "error", err)
+			}
 		}
-		jellyfinPassword = randomMirrorPassword
 	}
 
 	provisionPlan := inviteProvisionPlan{EffectiveProfile: profile}
-	if resolvedPlan, err := h.resolveInviteProvisionPlan(profile); err != nil {
-		slog.Warn(
-			"Impossible de resoudre le mapping LDAP -> preset pour l'invitation (fallback sur profil invitation)",
-			"group", strings.TrimSpace(profile.GroupName),
-			"preset_id", strings.TrimSpace(profile.PresetID),
-			"error", err,
-		)
-	} else {
+	if resolvedPlan, err := h.resolveInviteProvisionPlan(profile); err == nil {
 		provisionPlan = resolvedPlan
-		if strings.TrimSpace(provisionPlan.MappingPresetID) != "" {
-			slog.Info(
-				"Mapping LDAP -> preset resolu pour l'invitation",
-				"group", strings.TrimSpace(profile.GroupName),
-				"mapping_preset_id", provisionPlan.MappingPresetID,
-			)
-		}
-	}
-	if ldapMirrorMode {
-		provisionPlan.EffectiveProfile.LDAPAuthProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPAuthProviderID)
-		provisionPlan.EffectiveProfile.LDAPPasswordResetProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPPasswordResetProviderID)
 	}
 
-	ldapProvisionRole := resolveLDAPProvisionRole(profile)
-	if ldapProvisionRole != jgldap.ProvisionRoleUser {
-		slog.Info("Provisioning LDAP role detecte depuis le profil d'invitation",
-			"role", ldapProvisionRole,
-			"can_invite", profile.CanInvite,
-			"group_name", strings.TrimSpace(profile.GroupName),
-			"preset_id", strings.TrimSpace(profile.PresetID),
-		)
-	}
-
-	var userDN string
-	if h.ldClient != nil {
-		slog.Info("Ã°Å¸â€�Â� Ãƒâ€°tape 2/5 : CrÃƒÂ©ation du compte LDAP", "username", form.Username)
-
-		createdDN, err := h.ldClient.CreateUser(form.Username, form.Username, form.Email, form.Password, ldapProvisionRole)
-		if err != nil {
-			slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 2/5 ÃƒÂ©chouÃƒÂ©e : crÃƒÂ©ation LDAP", "username", form.Username, "error", err)
-			h.logInviteAction(r, "invite.ldap.failed", form.Username, inv.Code, err.Error())
-			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_ldap_create", "Erreur lors de la crÃƒÂ©ation du compte (LDAP)")), true)
-		}
-
-		userDN = createdDN
-		slog.Info("Ã¢Å“â€¦ Ãƒâ€°tape 2/5 terminÃƒÂ©e", "dn", userDN)
-	} else {
-		slog.Info("Ã¢Â�Â­Ã¯Â¸Â� Ãƒâ€°tape 2/5 ignorÃƒÂ©e (LDAP dÃƒÂ©sactivÃƒÂ©)")
-	}
-
-	if h.ldClient != nil && strings.TrimSpace(userDN) != "" {
-		targetGroups := resolveLDAPProvisionGroups(ldapCfg, provisionPlan.LDAPGroups)
-		for _, groupRef := range targetGroups {
-			if err := h.ldClient.AddUserToGroup(userDN, groupRef); err != nil {
-				slog.Warn(
-					"Assignation groupe LDAP echouee pendant provisioning invitation",
-					"username", form.Username,
-					"dn", userDN,
-					"group_ref", groupRef,
-					"error", err,
-				)
-				h.logInviteAction(r, "invite.group_mapping.failed", form.Username, userDN, fmt.Sprintf("%s: %v", groupRef, err))
-			}
-		}
-	}
-
-	var jellyfinID string
-	{
-		stepLabel := "creation_compte_jellyfin"
-		if ldapMirrorMode {
-			stepLabel = "creation_miroir_jellyfin_ldap"
-		}
-		slog.Info("Ã°Å¸Å½Â¬ Ãƒâ€°tape 3/5 : CrÃƒÂ©ation du compte Jellyfin", "username", form.Username, "mode", stepLabel)
-
-		jfUser, err := h.jfClient.CreateUser(form.Username, jellyfinPassword)
-		if err != nil {
-			slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 3/5 ÃƒÂ©chouÃƒÂ©e : crÃƒÂ©ation Jellyfin", "username", form.Username, "error", err)
-			rollbackFailed := false
-			if h.ldClient != nil && userDN != "" {
-				slog.Warn("Ã°Å¸â€�â€ž Rollback : suppression du compte LDAP", "dn", userDN)
-				if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-					rollbackFailed = true
-					slog.Error("Ã¢Å¡Â Ã¯Â¸Â� ROLLBACK LDAP Ãƒâ€°CHOUÃƒâ€° Ã¢â‚¬â€� intervention manuelle requise", "dn", userDN, "rollback_error", rbErr, "original_error", err)
-					h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
-				} else {
-					slog.Info("Ã¢Å“â€¦ Rollback LDAP rÃƒÂ©ussi", "dn", userDN)
-				}
-			}
-
-			h.logInviteAction(r, "invite.jellyfin.failed", form.Username, inv.Code, err.Error())
-			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_jellyfin_create", "Erreur lors de la crÃƒÂ©ation du compte (Jellyfin)")), !rollbackFailed)
-		}
-
-		jellyfinID = jfUser.ID
-
-		if err := h.jfClient.ApplyInviteProfile(jfUser.ID, provisionPlan.EffectiveProfile); err != nil {
-			slog.Error("Erreur lors de l'application du profil Jellyfin", "jellyfin_id", jfUser.ID, "error", err)
-			h.logInviteAction(r, "invite.profile.failed", form.Username, jfUser.ID, err.Error())
-			rollbackFailed := false
-			if rbErr := h.jfClient.DeleteUser(jfUser.ID); rbErr != nil {
-				rollbackFailed = true
-				slog.Error("Rollback Jellyfin apres profil echoue", "jellyfin_id", jfUser.ID, "rollback_error", rbErr)
-				h.logInviteAction(r, "invite.rollback.jellyfin.failed", form.Username, jfUser.ID, rbErr.Error())
-			}
-			if h.ldClient != nil && userDN != "" {
-				if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-					rollbackFailed = true
-					slog.Error("Rollback LDAP apres profil Jellyfin echoue", "dn", userDN, "rollback_error", rbErr)
-					h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
-				}
-			}
-			return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_profile_apply", "Erreur lors de l'application du profil Jellyfin")), !rollbackFailed)
-		}
-
-		slog.Info("Ã¢Å“â€¦ Ãƒâ€°tape 3/5 terminÃƒÂ©e", "jellyfin_id", jfUser.ID)
-	}
-
-	slog.Info("Ã°Å¸â€™Â¾ Ãƒâ€°tape 4/5 : Enregistrement SQLite", "username", form.Username)
-	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, jellyfinID, userDN, ldapProvisionRole, emailVerified); err != nil {
-		slog.Error("Ã¢Â�Å’ Ãƒâ€°tape 4/5 ÃƒÂ©chouÃƒÂ©e : enregistrement SQLite", "username", form.Username, "error", err)
-		slog.Warn("Ã°Å¸â€�â€ž Rollback : suppression Jellyfin + LDAP")
-
-		rollbackFailed := false
-		if strings.TrimSpace(jellyfinID) != "" {
-			if rbErr := h.jfClient.DeleteUser(jellyfinID); rbErr != nil {
-				rollbackFailed = true
-				slog.Error("Ã¢Å¡Â Ã¯Â¸Â� ROLLBACK JELLYFIN Ãƒâ€°CHOUÃƒâ€° Ã¢â‚¬â€� intervention manuelle requise", "jellyfin_id", jellyfinID, "rollback_error", rbErr)
-				h.logInviteAction(r, "invite.rollback.jellyfin.failed", form.Username, jellyfinID, rbErr.Error())
-			} else {
-				slog.Info("Ã¢Å“â€¦ Rollback Jellyfin rÃƒÂ©ussi", "id", jellyfinID)
-			}
-		}
-
-		if h.ldClient != nil && userDN != "" {
-			if rbErr := h.ldClient.DeleteUser(userDN); rbErr != nil {
-				rollbackFailed = true
-				slog.Error("Ã¢Å¡Â Ã¯Â¸Â� ROLLBACK LDAP Ãƒâ€°CHOUÃƒâ€° Ã¢â‚¬â€� intervention manuelle requise", "dn", userDN, "rollback_error", rbErr)
-				h.logInviteAction(r, "invite.rollback.ldap.failed", form.Username, userDN, rbErr.Error())
-			} else {
-				slog.Info("Ã¢Å“â€¦ Rollback LDAP rÃƒÂ©ussi", "dn", userDN)
-			}
-		}
-
+	slog.Info("Enregistrement utilisateur JellyGate (Identité via Authentik)", "username", form.Username)
+	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, "", "", "user", emailVerified); err != nil {
+		slog.Error("Échec enregistrement utilisateur JellyGate", "username", form.Username, "error", err)
 		h.logInviteAction(r, "invite.sqlite.failed", form.Username, inv.Code, err.Error())
-		return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte")), !rollbackFailed)
-	}
-
-	slog.Info("Ã¢Å“â€¦ Ãƒâ€°tape 4/5 terminÃƒÂ©e", "username", form.Username)
-	slog.Info("Ã°Å¸â€œÂ¨ Ãƒâ€°tape 5/5 : Notifications", "username", form.Username)
-
-	if h.mailer != nil && strings.TrimSpace(form.Email) != "" {
-		emailCfg, usedLang, cfgErr := loadEmailTemplatesForLanguage(h.db, strings.TrimSpace(inv.PreferredLang), emailLanguageContext{
-			GroupName: strings.TrimSpace(provisionPlan.EffectiveProfile.GroupName),
-		})
-		if cfgErr != nil {
-			emailCfg = config.DefaultEmailTemplatesForLanguage(usedLang)
-		}
-		defaults := config.DefaultEmailTemplatesForLanguage(usedLang)
-		links := resolvePortalLinks(h.cfg, h.db)
-		publicBaseURL := strings.TrimRight(strings.TrimSpace(links.JellyGateURL), "/")
-		if publicBaseURL == "" {
-			publicBaseURL = strings.TrimRight(strings.TrimSpace(h.cfg.BaseURL), "/")
-		}
-		sections := make([]string, 0, 4)
-		subjectCandidates := make([]string, 0, 3)
-		if !emailCfg.DisableWelcomeEmail {
-			sections = append(sections, emailCfg.Welcome)
-			subjectCandidates = append(subjectCandidates, emailCfg.WelcomeSubject)
-		}
-		if !emailCfg.DisableConfirmationEmail {
-			sections = append(sections, emailCfg.Confirmation)
-			subjectCandidates = append(subjectCandidates, emailCfg.ConfirmationSubject)
-		}
-		if !emailCfg.DisablePostSignupHelpEmail {
-			sections = append(sections, emailCfg.PostSignupHelp)
-		}
-		if !emailCfg.DisableUserCreationEmail {
-			sections = append(sections, emailCfg.UserCreation)
-			subjectCandidates = append(subjectCandidates, emailCfg.UserCreationSubject)
-		}
-		combinedTemplate := joinTemplateSections(sections...)
-
-		if combinedTemplate != "" {
-			emailData := map[string]string{
-				"Username":           form.Username,
-				"DisplayName":        form.Username,
-				"Email":              form.Email,
-				"InviteCode":         inv.Code,
-				"InviteLink":         publicBaseURL + "/invite/" + inv.Code,
-				"HelpURL":            publicBaseURL,
-				"JellyGateURL":       publicBaseURL,
-				"JellyfinURL":        links.JellyfinURL,
-				"JellyfinServerName": links.JellyfinServerName,
-				"JellyseerrURL":      links.JellyseerrURL,
-				"JellyTrackURL":      links.JellyTrackURL,
-			}
-			subject := firstNonEmpty(append(subjectCandidates, defaults.WelcomeSubject)...)
-			if err := sendTemplateIfConfigured(h.mailer, form.Email, subject, usedLang, "welcome", combinedTemplate, emailCfg, emailData); err != nil {
-				slog.Error("Erreur envoi email post-inscription", "email", form.Email, "error", err)
-				h.logInviteAction(r, "invite.welcome_email.failed", form.Username, inv.Code, err.Error())
-			} else {
-				h.logInviteAction(r, "invite.welcome_email.sent", form.Username, inv.Code, "Email de bienvenue envoye")
-			}
-		}
-	}
-
-	if h.provisioner != nil && h.provisioner.IsEnabled() {
-		if err := h.provisioner.ProvisionUser(form.Username, form.Password, form.Email); err != nil {
-			slog.Warn("Provisioning compte tiers ÃƒÂ©chouÃƒÂ©", "username", form.Username, "error", err)
-			h.logInviteAction(r, "invite.integration.failed", form.Username, inv.Code, err.Error())
-		} else {
-			h.logInviteAction(r, "invite.integration.provisioned", form.Username, inv.Code, "Jellyseerr/Ombi")
-		}
-	}
-
-	h.logInviteAction(r, "invite.used", form.Username, inv.Code,
-		fmt.Sprintf(`{"jellyfin_id":"%s","ldap_dn":"%s","email":"%s","mode":"%s"}`,
-			jellyfinID,
-			userDN,
-			form.Email,
-			map[bool]string{true: "ldap_mirror", false: "local"}[ldapMirrorMode],
-		))
-
-	slog.Info("Ã°Å¸Å½â€° Inscription terminÃƒÂ©e avec succÃƒÂ¨s", "username", form.Username, "jellyfin_id", jellyfinID, "ldap_dn", userDN, "invitation_fingerprint", tokenLogFingerprint(inv.Code))
-
-	if h.notifier != nil {
-		h.notifier.NotifyUserRegistered(notify.UserRegisteredEvent{
-			Username:    form.Username,
-			DisplayName: form.Username,
-			Email:       form.Email,
-			InviteCode:  inv.Code,
-			InvitedBy:   inv.CreatedBy,
-			JellyfinID:  jellyfinID,
-			LdapDN:      userDN,
-			Timestamp:   time.Now(),
-		})
+		return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte")), true)
 	}
 
 	return &inviteSignupResult{
-		JellyfinID:     jellyfinID,
-		UserDN:         userDN,
-		LDAPMirrorMode: ldapMirrorMode,
+		JellyfinID:     "",
+		UserDN:         "",
+		LDAPMirrorMode: false,
 	}, nil
 }
 
@@ -1171,7 +946,7 @@ func (h *InvitationHandler) resolveInviteProvisionPlan(profile jellyfin.InvitePr
 		plan.EffectiveProfile = mergeInviteProfileWithPreset(profile, *preset)
 	}
 
-	plan.LDAPGroups = append(resolveLDAPGroupsFromMappings(mappings, presetID, groupName), plan.EffectiveProfile.LDAPGroups...)
+	plan.LDAPGroups = plan.EffectiveProfile.LDAPGroups
 	return plan, nil
 }
 
@@ -1256,73 +1031,3 @@ func mergeInviteProfileWithPreset(base jellyfin.InviteProfile, preset config.Jel
 	return merged
 }
 
-func resolveLDAPProvisionGroups(ldapCfg config.LDAPConfig, mappedGroups []string) []string {
-	groups := make([]string, 0, len(mappedGroups)+1)
-	seen := map[string]struct{}{}
-
-	appendUnique := func(groupRef string) {
-		trimmed := strings.TrimSpace(groupRef)
-		if trimmed == "" {
-			return
-		}
-		key := strings.ToLower(trimmed)
-		if _, exists := seen[key]; exists {
-			return
-		}
-		seen[key] = struct{}{}
-		groups = append(groups, trimmed)
-	}
-
-	baseGroup := strings.TrimSpace(ldapCfg.JellyfinGroup)
-	if baseGroup == "" {
-		baseGroup = strings.TrimSpace(ldapCfg.UserGroup)
-	}
-	if baseGroup == "" {
-		baseGroup = "jellyfin"
-	}
-
-	appendUnique(baseGroup)
-	for _, groupRef := range mappedGroups {
-		appendUnique(groupRef)
-	}
-
-	return groups
-}
-
-func resolveLDAPGroupsFromMappings(mappings []config.GroupPolicyMapping, presetID, groupName string) []string {
-	result := make([]string, 0, 2)
-	seen := map[string]struct{}{}
-
-	appendUnique := func(groupRef string) {
-		trimmed := strings.TrimSpace(groupRef)
-		if trimmed == "" {
-			return
-		}
-		key := strings.ToLower(trimmed)
-		if _, exists := seen[key]; exists {
-			return
-		}
-		seen[key] = struct{}{}
-		result = append(result, trimmed)
-	}
-
-	for i := range mappings {
-		if strings.TrimSpace(strings.ToLower(mappings[i].Source)) != "ldap" {
-			continue
-		}
-
-		mappingPresetID := strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
-		mappingGroupName := strings.TrimSpace(mappings[i].GroupName)
-
-		if presetID != "" && mappingPresetID == presetID {
-			appendUnique(mappings[i].LDAPGroupDN)
-			continue
-		}
-
-		if groupName != "" && strings.EqualFold(mappingGroupName, groupName) {
-			appendUnique(mappings[i].LDAPGroupDN)
-		}
-	}
-
-	return result
-}

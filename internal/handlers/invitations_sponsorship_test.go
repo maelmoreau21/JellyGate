@@ -57,6 +57,25 @@ func (m *mockAuthentikClient) ListUsers(ctx context.Context) ([]authentik.UserRe
 	return nil, nil
 }
 
+func (m *mockAuthentikClient) CheckHealth(ctx context.Context, cfg config.AuthentikConfig) *authentik.HealthCheckResult {
+	return &authentik.HealthCheckResult{OverallStatus: "ok"}
+}
+func (m *mockAuthentikClient) CheckAPI(ctx context.Context) authentik.HealthComponent {
+	return authentik.HealthComponent{Status: "ok"}
+}
+func (m *mockAuthentikClient) CheckOIDC(ctx context.Context, issuerURL string) authentik.HealthComponent {
+	return authentik.HealthComponent{Status: "ok"}
+}
+func (m *mockAuthentikClient) CheckEnrollment(ctx context.Context, flowSlug string) authentik.HealthComponent {
+	return authentik.HealthComponent{Status: "ok"}
+}
+func (m *mockAuthentikClient) CheckGroups(ctx context.Context, groups []string) authentik.HealthComponent {
+	return authentik.HealthComponent{Status: "ok"}
+}
+func (m *mockAuthentikClient) DeleteUserByString(ctx context.Context, authentikID string) error {
+	return nil
+}
+
 func (m *mockAuthentikClient) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
 	return "stage-pk-123", nil
 }

@@ -100,6 +100,7 @@ type AuthentikConfig struct {
 	APIToken           string `json:"authentik_api_token"`
 	UserGroup          string `json:"user_group"`
 	AdminGroup         string `json:"admin_group"`
+	JellyfinUserGroup  string `json:"jellyfin_user_group"`
 	EnrollmentFlowSlug string `json:"enrollment_flow_slug"`
 }
 
@@ -131,42 +132,6 @@ type DatabaseConfig struct {
 // ── Types de configuration stockés en base (table settings) ─────────────────
 // Ces structs sont utilisées par database/settings.go et handlers/settings.go
 // pour sérialiser/désérialiser les paramètres depuis SQLite.
-
-// LDAPConfig contient les paramètres de connexion annuaire (LDAP/LDAPS).
-type LDAPConfig struct {
-	Enabled              bool   `json:"enabled"`                // Intégration LDAP activée
-	Host                 string `json:"host"`                   // Hostname du serveur LDAP
-	Port                 int    `json:"port"`                   // Port (défaut: 636 pour LDAPS)
-	UseTLS               bool   `json:"use_tls"`                // Utiliser LDAPS (TLS)
-	SkipVerify           bool   `json:"skip_verify"`            // Ignorer la vérification du certificat TLS
-	BindDN               string `json:"bind_dn"`                // DN de l'utilisateur pour le bind
-	BindPassword         string `json:"bind_password"`          // Mot de passe de bind
-	BaseDN               string `json:"base_dn"`                // Base DN de recherche
-	SearchFilter         string `json:"search_filter"`          // Filtre de recherche LDAP (supporte {username})
-	SearchAttributes     string `json:"search_attributes"`      // Attributs de recherche (liste CSV)
-	UIDAttribute         string `json:"uid_attribute"`          // Attribut UID LDAP (ex: uid)
-	UsernameAttribute    string `json:"username_attribute"`     // Attribut de nom d'utilisateur LDAP
-	AdminFilter          string `json:"admin_filter"`           // Filtre administrateur LDAP
-	AdminFilterMemberUID bool   `json:"admin_filter_memberuid"` // Active le mode memberUid pour le filtre admin
-	UserObjectClass      string `json:"user_object_class"`      // objectClass utilisateur (auto|user|person|posixAccount|...)
-	GroupMemberAttr      string `json:"group_member_attr"`      // Attribut membre groupe (auto|member|memberUid|...)
-	UserOU               string `json:"user_ou"`                // OU pour la création des utilisateurs
-	UserGroup            string `json:"user_group"`             // Legacy: fallback groupe utilisateur
-
-	// Mode de provisioning: "hybrid" (LDAP + Jellyfin) ou "ldap_only".
-	ProvisionMode string `json:"provision_mode"`
-
-	// Groupes LDAP cibles pour l'affectation automatique des comptes.
-	JellyfinGroup       string `json:"jellyfin_group"`
-	InviterGroup        string `json:"inviter_group"`
-	AdministratorsGroup string `json:"administrators_group"`
-
-	// Providers Jellyfin utilises pour les comptes miroir LDAP.
-	JellyfinLDAPAuthProviderID          string `json:"jellyfin_ldap_auth_provider_id"`
-	JellyfinLDAPPasswordResetProviderID string `json:"jellyfin_ldap_password_reset_provider_id"`
-
-	Domain string `json:"domain"` // Domaine AD (ex: home.lan)
-}
 
 // SMTPConfig contient les paramètres d'envoi d'emails.
 type SMTPConfig struct {
@@ -1544,9 +1509,10 @@ func Load() (*Config, error) {
 			ClientSecret:       strings.TrimSpace(getEnv("OIDC_CLIENT_SECRET", "")),
 			RedirectURL:        strings.TrimSpace(getEnv("OIDC_REDIRECT_URL", "")),
 			APIToken:           strings.TrimSpace(getEnv("AUTHENTIK_API_TOKEN", "")),
-			UserGroup:          getEnv("OIDC_USER_GROUP", "jellygate-users"),
-			AdminGroup:         getEnv("OIDC_ADMIN_GROUP", "jellygate-admins"),
-			EnrollmentFlowSlug: getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", "default-enrollment-flow"),
+			UserGroup:          getEnv("AUTHENTIK_USER_GROUP", getEnv("OIDC_USER_GROUP", "jellygate-users")),
+			AdminGroup:         getEnv("AUTHENTIK_ADMIN_GROUP", getEnv("OIDC_ADMIN_GROUP", "jellygate-admins")),
+			JellyfinUserGroup:  getEnv("JELLYFIN_USER_GROUP", getEnv("AUTHENTIK_JELLYFIN_USER_GROUP", "jellyfin-users")),
+			EnrollmentFlowSlug: getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW", "default-enrollment-flow")),
 		},
 	}
 
