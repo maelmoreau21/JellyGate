@@ -331,6 +331,14 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Deconnexion utilisateur", "remote", r.RemoteAddr)
 	h.logAction("admin.logout", "", "", fmt.Sprintf("IP: %s", r.RemoteAddr))
 
+	if h.oidcClient != nil {
+		endSessionURL := h.oidcClient.GetEndSessionURL(r.Context())
+		if endSessionURL != "" {
+			http.Redirect(w, r, endSessionURL, http.StatusSeeOther)
+			return
+		}
+	}
+
 	if h.cfg != nil && h.cfg.Authentik.URL != "" {
 		endSessionURL := strings.TrimRight(h.cfg.Authentik.URL, "/") + "/application/o/jellygate/end-session/"
 		http.Redirect(w, r, endSessionURL, http.StatusSeeOther)

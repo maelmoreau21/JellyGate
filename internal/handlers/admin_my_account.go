@@ -414,7 +414,7 @@ func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Re
 	var email, pendingEmail string
 	var emailVerified bool
 	var id int64
-	err := h.db.QueryRow(`SELECT id, email, pending_email, email_verified FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&id, &email, &pendingEmail, &emailVerified)
+	err := h.db.QueryRow(`SELECT id, email, pending_email, email_verified FROM users WHERE authentik_id = ? OR jellyfin_id = ? OR username = ? OR id = ?`, sess.UserID, sess.UserID, sess.Username, sess.UserID).Scan(&id, &email, &pendingEmail, &emailVerified)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "admin_user_not_found", "Utilisateur introuvable")})
 		return

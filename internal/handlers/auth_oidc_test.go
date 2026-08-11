@@ -73,6 +73,10 @@ func (m *mockOIDCClient) DetermineUserRole(groups []string) (bool, bool) {
 	return isAdmin, hasAccess
 }
 
+func (m *mockOIDCClient) GetEndSessionURL(ctx context.Context) string {
+	return "https://auth.example.com/application/o/jellygate/end-session/"
+}
+
 func TestOIDCLoginRedirect(t *testing.T) {
 	cfg := &config.Config{
 		SecretKey: strings.Repeat("s", 32),

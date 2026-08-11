@@ -202,6 +202,30 @@ func TestValidateIDToken(t *testing.T) {
 			t.Errorf("Expected missing nonce error, got %v", err)
 		}
 	})
+	t.Run("Bad Audience", func(t *testing.T) {
+		badAudClaims := validClaims
+		badAudClaims.Audience = "wrong-client-id"
+		tokenStr := createSignedRS256JWT(badAudClaims, privKey, kid)
+
+		_, err := client.ValidateIDToken(context.Background(), tokenStr, "test-nonce-123")
+		if err == nil || (!strings.Contains(err.Error(), "audience") && !strings.Contains(err.Error(), "aud")) {
+			t.Errorf("Expected audience error, got %v", err)
+		}
+	})
+
+	t.Run("JWKS Failure Fails Validation", func(t *testing.T) {
+		badClient := &oidcClient{
+			cfg:        cfg,
+			httpClient: &http.Client{Timeout: 1 * time.Second},
+			jwksCache:  make(map[string]*rsa.PublicKey),
+		}
+		// kid is unknown and no server is available
+		tokenStr := createSignedRS256JWT(validClaims, privKey, "unknown-kid")
+		_, err := badClient.ValidateIDToken(context.Background(), tokenStr, "test-nonce-123")
+		if err == nil {
+			t.Errorf("Expected JWKS failure error, got nil")
+		}
+	})
 
 	_ = nStr
 	_ = eStr
@@ -241,5 +265,17 @@ func TestDetermineUserRole(t *testing.T) {
 			t.Errorf("Expected isAdmin=false, hasAccess=false for empty groups; got isAdmin=%v, hasAccess=%v", isAdmin, hasAccess)
 		}
 	})
+}
+
+func TestGetEndSessionURL(t *testing.T) {
+	cfg := config.AuthentikConfig{
+		URL:       "https://auth.example.com",
+		IssuerURL: "https://auth.example.com/application/o/jellygate/",
+	}
+	client := NewClient(cfg)
+	url := client.GetEndSessionURL(context.Background())
+	if !strings.Contains(url, "end-session") {
+		t.Errorf("Expected URL containing end-session, got %s", url)
+	}
 }
 
