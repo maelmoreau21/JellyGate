@@ -194,7 +194,7 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	if preferredLang := h.resolvePreferredLang("", claims.PreferredUsername); preferredLang != "" {
+	if preferredLang := h.resolvePreferredLang(claims.Sub, claims.PreferredUsername); preferredLang != "" {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "lang",
 			Value:    preferredLang,
@@ -291,14 +291,14 @@ func (h *AuthHandler) LoginSubmit(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 }
 
-func (h *AuthHandler) resolvePreferredLang(jellyfinID, username string) string {
+func (h *AuthHandler) resolvePreferredLang(authentikID, username string) string {
 	if h == nil || h.db == nil {
 		return ""
 	}
 	var preferred string
 	err := h.db.QueryRow(
-		`SELECT preferred_lang FROM users WHERE jellyfin_id = ? OR username = ? LIMIT 1`,
-		strings.TrimSpace(jellyfinID),
+		`SELECT preferred_lang FROM users WHERE authentik_id = ? OR username = ? LIMIT 1`,
+		strings.TrimSpace(authentikID),
 		strings.TrimSpace(username),
 	).Scan(&preferred)
 	if err != nil {

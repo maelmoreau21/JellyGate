@@ -1132,7 +1132,6 @@ type JellyfinPolicyPreset struct {
 	IsTemporary                      bool                             `json:"is_temporary"`
 	DefaultAccountDurationDays       int                              `json:"default_account_duration_days"`
 	MaxAccountDurationDays           int                              `json:"max_account_duration_days"`
-	LDAPGroups                       []string                         `json:"ldap_groups"`
 
 	// Parrainage / Sponsorship
 	CanInvite                     bool     `json:"can_invite"`
@@ -1221,11 +1220,10 @@ func DefaultInvitationProfileConfig() InvitationProfileConfig {
 	}
 }
 
-// GroupPolicyMapping lie un groupe (interne ou LDAP) à un preset Jellyfin.
+// GroupPolicyMapping lie un groupe à un preset Jellyfin.
 type GroupPolicyMapping struct {
 	GroupName      string `json:"group_name"`
-	Source         string `json:"source"` // internal|ldap
-	LDAPGroupDN    string `json:"ldap_group_dn"`
+	Source         string `json:"source"` // internal
 	PolicyPresetID string `json:"policy_preset_id"`
 	Priority       int    `json:"priority"`
 }

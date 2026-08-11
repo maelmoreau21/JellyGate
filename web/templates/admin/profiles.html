@@ -224,9 +224,6 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <label><span class="jg-label">{{ .T "profiles_field_devices" }}</span><textarea id="profile-devices" class="jg-input min-h-20 py-3"></textarea></label>
                         <label><span class="jg-label">{{ .T "profiles_field_channels" }}</span><textarea id="profile-channels" class="jg-input min-h-20 py-3"></textarea></label>
-                        {{ if .LDAPEnabled }}
-                        <label class="md:col-span-2"><span class="jg-label">{{ .T "profiles_field_ldap_groups" }}</span><textarea id="profile-ldap-groups" class="jg-input min-h-20 py-3"></textarea></label>
-                        {{ end }}
                     </div>
                 </section>
             </div>
@@ -244,7 +241,6 @@
 <script nonce="{{ .ScriptNonce }}">
     window.JGPageProfiles = {
         isAdmin: "{{ if .IsAdmin }}true{{ else }}false{{ end }}" === "true",
-        ldapEnabled: "{{ if .LDAPEnabled }}true{{ else }}false{{ end }}" === "true",
         i18n: {
             profileFallback: '{{ .T "profiles_profile_fallback" }}',
             none: '{{ .T "profiles_none" }}',

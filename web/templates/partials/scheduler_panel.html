@@ -8,7 +8,6 @@
             </div>
             <div class="flex flex-wrap gap-2">
                 <button id="btn-task-quick-sync-users" type="button" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_users" }}</button>
-                <button id="btn-task-quick-sync-ldap" type="button" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_ldap" }}</button>
                 <button id="btn-task-quick-cleanup" type="button" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_cleanup_resets" }}</button>
             </div>
         </div>
@@ -66,7 +65,6 @@
                     <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
                     <select id="task-type" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
                         <option value="sync_users">{{ .T "automation_task_type_sync_users" }}</option>
-                        <option value="sync_ldap_users">{{ .T "automation_task_type_sync_ldap_users" }}</option>
                         <option value="cleanup_resets">{{ .T "automation_task_type_cleanup_resets" }}</option>
                     </select>
                 </div>

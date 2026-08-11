@@ -817,12 +817,16 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return fmt.Errorf("session absente")
 	}
 
-	if strings.TrimSpace(sess.UserID) == "" {
-		return fmt.Errorf("session sans user id jellyfin")
+	authID := strings.TrimSpace(sess.AuthentikID)
+	if authID == "" {
+		authID = strings.TrimSpace(sess.UserID)
+	}
+	if authID == "" {
+		return fmt.Errorf("session sans authentik_id")
 	}
 
 	var userID int64
-	err := h.db.QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&userID)
+	err := h.db.QueryRow(`SELECT id FROM users WHERE authentik_id = ?`, authID).Scan(&userID)
 	if err == nil {
 		return nil
 	}
@@ -830,19 +834,18 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return err
 	}
 
-	// Cas LDAP-only: l'utilisateur peut exister en base avec username sans jellyfin_id.
-	err = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, sess.Username).Scan(&userID)
+	err = h.db.QueryRow(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, strings.TrimSpace(sess.Username)).Scan(&userID)
 	if err == nil {
 		_, upErr := h.db.Exec(
 			`UPDATE users
-			 SET jellyfin_id = ?, is_active = TRUE, can_invite = ?, updated_at = CURRENT_TIMESTAMP
+			 SET authentik_id = ?, is_active = TRUE, can_invite = ?, updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`,
-			sess.UserID,
+			authID,
 			sess.IsAdmin,
 			userID,
 		)
 		if upErr != nil {
-			slog.Error("Erreur mise a jour profil session (LDAP path)", "username", sess.Username, "error", upErr)
+			slog.Error("Erreur mise a jour profil session (Authentik path)", "username", sess.Username, "error", upErr)
 		}
 		return upErr
 	}
@@ -850,16 +853,13 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return err
 	}
 
-	_, err = h.db.Exec(
-		`INSERT INTO users (jellyfin_id, username, is_active, can_invite)
-			 VALUES (?, ?, TRUE, ?)
-		 ON CONFLICT(jellyfin_id) DO UPDATE SET username = excluded.username, updated_at = CURRENT_TIMESTAMP`,
-		sess.UserID,
-		sess.Username,
-		sess.IsAdmin,
-	)
+	insertQuery := `INSERT INTO users (authentik_id, username, email, is_active, can_invite) VALUES (?, ?, ?, TRUE, ?)`
+	if h.db.IsSQLite() {
+		insertQuery = `INSERT INTO users (authentik_id, username, email, is_active, can_invite) VALUES (?, ?, ?, 1, ?) ON CONFLICT(authentik_id) DO UPDATE SET username = excluded.username, updated_at = datetime('now')`
+	}
+	_, err = h.db.Exec(insertQuery, authID, sess.Username, sess.Email, sess.IsAdmin)
 	if err != nil {
-		slog.Error("Erreur insertion profil session (Default path)", "username", sess.Username, "error", err)
+		slog.Error("Erreur insertion profil session Authentik", "username", sess.Username, "error", err)
 	}
 	return err
 }

@@ -801,7 +801,6 @@ func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.Je
 	preset.BlockedTags = normalizeStringList(preset.BlockedTags)
 	preset.BlockUnratedItems = normalizeStringList(preset.BlockUnratedItems)
 	preset.AccessSchedules = normalizeJellyfinAccessSchedules(preset.AccessSchedules)
-	preset.LDAPGroups = normalizeStringList(preset.LDAPGroups)
 	preset.AllowedTargetPresetIDs = normalizePresetIDList(preset.AllowedTargetPresetIDs)
 	preset.AllowedTemporaryPresetIDs = normalizePresetIDList(preset.AllowedTemporaryPresetIDs)
 	preset.UserConfiguration = config.NormalizeJellyfinPresetUserConfiguration(preset.UserConfiguration)
@@ -1036,15 +1035,9 @@ func (db *DB) GetGroupPolicyMappings() ([]config.GroupPolicyMapping, error) {
 			continue
 		}
 
-		source := strings.TrimSpace(strings.ToLower(mappings[i].Source))
-		if source != "ldap" {
-			source = "internal"
-		}
-
 		normalized = append(normalized, config.GroupPolicyMapping{
 			GroupName:      groupName,
-			Source:         source,
-			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
+			Source:         "internal",
 			PolicyPresetID: presetID,
 			Priority:       mappings[i].Priority,
 		})
@@ -1066,15 +1059,9 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 			continue
 		}
 
-		source := strings.TrimSpace(strings.ToLower(mappings[i].Source))
-		if source != "ldap" {
-			source = "internal"
-		}
-
 		normalized = append(normalized, config.GroupPolicyMapping{
 			GroupName:      groupName,
-			Source:         source,
-			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
+			Source:         "internal",
 			PolicyPresetID: presetID,
 			Priority:       mappings[i].Priority,
 		})

@@ -215,9 +215,6 @@ type InviteProfile struct {
 	PresetID                    string   `json:"preset_id"` // Identifiant du preset (Parrainage)
 	IsTemporary                 bool     `json:"is_temporary"`
 	AccountDurationDays         int      `json:"account_duration_days"`
-	LDAPGroups                  []string `json:"ldap_groups"`
-	LDAPAuthProviderID          string   `json:"ldap_auth_provider_id"`
-	LDAPPasswordResetProviderID string   `json:"ldap_password_reset_provider_id"`
 
 	UserConfiguration  config.JellyfinPresetUserConfiguration  `json:"user_configuration"`
 	DisplayPreferences config.JellyfinPresetDisplayPreferences `json:"display_preferences"`
@@ -297,7 +294,6 @@ func InviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) InvitePr
 		PresetID:                         strings.TrimSpace(strings.ToLower(preset.ID)),
 		IsTemporary:                      preset.IsTemporary,
 		AccountDurationDays:              accountDurationDays,
-		LDAPGroups:                       append([]string(nil), preset.LDAPGroups...),
 		UserConfiguration:                preset.UserConfiguration,
 		DisplayPreferences:               preset.DisplayPreferences,
 	}
@@ -699,12 +695,6 @@ func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error 
 	policy.MaxParentalRating = profile.MaxParentalRating
 	policy.BlockUnratedItems = profile.BlockUnratedItems
 	policy.AccessSchedules = profile.AccessSchedules
-	if strings.TrimSpace(profile.LDAPAuthProviderID) != "" {
-		policy.AuthenticationProviderID = strings.TrimSpace(profile.LDAPAuthProviderID)
-	}
-	if strings.TrimSpace(profile.LDAPPasswordResetProviderID) != "" {
-		policy.PasswordResetProviderID = strings.TrimSpace(profile.LDAPPasswordResetProviderID)
-	}
 
 	// Activer les capacités de lecture par défaut
 	if !policy.EnableMediaPlayback &&

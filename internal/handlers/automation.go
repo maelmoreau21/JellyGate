@@ -148,10 +148,7 @@ func (h *AutomationHandler) SaveGroupMappings(w http.ResponseWriter, r *http.Req
 	for i := range mappings {
 		mappings[i].GroupName = strings.TrimSpace(mappings[i].GroupName)
 		mappings[i].PolicyPresetID = strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
-		mappings[i].Source = strings.TrimSpace(strings.ToLower(mappings[i].Source))
-		if mappings[i].Source != "ldap" {
-			mappings[i].Source = "internal"
-		}
+		mappings[i].Source = "internal"
 		if mappings[i].GroupName == "" || mappings[i].PolicyPresetID == "" {
 			continue
 		}

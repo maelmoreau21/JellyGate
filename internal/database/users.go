@@ -16,7 +16,6 @@ import (
 type User struct {
 	ID              int64          `json:"id"`
 	AuthentikID     sql.NullString `json:"authentik_id"`
-	JellyfinID      sql.NullString `json:"jellyfin_id"`
 	Username        string         `json:"username"`
 	Email           string         `json:"email"`
 	EmailVerified   bool           `json:"email_verified"`
@@ -34,7 +33,7 @@ type User struct {
 
 // GetUserByID récupère un utilisateur par son ID local.
 func (db *DB) GetUserByID(ctx context.Context, id int64) (*User, error) {
-	query := `SELECT id, authentik_id, jellyfin_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE id = ?`
+	query := `SELECT id, authentik_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE id = ?`
 	return db.queryUserRow(ctx, query, id)
 }
 
@@ -43,7 +42,7 @@ func (db *DB) GetUserByAuthentikID(ctx context.Context, authentikID string) (*Us
 	if strings.TrimSpace(authentikID) == "" {
 		return nil, sql.ErrNoRows
 	}
-	query := `SELECT id, authentik_id, jellyfin_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE authentik_id = ?`
+	query := `SELECT id, authentik_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE authentik_id = ?`
 	return db.queryUserRow(ctx, query, strings.TrimSpace(authentikID))
 }
 
@@ -52,7 +51,7 @@ func (db *DB) GetUserByUsername(ctx context.Context, username string) (*User, er
 	if strings.TrimSpace(username) == "" {
 		return nil, sql.ErrNoRows
 	}
-	query := `SELECT id, authentik_id, jellyfin_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE LOWER(username) = LOWER(?)`
+	query := `SELECT id, authentik_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE LOWER(username) = LOWER(?)`
 	return db.queryUserRow(ctx, query, strings.TrimSpace(username))
 }
 
@@ -61,7 +60,7 @@ func (db *DB) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	if strings.TrimSpace(email) == "" {
 		return nil, sql.ErrNoRows
 	}
-	query := `SELECT id, authentik_id, jellyfin_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE LOWER(email) = LOWER(?)`
+	query := `SELECT id, authentik_id, username, email, email_verified, is_active, is_banned, can_invite, COALESCE(invited_by, ''), group_name, preferred_lang, preset_id, access_expires_at, created_at, updated_at FROM users WHERE LOWER(email) = LOWER(?)`
 	return db.queryUserRow(ctx, query, strings.TrimSpace(email))
 }
 
@@ -157,7 +156,6 @@ func (db *DB) queryUserRow(ctx context.Context, query string, args ...interface{
 	err := row.Scan(
 		&u.ID,
 		&u.AuthentikID,
-		&u.JellyfinID,
 		&u.Username,
 		&u.Email,
 		&u.EmailVerified,
