@@ -875,8 +875,6 @@ func readHTTPDetail(r io.Reader) string {
 	return strings.TrimSpace(string(b))
 }
 
-
-
 // ── Méthode interne ─────────────────────────────────────────────────────────
 
 // doRequest exécute une requête HTTP vers l'API Jellyfin.

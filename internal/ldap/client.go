@@ -64,4 +64,3 @@ func (c *Client) TestConnection() error {
 func (c *Client) ResolveUserAccess(username string) (*UserEntry, bool, error) {
 	return nil, false, nil
 }
-

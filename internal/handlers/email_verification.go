@@ -44,7 +44,6 @@ type emailVerificationRecord struct {
 	ExpiresAt time.Time
 }
 
-
 func defaultEmailVerificationTemplate() string {
 	return `<h2 style="margin:0 0 14px 0;font-size:22px;color:#0f172a;">Verify your email address</h2>
 <p>Hello <strong>{{.Username}}</strong>,</p>

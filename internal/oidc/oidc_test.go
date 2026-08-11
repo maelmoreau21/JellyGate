@@ -278,4 +278,3 @@ func TestGetEndSessionURL(t *testing.T) {
 		t.Errorf("Expected URL containing end-session, got %s", url)
 	}
 }
-
