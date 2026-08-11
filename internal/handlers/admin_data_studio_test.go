@@ -64,17 +64,14 @@ func TestPreviewInvitationDoesNotCreateInvitation(t *testing.T) {
 	}
 }
 
-func TestAuthentikPageRedirectsToSettingsWhenDisabled(t *testing.T) {
+func TestAuthentikPage(t *testing.T) {
 	handler, _ := newTestAdminDataStudioHandler(t)
 
 	rec := httptest.NewRecorder()
 	handler.AuthentikPage(rec, newAdminRequest(http.MethodGet, "/admin/authentik", nil))
 
-	if rec.Code != http.StatusSeeOther {
-		t.Fatalf("AuthentikPage status = %d, want %d", rec.Code, http.StatusSeeOther)
-	}
-	if got := rec.Header().Get("Location"); got != "/admin/settings#authentik" {
-		t.Fatalf("AuthentikPage redirect = %q, want /admin/settings#authentik", got)
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("AuthentikPage status = %d, want %d (without renderer initialized)", rec.Code, http.StatusInternalServerError)
 	}
 }
 

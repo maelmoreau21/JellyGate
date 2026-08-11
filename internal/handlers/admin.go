@@ -45,7 +45,7 @@ type UserResponse struct {
 	JellyfinID         string `json:"jellyfin_id"`
 	Username           string `json:"username"`
 	Email              string `json:"email"`
-	LDAPDN             string `json:"ldap_dn"`
+	AuthentikID        string `json:"authentik_id"`
 	GroupName          string `json:"group_name"`
 	PresetID           string `json:"preset_id"` // NEW
 	InvitedBy          string `json:"invited_by"`
@@ -105,7 +105,6 @@ type adminUserRecord struct {
 	EmailVerified      bool
 	JellyfinID         string
 	AuthentikID        sql.NullString
-	LDAPDN             string // FIXED
 	GroupName          string
 	PresetID           string // NEW
 	ContactDiscord     string
@@ -765,9 +764,9 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Santé des services
 	health := map[string]bool{
-		"database": true,
-		"jellyfin": false,
-		"ldap":     false,
+		"database":  true,
+		"jellyfin":  false,
+		"authentik": h.db.IsAuthentikEnabled(),
 	}
 
 	// Test Jellyfin (léger)

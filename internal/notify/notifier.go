@@ -71,7 +71,6 @@ type UserRegisteredEvent struct {
 	InviteCode  string
 	InvitedBy   string
 	JellyfinID  string
-	LdapDN      string
 	Timestamp   time.Time
 }
 

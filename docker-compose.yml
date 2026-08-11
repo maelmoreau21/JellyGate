@@ -27,8 +27,19 @@ services:
       - JELLYGATE_SECRET=${JELLYGATE_SECRET:?❌ JELLYGATE_SECRET is required}
       - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-en}
       - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
-      - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
-      - JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY=${JELLYGATE_ALLOW_INSECURE_LDAP_SKIP_VERIFY:-false}
+      # ── Authentik / OIDC (Identity Provider) ─────────────────────────
+      - AUTHENTIK_ENABLED=${AUTHENTIK_ENABLED:-true}
+      - AUTHENTIK_URL=${AUTHENTIK_URL:-}
+      - AUTHENTIK_API_TOKEN=${AUTHENTIK_API_TOKEN:-}
+      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
+      - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
+      - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
+      - OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL:-}
+      - AUTHENTIK_USER_GROUP=${AUTHENTIK_USER_GROUP:-jellygate-users}
+      - AUTHENTIK_ADMIN_GROUP=${AUTHENTIK_ADMIN_GROUP:-jellygate-admins}
+      - JELLYFIN_USER_GROUP=${JELLYFIN_USER_GROUP:-jellyfin-users}
+      - AUTHENTIK_ENROLLMENT_FLOW=${AUTHENTIK_ENROLLMENT_FLOW:-default-enrollment-flow}
+
       # ── SQL Database (SQLite by default) ────────────────────────────
       # Note: DB_TYPE will auto-detect 'postgres' if DB_HOST is provided
       - DB_TYPE=${DB_TYPE:-sqlite}

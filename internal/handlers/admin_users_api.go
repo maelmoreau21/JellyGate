@@ -147,7 +147,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	// 2. Récupérer les données paginées
 	offset := (page - 1) * limit
-	query := fmt.Sprintf(`SELECT id, jellyfin_id, username, email, ldap_dn, invited_by,
+	query := fmt.Sprintf(`SELECT id, jellyfin_id, username, email, authentik_id, invited_by,
 		        group_name, preset_id, is_active, is_banned, can_invite, access_expires_at, delete_at,
 		        expiry_action, expiry_delete_after_days, expired_at,
 		        profile_apply_status, profile_apply_error, profile_applied_at,
@@ -169,13 +169,13 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	var users []UserResponse
 	for rows.Next() {
 		var u UserResponse
-		var jellyfinID, email, ldapDN, invitedBy, groupName, presetID, profileApplyStatus, profileApplyError sql.NullString
+		var jellyfinID, email, authentikID, invitedBy, groupName, presetID, profileApplyStatus, profileApplyError sql.NullString
 		var accessExpiresAt, deleteAt, expiryAction, expiredAt, createdAt, updatedAt sql.NullString
 		var profileAppliedAt sql.NullString
 		var deleteAfterDays sql.NullInt64
 
 		err := rows.Scan(
-			&u.ID, &jellyfinID, &u.Username, &email, &ldapDN, &invitedBy, &groupName, &presetID,
+			&u.ID, &jellyfinID, &u.Username, &email, &authentikID, &invitedBy, &groupName, &presetID,
 			&u.IsActive, &u.IsBanned, &u.CanInvite, &accessExpiresAt, &deleteAt,
 			&expiryAction, &deleteAfterDays, &expiredAt,
 			&profileApplyStatus, &profileApplyError, &profileAppliedAt,
@@ -188,7 +188,7 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 		u.JellyfinID = jellyfinID.String
 		u.Email = email.String
-		u.LDAPDN = ldapDN.String
+		u.AuthentikID = authentikID.String
 		u.InvitedBy = invitedBy.String
 		u.GroupName = groupName.String
 		u.PresetID = presetID.String
@@ -376,10 +376,10 @@ func (h *AdminHandler) UserTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error) {
 	var rec adminUserRecord
-	var email, jellyfinID, ldapDN, groupName, presetID, discordContact, telegramContact, profileApplyStatus, profileApplyError sql.NullString
+	var email, jellyfinID, authentikID, groupName, presetID, discordContact, telegramContact, profileApplyStatus, profileApplyError sql.NullString
 
 	err := h.db.QueryRow(
-		`SELECT id, username, email, jellyfin_id, ldap_dn, group_name, preset_id, is_active, can_invite,
+		`SELECT id, username, email, jellyfin_id, authentik_id, group_name, preset_id, is_active, can_invite,
 		        contact_discord, contact_telegram,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram,
@@ -393,7 +393,7 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		&rec.Username,
 		&email,
 		&jellyfinID,
-		&ldapDN,
+		&authentikID,
 		&groupName,
 		&presetID,
 		&rec.IsActive,
@@ -422,7 +422,7 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 
 	rec.Email = email.String
 	rec.JellyfinID = jellyfinID.String
-	rec.LDAPDN = ldapDN.String
+	rec.AuthentikID = authentikID
 	rec.GroupName = groupName.String
 	rec.PresetID = presetID.String
 	rec.ContactDiscord = discordContact.String
@@ -800,8 +800,12 @@ func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]s
 	var partialErrors []string
 
 	if h.authClient != nil && rec.AuthentikID.Valid && rec.AuthentikID.String != "" {
-		if pk, err := strconv.ParseInt(rec.AuthentikID.String, 10, 64); err == nil && pk > 0 {
-			if err := h.authClient.DeleteUser(context.Background(), pk); err != nil {
+		if err := h.authClient.DeleteUserByString(context.Background(), rec.AuthentikID.String); err != nil {
+			if pk, parseErr := strconv.ParseInt(rec.AuthentikID.String, 10, 64); parseErr == nil && pk > 0 {
+				if err2 := h.authClient.DeleteUser(context.Background(), pk); err2 != nil {
+					partialErrors = append(partialErrors, fmt.Sprintf("Authentik: %s", err.Error()))
+				}
+			} else {
 				partialErrors = append(partialErrors, fmt.Sprintf("Authentik: %s", err.Error()))
 			}
 		}

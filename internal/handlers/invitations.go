@@ -778,7 +778,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}
 
 	slog.Info("Enregistrement utilisateur JellyGate (Identité via Authentik)", "username", form.Username)
-	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, "", "", "user", emailVerified); err != nil {
+	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, "", emailVerified); err != nil {
 		slog.Error("Échec enregistrement utilisateur JellyGate", "username", form.Username, "error", err)
 		h.logInviteAction(r, "invite.sqlite.failed", form.Username, inv.Code, err.Error())
 		return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte")), true)
@@ -793,7 +793,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 // registerUser insère l'utilisateur dans SQLite et incrémente le compteur
 // d'utilisation de l'invitation. Les deux opérations sont dans une transaction.
-func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormData, inv *invitation, profile jellyfin.InviteProfile, jellyfinID, ldapDN, ldapRole string, emailVerified bool) error {
+func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormData, inv *invitation, profile jellyfin.InviteProfile, jellyfinID string, emailVerified bool) error {
 	tx, err := h.db.Begin()
 	if err != nil {
 		return fmt.Errorf("impossible de démarrer la transaction: %w", err)
@@ -843,7 +843,7 @@ func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormDa
 		jellyfinIDValue = jellyfinID
 	}
 
-	canInvite := roleAllowsInvites(ldapRole) || canInviteFromProfile
+	canInvite := canInviteFromProfile
 	preferredLang := normalizeSupportedEmailLang(inv.PreferredLang)
 	profileApplyStatus := "pending"
 	var profileAppliedAt interface{}
@@ -854,9 +854,9 @@ func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormDa
 
 	// INSERT de l'utilisateur
 	_, err = tx.Exec(
-		`INSERT INTO users (jellyfin_id, username, email, email_verified, ldap_dn, group_name, invited_by, preferred_lang, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at, preset_id, profile_apply_status, profile_apply_error, profile_applied_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL, ?, ?, '', ?)`,
-		jellyfinIDValue, form.Username, form.Email, emailVerified, ldapDN, groupName, inv.Code, preferredLang, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID, profileApplyStatus, profileAppliedAt,
+		`INSERT INTO users (jellyfin_id, username, email, email_verified, group_name, invited_by, preferred_lang, is_active, is_banned, can_invite, access_expires_at, delete_at, expiry_action, expiry_delete_after_days, expired_at, preset_id, profile_apply_status, profile_apply_error, profile_applied_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, TRUE, FALSE, ?, ?, ?, ?, ?, NULL, ?, ?, '', ?)`,
+		jellyfinIDValue, form.Username, form.Email, emailVerified, groupName, inv.Code, preferredLang, canInvite, accessExpiresAt, deleteAt, expiryAction, deleteAfterDays, presetID, profileApplyStatus, profileAppliedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("impossible d'insérer l'utilisateur %q: %w", form.Username, err)
@@ -870,7 +870,6 @@ func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormDa
 	slog.Info("Utilisateur enregistré dans SQLite",
 		"username", form.Username,
 		"jellyfin_id", jellyfinID,
-		"ldap_dn", ldapDN,
 		"invitation_id", inv.ID,
 	)
 

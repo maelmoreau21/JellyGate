@@ -5,7 +5,7 @@
 //   - JELLYGATE_*  : Application (port, URL, data, secret)
 //   - JELLYFIN_*   : Connexion à Jellyfin
 //
-// Les paramètres LDAP, SMTP et Webhooks sont stockés en base SQL
+// Les paramètres SMTP et Webhooks sont stockés en base SQL
 // (table `settings`) et gérés via l'interface d'administration.
 package config
 
@@ -1466,7 +1466,7 @@ type MatrixWebhook struct {
 // applique les valeurs par défaut, et valide les champs requis.
 //
 // Seuls les paramètres App + Jellyfin sont chargés ici.
-// LDAP, SMTP et Webhooks sont chargés depuis la base de données.
+// SMTP et Webhooks sont chargés depuis la base de données.
 func Load() (*Config, error) {
 	cfg := &Config{
 		Port:              getEnvInt("JELLYGATE_PORT", 8097),

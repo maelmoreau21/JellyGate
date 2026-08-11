@@ -1,8 +1,8 @@
 // Package database — settings.go
 //
 // CRUD pour la table `settings` (clé/valeur).
-// Stocke la configuration LDAP, SMTP et Webhooks en JSON,
-// ainsi que des flags comme ldap_enabled.
+// Stocke la configuration SMTP et Webhooks en JSON,
+// ainsi que des paramètres d'administration.
 package database
 
 import (
@@ -20,7 +20,6 @@ import (
 // ── Clés de settings ────────────────────────────────────────────────────────
 
 const (
-	SettingLDAPConfig                  = "ldap_config"             // JSON: config.LDAPConfig
 	SettingSMTPConfig                  = "smtp_config"             // JSON: config.SMTPConfig
 	SettingWebhooksConfig              = "webhooks_config"         // JSON: config.WebhooksConfig
 	SettingPortalLinks                 = "portal_links"            // JSON: config.PortalLinksConfig

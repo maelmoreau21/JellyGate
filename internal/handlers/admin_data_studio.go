@@ -35,11 +35,10 @@ func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AdminHandler) AuthentikPage(w http.ResponseWriter, r *http.Request) {
-	if !h.db.IsAuthentikEnabled() {
-		http.Redirect(w, r, "/admin/settings#authentik", http.StatusSeeOther)
+	if h.renderer == nil {
+		http.Error(w, "Renderer non initialisé", http.StatusInternalServerError)
 		return
 	}
-
 	sess := session.FromContext(r.Context())
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
@@ -55,7 +54,7 @@ func (h *AdminHandler) AuthentikPage(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.renderer.Render(w, "admin/authentik.html", td); err != nil {
 		slog.Error("Erreur rendu authentik page", "error", err)
-		http.Redirect(w, r, "/admin/settings#authentik", http.StatusSeeOther)
+		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur : impossible de charger la page"), http.StatusInternalServerError)
 	}
 }
 

@@ -1,66 +1,53 @@
-# Authentik OIDC & Integration Setup Guide for JellyGate v2.0.0
+# GUIDE DE CONFIGURATION AUTHENTIK POUR JELLYGATE
 
-This guide details the step-by-step procedure for configuring Authentik as the Identity Provider (IdP) for JellyGate v2.0.0.
+## 1. Prérequis dans Authentik
 
----
+Avant de connecter JellyGate, assurez-vous de disposer sur votre instance Authentik :
 
-## 1. Create Authentik OAuth2/OIDC Provider
+1. **Un Provider OIDC OAuth2** :
+   - Application Slug : `jellygate`
+   - Redirect URIs : `https://jellygate.example.com/auth/callback`
+   - Authorization Flow : `default-provider-authorization-implicit-consent` (ou explicite)
+   - Signing Key : Sélectionner la clé RSA par défaut d'Authentik.
 
-1. Log into your Authentik Admin Interface.
-2. Go to **Applications** → **Providers** → **Create Provider**.
-3. Select **OAuth2/OpenID Provider**:
-   - **Name**: `JellyGate Provider`
-   - **Authorization flow**: `default-provider-authorization-implicit-consent` (or standard authorization flow)
-   - **Client type**: `Confidential`
-   - **Client ID**: `jellygate` (or auto-generated)
-   - **Client Secret**: Save this value to `OIDC_CLIENT_SECRET`
-   - **Redirect URIs**: `https://jellygate.example.com/auth/callback` (or `http://localhost:8097/auth/callback`)
-   - **Signing Key**: Select your RSA certificate (e.g. `authentik Self-signed Certificate`)
-4. Click **Finish**.
+2. **Trois Groupes d'Accès** :
+   - `jellygate-users` : Autorise la connexion utilisateur à JellyGate.
+   - `jellygate-admins` : Autorise l'accès administration à JellyGate.
+   - `jellyfin-users` : Affecté automatiquement aux inscrits pour autoriser l'accès Jellyfin via l'Outpost LDAP.
 
----
+3. **Un Token d'API REST** :
+   - Créer un Service Account (ex: `jellygate-service`) avec les clés d'accès API.
+   - Copier le Token API Bearer généré.
 
-## 2. Create Authentik Application
+4. **Un Flow d'Enrollment (Inscription)** :
+   - Slug recommandé : `default-enrollment-flow`
+   - Configurer l'stage d'invitation (`Invitation Stage`) et l'stage d'écriture utilisateur (`User Write Stage`) configuré pour ajouter l'utilisateur au groupe `jellyfin-users`.
 
-1. Go to **Applications** → **Applications** → **Create Application**.
-   - **Name**: `JellyGate`
-   - **Slug**: `jellygate`
-   - **Provider**: Select `JellyGate Provider`
-2. Click **Create**.
+## 2. Configuration dans JellyGate
 
----
-
-## 3. Create Authentik Groups
-
-1. Go to **Directory** → **Groups** → **Create Group**.
-2. Create the following groups:
-   - `jellygate-admins`: Grants administrator access to JellyGate.
-   - `jellygate-users`: Grants standard user access to JellyGate.
-3. Ensure users are assigned to at least `jellygate-users` or `jellygate-admins`.
-
----
-
-## 4. Create Authentik Service Account API Token
-
-For JellyGate to create Stage Tokens (invitations) and Recovery Links:
-1. Go to **Directory** → **Users** → **Create Service Account**.
-   - **Username**: `ak-jellygate-service`
-2. Assign the Service Account to the `authentik Admins` group or grant permissions on `/api/v3/stages/invitation/invitations/` and `/api/v3/core/users/`.
-3. Copy the generated API Token and set `AUTHENTIK_API_TOKEN` in your JellyGate `.env`.
-
----
-
-## 5. Configure JellyGate `.env`
-
-Add the credentials to JellyGate `.env`:
+Renseignez les variables d'environnement dans votre fichier `.env` ou directement sur la page d'administration `/admin/authentik` :
 
 ```env
-AUTHENTIK_URL=https://authentik.example.com
-OIDC_ISSUER_URL=https://authentik.example.com/application/o/jellygate/
-OIDC_CLIENT_ID=jellygate
-OIDC_CLIENT_SECRET=your_client_secret
+AUTHENTIK_ENABLED=true
+AUTHENTIK_URL=https://auth.example.com
+AUTHENTIK_API_TOKEN=ak_api_token_here
+
+OIDC_ISSUER_URL=https://auth.example.com/application/o/jellygate/
+OIDC_CLIENT_ID=jellygate-client-id
+OIDC_CLIENT_SECRET=jellygate-client-secret
 OIDC_REDIRECT_URL=https://jellygate.example.com/auth/callback
-AUTHENTIK_API_TOKEN=your_service_account_api_token
-OIDC_USER_GROUP=jellygate-users
-OIDC_ADMIN_GROUP=jellygate-admins
+
+AUTHENTIK_USER_GROUP=jellygate-users
+AUTHENTIK_ADMIN_GROUP=jellygate-admins
+JELLYFIN_USER_GROUP=jellyfin-users
+AUTHENTIK_ENROLLMENT_FLOW=default-enrollment-flow
 ```
+
+## 3. Test de santé
+
+Accédez à `Administration -> Authentik` sur JellyGate et cliquez sur **[Tester la connexion]**.
+Vérifiez que les 4 cartes de diagnostic affichent l'état **OK** :
+- Connexion API REST
+- OIDC Discovery
+- Enrollment Flow
+- Groupes Requis

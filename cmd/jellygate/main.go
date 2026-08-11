@@ -1,7 +1,7 @@
 // Package main est le point d'entrée de JellyGate.
 //
-// JellyGate est un gestionnaire d'invitations, de récupération de mots de passe
-// et d'utilisateurs pour Jellyfin/Emby avec intégration Active Directory (LDAP).
+// JellyGate est un gestionnaire d'invitations, de parrainage
+// et d'utilisateurs pour Jellyfin avec intégration Authentik (OIDC).
 package main
 
 import (
