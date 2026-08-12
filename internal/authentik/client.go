@@ -599,4 +599,3 @@ func (c *client) CheckHealth(ctx context.Context, cfg config.AuthentikConfig) *H
 
 	return res
 }
-

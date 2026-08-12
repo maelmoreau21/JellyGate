@@ -1,14 +1,13 @@
 // Package jellyfin fournit un client REST pour interagir avec l'API Jellyfin.
 //
 // Opérations supportées :
-//   - Création d'utilisateur (POST /Users/New)
-//   - Suppression d'utilisateur (DELETE /Users/{Id})
-//   - Modification de politique (POST /Users/{Id}/Policy)
-//   - Application d'un profil de bibliothèques
-//   - Récupération de la liste des utilisateurs et bibliothèques
+//   - Modification de politique de streaming (POST /Users/{Id}/Policy)
+//   - Application des profils de bibliothèques et limites de transcodage
+//   - Récupération des bibliothèques (/Library/VirtualFolders) et infos serveur
+//   - Proxy des avatars utilisateurs
 //
-// Chaque méthode retourne des erreurs explicites pour permettre le rollback
-// lors du flux de création atomique (invitation).
+// L'identité utilisateur est gérée de manière centralisée par Authentik
+// et exposée à Jellyfin via son Outpost LDAP.
 package jellyfin
 
 import (
@@ -209,12 +208,12 @@ type InviteProfile struct {
 	AccessSchedules   []AccessSchedule `json:"access_schedules"`
 
 	// JFA-Go Features
-	ForcedUsername              string   `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
-	TemplateUserID              string   `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
-	CanInvite                   bool     `json:"can_invite"`
-	PresetID                    string   `json:"preset_id"` // Identifiant du preset (Parrainage)
-	IsTemporary                 bool     `json:"is_temporary"`
-	AccountDurationDays         int      `json:"account_duration_days"`
+	ForcedUsername      string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
+	TemplateUserID      string `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
+	CanInvite           bool   `json:"can_invite"`
+	PresetID            string `json:"preset_id"` // Identifiant du preset (Parrainage)
+	IsTemporary         bool   `json:"is_temporary"`
+	AccountDurationDays int    `json:"account_duration_days"`
 
 	UserConfiguration  config.JellyfinPresetUserConfiguration  `json:"user_configuration"`
 	DisplayPreferences config.JellyfinPresetDisplayPreferences `json:"display_preferences"`
@@ -322,8 +321,6 @@ func normalizeInviteProfileExpiryAction(action string) string {
 		return "disable"
 	}
 }
-
-
 
 // GetUserImage récupère l'image de profil d'un utilisateur.
 // Retourne les octets de l'image, le type MIME et une erreur.
@@ -485,8 +482,6 @@ func (c *Client) setDisplayPreferences(userID string, preferences map[string]int
 
 	return nil
 }
-
-
 
 // EnableUser active un utilisateur en mettant IsDisabled à false.
 func (c *Client) EnableUser(userID string) error {
@@ -821,5 +816,3 @@ func (c *Client) doRequest(method, path string, body []byte) (*http.Response, er
 
 	return resp, nil
 }
-
-

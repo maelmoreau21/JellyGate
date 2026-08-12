@@ -9,7 +9,6 @@
     let emailTemplatesMultilingualEnabled = true;
     let emailBaseDefaults = { header: '', footer: '' };
     let currentInvitationProfile = {};
-    let currentLDAPConfig = {};
     let basePreviewTimer = null;
     let basePreviewRequestId = 0;
     const templateValidationTimers = new Map();
@@ -1063,7 +1062,6 @@
             return;
         }
         const data = res.data || {};
-        const ldap = data.ldap || {};
         const smtp = data.smtp || {};
         const webhooks = data.webhooks || {};
         const discordWebhook = webhooks.discord || {};
@@ -1302,9 +1300,6 @@
                     document.cookie = `lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
                 }
                 window.location.reload();
-            }
-            if (section === 'ldap') {
-                window.setTimeout(() => window.location.reload(), 350);
             }
         } else {
             JG.toast((res && res.message) || t('settings_save_error', 'Save failed'), 'error');

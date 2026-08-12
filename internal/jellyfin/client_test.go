@@ -328,8 +328,6 @@ func TestSetUserImageUsesModernAuthorizationHeader(t *testing.T) {
 	}
 }
 
-
-
 func TestLiveJellyfinSmokeFromEnvironment(t *testing.T) {
 	jellyfinURL := strings.TrimSpace(os.Getenv("JELLYFIN_URL"))
 	apiKey := strings.TrimSpace(os.Getenv("JELLYFIN_API_KEY"))

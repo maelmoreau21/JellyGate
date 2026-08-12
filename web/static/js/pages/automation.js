@@ -1133,9 +1133,6 @@
         document.getElementById('btn-task-quick-sync-users')?.addEventListener('click', async () => {
             await runQuickTask('sync_users', i18n.manualSyncUsers);
         });
-        document.getElementById('btn-task-quick-sync-ldap')?.addEventListener('click', async () => {
-            await runQuickTask('sync_ldap_users', i18n.manualSyncLdap);
-        });
         document.getElementById('btn-task-quick-cleanup')?.addEventListener('click', async () => {
             await runQuickTask('cleanup_resets', i18n.manualCleanupResets);
         });

@@ -377,7 +377,6 @@ func normalizeExpiryAction(raw string) string {
 	}
 }
 
-
 // — Background Jobs ———————————————————————————————————————————————————————————————————
 
 // StartExpirationJob lance une routine en arrière-plan qui vérifie périodiquement

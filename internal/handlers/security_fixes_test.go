@@ -157,8 +157,6 @@ func TestInvitationReservationReleasePolicy(t *testing.T) {
 	}
 }
 
-
-
 func TestVerifyEmailGetDoesNotConsumeAccountVerification(t *testing.T) {
 	_, db := newTestSettingsHandler(t)
 	userID := insertEmailVerificationUser(t, db, "account-get@example.com")

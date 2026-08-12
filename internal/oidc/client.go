@@ -109,7 +109,13 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 
 	codeChallenge := calculateS256Challenge(codeVerifier)
 
-	isHTTPS := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	isHTTPS := r.TLS != nil ||
+		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.URL)), "https://") ||
+		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.IssuerURL)), "https://") ||
+		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.RedirectURL)), "https://") ||
+		strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
+		strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
+		strings.EqualFold(r.Header.Get("Front-End-Https"), "on")
 
 	setTempCookie(w, CookieState, state, isHTTPS)
 	setTempCookie(w, CookieNonce, nonce, isHTTPS)

@@ -222,13 +222,10 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 
 // InviteSubmit traite la soumission du formulaire d'inscription.
 //
-// Flux atomique avec rollback strict :
-//
-//	Ãƒâ€°tape 1 : Validation SQLite      Ã¢â€ â€™ erreur = stop (rien ÃƒÂ  nettoyer)
-//	Ãƒâ€°tape 2 : CrÃƒÂ©ation LDAP          Ã¢â€ â€™ erreur = stop (rien ÃƒÂ  nettoyer)
-//	Ãƒâ€°tape 3 : CrÃƒÂ©ation Jellyfin      Ã¢â€ â€™ erreur = rollback LDAP
-//	Ãƒâ€°tape 4 : Enregistrement SQLite   Ã¢â€ â€™ erreur = rollback Jellyfin + LDAP
-//	Ãƒâ€°tape 5 : Notifications           Ã¢â€ â€™ erreur = log seulement (pas de rollback)
+// Flux d'inscription Authentik :
+//	Étape 1 : Validation de l'invitation et des quotas en base de données.
+//	Étape 2 : Génération / récupération du jeton d'invitation Stage Authentik.
+//	Étape 3 : Redirection vers le flux d'Enrollment Authentik.
 func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 	remoteAddr := r.RemoteAddr
@@ -928,4 +925,3 @@ func mergeInviteProfileWithPreset(base jellyfin.InviteProfile, preset config.Jel
 	merged.AccountDurationDays = profile.AccountDurationDays
 	return merged
 }
-

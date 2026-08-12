@@ -98,7 +98,7 @@
             'profile-target-preset', 'profile-quota-day', 'profile-quota-month', 'profile-link-days',
             'profile-max-uses', 'profile-temp-default', 'profile-temp-max', 'profile-allowed-targets',
             'profile-allowed-temp-targets', 'profile-is-temporary', 'profile-account-default',
-            'profile-account-max', 'profile-devices', 'profile-channels', 'profile-ldap-groups',
+            'profile-account-max', 'profile-devices', 'profile-channels', 'profile-authentik-groups', 'profile-ldap-groups',
             'profile-delete-btn', 'profile-editor-title', 'profile-editor-subtitle', 'profile-tabs',
             'profile-active-menu-name', 'profile-dirty-indicator',
         ].forEach((id) => { els[id] = qs(id); });
@@ -442,7 +442,8 @@
         setList('profile-allowed-temp-targets', preset.allowed_temporary_preset_ids);
         setList('profile-devices', preset.enabled_devices);
         setList('profile-channels', [...(preset.enabled_channels || []), ...(preset.blocked_channels || []).map((v) => `!${v}`)]);
-        setList('profile-ldap-groups', preset.ldap_groups);
+        setList('profile-authentik-groups', preset.authentik_groups || preset.ldap_groups || []);
+        if (els['profile-ldap-groups']) setList('profile-ldap-groups', preset.authentik_groups || preset.ldap_groups || []);
         renderLibraryPicker(preset);
         renderList();
         renderTabs();
@@ -546,7 +547,8 @@
             is_temporary: !!els['profile-is-temporary'].checked,
             default_account_duration_days: num('profile-account-default'),
             max_account_duration_days: num('profile-account-max'),
-            ldap_groups: els['profile-ldap-groups'] ? list('profile-ldap-groups') : (current.ldap_groups || []),
+            authentik_groups: els['profile-authentik-groups'] ? list('profile-authentik-groups') : (els['profile-ldap-groups'] ? list('profile-ldap-groups') : (current.authentik_groups || current.ldap_groups || [])),
+            ldap_groups: els['profile-authentik-groups'] ? list('profile-authentik-groups') : (els['profile-ldap-groups'] ? list('profile-ldap-groups') : (current.authentik_groups || current.ldap_groups || [])),
         };
     }
 

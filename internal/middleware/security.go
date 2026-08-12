@@ -152,6 +152,11 @@ func RequestIsHTTPS(r *http.Request, baseURL string) bool {
 	if r.TLS != nil {
 		return true
 	}
+	if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
+		strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
+		strings.EqualFold(r.Header.Get("Front-End-Https"), "on") {
+		return true
+	}
 	return false
 }
 

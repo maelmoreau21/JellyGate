@@ -1761,9 +1761,9 @@ func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// DeleteUser supprime un utilisateur de l'AD, de Jellyfin, puis de SQLite.
-// Les erreurs partielles (ex: utilisateur déjà supprimé de l'AD) ne bloquent
-// pas les suppressions restantes — tout est loggé.
+// DeleteUser supprime un utilisateur d'Authentik puis de la base de données.
+// L'accès Jellyfin est révoqué automatiquement via l'Outpost LDAP Authentik.
+// Les erreurs partielles ne bloquent pas le nettoyage en base.
 func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)

@@ -116,17 +116,17 @@ func TestSettingsHandlerSaveAuthentik(t *testing.T) {
 	handler, db := newTestSettingsHandler(t)
 
 	body, err := json.Marshal(config.AuthentikConfig{
-		Enabled:                  true,
-		URL:                      "https://auth.example.com",
-		IssuerURL:                "https://auth.example.com/application/o/jellygate/",
-		ClientID:                 "jellygate",
-		ClientSecret:             "secret123",
-		RedirectURL:              "https://jellygate.example.com/auth/callback",
-		APIToken:                 "ak-token-12345",
-		UserGroup:                "jellygate-users",
-		AdminGroup:               "jellygate-admins",
-		JellyfinUserGroup:        "jellyfin-users",
-		EnrollmentFlowSlug:       "default-enrollment-flow",
+		Enabled:            true,
+		URL:                "https://auth.example.com",
+		IssuerURL:          "https://auth.example.com/application/o/jellygate/",
+		ClientID:           "jellygate",
+		ClientSecret:       "secret123",
+		RedirectURL:        "https://jellygate.example.com/auth/callback",
+		APIToken:           "ak-token-12345",
+		UserGroup:          "jellygate-users",
+		AdminGroup:         "jellygate-admins",
+		JellyfinUserGroup:  "jellyfin-users",
+		EnrollmentFlowSlug: "default-enrollment-flow",
 	})
 	if err != nil {
 		t.Fatalf("json.Marshal() error = %v", err)
@@ -146,7 +146,6 @@ func TestSettingsHandlerSaveAuthentik(t *testing.T) {
 		t.Fatalf("saved Authentik config mismatch: %+v", saved)
 	}
 }
-
 
 func TestSettingsHandlerSaveEmailTemplatesSyncsSharedFields(t *testing.T) {
 	handler, db := newTestSettingsHandler(t)

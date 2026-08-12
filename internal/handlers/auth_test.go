@@ -86,8 +86,6 @@ func TestLoginSubmitRedirectsToOIDC(t *testing.T) {
 
 const testAuthSecret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
-
-
 func newAuthTestDB(t *testing.T) *database.DB {
 	t.Helper()
 

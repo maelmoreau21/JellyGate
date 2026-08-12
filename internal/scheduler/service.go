@@ -419,8 +419,6 @@ func (s *Service) loadTask(taskID int64) (TaskRecord, error) {
 	return t, nil
 }
 
-
-
 func (s *Service) checkExpiringAccounts() {
 	if s.notifier == nil {
 		return
