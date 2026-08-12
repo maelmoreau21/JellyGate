@@ -812,12 +812,6 @@ func (h *AdminHandler) deleteUserRecord(rec *adminUserRecord, actor string) ([]s
 		}
 	}
 
-	if rec.JellyfinID != "" {
-		if err := h.jfClient.DeleteUser(rec.JellyfinID); err != nil {
-			partialErrors = append(partialErrors, fmt.Sprintf("Jellyfin: %s", err.Error()))
-		}
-	}
-
 	if err := h.sendUserTemplateByKey(rec, "user_deleted", nil); err != nil {
 		partialErrors = append(partialErrors, fmt.Sprintf("Email: %s", err.Error()))
 	}

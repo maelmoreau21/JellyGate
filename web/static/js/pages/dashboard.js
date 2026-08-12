@@ -131,12 +131,12 @@
         const normalizedHealth = {
             database: toBoolStatus(health.database ?? health.db ?? health.DB),
             jellyfin: toBoolStatus(health.jellyfin ?? health.jf ?? health.JF),
-            ldap: toBoolStatus(health.ldap ?? health.LDAP),
+            authentik: toBoolStatus(health.authentik ?? health.auth ?? health.AK),
         };
 
         updateLED('health-db', normalizedHealth.database);
         updateLED('health-jellyfin', normalizedHealth.jellyfin);
-        updateLED('health-ldap', normalizedHealth.ldap);
+        updateLED('health-authentik', normalizedHealth.authentik);
     }
 
     function renderRegistrationsChart(data) {

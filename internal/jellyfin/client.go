@@ -323,57 +323,7 @@ func normalizeInviteProfileExpiryAction(action string) string {
 	}
 }
 
-func (c *Client) CreateUser(name, password string) (*User, error) {
-	reqBody, err := json.Marshal(CreateUserRequest{ // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
-		Name:     name,
-		Password: password,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("jellyfin.CreateUser: erreur de sérialisation: %w", err)
-	}
 
-	resp, err := c.doRequest(http.MethodPost, "/Users/New", reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("jellyfin.CreateUser: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return nil, fmt.Errorf("jellyfin.CreateUser: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	var user User
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		return nil, fmt.Errorf("jellyfin.CreateUser: parse error: %w", err)
-	}
-
-	slog.Info("Utilisateur créé dans Jellyfin", "name", name, "id", user.ID)
-	return &user, nil
-}
-
-// DeleteUser supprime un utilisateur de Jellyfin par son ID.
-//
-// Utilisé lors du rollback en cas d'échec, ou pour la suppression admin.
-func (c *Client) DeleteUser(userID string) error {
-	if userID == "" {
-		return fmt.Errorf("jellyfin.DeleteUser: userID vide")
-	}
-
-	resp, err := c.doRequest(http.MethodDelete, fmt.Sprintf("/Users/%s", userID), nil)
-	if err != nil {
-		return fmt.Errorf("jellyfin.DeleteUser: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return fmt.Errorf("jellyfin.DeleteUser: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	slog.Info("Utilisateur Jellyfin supprimé", "id", userID)
-	return nil
-}
 
 // GetUserImage récupère l'image de profil d'un utilisateur.
 // Retourne les octets de l'image, le type MIME et une erreur.
@@ -536,31 +486,7 @@ func (c *Client) setDisplayPreferences(userID string, preferences map[string]int
 	return nil
 }
 
-// UpdateUserPassword change le mot de passe d'un utilisateur Jellyfin.
-func (c *Client) UpdateUserPassword(userID, currentPassword, newPassword string) error {
-	if userID == "" {
-		return fmt.Errorf("jellyfin.UpdateUserPassword: userID vide")
-	}
 
-	payload := map[string]string{
-		"CurrentPassword": currentPassword,
-		"NewPassword":     newPassword,
-	}
-	reqBody, _ := json.Marshal(payload)
-
-	resp, err := c.doRequest(http.MethodPost, fmt.Sprintf("/Users/%s/Password", userID), reqBody)
-	if err != nil {
-		return fmt.Errorf("jellyfin.UpdateUserPassword: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return fmt.Errorf("jellyfin.UpdateUserPassword: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
 
 // EnableUser active un utilisateur en mettant IsDisabled à false.
 func (c *Client) EnableUser(userID string) error {
@@ -896,81 +822,4 @@ func (c *Client) doRequest(method, path string, body []byte) (*http.Response, er
 	return resp, nil
 }
 
-// ResetPassword réinitialise le mot de passe d'un utilisateur Jellyfin.
-func (c *Client) ResetPassword(userID, newPassword string) error {
-	if c == nil {
-		return fmt.Errorf("jellyfin.ResetPassword: client nil")
-	}
-	if userID == "" {
-		return fmt.Errorf("jellyfin.ResetPassword: userID vide")
-	}
 
-	passwordPath := fmt.Sprintf("/Users/%s/Password", userID)
-
-	resetBody, _ := json.Marshal(map[string]bool{"ResetPassword": true})
-	resp, err := c.doRequest(http.MethodPost, passwordPath, resetBody)
-	if err != nil {
-		return fmt.Errorf("jellyfin.ResetPassword: reset — %w", err)
-	}
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		err := jellyfinHTTPError("jellyfin.ResetPassword: reset", resp)
-		_ = resp.Body.Close()
-		return err
-	}
-	_ = resp.Body.Close()
-
-	attempts := []struct {
-		shape   string
-		payload map[string]string
-	}{
-		{
-			shape: "CurrentPassword/NewPassword",
-			payload: map[string]string{
-				"CurrentPassword": "",
-				"NewPassword":     newPassword,
-			},
-		},
-		{
-			shape: "CurrentPw/NewPw",
-			payload: map[string]string{
-				"CurrentPw": "",
-				"NewPw":     newPassword,
-			},
-		},
-	}
-
-	var lastErr error
-	for idx, attempt := range attempts {
-		body, err := json.Marshal(attempt.payload)
-		if err != nil {
-			return fmt.Errorf("jellyfin.ResetPassword: set %s: erreur de serialisation: %w", attempt.shape, err)
-		}
-		resp2, err := c.doRequest(http.MethodPost, passwordPath, body)
-		if err != nil {
-			return fmt.Errorf("jellyfin.ResetPassword: set %s: %w", attempt.shape, err)
-		}
-		if resp2.StatusCode == http.StatusOK || resp2.StatusCode == http.StatusNoContent {
-			_ = resp2.Body.Close()
-			slog.Info("Mot de passe Jellyfin reinitialise", "id", userID, "payload_shape", attempt.shape)
-			return nil
-		}
-		lastErr = jellyfinHTTPError("jellyfin.ResetPassword: set "+attempt.shape, resp2)
-		_ = resp2.Body.Close()
-		if idx == len(attempts)-1 || !shouldTryNextPasswordPayload(resp2.StatusCode) {
-			break
-		}
-	}
-	if lastErr != nil {
-		return lastErr
-	}
-	return fmt.Errorf("jellyfin.ResetPassword: set impossible")
-}
-
-func shouldTryNextPasswordPayload(status int) bool {
-	switch status {
-	case http.StatusBadRequest, http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity, http.StatusInternalServerError:
-		return true
-	default:
-		return false
-	}
-}

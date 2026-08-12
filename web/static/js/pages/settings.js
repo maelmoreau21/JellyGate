@@ -1108,30 +1108,7 @@
             applyInvitationProfileConfig(data.invitation_profile || {});
         }
 
-        if (document.getElementById('form-ldap')) {
-            currentLDAPConfig = { ...ldap };
-            document.getElementById('ldap-enabled').checked = ldap.enabled || false;
-            document.getElementById('ldap-host').value = ldap.host || '';
-            document.getElementById('ldap-port').value = ldap.port || 636;
-            document.getElementById('ldap-tls').checked = ldap.use_tls !== false;
-            document.getElementById('ldap-skip-verify').checked = ldap.skip_verify || false;
-            document.getElementById('ldap-bind-dn').value = ldap.bind_dn || '';
-            document.getElementById('ldap-bind-password').value = ldap.bind_password || '';
-            document.getElementById('ldap-base-dn').value = ldap.base_dn || '';
-            document.getElementById('ldap-search-filter').value = ldap.search_filter || '';
-            document.getElementById('ldap-search-attributes').value = ldap.search_attributes || 'uid,sAMAccountName,cn,userPrincipalName,mail';
-            document.getElementById('ldap-uid-attribute').value = ldap.uid_attribute || 'uid';
-            document.getElementById('ldap-username-attribute').value = ldap.username_attribute || 'auto';
-            document.getElementById('ldap-admin-filter').value = ldap.admin_filter || '';
-            document.getElementById('ldap-admin-filter-memberuid').checked = !!ldap.admin_filter_memberuid;
-            if (document.getElementById('ldap-jf-auth-provider')) {
-                document.getElementById('ldap-jf-auth-provider').value = ldap.jellyfin_ldap_auth_provider_id || 'Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin';
-            }
-            if (document.getElementById('ldap-jf-reset-provider')) {
-                document.getElementById('ldap-jf-reset-provider').value = ldap.jellyfin_ldap_password_reset_provider_id || 'Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider';
-            }
-            toggleLDAPFields();
-        }
+
 
         if (document.getElementById('form-smtp')) {
             document.getElementById('smtp-host').value = smtp.host || '';
@@ -1231,15 +1208,7 @@
                 password_require_digit: document.getElementById('invite-profile-pw-digit').checked,
                 password_require_special: document.getElementById('invite-profile-pw-special').checked,
             };
-        } else if (section === 'ldap') {
-            body = collectLDAPPayload();
-            const hasInlineLDAPConfig = !document.getElementById('ldap-fields')?.classList.contains('hidden');
-            if (body.enabled && hasInlineLDAPConfig) {
-                const dryRunOK = await confirmLDAPDryRunBeforeSave(body);
-                if (!dryRunOK) {
-                    return;
-                }
-            }
+
         } else if (section === 'smtp') {
             body = {
                 host: document.getElementById('smtp-host').value,
@@ -1775,7 +1744,7 @@
             ['form-general', 'general'],
             ['form-auth-session', 'auth-session'],
             ['form-invitation-profile', 'invitation-profile'],
-            ['form-ldap', 'ldap'],
+
             ['form-smtp', 'smtp'],
             ['form-webhooks', 'webhooks'],
             ['form-email-templates', 'email-templates'],
@@ -1787,7 +1756,7 @@
             }
         });
 
-        document.getElementById('ldap-enabled')?.addEventListener('change', toggleLDAPFields);
+
         document.getElementById('invite-profile-require-email-verification')?.addEventListener('change', syncInviteEmailRequirementFromVerification);
         document.getElementById('invite-profile-email-verification-policy')?.addEventListener('change', syncInviteEmailPolicyControls);
 
