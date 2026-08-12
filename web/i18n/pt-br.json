@@ -725,7 +725,7 @@
     "profiles_tab_active_badge": "Ativo",
     "profiles_tab_home": "Lar",
     "profiles_tab_invites": "Convites",
-    "profiles_tab_ldap": "LDAP",
+    "profiles_tab_account": "Conta",
     "profiles_tab_libraries": "Bibliotecas",
     "profiles_tab_rights": "Direitos da Jellyfin",
     "profiles_tab_security": "Segurança",

@@ -725,7 +725,7 @@
     "profiles_tab_active_badge": "En cours",
     "profiles_tab_home": "Accueil",
     "profiles_tab_invites": "Invitations",
-    "profiles_tab_ldap": "Compte",
+    "profiles_tab_account": "Compte",
     "profiles_tab_libraries": "Bibliotheques",
     "profiles_tab_rights": "Droits Jellyfin",
     "profiles_tab_security": "Securite",

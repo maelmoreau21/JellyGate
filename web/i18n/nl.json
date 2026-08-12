@@ -725,7 +725,7 @@
     "profiles_tab_active_badge": "Actief",
     "profiles_tab_home": "Thuis",
     "profiles_tab_invites": "Uitnodigingen",
-    "profiles_tab_ldap": "LDAP",
+    "profiles_tab_account": "Account",
     "profiles_tab_libraries": "Bibliotheken",
     "profiles_tab_rights": "Jellyfin-rechten",
     "profiles_tab_security": "Beveiliging",
