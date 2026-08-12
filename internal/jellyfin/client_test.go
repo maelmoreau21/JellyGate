@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -44,196 +45,40 @@ func assertModernJellyfinAuth(t *testing.T, r *http.Request, token string) {
 	}
 }
 
-func TestAuthenticateByNameUsesModernHeaderAndRefreshesPolicy(t *testing.T) {
-	requests := map[string]int{}
-	var authPayload authenticateByNameRequest
+func TestClientIsConfiguredAndStatus(t *testing.T) {
+	var nilClient *Client
+	if nilClient.IsConfigured() {
+		t.Fatalf("nilClient.IsConfigured() = true, want false")
+	}
+	if nilClient.Status() != StatusDisabled {
+		t.Fatalf("nilClient.Status() = %v, want StatusDisabled", nilClient.Status())
+	}
+
+	unconfigured := New(config.JellyfinConfig{})
+	if unconfigured.IsConfigured() {
+		t.Fatalf("unconfigured.IsConfigured() = true, want false")
+	}
+	if unconfigured.Status() != StatusDisabled {
+		t.Fatalf("unconfigured.Status() = %v, want StatusDisabled", unconfigured.Status())
+	}
+
+	if _, err := unconfigured.GetLibraries(); !errors.Is(err, ErrNotConfigured) {
+		t.Fatalf("GetLibraries() error = %v, want ErrNotConfigured", err)
+	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := r.Method + " " + r.URL.Path
-		requests[key]++
-
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
-			assertModernJellyfinAuth(t, r, "")
-			if err := json.NewDecoder(r.Body).Decode(&authPayload); err != nil {
-				t.Fatalf("decode auth payload: %v", err)
-			}
-			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
-				User:        User{ID: "admin-id", Name: "admin"},
-				AccessToken: "session-token",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id":
-			assertModernJellyfinAuth(t, r, "session-token")
-			_ = json.NewEncoder(w).Encode(User{
-				ID:   "admin-id",
-				Name: "admin",
-				Policy: Policy{
-					IsAdministrator: true,
-				},
-			})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
+		if r.URL.Path == "/System/Info/Public" {
+			_ = json.NewEncoder(w).Encode(map[string]string{"ServerName": "TestServer"})
 		}
 	}))
 	defer server.Close()
 
-	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
-	user, err := client.AuthenticateByName("admin", "secret")
-	if err != nil {
-		t.Fatalf("AuthenticateByName() error = %v", err)
+	configured := New(config.JellyfinConfig{URL: server.URL, APIKey: "test-key"})
+	if !configured.IsConfigured() {
+		t.Fatalf("configured.IsConfigured() = false, want true")
 	}
-	if authPayload.Username != "admin" || authPayload.Pw != "secret" {
-		t.Fatalf("auth payload = %+v, want username and password", authPayload)
-	}
-	if user.ID != "admin-id" || user.Name != "admin" || !user.Policy.IsAdministrator {
-		t.Fatalf("authenticated user = %+v, want refreshed admin policy", user)
-	}
-	if requests[http.MethodPost+" /Users/AuthenticateByName"] != 1 || requests[http.MethodGet+" /Users/admin-id"] != 1 {
-		t.Fatalf("unexpected request counts: %#v", requests)
-	}
-}
-
-func TestAuthenticateByNameUsesAPIKeyFallbackWhenTokenPolicyRefreshFails(t *testing.T) {
-	requests := map[string]int{}
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		key := r.Method + " " + r.URL.Path + " " + r.Header.Get("Authorization")
-		requests[key]++
-
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
-			assertModernJellyfinAuth(t, r, "")
-			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
-				User:        User{ID: "admin-id", Name: "admin"},
-				AccessToken: "session-token",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`):
-			assertModernJellyfinAuth(t, r, "session-token")
-			http.Error(w, "token cannot read policy", http.StatusForbidden)
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="admin-api-key"`):
-			assertModernJellyfinAuth(t, r, "admin-api-key")
-			_ = json.NewEncoder(w).Encode(User{
-				ID:   "admin-id",
-				Name: "admin",
-				Policy: Policy{
-					IsAdministrator: true,
-				},
-			})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
-		}
-	}))
-	defer server.Close()
-
-	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
-	user, err := client.AuthenticateByName("admin", "secret")
-	if err != nil {
-		t.Fatalf("AuthenticateByName() error = %v", err)
-	}
-	if !user.Policy.IsAdministrator {
-		t.Fatalf("AuthenticateByName() IsAdministrator = false, want API-key-confirmed admin")
-	}
-	if len(requests) != 3 {
-		t.Fatalf("request count = %d, want 3: %#v", len(requests), requests)
-	}
-}
-
-func TestAuthenticateByNameAllowsLoginWithoutAdminWhenPolicyRefreshFails(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
-			assertModernJellyfinAuth(t, r, "")
-			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
-				User:        User{ID: "admin-id", Name: "admin", Policy: Policy{IsAdministrator: true}},
-				AccessToken: "session-token",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id":
-			assertModernJellyfinAuth(t, r, "session-token")
-			http.Error(w, "policy unavailable", http.StatusInternalServerError)
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
-		}
-	}))
-	defer server.Close()
-
-	client := New(config.JellyfinConfig{URL: server.URL})
-	user, err := client.AuthenticateByName("admin", "secret")
-	if err != nil {
-		t.Fatalf("AuthenticateByName() error = %v", err)
-	}
-	if user.Policy.IsAdministrator {
-		t.Fatalf("AuthenticateByName() granted admin with unconfirmed policy")
-	}
-}
-
-func TestAuthenticateByNameAllowsLoginWithoutAdminWhenAPIKeyInvalid(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
-			assertModernJellyfinAuth(t, r, "")
-			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
-				User:        User{ID: "admin-id", Name: "admin", Policy: Policy{IsAdministrator: true}},
-				AccessToken: "session-token",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`):
-			assertModernJellyfinAuth(t, r, "session-token")
-			http.Error(w, "token cannot read policy", http.StatusForbidden)
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/admin-id" && strings.Contains(r.Header.Get("Authorization"), `Token="bad-api-key"`):
-			assertModernJellyfinAuth(t, r, "bad-api-key")
-			http.Error(w, "api key invalid", http.StatusUnauthorized)
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
-		}
-	}))
-	defer server.Close()
-
-	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "bad-api-key"})
-	user, err := client.AuthenticateByName("admin", "secret")
-	if err != nil {
-		t.Fatalf("AuthenticateByName() error = %v", err)
-	}
-	if user.Policy.IsAdministrator {
-		t.Fatalf("AuthenticateByName() granted admin with invalid API-key confirmation")
-	}
-}
-
-func TestAuthenticateByNameTriesJellyTrackCompatibleVariants(t *testing.T) {
-	var lowerPayloadSeen bool
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.URL.Path == "/Users/AuthenticateByName":
-			http.NotFound(w, r)
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/authenticatebyname":
-			assertModernJellyfinAuth(t, r, "")
-			var payload map[string]string
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				t.Fatalf("decode auth payload: %v", err)
-			}
-			if payload["username"] != "admin" || payload["password"] != "secret" {
-				http.Error(w, "wrong payload shape", http.StatusBadRequest)
-				return
-			}
-			lowerPayloadSeen = true
-			_ = json.NewEncoder(w).Encode(authenticateByNameResponse{
-				User: User{ID: "admin-id", Name: "admin"},
-			})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
-		}
-	}))
-	defer server.Close()
-
-	client := New(config.JellyfinConfig{URL: server.URL})
-	user, err := client.AuthenticateByName("admin", "secret")
-	if err != nil {
-		t.Fatalf("AuthenticateByName() error = %v", err)
-	}
-	if !lowerPayloadSeen {
-		t.Fatalf("lowercase compatible payload was not attempted")
-	}
-	if user.ID != "admin-id" || user.Name != "admin" || user.Policy.IsAdministrator {
-		t.Fatalf("authenticated user = %+v, want non-admin fallback user", user)
+	if configured.Status() != StatusAvailable {
+		t.Fatalf("configured.Status() = %v, want StatusAvailable", configured.Status())
 	}
 }
 
@@ -296,22 +141,6 @@ func TestDiagnosticsReportsInvalidAPIKeyWithoutSecret(t *testing.T) {
 	}
 }
 
-func TestClientUsesModernAuthorizationHeader(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assertModernJellyfinAuth(t, r, "secret")
-		if r.Method != http.MethodGet || r.URL.Path != "/Users" {
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
-		}
-		_ = json.NewEncoder(w).Encode([]User{})
-	}))
-	defer server.Close()
-
-	client := New(config.JellyfinConfig{URL: server.URL, APIKey: "secret"})
-	if _, err := client.GetUsers(); err != nil {
-		t.Fatalf("GetUsers() error = %v", err)
-	}
-}
-
 func TestSetUserImageUsesModernAuthorizationHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assertModernJellyfinAuth(t, r, "secret")
@@ -343,9 +172,6 @@ func TestLiveJellyfinSmokeFromEnvironment(t *testing.T) {
 	}
 	if _, err := client.GetSystemInfo(); err != nil {
 		t.Fatalf("GetSystemInfo() error = %v", err)
-	}
-	if _, err := client.GetUsers(); err != nil {
-		t.Fatalf("GetUsers() error = %v", err)
 	}
 	if _, err := client.GetLibraries(); err != nil {
 		t.Fatalf("GetLibraries() error = %v", err)

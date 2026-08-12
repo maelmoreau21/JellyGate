@@ -90,7 +90,7 @@ func TestOIDCLoginRedirect(t *testing.T) {
 		authURL: "https://auth.example.com/application/o/authorize/?client_id=test&state=123",
 	}
 
-	handler := NewAuthHandler(cfg, nil, nil, mockOIDC, nil, nil)
+	handler := NewAuthHandler(cfg, nil, mockOIDC, nil, nil)
 
 	t.Run("Redirects to OIDC Auth URL", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
@@ -151,7 +151,7 @@ func TestOIDCCallbackScenarios(t *testing.T) {
 			},
 			hasAccess: true,
 		}
-		handler := NewAuthHandler(cfg, db, nil, mockOIDC, nil, nil)
+		handler := NewAuthHandler(cfg, db, mockOIDC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=123&state=abc", nil)
 		rec := httptest.NewRecorder()
@@ -187,7 +187,7 @@ func TestOIDCCallbackScenarios(t *testing.T) {
 			},
 			hasAccess: true,
 		}
-		handler := NewAuthHandler(cfg, db, nil, mockOIDC, nil, nil)
+		handler := NewAuthHandler(cfg, db, mockOIDC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=123&state=abc", nil)
 		rec := httptest.NewRecorder()
@@ -218,7 +218,7 @@ func TestOIDCCallbackScenarios(t *testing.T) {
 			isAdmin:   true,
 			hasAccess: true,
 		}
-		handler := NewAuthHandler(cfg, db, nil, mockOIDC, nil, nil)
+		handler := NewAuthHandler(cfg, db, mockOIDC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=123&state=abc", nil)
 		rec := httptest.NewRecorder()
@@ -262,7 +262,7 @@ func TestOIDCCallbackScenarios(t *testing.T) {
 			hasAccess: false,
 		}
 		renderEngine, _ := newTestRenderEngine(t)
-		handler := NewAuthHandler(cfg, db, nil, mockOIDC, nil, renderEngine)
+		handler := NewAuthHandler(cfg, db, mockOIDC, nil, renderEngine)
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=123&state=abc", nil)
 		rec := httptest.NewRecorder()
@@ -278,7 +278,7 @@ func TestOIDCCallbackScenarios(t *testing.T) {
 		mockOIDC := &mockOIDCClient{
 			callbackErr: errors.New("invalid or mismatched OIDC state parameter"),
 		}
-		handler := NewAuthHandler(cfg, db, nil, mockOIDC, nil, nil)
+		handler := NewAuthHandler(cfg, db, mockOIDC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=123&state=bad", nil)
 		rec := httptest.NewRecorder()
@@ -298,7 +298,7 @@ func TestOIDCCallbackScenarios(t *testing.T) {
 		mockOIDC := &mockOIDCClient{
 			callbackErr: errors.New("mismatched nonce in ID token"),
 		}
-		handler := NewAuthHandler(cfg, db, nil, mockOIDC, nil, nil)
+		handler := NewAuthHandler(cfg, db, mockOIDC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=123&state=abc", nil)
 		rec := httptest.NewRecorder()
@@ -318,7 +318,7 @@ func TestOIDCCallbackScenarios(t *testing.T) {
 		mockOIDC := &mockOIDCClient{
 			callbackErr: errors.New("ID token has expired"),
 		}
-		handler := NewAuthHandler(cfg, db, nil, mockOIDC, nil, nil)
+		handler := NewAuthHandler(cfg, db, mockOIDC, nil, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/auth/callback?code=123&state=abc", nil)
 		rec := httptest.NewRecorder()
@@ -342,7 +342,7 @@ func TestOIDCLogout(t *testing.T) {
 			URL: "https://auth.example.com",
 		},
 	}
-	handler := NewAuthHandler(cfg, nil, nil, nil, nil, nil)
+	handler := NewAuthHandler(cfg, nil, nil, nil, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/auth/logout", nil)
 	rec := httptest.NewRecorder()

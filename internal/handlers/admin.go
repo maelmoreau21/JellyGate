@@ -611,12 +611,6 @@ func (h *AdminHandler) runExpirationCheck() {
 			}
 		}
 
-		if u.JellyfinID != "" {
-			if err := h.jfClient.DisableUser(u.JellyfinID); err != nil {
-				slog.Error("Erreur lors de la desactivation Jellyfin (Expiration)", "error", err)
-			}
-		}
-
 		_, err := h.db.Exec(`UPDATE users SET is_active = FALSE, expired_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, u.ID)
 		if err != nil {
 			slog.Error("Erreur lors de la desactivation (Expiration)", "error", err, "driver", h.db.Driver())
@@ -734,7 +728,7 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Test Jellyfin (léger)
-	if h.jfClient != nil {
+	if h.jfClient != nil && h.jfClient.IsConfigured() {
 		if _, err := h.jfClient.GetPublicSystemInfo(); err == nil {
 			health["jellyfin"] = true
 		}

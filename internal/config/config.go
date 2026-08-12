@@ -79,7 +79,7 @@ type Config struct {
 	// Base de donnees (sqlite ou postgres)
 	Database DatabaseConfig
 
-	// Jellyfin (seul service externe requis au démarrage)
+	// Jellyfin (intégration métrique/preset optionnelle)
 	Jellyfin JellyfinConfig
 
 	// Intégrations tierces optionnelles (provisionnement compte)
@@ -1528,6 +1528,11 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// Validate vérifie que la configuration est valide.
+func (c *Config) Validate() error {
+	return c.validate()
+}
+
 // validate vérifie que tous les champs requis sont renseignés.
 func (c *Config) validate() error {
 	var errs []string
@@ -1542,12 +1547,11 @@ func (c *Config) validate() error {
 		errs = append(errs, "JELLYGATE_BASE_URL doit etre une URL http/https valide: "+err.Error())
 	}
 
-	// Jellyfin
-	if c.Jellyfin.URL == "" {
-		errs = append(errs, "JELLYFIN_URL est requis")
-	}
-	if c.Jellyfin.APIKey == "" {
-		errs = append(errs, "JELLYFIN_API_KEY est requis")
+	// Jellyfin (optionnel)
+	if c.Jellyfin.URL != "" {
+		if err := validateHTTPURL(c.Jellyfin.URL); err != nil {
+			errs = append(errs, "JELLYFIN_URL doit etre une URL http/https valide: "+err.Error())
+		}
 	}
 
 	// Validation de la langue par défaut si fournie

@@ -64,8 +64,8 @@ func (h *AutomationHandler) ListPresets(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AutomationHandler) ListLibraries(w http.ResponseWriter, r *http.Request) {
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin indisponible")})
+	if h.jfClient == nil || !h.jfClient.IsConfigured() {
+		writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: []interface{}{}})
 		return
 	}
 

@@ -14,7 +14,6 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/backup"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
 )
@@ -35,15 +34,14 @@ type TaskRecord struct {
 
 type Service struct {
 	db       *database.DB
-	jf       *jellyfin.Client
 	backup   *backup.Service
 	mailer   *mail.Mailer
 	notifier *notify.Notifier
 	mu       sync.Mutex
 }
 
-func NewService(db *database.DB, jf *jellyfin.Client, backupSvc *backup.Service, mailer *mail.Mailer, notifier *notify.Notifier) *Service {
-	return &Service{db: db, jf: jf, backup: backupSvc, mailer: mailer, notifier: notifier}
+func NewService(db *database.DB, backupSvc *backup.Service, mailer *mail.Mailer, notifier *notify.Notifier) *Service {
+	return &Service{db: db, backup: backupSvc, mailer: mailer, notifier: notifier}
 }
 
 func (s *Service) SetMailer(m *mail.Mailer) {

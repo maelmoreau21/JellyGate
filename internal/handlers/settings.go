@@ -614,7 +614,7 @@ func (h *SettingsHandler) FetchJellyfinServerName(w http.ResponseWriter, r *http
 		return
 	}
 
-	if h.jfClient == nil {
+	if h.jfClient == nil || !h.jfClient.IsConfigured() {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Client Jellyfin non configure"})
 		return
 	}

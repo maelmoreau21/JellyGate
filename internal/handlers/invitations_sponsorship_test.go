@@ -40,6 +40,15 @@ func (m *mockAuthentikClient) CreateRecoveryLink(ctx context.Context, userPK int
 func (m *mockAuthentikClient) AddUserToGroup(ctx context.Context, userPK int64, groupID string) error {
 	return nil
 }
+func (m *mockAuthentikClient) RemoveUserFromGroup(ctx context.Context, userPK int64, groupID string) error {
+	return nil
+}
+func (m *mockAuthentikClient) AddUserToGroupByString(ctx context.Context, authentikID string, groupID string) error {
+	return nil
+}
+func (m *mockAuthentikClient) RemoveUserFromGroupByString(ctx context.Context, authentikID string, groupID string) error {
+	return nil
+}
 
 func (m *mockAuthentikClient) SetUserActiveStatus(ctx context.Context, userPK int64, active bool) error {
 	return nil

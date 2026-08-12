@@ -13,6 +13,7 @@ package jellyfin
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -24,6 +25,20 @@ import (
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
+)
+
+var (
+	ErrNotConfigured = errors.New("jellyfin: client non configuré")
+	ErrUnavailable   = errors.New("jellyfin: service indisponible")
+)
+
+type IntegrationStatus string
+
+const (
+	StatusDisabled    IntegrationStatus = "disabled"
+	StatusConfigured  IntegrationStatus = "configured"
+	StatusAvailable   IntegrationStatus = "available"
+	StatusUnavailable IntegrationStatus = "unavailable"
 )
 
 // ── Client ──────────────────────────────────────────────────────────────────
@@ -40,7 +55,7 @@ type Client struct {
 // New crée un nouveau client Jellyfin à partir de la configuration.
 func New(cfg config.JellyfinConfig) *Client {
 	url := strings.TrimRight(cfg.URL, "/")
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+	if url != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
 
@@ -51,6 +66,22 @@ func New(cfg config.JellyfinConfig) *Client {
 			Timeout: 15 * time.Second,
 		},
 	}
+}
+
+// IsConfigured indique si le client Jellyfin dispose d'une URL et d'une clé API valides.
+func (c *Client) IsConfigured() bool {
+	return c != nil && strings.TrimSpace(c.baseURL) != "" && strings.TrimSpace(c.apiKey) != ""
+}
+
+// Status retourne le statut courant de l'intégration Jellyfin.
+func (c *Client) Status() IntegrationStatus {
+	if !c.IsConfigured() {
+		return StatusDisabled
+	}
+	if _, err := c.GetPublicSystemInfo(); err != nil {
+		return StatusUnavailable
+	}
+	return StatusAvailable
 }
 
 // ── Structures de données ───────────────────────────────────────────────────
@@ -483,27 +514,6 @@ func (c *Client) setDisplayPreferences(userID string, preferences map[string]int
 	return nil
 }
 
-// EnableUser active un utilisateur en mettant IsDisabled à false.
-func (c *Client) EnableUser(userID string) error {
-	// Récupérer la politique actuelle pour ne modifier que IsDisabled
-	user, err := c.GetUser(userID)
-	if err != nil {
-		return fmt.Errorf("jellyfin.EnableUser: %w", err)
-	}
-	user.Policy.IsDisabled = false
-	return c.SetUserPolicy(userID, user.Policy)
-}
-
-// DisableUser désactive un utilisateur en mettant IsDisabled à true.
-func (c *Client) DisableUser(userID string) error {
-	user, err := c.GetUser(userID)
-	if err != nil {
-		return fmt.Errorf("jellyfin.DisableUser: %w", err)
-	}
-	user.Policy.IsDisabled = true
-	return c.SetUserPolicy(userID, user.Policy)
-}
-
 // buildUserConfigurationPayload merge la configuration existante avec le preset.
 func buildUserConfigurationPayload(base map[string]interface{}, cfg config.JellyfinPresetUserConfiguration) map[string]interface{} {
 	cfg = config.NormalizeJellyfinPresetUserConfiguration(cfg)
@@ -671,54 +681,6 @@ func (c *Client) GetUser(userID string) (*User, error) {
 	return &user, nil
 }
 
-// GetUsers récupère la liste de tous les utilisateurs Jellyfin.
-func (c *Client) GetUsers() ([]User, error) {
-	resp, err := c.doRequest(http.MethodGet, "/Users", nil)
-	if err != nil {
-		return nil, fmt.Errorf("jellyfin.GetUsers: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return nil, fmt.Errorf("jellyfin.GetUsers: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	var users []User
-	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
-		return nil, fmt.Errorf("jellyfin.GetUsers: erreur de décodage: %w", err)
-	}
-
-	return users, nil
-}
-
-// GetUsersBatch récupère les informations de plusieurs utilisateurs par leurs IDs.
-// Utilise le paramètre "Ids" de l'API Jellyfin (virgule séparée).
-func (c *Client) GetUsersBatch(ids []string) ([]User, error) {
-	if len(ids) == 0 {
-		return nil, nil
-	}
-
-	path := fmt.Sprintf("/Users?Ids=%s", strings.Join(ids, ","))
-	resp, err := c.doRequest(http.MethodGet, path, nil)
-	if err != nil {
-		return nil, fmt.Errorf("jellyfin.GetUsersBatch: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return nil, fmt.Errorf("jellyfin.GetUsersBatch: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	var users []User
-	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
-		return nil, fmt.Errorf("jellyfin.GetUsersBatch: erreur de décodage: %w", err)
-	}
-
-	return users, nil
-}
-
 // GetLibraries récupère la liste des bibliothèques de médias.
 func (c *Client) GetLibraries() ([]Library, error) {
 	resp, err := c.doRequest(http.MethodGet, "/Library/VirtualFolders", nil)
@@ -791,6 +753,9 @@ func readHTTPDetail(r io.Reader) string {
 // doRequest exécute une requête HTTP vers l'API Jellyfin.
 // Ajoute automatiquement le header d'authentification API key.
 func (c *Client) doRequest(method, path string, body []byte) (*http.Response, error) {
+	if !c.IsConfigured() {
+		return nil, ErrNotConfigured
+	}
 	url := c.baseURL + path
 
 	var reqBody io.Reader

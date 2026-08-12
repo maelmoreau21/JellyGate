@@ -78,7 +78,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var jfPrimaryImageTag string
-	if h.jfClient != nil {
+	if h.jfClient != nil && h.jfClient.IsConfigured() {
 		if jfUser, err := h.jfClient.GetUser(sess.UserID); err == nil && jfUser != nil {
 			jfPrimaryImageTag = jfUser.PrimaryImageTag
 		}
@@ -334,8 +334,8 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 // UpdateMyAccountAvatar change la photo de profil Jellyfin de l'utilisateur connecté.
 func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin indisponible")})
+	if h.jfClient == nil || !h.jfClient.IsConfigured() {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin non configuré")})
 		return
 	}
 

@@ -124,7 +124,7 @@ func TestReserveInvitationUseEnforcesMaxUses(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO invitations (code, max_uses, used_count) VALUES (?, 1, 0)`, "quota-once"); err != nil {
 		t.Fatalf("insert invitation: %v", err)
 	}
-	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
+	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil)
 	inv, err := handler.getValidInvitation("quota-once")
 	if err != nil {
 		t.Fatalf("getValidInvitation: %v", err)
@@ -162,7 +162,7 @@ func TestVerifyEmailGetDoesNotConsumeAccountVerification(t *testing.T) {
 	userID := insertEmailVerificationUser(t, db, "account-get@example.com")
 	insertEmailVerificationToken(t, db, userID, "account-get-token", "account-get@example.com", time.Now().Add(time.Hour), false)
 
-	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
+	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil)
 	req := requestWithRouteCode(http.MethodGet, "/verify-email/account-get-token", "account-get-token")
 	rec := httptest.NewRecorder()
 
@@ -185,7 +185,7 @@ func TestVerifyEmailPostConsumesAccountVerification(t *testing.T) {
 	userID := insertEmailVerificationUser(t, db, "account-post@example.com")
 	insertEmailVerificationToken(t, db, userID, "account-post-token", "account-post@example.com", time.Now().Add(time.Hour), false)
 
-	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
+	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil)
 	req := requestWithRouteCode(http.MethodPost, "/verify-email/account-post-token", "account-post-token")
 	rec := httptest.NewRecorder()
 

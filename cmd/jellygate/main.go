@@ -88,8 +88,12 @@ func main() {
 
 	// ── 3b. Initialiser les clients de service à partir des settings DB ──
 	jfClient := jellyfin.New(cfg.Jellyfin)
-	slog.Info("Client Jellyfin initialisé")
-	go jfClient.LogDiagnostics()
+	if jfClient.IsConfigured() {
+		slog.Info("Client Jellyfin initialisé", "url", cfg.Jellyfin.URL)
+		go jfClient.LogDiagnostics()
+	} else {
+		slog.Info("Intégration Jellyfin non configurée (démarrage en mode pur Authentik)")
+	}
 
 	// SMTP (optionnel — chargé depuis la base)
 	smtpCfg, _ := db.GetSMTPConfig()
@@ -147,14 +151,14 @@ func main() {
 	oidcClient := oidc.NewClient(authentikCfg)
 	authentikClient := authentik.NewClient(authentikCfg)
 
-	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, oidcClient, authentikClient, renderEngine)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, provisioner, mailer, notifier, renderEngine)
+	authHandler := handlers.NewAuthHandler(cfg, db, oidcClient, authentikClient, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, provisioner, mailer, notifier, renderEngine)
 	inviteHandler.SetAuthentikClient(authentikClient)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, authentikClient, mailer, renderEngine)
 	settingsHandler := handlers.NewSettingsHandler(db, jfClient, authentikClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
-	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer, notifier)
+	schedulerService := scheduler.NewService(db, backupService, mailer, notifier)
 	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService, jfClient)
 	authSessionValidator := func(sess *session.Payload) bool {
 		return authSessionAllowed(db, sess)
@@ -205,6 +209,7 @@ func main() {
 	// Endpoint de santé
 	r.Get("/health", handleHealthCheck)
 	r.Head("/health", handleHealthCheck)
+	r.Get("/health/jellyfin", handleJellyfinHealthCheck(jfClient))
 
 	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "web/static/favicon.svg")
@@ -511,6 +516,21 @@ func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, `{"status":"ok","app":"JellyGate","version":"%s"}`,
 		config.AppVersion)
+}
+
+func handleJellyfinHealthCheck(jfClient *jellyfin.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		status := "disabled"
+		if jfClient.IsConfigured() {
+			status = string(jfClient.Status())
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": status,
+			"app":    "JellyGate",
+		})
+	}
 }
 
 // authSessionAllowed applique la politique de revocation globale stockee en base.

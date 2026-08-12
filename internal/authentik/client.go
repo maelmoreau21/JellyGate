@@ -68,6 +68,9 @@ type Client interface {
 	CreateUser(ctx context.Context, payload UserCreatePayload) (*UserResponse, error)
 	CreateRecoveryLink(ctx context.Context, authentikPK int64) (recoveryLink string, err error)
 	AddUserToGroup(ctx context.Context, userPK int64, groupID string) error
+	RemoveUserFromGroup(ctx context.Context, userPK int64, groupID string) error
+	AddUserToGroupByString(ctx context.Context, authentikID string, groupID string) error
+	RemoveUserFromGroupByString(ctx context.Context, authentikID string, groupID string) error
 	SetUserActiveStatus(ctx context.Context, userPK int64, active bool) error
 	SetUserActiveStatusByString(ctx context.Context, authentikID string, active bool) error
 	DeleteUser(ctx context.Context, userPK int64) error
@@ -196,6 +199,45 @@ func (c *client) AddUserToGroup(ctx context.Context, userPK int64, groupID strin
 	}
 	if statusCode != http.StatusOK && statusCode != http.StatusNoContent {
 		return fmt.Errorf("add user to group returned status %d: %s", statusCode, string(respBody))
+	}
+	return nil
+}
+
+func (c *client) RemoveUserFromGroup(ctx context.Context, userPK int64, groupID string) error {
+	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/remove_user/", groupID)
+	payload := map[string]int64{"pk": userPK}
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, payload)
+	if err != nil {
+		return err
+	}
+	if statusCode != http.StatusOK && statusCode != http.StatusNoContent {
+		return fmt.Errorf("remove user from group returned status %d: %s", statusCode, string(respBody))
+	}
+	return nil
+}
+
+func (c *client) AddUserToGroupByString(ctx context.Context, authentikID string, groupID string) error {
+	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/add_user/", groupID)
+	payload := map[string]string{"pk": authentikID}
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, payload)
+	if err != nil {
+		return err
+	}
+	if statusCode != http.StatusOK && statusCode != http.StatusNoContent {
+		return fmt.Errorf("add user to group returned status %d: %s", statusCode, string(respBody))
+	}
+	return nil
+}
+
+func (c *client) RemoveUserFromGroupByString(ctx context.Context, authentikID string, groupID string) error {
+	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/remove_user/", groupID)
+	payload := map[string]string{"pk": authentikID}
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, payload)
+	if err != nil {
+		return err
+	}
+	if statusCode != http.StatusOK && statusCode != http.StatusNoContent {
+		return fmt.Errorf("remove user from group returned status %d: %s", statusCode, string(respBody))
 	}
 	return nil
 }

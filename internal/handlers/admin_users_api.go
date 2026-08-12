@@ -20,25 +20,36 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
-// SyncJellyfinUsers synchronise manuellement les utilisateurs Jellyfin dans la base locale.
+// SyncJellyfinUsers synchronise manuellement les utilisateurs depuis Authentik.
 func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request) {
-	jfUsers, err := h.jfClient.GetUsers()
+	if h.authClient == nil {
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: true,
+			Message: h.tr(r, "admin_sync_finished", "Synchronisation terminée: 0 nouveaux utilisateurs trouvés."),
+		})
+		return
+	}
+
+	authUsers, err := h.authClient.ListUsers(r.Context())
 	if err != nil {
-		slog.Error("Erreur lors de la récupération des utilisateurs Jellyfin pour la sync", "error", err)
+		slog.Error("Erreur lors de la récupération des utilisateurs Authentik pour la sync", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
-			Message: h.tr(r, "admin_jf_comm_failed", "Erreur de communication avec Jellyfin"),
+			Message: "Erreur de communication avec Authentik",
 		})
 		return
 	}
 
 	var addedCount int
-	for _, ju := range jfUsers {
-		// INSERT OR IGNORE dans SQLite
+	for _, au := range authUsers {
+		authID := au.ID
+		if authID == "" && au.PK > 0 {
+			authID = fmt.Sprintf("%d", au.PK)
+		}
 		res, err := h.db.Exec(`
-			INSERT OR IGNORE INTO users (jellyfin_id, username, is_active)
-			VALUES (?, ?, ?)
-		`, ju.ID, ju.Name, !ju.Policy.IsDisabled)
+			INSERT OR IGNORE INTO users (authentik_id, username, email, is_active)
+			VALUES (?, ?, ?, ?)
+		`, authID, au.Username, au.Email, au.IsActive)
 
 		if err == nil {
 			if affected, _ := res.RowsAffected(); affected > 0 {
@@ -47,7 +58,7 @@ func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
-	slog.Info("Synchronisation manuelle Jellyfin terminée", "users_added", addedCount)
+	slog.Info("Synchronisation manuelle Authentik terminée", "users_added", addedCount)
 	if err := h.db.LogAction("users.sync", session.FromContext(r.Context()).Username, "all",
 		fmt.Sprintf("Synchronisation manuelle déclenchée: %d nouveaux utilisateurs importés", addedCount)); err != nil {
 		slog.Warn("Erreur journalisation synchronisation utilisateurs", "error", err)
@@ -209,28 +220,14 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 		users = append(users, u)
 	}
 
-	// 3. Enrichir avec Jellyfin
-	if includeJellyfin && h.jfClient != nil && len(users) > 0 {
-		jfIDs := make([]string, 0, len(users))
-		for _, u := range users {
-			if u.JellyfinID != "" {
-				jfIDs = append(jfIDs, u.JellyfinID)
-			}
-		}
-
-		if len(jfIDs) > 0 {
-			jfUsers, err := h.jfClient.GetUsersBatch(jfIDs)
-			if err == nil {
-				jfIndex := make(map[string]*jellyfin.User, len(jfUsers))
-				for i := range jfUsers {
-					jfIndex[jfUsers[i].ID] = &jfUsers[i]
-				}
-				for i := range users {
-					if jfUser, ok := jfIndex[users[i].JellyfinID]; ok {
-						users[i].JellyfinExists = true
-						users[i].JellyfinDisabled = jfUser.Policy.IsDisabled
-						users[i].JellyfinPrimaryImageTag = jfUser.PrimaryImageTag
-					}
+	// 3. Enrichir avec Jellyfin si disponible
+	if includeJellyfin && h.jfClient != nil && h.jfClient.IsConfigured() && len(users) > 0 {
+		for i := range users {
+			if users[i].JellyfinID != "" {
+				if jfUser, err := h.jfClient.GetUser(users[i].JellyfinID); err == nil && jfUser != nil {
+					users[i].JellyfinExists = true
+					users[i].JellyfinDisabled = jfUser.Policy.IsDisabled
+					users[i].JellyfinPrimaryImageTag = jfUser.PrimaryImageTag
 				}
 			}
 		}
@@ -756,18 +753,6 @@ func (h *AdminHandler) setUserActiveState(rec *adminUserRecord, newActive bool, 
 		}
 	}
 
-	if rec.JellyfinID != "" {
-		var err error
-		if newActive {
-			err = h.jfClient.EnableUser(rec.JellyfinID)
-		} else {
-			err = h.jfClient.DisableUser(rec.JellyfinID)
-		}
-		if err != nil {
-			partialErrors = append(partialErrors, fmt.Sprintf("Jellyfin: %s", err.Error()))
-		}
-	}
-
 	_, err := h.db.Exec(
 		`UPDATE users SET is_active = ?, updated_at = datetime('now') WHERE id = ?`,
 		newActive,
@@ -897,10 +882,6 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
 	if sess == nil || !sess.IsAdmin {
 		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Acces admin requis"})
-		return
-	}
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: "Jellyfin indisponible"})
 		return
 	}
 

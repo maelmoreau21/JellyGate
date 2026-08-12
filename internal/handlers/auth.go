@@ -12,7 +12,6 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/oidc"
 	"github.com/maelmoreau21/JellyGate/internal/render"
@@ -23,18 +22,16 @@ import (
 type AuthHandler struct {
 	cfg        *config.Config
 	db         *database.DB
-	jfClient   *jellyfin.Client
 	oidcClient oidc.Client
 	authClient authentik.Client
 	renderer   *render.Engine
 }
 
 // NewAuthHandler cree un nouveau AuthHandler.
-func NewAuthHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, oidcClient oidc.Client, authClient authentik.Client, renderer *render.Engine) *AuthHandler {
+func NewAuthHandler(cfg *config.Config, db *database.DB, oidcClient oidc.Client, authClient authentik.Client, renderer *render.Engine) *AuthHandler {
 	return &AuthHandler{
 		cfg:        cfg,
 		db:         db,
-		jfClient:   jf,
 		oidcClient: oidcClient,
 		authClient: authClient,
 		renderer:   renderer,
