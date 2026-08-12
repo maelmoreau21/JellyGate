@@ -223,6 +223,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 // InviteSubmit traite la soumission du formulaire d'inscription.
 //
 // Flux d'inscription Authentik :
+//
 //	Étape 1 : Validation de l'invitation et des quotas en base de données.
 //	Étape 2 : Génération / récupération du jeton d'invitation Stage Authentik.
 //	Étape 3 : Redirection vers le flux d'Enrollment Authentik.
