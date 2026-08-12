@@ -237,3 +237,39 @@ func insertEmailVerificationToken(t *testing.T, db *database.DB, userID int64, c
 		t.Fatalf("insert email verification token: %v", err)
 	}
 }
+
+func TestSecurityFixes_AuthentikID_AccountResolution(t *testing.T) {
+	_, db := newTestSettingsHandler(t)
+	if _, err := db.Exec(
+		`INSERT INTO users (authentik_id, username, email, is_active)
+		 VALUES (?, ?, ?, TRUE)`,
+		"ak-user-uuid-12345", "testauthentikuser", "authentik@example.com",
+	); err != nil {
+		t.Fatalf("insert authentik user: %v", err)
+	}
+
+	handler := NewAdminHandler(&config.Config{}, db, nil, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodGet, "/admin/api/users/me", nil)
+	req = req.WithContext(session.NewContext(req.Context(), &session.Payload{
+		UserID:      "ak-user-uuid-12345",
+		AuthentikID: "ak-user-uuid-12345",
+		Username:    "testauthentikuser",
+		Email:       "authentik@example.com",
+		IsAdmin:     false,
+	}))
+	rec := httptest.NewRecorder()
+
+	handler.GetMyAccount(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GetMyAccount status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	var resp APIResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("resp.Success = false, want true; message=%s", resp.Message)
+	}
+}

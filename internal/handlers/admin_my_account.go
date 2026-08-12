@@ -48,8 +48,8 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix,
 		        access_expires_at, created_at
-		 FROM users WHERE jellyfin_id = ?`,
-		sess.UserID,
+		 FROM users WHERE authentik_id = ? OR username = ? OR id = ?`,
+		sess.AuthentikID, sess.Username, sess.UserID,
 	).Scan(
 		&id,
 		&email,
@@ -78,8 +78,10 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var jfPrimaryImageTag string
-	if jfUser, err := h.jfClient.GetUser(sess.UserID); err == nil && jfUser != nil {
-		jfPrimaryImageTag = jfUser.PrimaryImageTag
+	if h.jfClient != nil {
+		if jfUser, err := h.jfClient.GetUser(sess.UserID); err == nil && jfUser != nil {
+			jfPrimaryImageTag = jfUser.PrimaryImageTag
+		}
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -143,8 +145,8 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		`SELECT id, email, pending_email, email_verified, contact_discord, contact_telegram, contact_matrix,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix
-		 FROM users WHERE jellyfin_id = ?`,
-		sess.UserID,
+		 FROM users WHERE authentik_id = ? OR username = ? OR id = ?`,
+		sess.AuthentikID, sess.Username, sess.UserID,
 	).Scan(
 		&userID,
 		&currentEmail,
@@ -246,7 +248,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?, opt_in_matrix = ?,
 		     email_verification_sent_at = CASE WHEN ? THEN NULL ELSE email_verification_sent_at END,
 		     updated_at = datetime('now')
-		 WHERE jellyfin_id = ?`,
+		 WHERE id = ? OR authentik_id = ? OR username = ?`,
 		newEmail,
 		newPendingEmail,
 		newEmailVerified,
@@ -261,7 +263,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		newOptInTelegram,
 		newOptInMatrix,
 		req.Email != nil,
-		sess.UserID,
+		userID, sess.AuthentikID, sess.Username,
 	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_update_failed", "Erreur de mise à jour des préférences")})
