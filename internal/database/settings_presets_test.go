@@ -193,8 +193,8 @@ func TestSaveJellyfinPolicyPresetsNormalizesNewBlocks(t *testing.T) {
 func TestGroupPolicyMappingsSortedByPriority(t *testing.T) {
 	db := newPresetTestDB(t)
 	if err := db.SaveGroupPolicyMappings([]config.GroupPolicyMapping{
-		{GroupName: "media", Source: "ldap", LDAPGroupDN: "cn=low", PolicyPresetID: "limited", Priority: 1},
-		{GroupName: "media", Source: "ldap", LDAPGroupDN: "cn=high", PolicyPresetID: "admin", Priority: 50},
+		{GroupName: "media", Source: "internal", PolicyPresetID: "limited", Priority: 1},
+		{GroupName: "media", Source: "internal", PolicyPresetID: "admin", Priority: 50},
 	}); err != nil {
 		t.Fatalf("SaveGroupPolicyMappings() error = %v", err)
 	}

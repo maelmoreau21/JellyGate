@@ -68,67 +68,31 @@
             {{ end }}
         </div>
         {{ else }}
-        {{/* Carte formulaire */}}
-        <div class="glass-card p-8 glow-accent">
+        <div class="glass-card p-8 glow-accent text-center">
             {{ if .Data.InviteIntroHTML }}
-            <div class="jg-markdown-panel mb-6">
+            <div class="jg-markdown-panel mb-6 text-left">
                 {{ .Data.InviteIntroHTML }}
             </div>
             {{ end }}
-            <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate
-                data-username-min-length="{{ or .Data.UsernameMinLength 3 }}"
-                data-username-max-length="{{ or .Data.UsernameMaxLength 32 }}"
-                data-require-email="{{ if .Data.RequireEmail }}true{{ else }}false{{ end }}"
-                data-password-min-length="{{ or .Data.PasswordMinLength 8 }}"
-                data-password-max-length="{{ or .Data.PasswordMaxLength 128 }}"
-                data-password-require-upper="{{ .Data.PasswordRequireUpper }}"
-                data-password-require-lower="{{ .Data.PasswordRequireLower }}"
-                data-password-require-digit="{{ .Data.PasswordRequireDigit }}"
-                data-password-require-special="{{ .Data.PasswordRequireSpecial }}">
 
-                {{/* Username */}}
-                <div class="mb-5">
-                    <label class="jg-label" for="username">{{ .T "field_username" }}</label>
-                    <input type="text" id="username" name="username" class="jg-input"
-                        placeholder='{{ .T "field_username_placeholder" }}' required pattern="[a-zA-Z0-9_-]+"
-                        minlength="{{ or .Data.UsernameMinLength 3 }}" maxlength="{{ or .Data.UsernameMaxLength 32 }}" autocomplete="username" {{ if .Data.ForcedUsername
-                        }}value="{{ .Data.ForcedUsername }}" readonly{{ end }}>
-                    <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }} ({{ or .Data.UsernameMinLength 3 }}-{{ or .Data.UsernameMaxLength 32 }} {{ .T "password_rules_chars" }})</p>
-                </div>
-
-                {{/* Email */}}
-                <div class="mb-5">
-                    <label class="jg-label" for="email">{{ if .Data.RequireEmail }}{{ .T "field_email_required" }}{{ else }}{{ .T "field_email" }}{{ end }}</label>
-                    <input type="email" id="email" name="email" class="jg-input"
-                        placeholder='{{ .T "field_email_placeholder" }}' autocomplete="email" {{ if .Data.RequireEmail }}required{{ end }}>
-                </div>
-
-                {{/* Password */}}
-                {{ if not .Data.RequireEmailVerification }}
-                <div class="mb-5">
-                    <label class="jg-label" for="password">{{ .T "field_password" }}</label>
-                    <input type="password" id="password" name="password" class="jg-input"
-                        placeholder='{{ .T "field_password_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
-                        autocomplete="new-password">
-                    <p id="password-policy-msg" class="text-xs mt-1 text-slate-500">
-                        {{ .T "password_rules_prefix" }} {{ or .Data.PasswordMinLength 8 }}-{{ or .Data.PasswordMaxLength 128 }} {{ .T "password_rules_chars" }}{{ if .Data.PasswordRequireUpper }}, {{ .T "password_rule_upper" }}{{ end }}{{ if .Data.PasswordRequireLower }}, {{ .T "password_rule_lower" }}{{ end }}{{ if .Data.PasswordRequireDigit }}, {{ .T "password_rule_digit" }}{{ end }}{{ if .Data.PasswordRequireSpecial }}, {{ .T "password_rule_special" }}{{ end }}.
-                    </p>
-                </div>
-
-                {{/* Password Confirm */}}
-                <div class="mb-6">
-                    <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
-                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
-                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
-                        autocomplete="new-password">
-                    <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
-                </div>
-                {{ end }}
-
+            {{ if .Data.AuthentikEnrollmentURL }}
+            <div class="space-y-4">
+                <p class="text-sm text-slate-400 mb-6">
+                    Cette invitation vous donne accès au serveur via Authentik. Cliquez ci-dessous pour créer votre compte et configurer vos accès.
+                </p>
+                <a href="{{ .Data.AuthentikEnrollmentURL }}" class="jg-btn jg-btn-primary w-full text-lg py-4 flex items-center justify-center gap-3 shadow-lg shadow-purple-500/25">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    <span>S'inscrire avec Authentik</span>
+                </a>
+            </div>
+            {{ else }}
+            <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate>
                 {{ if .Data.CaptchaEnabled }}
-                <div class="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                     <label class="jg-label" for="captcha_answer">Protection anti-abus</label>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 mt-2">
                         <div class="rounded-xl border border-jg-accent/30 bg-jg-accent/10 px-4 py-3 font-mono text-sm font-bold text-jg-accent">
                             {{ .Data.CaptchaQuestion }}
                         </div>
@@ -138,12 +102,14 @@
                 </div>
                 {{ end }}
 
-                {{/* Submit */}}
-                <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-3" id="submit-btn">
-                    {{ .T "invite_submit" }}
+                <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-4 flex items-center justify-center gap-3 shadow-lg shadow-purple-500/25">
+                    <span>Rejoindre via Authentik</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
                 </button>
-
             </form>
+            {{ end }}
         </div>
 
         {{/* Footer */}}

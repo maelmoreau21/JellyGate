@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/session"
@@ -989,11 +990,42 @@ func (h *AdminHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	var authentikID string
+	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
+		userGroup := h.cfg.Authentik.JellyfinUserGroup
+		if userGroup == "" {
+			userGroup = "jellyfin-users"
+		}
+		authResp, authErr := h.authClient.CreateUser(r.Context(), authentik.UserCreatePayload{
+			Username: req.Username,
+			Name:     req.Username,
+			Email:    req.Email,
+			IsActive: true,
+			Groups:   []string{userGroup},
+		})
+		if authErr == nil && authResp != nil {
+			if authResp.ID != "" {
+				authentikID = authResp.ID
+			} else if authResp.PK > 0 {
+				authentikID = fmt.Sprintf("%d", authResp.PK)
+			}
+		} else if authErr != nil {
+			slog.Warn("Création utilisateur Authentik échouée", "error", authErr)
+		}
+	}
+
 	emailVerified := strings.TrimSpace(req.Email) == ""
+	insertQuery := `INSERT INTO users
+			(authentik_id, username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, profile_apply_status, profile_apply_error, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, 'done', '', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+	if h.db.IsSQLite() {
+		insertQuery = `INSERT INTO users
+			(authentik_id, username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, profile_apply_status, profile_apply_error, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, 'done', '', datetime('now'), datetime('now'))`
+	}
 	res, err := h.db.Exec(
-		`INSERT INTO users
-			(username, email, email_verified, invited_by, is_active, can_invite, access_expires_at, preset_id, expiry_action, expiry_delete_after_days, profile_apply_status, profile_apply_error, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, TRUE, ?, ?, ?, ?, ?, 'pending', '', datetime('now'), datetime('now'))`,
+		insertQuery,
+		authentikID,
 		req.Username,
 		req.Email,
 		emailVerified,

@@ -568,8 +568,6 @@ func TestApplyInviteProfileAppliesPolicyConfigurationAndDisplayPreferences(t *te
 		MaxParentalRating:                1000,
 		BlockUnratedItems:                []string{"Movie"},
 		AccessSchedules:                  []AccessSchedule{{DayOfWeek: "Monday", StartHour: 8, EndHour: 22}},
-		LDAPAuthProviderID:               "ldap-auth",
-		LDAPPasswordResetProviderID:      "ldap-reset",
 		UserConfiguration: config.JellyfinPresetUserConfiguration{
 			DisplayMissingEpisodes: true,
 			HidePlayedInLatest:     true,
@@ -634,9 +632,7 @@ func TestApplyInviteProfileAppliesPolicyConfigurationAndDisplayPreferences(t *te
 	if policyPayload.SyncPlayAccess != "CreateAndJoinGroups" || policyPayload.InvalidLoginAttemptCount != 1 || policyPayload.LoginAttemptsBeforeLockout != 5 {
 		t.Fatalf("lockout/syncplay not applied: %+v", policyPayload)
 	}
-	if policyPayload.AuthenticationProviderID != "ldap-auth" || policyPayload.PasswordResetProviderID != "ldap-reset" {
-		t.Fatalf("LDAP provider IDs not applied: %+v", policyPayload)
-	}
+
 	if len(policyPayload.AllowedTags) != 1 || policyPayload.AllowedTags[0] != "kids" || len(policyPayload.BlockedTags) != 1 || policyPayload.MaxParentalRating != 1000 || len(policyPayload.BlockUnratedItems) != 1 {
 		t.Fatalf("restriction policy not applied: %+v", policyPayload)
 	}
@@ -749,7 +745,6 @@ func TestInviteProfileFromPolicyPresetMapsExtendedProfile(t *testing.T) {
 		IsTemporary:                      true,
 		DefaultAccountDurationDays:       10,
 		MaxAccountDurationDays:           20,
-		LDAPGroups:                       []string{"cn=jellyfin"},
 		CanCreateInvitations:             true,
 	}
 
@@ -766,7 +761,7 @@ func TestInviteProfileFromPolicyPresetMapsExtendedProfile(t *testing.T) {
 	if len(profile.AccessSchedules) != 1 || profile.AccessSchedules[0].DayOfWeek != "Friday" {
 		t.Fatalf("access schedules not mapped: %#v", profile.AccessSchedules)
 	}
-	if !profile.IsTemporary || profile.AccountDurationDays != 10 || len(profile.LDAPGroups) != 1 || !profile.CanInvite {
+	if !profile.IsTemporary || profile.AccountDurationDays != 10 || !profile.CanInvite {
 		t.Fatalf("lifecycle/invitation fields not mapped: %+v", profile)
 	}
 }
