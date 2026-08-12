@@ -168,12 +168,7 @@ func (s *Service) executeTask(task TaskRecord) error {
 
 	switch strings.TrimSpace(task.TaskType) {
 	case "cleanup_resets":
-		res, err := s.db.Exec(`DELETE FROM password_resets WHERE used = TRUE OR expires_at < (CURRENT_TIMESTAMP - INTERVAL '24 hours')`)
-		if err != nil {
-			return err
-		}
-		n, _ := res.RowsAffected()
-		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, fmt.Sprintf("%d jetons nettoyés", n))
+		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, "Nettoyage jetons exécuté")
 
 	case "create_backup":
 		if s.backup == nil {

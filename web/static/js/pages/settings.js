@@ -1826,30 +1826,6 @@
             }
         });
 
-        document.getElementById('btn-ldap-test-conn')?.addEventListener('click', async () => {
-            await runLDAPTest('/admin/api/settings/ldap/test-connection', collectLDAPPayload());
-        });
-
-        document.getElementById('btn-ldap-test-user')?.addEventListener('click', async () => {
-            const username = (document.getElementById('ldap-test-username').value || '').trim();
-            if (!username) {
-                showLDAPTestResult(t('ldap_test_username_required', 'Enter a test user identifier.'), 'error');
-                return;
-            }
-            const payload = collectLDAPPayload();
-            payload.username = username;
-            await runLDAPTest('/admin/api/settings/ldap/test-user', payload);
-        });
-
-        document.getElementById('btn-ldap-test-jf')?.addEventListener('click', async () => {
-            const username = (document.getElementById('ldap-test-username').value || '').trim();
-            const password = document.getElementById('ldap-test-password').value || '';
-            if (!username || !password) {
-                showLDAPTestResult(t('ldap_test_credentials_required', 'Enter username and password to validate Jellyfin LDAP plugin.'), 'error');
-                return;
-            }
-            await runLDAPTest('/admin/api/settings/ldap/test-jellyfin-auth', { username, password });
-        });
 
         document.getElementById('backup-create-btn')?.addEventListener('click', createBackupNow);
         document.getElementById('backup-import-btn')?.addEventListener('click', importBackup);

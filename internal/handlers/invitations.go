@@ -1,15 +1,8 @@
 // Package handlers — invitations.go
 //
 // Gère le système d'invitations de JellyGate.
-// La route POST /invite/{code} implémente un flux de création atomique :
-//
-//  1. Validation SQLite (code, expiration, quota)
-//  2. Création LDAP (Active Directory)
-//  3. Création Jellyfin + application du profil
-//     → Rollback LDAP si échec
-//  4. Enregistrement SQLite (user + incrément used_count)
-//     → Rollback Jellyfin + LDAP si échec
-//  5. Notifications (email + webhooks) — pas de rollback
+// La route GET/POST /invite/{code} génère un jeton Stage Invitation Authentik
+// et redirige l'utilisateur vers le flux d'inscription (Enrollment Flow) Authentik.
 package handlers
 
 import (
@@ -66,9 +59,7 @@ type inviteFormData struct {
 }
 
 type inviteSignupResult struct {
-	JellyfinID     string
-	UserDN         string
-	LDAPMirrorMode bool
+	JellyfinID string
 }
 
 type inviteSignupError struct {
@@ -449,7 +440,7 @@ const (
 	ProvisionRoleAdmin   = "admin"
 )
 
-func resolveLDAPProvisionRole(profile jellyfin.InviteProfile) string {
+func resolveProvisionRole(profile jellyfin.InviteProfile) string {
 	if profile.CanInvite {
 		return ProvisionRoleInviter
 	}
@@ -697,9 +688,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}
 
 	return &inviteSignupResult{
-		JellyfinID:     "",
-		UserDN:         "",
-		LDAPMirrorMode: false,
+		JellyfinID: "",
 	}, nil
 }
 

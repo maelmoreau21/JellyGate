@@ -156,4 +156,17 @@ func TestAuthentikClient(t *testing.T) {
 			t.Fatalf("DeleteInvitationStageToken failed: %v", err)
 		}
 	})
+
+	t.Run("CheckHealth", func(t *testing.T) {
+		res := cli.CheckHealth(context.Background(), cfg)
+		if res == nil {
+			t.Fatal("CheckHealth returned nil")
+		}
+		if res.OverallStatus == "" {
+			t.Errorf("OverallStatus should not be empty")
+		}
+		if _, ok := res.Components["api"]; !ok {
+			t.Errorf("Components missing 'api' component")
+		}
+	})
 }

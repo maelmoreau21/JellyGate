@@ -1,16 +1,17 @@
-// Package handlers Ã¢â‚¬â€� settings.go
+// Package handlers — settings.go
 //
-// API REST pour la gestion des paramÃƒÂ¨tres stockÃƒÂ©s en base (table settings).
-// Permet de lire et sauvegarder la configuration gÃƒÂ©nÃƒÂ©rale, LDAP, SMTP et Webhooks
+// API REST pour la gestion des paramètres stockés en base (table settings).
+// Permet de lire et sauvegarder la configuration générale, Authentik, SMTP et Webhooks
 // depuis l'interface d'administration.
 //
 // Routes :
-//   - GET  /admin/api/settings          Ã¢â€ â€™ RÃƒÂ©cupÃƒÂ©rer toute la configuration
-//   - POST /admin/api/settings/general  Ã¢â€ â€™ Sauvegarder les paramÃƒÂ¨tres gÃƒÂ©nÃƒÂ©raux (langue)
-//   - POST /admin/api/settings/ldap     Ã¢â€ â€™ Sauvegarder la config LDAP
-//   - POST /admin/api/settings/smtp     Ã¢â€ â€™ Sauvegarder la config SMTP
-//   - POST /admin/api/settings/webhooks Ã¢â€ â€™ Sauvegarder la config Webhooks
-//   - POST /admin/api/settings/backup    Ã¢â€ â€™ Sauvegarder la config de sauvegarde planifiÃƒÂ©e
+//   - GET  /admin/api/settings          → Récupérer toute la configuration
+//   - POST /admin/api/settings/general  → Sauvegarder les paramètres généraux (langue)
+//   - POST /admin/api/settings/authentik → Sauvegarder la config Authentik OIDC / API
+//   - GET  /admin/api/settings/authentik/health → Diagnostic de santé Authentik
+//   - POST /admin/api/settings/smtp     → Sauvegarder la config SMTP
+//   - POST /admin/api/settings/webhooks → Sauvegarder la config Webhooks
+//   - POST /admin/api/settings/backup   → Sauvegarder la config de sauvegarde planifiée
 package handlers
 
 import (

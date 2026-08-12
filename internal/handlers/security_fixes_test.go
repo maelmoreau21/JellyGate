@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -159,54 +157,7 @@ func TestInvitationReservationReleasePolicy(t *testing.T) {
 	}
 }
 
-func TestInviteVerificationGetDoesNotCreatePendingAccount(t *testing.T) {
-	_, db := newTestSettingsHandler(t)
-	profile, err := json.Marshal(jellyfin.InviteProfile{
-		RequireEmail:             true,
-		RequireEmailVerification: true,
-		PasswordMinLength:        8,
-	})
-	if err != nil {
-		t.Fatalf("marshal profile: %v", err)
-	}
-	if _, err := db.Exec(
-		`INSERT INTO invitations (code, max_uses, used_count, jellyfin_profile)
-		 VALUES (?, 1, 0, ?)`,
-		"invite-code", string(profile),
-	); err != nil {
-		t.Fatalf("insert invitation: %v", err)
-	}
-	if _, err := db.Exec(
-		`INSERT INTO pending_invite_signups (code, invitation_code, username, email, password_ciphertext, expires_at, used)
-		 VALUES (?, ?, ?, ?, ?, ?, FALSE)`,
-		"verify-token", "invite-code", "pendinguser", "pending@example.com", "", time.Now().Add(time.Hour).Format("2006-01-02 15:04:05"),
-	); err != nil {
-		t.Fatalf("insert pending signup: %v", err)
-	}
 
-	handler := NewInvitationHandler(&config.Config{}, db, nil, nil, nil, nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/verify-email/verify-token", nil)
-	routeCtx := chi.NewRouteContext()
-	routeCtx.URLParams.Add("code", "verify-token")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, routeCtx))
-	rec := httptest.NewRecorder()
-	handler.VerifyEmailPage(rec, req)
-
-	var userCount, usedCount int
-	var pendingUsed bool
-	if err := db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&userCount); err != nil {
-		t.Fatalf("count users: %v", err)
-	}
-	if err := db.QueryRow(`SELECT used_count FROM invitations WHERE code = ?`, "invite-code").Scan(&usedCount); err != nil {
-		t.Fatalf("read invitation used_count: %v", err)
-	}
-	if err := db.QueryRow(`SELECT used FROM pending_invite_signups WHERE code = ?`, "verify-token").Scan(&pendingUsed); err != nil && err != sql.ErrNoRows {
-		t.Fatalf("read pending used: %v", err)
-	}
-	if userCount != 0 || usedCount != 0 || pendingUsed {
-		t.Fatalf("GET side effects: users=%d used_count=%d pending_used=%v, want zero/false", userCount, usedCount, pendingUsed)
-	}
-}
 
 func TestVerifyEmailGetDoesNotConsumeAccountVerification(t *testing.T) {
 	_, db := newTestSettingsHandler(t)

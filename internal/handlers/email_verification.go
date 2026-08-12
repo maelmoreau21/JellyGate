@@ -401,7 +401,7 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 	heading := h.tr(r, "verify_email_success_heading", "Email verified")
 	message := h.tr(r, "verify_email_success_message", "Your email address has been confirmed. You can now sign in normally.")
 
-	target, status, err := consumeEmailVerification(h.db, code)
+	_, status, err := consumeEmailVerification(h.db, code)
 	if err != nil {
 		slog.Warn("Verification email echouee", "code_fingerprint", tokenLogFingerprint(code), "status", status, "error", err)
 		switch status {
@@ -422,8 +422,6 @@ func (h *AdminHandler) VerifyEmailPage(w http.ResponseWriter, r *http.Request) {
 			heading = h.tr(r, "verify_email_invalid_heading", "Invalid verification link")
 			message = h.tr(r, "verify_email_invalid_message", "This verification link is invalid or no longer available.")
 		}
-	} else if target != nil {
-		// LDAP sync removed
 	}
 
 	renderEmailVerificationPage(

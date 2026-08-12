@@ -29,33 +29,7 @@ type pendingInviteSignupRecord struct {
 }
 
 func loadPendingInviteSignup(db *database.DB, code string) (*pendingInviteSignupRecord, error) {
-	var record pendingInviteSignupRecord
-	var expiresAtRaw string
-	err := db.QueryRow(
-		`SELECT id, code, invitation_code, username, email, password_ciphertext, used, expires_at
-		 FROM pending_invite_signups
-		 WHERE code = ?`,
-		code,
-	).Scan(
-		&record.ID,
-		&record.Code,
-		&record.InvitationCode,
-		&record.Username,
-		&record.Email,
-		&record.PasswordCiphertext,
-		&record.Used,
-		&expiresAtRaw,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	expiresAt, err := parseAccessExpiry(expiresAtRaw)
-	if err != nil {
-		return nil, err
-	}
-	record.ExpiresAt = expiresAt
-	return &record, nil
+	return nil, sql.ErrNoRows
 }
 
 func (h *InvitationHandler) createPendingInviteSignup(r *http.Request, inv *invitation, form *inviteFormData) error {

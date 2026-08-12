@@ -488,7 +488,9 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN account_duration_days INTEGER NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN preset_id TEXT`) // NEW
-		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN used BOOLEAN NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`DROP TABLE IF EXISTS password_resets`)
+		_, _ = db.conn.Exec(`DROP TABLE IF EXISTS pending_invite_signups`)
+		_, _ = db.conn.Exec(`ALTER TABLE users DROP COLUMN ldap_dn`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN authentik_id TEXT`)
 		_, _ = db.conn.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_authentik_id ON users(authentik_id)`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN custom_quota INTEGER`)
@@ -551,7 +553,9 @@ func (db *DB) migrate() error {
 			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS account_duration_days INTEGER NOT NULL DEFAULT 0`,
 			`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS preset_id TEXT`,
-			`ALTER TABLE pending_invite_signups ADD COLUMN IF NOT EXISTS used BOOLEAN NOT NULL DEFAULT FALSE`,
+			`DROP TABLE IF EXISTS password_resets CASCADE`,
+			`DROP TABLE IF EXISTS pending_invite_signups CASCADE`,
+			`ALTER TABLE users DROP COLUMN IF EXISTS ldap_dn`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS authentik_id TEXT`,
 			`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_authentik_id ON users(authentik_id)`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_quota INTEGER`,
@@ -716,7 +720,6 @@ func (db *DB) sqliteMigrations() []migration {
 				email_verified    BOOLEAN NOT NULL DEFAULT 0,
 				pending_email     TEXT    NOT NULL DEFAULT '',
 				email_verification_sent_at DATETIME,
-				ldap_dn           TEXT,
 				group_name        TEXT    NOT NULL DEFAULT '',
 				contact_discord   TEXT    NOT NULL DEFAULT '',
 				contact_telegram  TEXT    NOT NULL DEFAULT '',
@@ -762,17 +765,6 @@ func (db *DB) sqliteMigrations() []migration {
 			)`,
 		},
 		{
-			name: "create_password_resets",
-			sql: `CREATE TABLE IF NOT EXISTS password_resets (
-				id         INTEGER PRIMARY KEY AUTOINCREMENT,
-				user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-				code       TEXT    UNIQUE NOT NULL,
-				expires_at DATETIME NOT NULL,
-				used       BOOLEAN NOT NULL DEFAULT 0,
-				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
 			name: "create_email_verifications",
 			sql: `CREATE TABLE IF NOT EXISTS email_verifications (
 				id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -782,20 +774,6 @@ func (db *DB) sqliteMigrations() []migration {
 				expires_at DATETIME NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT 0,
 				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
-			name: "create_pending_invite_signups",
-			sql: `CREATE TABLE IF NOT EXISTS pending_invite_signups (
-				id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-				code                TEXT    UNIQUE NOT NULL,
-				invitation_code     TEXT    NOT NULL,
-				username            TEXT    NOT NULL,
-				email               TEXT    NOT NULL,
-				password_ciphertext TEXT    NOT NULL,
-				expires_at          DATETIME NOT NULL,
-				used                BOOLEAN NOT NULL DEFAULT 0,
-				created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -836,18 +814,6 @@ func (db *DB) sqliteMigrations() []migration {
 		{
 			name: "index_invitations_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_code ON invitations(code)`,
-		},
-		{
-			name: "index_password_resets_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_password_resets_code ON password_resets(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_code ON pending_invite_signups(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_username",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_username ON pending_invite_signups(username)`,
 		},
 		{
 			name: "index_audit_log_action",
@@ -946,7 +912,6 @@ func (db *DB) postgresMigrations() []migration {
 				email_verified    BOOLEAN NOT NULL DEFAULT FALSE,
 				pending_email     TEXT NOT NULL DEFAULT '',
 				email_verification_sent_at TIMESTAMPTZ,
-				ldap_dn           TEXT,
 				group_name        TEXT NOT NULL DEFAULT '',
 				contact_discord   TEXT NOT NULL DEFAULT '',
 				contact_telegram  TEXT NOT NULL DEFAULT '',
@@ -992,17 +957,6 @@ func (db *DB) postgresMigrations() []migration {
 			)`,
 		},
 		{
-			name: "create_password_resets",
-			sql: `CREATE TABLE IF NOT EXISTS password_resets (
-				id         BIGSERIAL PRIMARY KEY,
-				user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-				code       TEXT UNIQUE NOT NULL,
-				expires_at TIMESTAMPTZ NOT NULL,
-				used       BOOLEAN NOT NULL DEFAULT FALSE,
-				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
 			name: "create_email_verifications",
 			sql: `CREATE TABLE IF NOT EXISTS email_verifications (
 				id         BIGSERIAL PRIMARY KEY,
@@ -1012,20 +966,6 @@ func (db *DB) postgresMigrations() []migration {
 				expires_at TIMESTAMPTZ NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT FALSE,
 				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
-			name: "create_pending_invite_signups",
-			sql: `CREATE TABLE IF NOT EXISTS pending_invite_signups (
-				id                  BIGSERIAL PRIMARY KEY,
-				code                TEXT UNIQUE NOT NULL,
-				invitation_code     TEXT NOT NULL,
-				username            TEXT NOT NULL,
-				email               TEXT NOT NULL,
-				password_ciphertext TEXT NOT NULL,
-				expires_at          TIMESTAMPTZ NOT NULL,
-				used                BOOLEAN NOT NULL DEFAULT FALSE,
-				created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -1066,18 +1006,6 @@ func (db *DB) postgresMigrations() []migration {
 		{
 			name: "index_invitations_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_code ON invitations(code)`,
-		},
-		{
-			name: "index_password_resets_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_password_resets_code ON password_resets(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_code ON pending_invite_signups(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_username",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_username ON pending_invite_signups(username)`,
 		},
 		{
 			name: "index_audit_log_action",

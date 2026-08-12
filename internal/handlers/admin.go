@@ -377,41 +377,6 @@ func normalizeExpiryAction(raw string) string {
 	}
 }
 
-func normalizePhoneForLDAP(raw string) string {
-	candidate := strings.TrimSpace(raw)
-	if candidate == "" {
-		return ""
-	}
-
-	replacer := strings.NewReplacer(" ", "", "-", "", ".", "", "(", "", ")", "")
-	normalized := replacer.Replace(candidate)
-	if strings.HasPrefix(normalized, "00") {
-		normalized = "+" + normalized[2:]
-	}
-
-	if strings.HasPrefix(normalized, "+") {
-		if len(normalized) < 7 || len(normalized) > 21 {
-			return ""
-		}
-		for _, r := range normalized[1:] {
-			if r < '0' || r > '9' {
-				return ""
-			}
-		}
-		return normalized
-	}
-
-	if len(normalized) < 6 || len(normalized) > 20 {
-		return ""
-	}
-	for _, r := range normalized {
-		if r < '0' || r > '9' {
-			return ""
-		}
-	}
-
-	return normalized
-}
 
 // — Background Jobs ———————————————————————————————————————————————————————————————————
 
