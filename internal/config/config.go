@@ -1500,9 +1500,9 @@ func Load() (*Config, error) {
 		},
 
 		Authentik: AuthentikConfig{
-			Enabled:            getEnvBool("AUTHENTIK_ENABLED", getEnv("AUTHENTIK_URL", "") != "" || getEnv("OIDC_ISSUER_URL", "") != "" || getEnv("OIDC_CLIENT_ID", "") != ""),
+			Enabled:            getEnvBool("AUTHENTIK_ENABLED", getEnvBool("OIDC_ENABLED", getEnv("AUTHENTIK_URL", "") != "" || getEnv("OIDC_URL", "") != "" || getEnv("OIDC_ISSUER_URL", "") != "" || getEnv("OIDC_CLIENT_ID", "") != "")),
 			URL:                strings.TrimRight(strings.TrimSpace(getEnv("AUTHENTIK_URL", "")), "/"),
-			IssuerURL:          strings.TrimRight(strings.TrimSpace(getEnv("OIDC_ISSUER_URL", "")), "/"),
+			IssuerURL:          strings.TrimRight(strings.TrimSpace(getEnv("OIDC_URL", getEnv("OIDC_ISSUER_URL", ""))), "/"),
 			ClientID:           strings.TrimSpace(getEnv("OIDC_CLIENT_ID", "")),
 			ClientSecret:       strings.TrimSpace(getEnv("OIDC_CLIENT_SECRET", "")),
 			RedirectURL:        strings.TrimSpace(getEnv("OIDC_REDIRECT_URL", "")),
@@ -1514,11 +1514,16 @@ func Load() (*Config, error) {
 		},
 	}
 
-	if cfg.Authentik.RedirectURL == "" && cfg.BaseURL != "" {
-		cfg.Authentik.RedirectURL = strings.TrimRight(cfg.BaseURL, "/") + "/auth/callback"
+	if cfg.Authentik.URL == "" && cfg.Authentik.IssuerURL != "" {
+		if u, err := url.Parse(cfg.Authentik.IssuerURL); err == nil && u.Scheme != "" && u.Host != "" {
+			cfg.Authentik.URL = u.Scheme + "://" + u.Host
+		}
 	}
 	if cfg.Authentik.IssuerURL == "" && cfg.Authentik.URL != "" {
 		cfg.Authentik.IssuerURL = cfg.Authentik.URL + "/application/o/jellygate/"
+	}
+	if cfg.Authentik.RedirectURL == "" && cfg.BaseURL != "" {
+		cfg.Authentik.RedirectURL = strings.TrimRight(cfg.BaseURL, "/") + "/auth/callback"
 	}
 
 	if err := cfg.validate(); err != nil {
