@@ -95,9 +95,16 @@ AUTHENTIK_API_TOKEN=votre_token_api_authentik
 
 ## 6. Connexion de Secours Locale (`/local`)
 
-En cas de mauvaise configuration d'Authentik ou d'indisponibilité de votre serveur SSO :
-1. Accédez à l'URL directe : `https://jellygate.votredomaine.com/local` (ou cliquez sur **Connexion de secours** sur la page de login).
-2. Saisissez votre **`JELLYGATE_SECRET`** (la clé secrète configurée dans votre `.env`).
-3. Vous serez directement connecté en tant qu'Administrateur et redirigé vers la page `/admin/authentik` pour tester, corriger et sauvegarder vos réglages Authentik.
+Par défaut, l'accès local est **désactivé** pour garantir un environnement 100% SSO Authentik.
+
+Pour activer un compte local de secours (break-glass) en cas d'urgence ou de panne d'Authentik :
+1. Définissez dans votre `.env` :
+   ```env
+   JELLYGATE_LOCAL_ADMIN_USER=admin
+   JELLYGATE_LOCAL_ADMIN_PASSWORD=votre_mot_de_passe_de_secours
+   ```
+2. Accédez à l'URL : `https://jellygate.votredomaine.com/local` (ou via le lien **Connexion de secours** sur la page de connexion).
+3. Connectez-vous avec vos identifiants locaux d'urgence pour accéder à la page **Paramètres > Authentik** (`/admin/authentik`), tester la connexion et corriger la configuration.
+
 
 

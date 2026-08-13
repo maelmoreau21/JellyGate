@@ -118,11 +118,42 @@ func newLoginSubmitRequest(username, password string, remember bool) *http.Reque
 
 func TestLocalLoginSubmit(t *testing.T) {
 	db := newAuthTestDB(t)
-	handler := newAuthTestHandler(db)
 
-	t.Run("successful login with secret redirects to /admin/authentik", func(t *testing.T) {
+	t.Run("returns 403 when local admin is disabled", func(t *testing.T) {
+		handler := NewAuthHandler(&config.Config{
+			BaseURL:    "http://jellygate.local",
+			SecretKey:  testAuthSecret,
+			LocalAdmin: config.LocalAdminConfig{Enabled: false},
+		}, db, nil, nil, nil)
+
 		values := url.Values{}
-		values.Set("secret", testAuthSecret)
+		values.Set("username", "admin")
+		values.Set("password", "any-password")
+		req := httptest.NewRequest(http.MethodPost, "/local", strings.NewReader(values.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		handler.LocalLoginSubmit(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusForbidden)
+		}
+	})
+
+	t.Run("successful login with credentials redirects to /admin/authentik", func(t *testing.T) {
+		handler := NewAuthHandler(&config.Config{
+			BaseURL:   "http://jellygate.local",
+			SecretKey: testAuthSecret,
+			LocalAdmin: config.LocalAdminConfig{
+				Enabled:  true,
+				Username: "admin",
+				Password: "super-secret-local-password",
+			},
+		}, db, nil, nil, nil)
+
+		values := url.Values{}
+		values.Set("username", "admin")
+		values.Set("password", "super-secret-local-password")
 		req := httptest.NewRequest(http.MethodPost, "/local", strings.NewReader(values.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()
@@ -155,11 +186,25 @@ func TestLocalLoginSubmit(t *testing.T) {
 		if !sess.IsAdmin {
 			t.Errorf("expected session.IsAdmin to be true")
 		}
+		if sess.Username != "admin" {
+			t.Errorf("expected session.Username admin, got %s", sess.Username)
+		}
 	})
 
-	t.Run("invalid secret returns 401 unauthorized", func(t *testing.T) {
+	t.Run("invalid password returns 401 unauthorized", func(t *testing.T) {
+		handler := NewAuthHandler(&config.Config{
+			BaseURL:   "http://jellygate.local",
+			SecretKey: testAuthSecret,
+			LocalAdmin: config.LocalAdminConfig{
+				Enabled:  true,
+				Username: "admin",
+				Password: "super-secret-local-password",
+			},
+		}, db, nil, nil, nil)
+
 		values := url.Values{}
-		values.Set("secret", "wrong-secret-key")
+		values.Set("username", "admin")
+		values.Set("password", "wrong-password")
 		req := httptest.NewRequest(http.MethodPost, "/local", strings.NewReader(values.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		rec := httptest.NewRecorder()

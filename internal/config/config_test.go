@@ -164,4 +164,41 @@ func TestOIDCAndAuthentikConfigLoading(t *testing.T) {
 			t.Errorf("expected APIToken dfmag-token, got %s", cfg.Authentik.APIToken)
 		}
 	})
+
+	t.Run("local admin is disabled by default when password is empty", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_USER", "")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "")
+		t.Setenv("LOCAL_ADMIN_PASSWORD", "")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if cfg.LocalAdmin.Enabled {
+			t.Errorf("expected LocalAdmin.Enabled to be false when password is empty")
+		}
+	})
+
+	t.Run("local admin is enabled when password is provided", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_USER", "superadmin")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "my-local-secret-pass")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !cfg.LocalAdmin.Enabled {
+			t.Errorf("expected LocalAdmin.Enabled to be true")
+		}
+		if cfg.LocalAdmin.Username != "superadmin" {
+			t.Errorf("expected username superadmin, got %s", cfg.LocalAdmin.Username)
+		}
+		if cfg.LocalAdmin.Password != "my-local-secret-pass" {
+			t.Errorf("expected password my-local-secret-pass, got %s", cfg.LocalAdmin.Password)
+		}
+	})
 }

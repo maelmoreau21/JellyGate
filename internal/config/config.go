@@ -87,6 +87,16 @@ type Config struct {
 
 	// Authentik / OIDC
 	Authentik AuthentikConfig
+
+	// Local Admin (Compte local de secours désactivé par défaut)
+	LocalAdmin LocalAdminConfig
+}
+
+// LocalAdminConfig contient la configuration du compte local d'urgence.
+type LocalAdminConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Username string `json:"username"`
+	Password string `json:"-"`
 }
 
 // AuthentikConfig contient la configuration OIDC & API Authentik.
@@ -1511,6 +1521,12 @@ func Load() (*Config, error) {
 			AdminGroup:         getEnv("AUTHENTIK_ADMIN_GROUP", getEnv("JELLYGATE_AUTHENTIK_ADMIN_GROUP", getEnv("OIDC_ADMIN_GROUP", "jellygate-admins"))),
 			JellyfinUserGroup:  getEnv("JELLYFIN_USER_GROUP", getEnv("JELLYGATE_JELLYFIN_USER_GROUP", getEnv("AUTHENTIK_JELLYFIN_USER_GROUP", "jellyfin-users"))),
 			EnrollmentFlowSlug: getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW", "default-enrollment-flow"))),
+		},
+
+		LocalAdmin: LocalAdminConfig{
+			Enabled:  getEnv("JELLYGATE_LOCAL_ADMIN_PASSWORD", getEnv("LOCAL_ADMIN_PASSWORD", "")) != "",
+			Username: getEnv("JELLYGATE_LOCAL_ADMIN_USER", getEnv("LOCAL_ADMIN_USER", "admin")),
+			Password: getEnv("JELLYGATE_LOCAL_ADMIN_PASSWORD", getEnv("LOCAL_ADMIN_PASSWORD", "")),
 		},
 	}
 
