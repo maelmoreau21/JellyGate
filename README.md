@@ -50,7 +50,7 @@ cp .env.example .env
 
 ```env
 # Application Secret
-JELLYGATE_SECRET_KEY=your_random_32_character_secret_key
+JELLYGATE_SECRET=your_random_32_character_secret_key
 JELLYGATE_BASE_URL=http://localhost:8097
 
 # Authentik OIDC Settings

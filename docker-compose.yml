@@ -26,6 +26,7 @@ services:
       - JELLYGATE_DATA_DIR=/data
       - JELLYGATE_SECRET=${JELLYGATE_SECRET:?❌ JELLYGATE_SECRET is required}
       - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-en}
+      - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
       - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
       # ── Authentik / OIDC (Identity Provider) ─────────────────────────
       - AUTHENTIK_ENABLED=${AUTHENTIK_ENABLED:-true}
@@ -38,7 +39,7 @@ services:
       - AUTHENTIK_USER_GROUP=${AUTHENTIK_USER_GROUP:-jellygate-users}
       - AUTHENTIK_ADMIN_GROUP=${AUTHENTIK_ADMIN_GROUP:-jellygate-admins}
       - JELLYFIN_USER_GROUP=${JELLYFIN_USER_GROUP:-jellyfin-users}
-      - AUTHENTIK_ENROLLMENT_FLOW=${AUTHENTIK_ENROLLMENT_FLOW:-default-enrollment-flow}
+      - AUTHENTIK_ENROLLMENT_FLOW_SLUG=${AUTHENTIK_ENROLLMENT_FLOW_SLUG:-${AUTHENTIK_ENROLLMENT_FLOW:-default-enrollment-flow}}
 
       # ── SQL Database (SQLite by default) ────────────────────────────
       # Note: DB_TYPE will auto-detect 'postgres' if DB_HOST is provided
@@ -51,6 +52,8 @@ services:
       # ── Optional portal integrations (links/fallback) ───────────────
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
       - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
+      - JELLYTRACK_URL=${JELLYTRACK_URL:-}
+      - JELLYTRACK_API_KEY=${JELLYTRACK_API_KEY:-}
 
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8097/health"]
@@ -58,7 +61,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
-
-volumes:
-  jellygate_data:
-    driver: local

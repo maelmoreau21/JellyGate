@@ -40,7 +40,7 @@ Follow [AUTHENTIK_SETUP.md](AUTHENTIK_SETUP.md) to set up:
 Add the required Authentik environment variables to your `.env`:
 
 ```env
-JELLYGATE_SECRET_KEY=your_existing_secret_key
+JELLYGATE_SECRET=your_existing_secret_key
 JELLYGATE_BASE_URL=https://jellygate.example.com
 
 AUTHENTIK_URL=https://authentik.example.com
@@ -49,8 +49,10 @@ OIDC_CLIENT_ID=jellygate
 OIDC_CLIENT_SECRET=your_oidc_client_secret
 OIDC_REDIRECT_URL=https://jellygate.example.com/auth/callback
 AUTHENTIK_API_TOKEN=your_authentik_api_token
-OIDC_USER_GROUP=jellygate-users
-OIDC_ADMIN_GROUP=jellygate-admins
+AUTHENTIK_USER_GROUP=jellygate-users
+AUTHENTIK_ADMIN_GROUP=jellygate-admins
+JELLYFIN_USER_GROUP=jellyfin-users
+AUTHENTIK_ENROLLMENT_FLOW_SLUG=default-enrollment-flow
 ```
 
 ### Step 4: Deploy Container Update

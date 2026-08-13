@@ -40,7 +40,7 @@ OIDC_REDIRECT_URL=https://jellygate.example.com/auth/callback
 AUTHENTIK_USER_GROUP=jellygate-users
 AUTHENTIK_ADMIN_GROUP=jellygate-admins
 JELLYFIN_USER_GROUP=jellyfin-users
-AUTHENTIK_ENROLLMENT_FLOW=default-enrollment-flow
+AUTHENTIK_ENROLLMENT_FLOW_SLUG=default-enrollment-flow
 ```
 
 ## 3. Test de santé

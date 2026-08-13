@@ -13,7 +13,7 @@ Rendez-vous sur la page `/admin/authentik` pour lancer le test de diagnostic ins
 - **Solution** : Testez la résolution DNS et la connectivité HTTP depuis le conteneur JellyGate vers `https://auth.example.com/application/o/jellygate/.well-known/openid-configuration`.
 
 ### 3. Erreur Flow Enrollment : 404 Introuvable
-- **Cause** : Le slug de flow renseigné `AUTHENTIK_ENROLLMENT_FLOW` n'existe pas dans Authentik.
+- **Cause** : Le slug de flow renseigné `AUTHENTIK_ENROLLMENT_FLOW_SLUG` n'existe pas dans Authentik.
 - **Solution** : Vérifiez le nom exact du slug dans `Authentik -> Flows & Stages -> Flows`.
 
 ### 4. Erreur Groupes Manquants
