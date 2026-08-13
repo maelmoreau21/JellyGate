@@ -26,10 +26,19 @@
                 </div>
 
                 {{ if .Error }}
-                <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-200 text-xs text-center font-bold uppercase tracking-wider shadow-lg backdrop-blur-sm">
-                    {{ if eq .Error "required" }}{{ .T "login_error_required" }}{{ end }}
-                    {{ if eq .Error "invalid" }}{{ .T "login_error_invalid" }}{{ end }}
-                    {{ if eq .Error "forbidden" }}{{ .T "login_error_forbidden" }}{{ end }}
+                <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-700 dark:text-red-200 text-xs text-center font-bold uppercase tracking-wider shadow-lg backdrop-blur-sm flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <span>
+                        {{ if eq .Error "required" }}{{ .T "login_error_required" }}
+                        {{ else if eq .Error "invalid" }}{{ .T "login_error_invalid" }}
+                        {{ else if eq .Error "forbidden" }}{{ .T "login_error_forbidden" }}
+                        {{ else if eq .Error "oidc_failed" }}Échec de la connexion Authentik
+                        {{ else if eq .Error "bad_state" }}Session de connexion expirée
+                        {{ else if eq .Error "bad_nonce" }}Erreur de validation de session
+                        {{ else if eq .Error "token_expired" }}Le jeton de connexion a expiré
+                        {{ else if eq .Error "oidc_unavailable" }}Service Authentik indisponible
+                        {{ else }}{{ .Error }}{{ end }}
+                    </span>
                 </div>
                 {{ end }}
 
@@ -38,7 +47,7 @@
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                         </svg>
-                        Se connecter avec Authentik (SSO)
+                        Se connecter
                     </a>
                 </div>
             </div>
