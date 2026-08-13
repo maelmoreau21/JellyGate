@@ -73,10 +73,10 @@ func NewSettingsHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client
 // resolveEffectiveAuthentikConfig combine la configuration stockée en base SQL avec les variables d'environnement par défaut.
 func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConfig {
 	cfg := config.AuthentikConfig{
-		Enabled:           false,
-		UserGroup:         "jellygate-users",
-		AdminGroup:        "jellygate-admins",
-		JellyfinUserGroup: "jellyfin-users",
+		Enabled:            false,
+		UserGroup:          "jellygate-users",
+		AdminGroup:         "jellygate-admins",
+		JellyfinUserGroup:  "jellyfin-users",
 		EnrollmentFlowSlug: "default-enrollment-flow",
 	}
 	if h.db != nil {

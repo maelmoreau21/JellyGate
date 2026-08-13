@@ -216,4 +216,3 @@ func TestLocalLoginSubmit(t *testing.T) {
 		}
 	})
 }
-
