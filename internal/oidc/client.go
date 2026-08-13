@@ -130,11 +130,13 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 		return "", fmt.Errorf("invalid authorization endpoint: %w", err)
 	}
 
+	redirectURI := c.getRedirectURI(r)
+
 	q := u.Query()
 	q.Set("client_id", c.cfg.ClientID)
 	q.Set("response_type", "code")
 	q.Set("scope", "openid profile email groups")
-	q.Set("redirect_uri", c.cfg.RedirectURL)
+	q.Set("redirect_uri", redirectURI)
 	q.Set("state", state)
 	q.Set("nonce", nonce)
 	q.Set("code_challenge", codeChallenge)
@@ -142,6 +144,29 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 	u.RawQuery = q.Encode()
 
 	return u.String(), nil
+}
+
+func (c *oidcClient) getRedirectURI(r *http.Request) string {
+	if c.cfg.RedirectURL != "" && !strings.Contains(c.cfg.RedirectURL, "localhost:8097") {
+		return c.cfg.RedirectURL
+	}
+	if r != nil && r.Host != "" && !strings.Contains(r.Host, "localhost") && !strings.Contains(r.Host, "127.0.0.1") {
+		isHTTPS := r.TLS != nil ||
+			strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
+			strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
+			strings.EqualFold(r.Header.Get("Front-End-Https"), "on") ||
+			strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.URL)), "https://") ||
+			strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.IssuerURL)), "https://")
+		scheme := "http"
+		if isHTTPS {
+			scheme = "https"
+		}
+		return scheme + "://" + r.Host + "/auth/callback"
+	}
+	if c.cfg.RedirectURL != "" {
+		return c.cfg.RedirectURL
+	}
+	return "http://localhost:8097/auth/callback"
 }
 
 func (c *oidcClient) HandleCallback(r *http.Request) (*Claims, error) {
@@ -183,7 +208,7 @@ func (c *oidcClient) HandleCallback(r *http.Request) (*Claims, error) {
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
-	data.Set("redirect_uri", c.cfg.RedirectURL)
+	data.Set("redirect_uri", c.getRedirectURI(r))
 	data.Set("client_id", c.cfg.ClientID)
 	if c.cfg.ClientSecret != "" {
 		data.Set("client_secret", c.cfg.ClientSecret)
