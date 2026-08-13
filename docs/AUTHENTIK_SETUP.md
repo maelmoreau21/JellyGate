@@ -91,3 +91,13 @@ AUTHENTIK_API_TOKEN=votre_token_api_authentik
    - ✅ Enrollment Flow
    - ✅ Groupes Requis
 
+---
+
+## 6. Connexion de Secours Locale (`/local`)
+
+En cas de mauvaise configuration d'Authentik ou d'indisponibilité de votre serveur SSO :
+1. Accédez à l'URL directe : `https://jellygate.votredomaine.com/local` (ou cliquez sur **Connexion de secours** sur la page de login).
+2. Saisissez votre **`JELLYGATE_SECRET`** (la clé secrète configurée dans votre `.env`).
+3. Vous serez directement connecté en tant qu'Administrateur et redirigé vers la page `/admin/authentik` pour tester, corriger et sauvegarder vos réglages Authentik.
+
+

@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -281,6 +282,91 @@ func (h *AuthHandler) logAction(action, actor, target, details string) {
 		return
 	}
 	_ = h.db.LogAction(action, actor, target, details)
+}
+
+// LocalLoginPage affiche le formulaire de connexion locale de secours (GET /local ou GET /auth/local).
+func (h *AuthHandler) LocalLoginPage(w http.ResponseWriter, r *http.Request) {
+	if h.hasValidSession(r) {
+		http.Redirect(w, r, "/admin/", http.StatusSeeOther)
+		return
+	}
+
+	if h.renderer == nil {
+		http.Error(w, "Moteur de template indisponible", http.StatusInternalServerError)
+		return
+	}
+
+	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	td.Section = "login"
+	_ = h.renderer.Render(w, "admin/login_local.html", td)
+}
+
+// LocalLoginSubmit traite l'authentification de secours avec la clé secrète (POST /local ou POST /auth/local).
+func (h *AuthHandler) LocalLoginSubmit(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Requête invalide", http.StatusBadRequest)
+		return
+	}
+
+	submittedSecret := strings.TrimSpace(r.FormValue("secret"))
+	expectedSecret := strings.TrimSpace(h.cfg.SecretKey)
+
+	if submittedSecret == "" || expectedSecret == "" || subtle.ConstantTimeCompare([]byte(submittedSecret), []byte(expectedSecret)) != 1 {
+		slog.Warn("Échec de la connexion locale de secours", "ip", r.RemoteAddr)
+		h.logAction("auth.local.failed", "local-admin", "", fmt.Sprintf("IP: %s - Clé secrète invalide", r.RemoteAddr))
+		logSecurityEvent(h.db, r, "admin_login", "auth.local.failed", "warning", "admin", "local_admin", "Échec connexion de secours", map[string]string{"ip": r.RemoteAddr})
+
+		w.WriteHeader(http.StatusUnauthorized)
+		if h.renderer != nil {
+			td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+			td.Error = "Clé secrète d'administration invalide"
+			td.Section = "login"
+			_ = h.renderer.Render(w, "admin/login_local.html", td)
+			return
+		}
+		http.Error(w, "Clé secrète invalide", http.StatusUnauthorized)
+		return
+	}
+
+	// Authentification réussie -> Création de session Administrateur local
+	now := time.Now()
+	sessionDuration := h.rememberSessionDuration()
+	sessionExpiresAt := now.Add(sessionDuration)
+
+	sess := session.Payload{
+		UserID:      "1",
+		AuthentikID: "local_admin",
+		Username:    "admin",
+		Email:       "admin@jellygate.local",
+		IsAdmin:     true,
+		Exp:         sessionExpiresAt.Unix(),
+		Iat:         now.Unix(),
+	}
+
+	cookieValue, err := session.Sign(sess, h.cfg.SecretKey)
+	if err != nil {
+		slog.Error("Erreur signature session locale", "error", err)
+		http.Error(w, "Erreur serveur", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     session.CookieName,
+		Value:    cookieValue,
+		Path:     "/",
+		Expires:  sessionExpiresAt,
+		MaxAge:   int(sessionDuration.Seconds()),
+		HttpOnly: true,
+		Secure:   jgmw.RequestIsHTTPS(r, h.cfg.BaseURL),
+		SameSite: http.SameSiteStrictMode,
+	})
+
+	slog.Info("Connexion locale de secours réussie", "ip", r.RemoteAddr)
+	h.logAction("auth.local.success", "admin", "local_admin", fmt.Sprintf("IP: %s", r.RemoteAddr))
+	logSecurityEvent(h.db, r, "admin_login", "auth.local.success", "info", "admin", "local_admin", "Connexion de secours réussie", nil)
+
+	// Redirige directement vers la page de configuration Authentik pour régler les paramètres
+	http.Redirect(w, r, "/admin/authentik", http.StatusSeeOther)
 }
 
 // LoginSubmit redirige les requêtes de formulaire obsolètes vers Authentik OIDC (POST /admin/login).

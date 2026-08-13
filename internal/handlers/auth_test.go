@@ -115,3 +115,60 @@ func newLoginSubmitRequest(username, password string, remember bool) *http.Reque
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return req
 }
+
+func TestLocalLoginSubmit(t *testing.T) {
+	db := newAuthTestDB(t)
+	handler := newAuthTestHandler(db)
+
+	t.Run("successful login with secret redirects to /admin/authentik", func(t *testing.T) {
+		values := url.Values{}
+		values.Set("secret", testAuthSecret)
+		req := httptest.NewRequest(http.MethodPost, "/local", strings.NewReader(values.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		handler.LocalLoginSubmit(rec, req)
+
+		if rec.Code != http.StatusSeeOther {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
+		}
+		if got := rec.Header().Get("Location"); got != "/admin/authentik" {
+			t.Fatalf("Location = %q, want /admin/authentik", got)
+		}
+
+		cookies := rec.Result().Cookies()
+		var sessionCookie *http.Cookie
+		for _, c := range cookies {
+			if c.Name == session.CookieName {
+				sessionCookie = c
+				break
+			}
+		}
+		if sessionCookie == nil {
+			t.Fatalf("expected session cookie to be set")
+		}
+
+		sess, err := session.Verify(sessionCookie.Value, testAuthSecret)
+		if err != nil {
+			t.Fatalf("session.Verify error = %v", err)
+		}
+		if !sess.IsAdmin {
+			t.Errorf("expected session.IsAdmin to be true")
+		}
+	})
+
+	t.Run("invalid secret returns 401 unauthorized", func(t *testing.T) {
+		values := url.Values{}
+		values.Set("secret", "wrong-secret-key")
+		req := httptest.NewRequest(http.MethodPost, "/local", strings.NewReader(values.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+
+		handler.LocalLoginSubmit(rec, req)
+
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnauthorized)
+		}
+	})
+}
+

@@ -250,19 +250,27 @@ func main() {
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", inviteHandler.VerifyEmailSubmit)
 	})
 
-	// Routes d'authentification OIDC (publiques)
+	// Routes d'authentification OIDC & locale de secours (publiques)
 	r.Route("/auth", func(r chi.Router) {
 		r.Get("/login", authHandler.LoginRedirect)
 		r.Get("/callback", authHandler.Callback)
+		r.Get("/local", authHandler.LocalLoginPage)
+		r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/local", authHandler.LocalLoginSubmit)
 		r.Get("/logout", authHandler.Logout)
 		r.Post("/logout", authHandler.Logout)
 	})
+
+	// Accès direct /local pour la connexion d'urgence
+	r.Get("/local", authHandler.LocalLoginPage)
+	r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/local", authHandler.LocalLoginSubmit)
 
 	// ── Routes admin (authentification requise) ─────────────────────────────
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(jgmw.EnsureCSRFCookie(cfg.BaseURL))
 		// Routes publiques (login/logout) — pas de middleware auth
 		r.Get("/login", authHandler.LoginPage)
+		r.Get("/login/local", authHandler.LocalLoginPage)
+		r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/login/local", authHandler.LocalLoginSubmit)
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute), jgmw.RequireCSRF()).Post("/login", authHandler.LoginSubmit)
 		r.With(jgmw.RequireCSRF()).Post("/logout", authHandler.Logout)
 
