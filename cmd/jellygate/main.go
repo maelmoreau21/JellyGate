@@ -155,7 +155,7 @@ func main() {
 	inviteHandler := handlers.NewInvitationHandler(cfg, db, provisioner, mailer, notifier, renderEngine)
 	inviteHandler.SetAuthentikClient(authentikClient)
 	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, authentikClient, mailer, renderEngine)
-	settingsHandler := handlers.NewSettingsHandler(db, jfClient, authentikClient, renderEngine)
+	settingsHandler := handlers.NewSettingsHandler(cfg, db, jfClient, authentikClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
 	schedulerService := scheduler.NewService(db, backupService, mailer, notifier)
@@ -337,6 +337,7 @@ func main() {
 				r.Get("/users", adminHandler.UsersPage)
 				r.Get("/profiles", adminHandler.ProfilesPage)
 				r.Get("/authentik", adminHandler.AuthentikPage)
+				r.Get("/sso", adminHandler.AuthentikPage)
 				r.Get("/security", adminHandler.SecurityPage)
 				r.Get("/pending-actions", adminHandler.PendingActionsPage)
 				r.Get("/automation", func(w http.ResponseWriter, r *http.Request) {

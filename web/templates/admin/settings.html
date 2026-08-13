@@ -25,7 +25,7 @@
     <button data-tab-target="authentik" id="tab-authentik" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
         <div class="flex items-center gap-2">
             <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-            Authentik SSO
+            {{ .T "settings_tab_sso" }}
         </div>
     </button>
     <button data-tab-target="smtp" id="tab-smtp" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
@@ -246,27 +246,262 @@
     {{ template "scheduler_panel" . }}
 
     {{/* """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" */}}
-    {{/* TAB: AUTHENTIK */}}
+    {{/* TAB: SSO & FOURNISSEUR D'IDENTITÉ / LDAP */}}
     {{/* """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" */}}
     <div id="panel-authentik" class="tab-panel settings-panel settings-panel-authentik hidden">
-      <div class="glass-card p-6 md:p-8 rounded-3xl border border-white/10 shadow-xl space-y-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6">
-          <div>
-            <h2 class="text-xl font-extrabold text-slate-900 dark:text-white flex items-center gap-3">
-              <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              Gestion & Diagnostic Authentik
-            </h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Authentik gère l'identité, l'authentification OIDC et l'accès Jellyfin via son Outpost LDAP.</p>
+      <div class="space-y-6">
+
+        {{/* En-tête SSO & Diagnostic */}}
+        <div class="glass-card p-6 md:p-8 rounded-3xl border border-white/10 shadow-xl space-y-6">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-6">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 drop-shadow-md flex-shrink-0">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div>
+                <div class="flex items-center gap-3">
+                  <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">SSO & Fournisseur d'Identité / LDAP</h2>
+                  <span id="sso-status-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/20 text-slate-400 border border-slate-500/30">
+                    Non vérifié
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Authentification centralisée OIDC (OpenID Connect), gestion d'annuaire LDAP et synchronisation d'accès Jellyfin.</p>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-3 flex-shrink-0">
+              <button id="btn-test-sso" type="button" onclick="runSSOHealthCheck()" class="jg-btn jg-btn-ghost px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl border border-white/10 hover:bg-white/10 transition-all">
+                <svg id="icon-sso-test-spin" class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Tester la connexion</span>
+              </button>
+            </div>
           </div>
-          <a href="/admin/authentik" class="jg-btn jg-btn-primary px-6 py-3 text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg flex items-center gap-2">
-            Ouvrir la Console de Diagnostic Authentik
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
-          </a>
+
+          {{/* Sélecteur de Presets de Fournisseurs */}}
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Sélectionnez votre Fournisseur d'Identité</label>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="sso-preset-selector">
+              <button type="button" onclick="applySSOPreset('authentik')" class="sso-preset-btn active p-3 rounded-2xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authentik">
+                <span class="text-lg">🟣</span>
+                <span class="text-xs font-bold text-white group-hover:text-indigo-300">Authentik</span>
+                <span class="text-[10px] text-slate-400">OIDC + Outpost LDAP</span>
+              </button>
+
+              <button type="button" onclick="applySSOPreset('keycloak')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="keycloak">
+                <span class="text-lg">🔵</span>
+                <span class="text-xs font-bold text-white group-hover:text-blue-300">Keycloak</span>
+                <span class="text-[10px] text-slate-400">Realm OIDC / Groups</span>
+              </button>
+
+              <button type="button" onclick="applySSOPreset('authelia')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authelia">
+                <span class="text-lg">🔴</span>
+                <span class="text-xs font-bold text-white group-hover:text-red-300">Authelia</span>
+                <span class="text-[10px] text-slate-400">OIDC + LLDAP / LDAP</span>
+              </button>
+
+              <button type="button" onclick="applySSOPreset('okta')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="okta">
+                <span class="text-lg">🔷</span>
+                <span class="text-xs font-bold text-white group-hover:text-sky-300">Okta / Entra ID</span>
+                <span class="text-[10px] text-slate-400">Cloud Identity SSO</span>
+              </button>
+
+              <button type="button" onclick="applySSOPreset('generic')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="generic">
+                <span class="text-lg">🌐</span>
+                <span class="text-xs font-bold text-white group-hover:text-emerald-300">Générique</span>
+                <span class="text-[10px] text-slate-400">OIDC standard / LDAP</span>
+              </button>
+            </div>
+          </div>
+
+          {{/* Tableau de Bord Santé / Diagnostic */}}
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div id="card-sso-oidc" class="glass-card p-4 rounded-2xl border border-white/10 bg-black/20 flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">OIDC Discovery</span>
+                <span id="dot-sso-oidc" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+              </div>
+              <div id="msg-sso-oidc" class="text-xs font-semibold text-slate-200">Non vérifié</div>
+              <div id="details-sso-oidc" class="text-[10px] text-slate-400 mt-1 font-mono truncate">En attente de test</div>
+            </div>
+
+            <div id="card-sso-api" class="glass-card p-4 rounded-2xl border border-white/10 bg-black/20 flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">API REST / Service</span>
+                <span id="dot-sso-api" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+              </div>
+              <div id="msg-sso-api" class="text-xs font-semibold text-slate-200">Non vérifié</div>
+              <div id="details-sso-api" class="text-[10px] text-slate-400 mt-1 font-mono truncate">En attente de test</div>
+            </div>
+
+            <div id="card-sso-enrollment" class="glass-card p-4 rounded-2xl border border-white/10 bg-black/20 flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Flux d'Inscription</span>
+                <span id="dot-sso-enrollment" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+              </div>
+              <div id="msg-sso-enrollment" class="text-xs font-semibold text-slate-200">Non vérifié</div>
+              <div id="details-sso-enrollment" class="text-[10px] text-slate-400 mt-1 font-mono truncate">En attente de test</div>
+            </div>
+
+            <div id="card-sso-groups" class="glass-card p-4 rounded-2xl border border-white/10 bg-black/20 flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Groupes & Rôles</span>
+                <span id="dot-sso-groups" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
+              </div>
+              <div id="msg-sso-groups" class="text-xs font-semibold text-slate-200">Non vérifié</div>
+              <div id="details-sso-groups" class="text-[10px] text-slate-400 mt-1 font-mono truncate">En attente de test</div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+
+        {{/* Formulaire de Configuration SSO & Fournisseur d'Identité */}}
+        <form id="form-authentik-settings" onsubmit="saveAuthentikSettings(event)" class="space-y-6">
+          <div class="glass-card p-6 md:p-8 rounded-3xl border border-white/10 shadow-xl space-y-6">
+            
+            {{/* Activation SSO */}}
+            <div class="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-all">
+              <div class="space-y-1">
+                <label for="authentik_enabled" class="text-sm font-bold text-slate-900 dark:text-white cursor-pointer flex items-center gap-2">
+                  <span>Activer l'authentification SSO & OIDC</span>
+                </label>
+                <p class="text-xs text-slate-500 dark:text-slate-400">Permet la connexion unique via votre fournisseur d'identité sur JellyGate et Jellyfin.</p>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="authentik_enabled" name="enabled" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
+            {{/* Section 1 : OpenID Connect (OIDC) */}}
+            <div class="border-t border-white/10 pt-6">
+              <h3 class="text-sm font-extrabold uppercase tracking-wider text-indigo-400 mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+                1. Configuration OpenID Connect (OIDC)
+              </h3>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label for="authentik_url" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">URL de l'Instance Fournisseur (Base URL)</label>
+                  <input type="url" id="authentik_url" name="authentik_url" placeholder="https://auth.example.com" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
+                  <p id="hint-sso-url" class="text-[11px] text-slate-500 mt-1">Exemple : https://auth.domaine.com</p>
+                </div>
+
+                <div>
+                  <label for="oidc_issuer_url" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">URL de l'Émetteur OIDC (Issuer URL)</label>
+                  <input type="url" id="oidc_issuer_url" name="oidc_issuer_url" placeholder="https://auth.example.com/application/o/jellygate/" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
+                  <p id="hint-sso-issuer" class="text-[11px] text-slate-500 mt-1">Point d'accès OIDC où se trouve /.well-known/openid-configuration</p>
+                </div>
+
+                <div>
+                  <label for="oidc_client_id" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">OIDC Client ID</label>
+                  <input type="text" id="oidc_client_id" name="oidc_client_id" placeholder="jellygate" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
+                  <p class="text-[11px] text-slate-500 mt-1">Identifiant client configuré dans votre application OIDC</p>
+                </div>
+
+                <div>
+                  <label for="oidc_client_secret" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">OIDC Client Secret</label>
+                  <div class="relative">
+                    <input type="password" id="oidc_client_secret" name="oidc_client_secret" placeholder="••••••••••••" class="jg-input w-full rounded-xl text-sm bg-black/20 pr-10">
+                    <button type="button" onclick="toggleSecretVisibility('oidc_client_secret', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Afficher/Masquer">
+                      <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-1">Secret du client OAuth2/OIDC (masqué si déjà configuré)</p>
+                </div>
+
+                <div class="md:col-span-2">
+                  <label for="oidc_redirect_url" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">URL de Redirection (Callback URI)</label>
+                  <div class="flex items-center gap-2">
+                    <input type="url" id="oidc_redirect_url" name="oidc_redirect_url" placeholder="https://jellygate.example.com/auth/callback" class="jg-input w-full rounded-xl text-sm bg-black/20 font-mono" required>
+                    <button type="button" id="btn-copy-callback-url" onclick="copyCallbackURL()" class="jg-btn jg-btn-ghost px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl border border-white/10 hover:bg-white/10 flex-shrink-0" title="Copier l'URL de rappel">
+                      <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                      <span id="copy-callback-text">Copier</span>
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-1">Déclarez exactement cette URL dans les <strong>Redirect URIs autorisées</strong> de votre fournisseur OIDC.</p>
+                </div>
+              </div>
+            </div>
+
+            {{/* Section 2 : Mappage des Groupes & Rôles (LDAP & OIDC) */}}
+            <div class="border-t border-white/10 pt-6">
+              <h3 class="text-sm font-extrabold uppercase tracking-wider text-purple-400 mb-4 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                2. Mappage des Groupes & Accès (Annuaire LDAP & OIDC)
+              </h3>
+
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div>
+                  <label for="user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Utilisateurs JellyGate</label>
+                  <input type="text" id="user_group" name="user_group" placeholder="jellygate-users" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
+                  <p class="text-[11px] text-slate-500 mt-1">Autorise la connexion standard à JellyGate</p>
+                </div>
+
+                <div>
+                  <label for="admin_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Administrateurs JellyGate</label>
+                  <input type="text" id="admin_group" name="admin_group" placeholder="jellygate-admins" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
+                  <p class="text-[11px] text-slate-500 mt-1">Accorde les droits administrateur dans JellyGate</p>
+                </div>
+
+                <div>
+                  <label for="jellyfin_user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Accès Jellyfin (LDAP Outpost)</label>
+                  <input type="text" id="jellyfin_user_group" name="jellyfin_user_group" placeholder="jellyfin-users" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
+                  <p class="text-[11px] text-slate-500 mt-1">Groupe synchronisé avec Jellyfin via le plugin LDAP</p>
+                </div>
+              </div>
+
+              {{/* Note Explicative LDAP */}}
+              <div class="mt-4 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 flex items-start gap-3">
+                <svg class="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div class="space-y-1">
+                  <span class="font-bold">Liaison LDAP Jellyfin :</span>
+                  <p class="text-purple-300">Dans Jellyfin (Plugin LDAP-Auth), configurez le filtre de recherche avec ce nom de groupe pour que l'adhésion accorde automatiquement l'accès au serveur multimédia.</p>
+                </div>
+              </div>
+            </div>
+
+            {{/* Section 3 : Intégration API & Inscription (Avancé / Authentik) */}}
+            <div id="section-sso-api" class="border-t border-white/10 pt-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                  3. Automatisation API & Inscription (Authentik / API REST)
+                </h3>
+                <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Optionnel pour Generic OIDC</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label for="authentik_api_token" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Token API REST Fournisseur</label>
+                  <div class="relative">
+                    <input type="password" id="authentik_api_token" name="authentik_api_token" placeholder="ak-token-••••••••" class="jg-input w-full rounded-xl text-sm bg-black/20 pr-10">
+                    <button type="button" onclick="toggleSecretVisibility('authentik_api_token', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Afficher/Masquer">
+                      <svg class="w-4 h-4 eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-slate-500 mt-1">Utilisé pour la création automatique d'utilisateurs et de tokens d'invitation</p>
+                </div>
+
+                <div>
+                  <label for="enrollment_flow_slug" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Slug Flux d'Inscription (Enrollment Flow)</label>
+                  <input type="text" id="enrollment_flow_slug" name="enrollment_flow_slug" placeholder="default-enrollment-flow" class="jg-input w-full rounded-xl text-sm bg-black/20">
+                  <p class="text-[11px] text-slate-500 mt-1">Slug du flux d'inscription Authentik (ex: default-enrollment-flow)</p>
+                </div>
+              </div>
+            </div>
+
+            {{/* Boutons de Soumission */}}
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-white/10">
+              <div id="sso-save-feedback" class="text-xs font-medium text-slate-400"></div>
+              <button type="submit" id="btn-save-sso" class="jg-btn jg-btn-primary px-8 py-3 text-xs font-extrabold uppercase tracking-wider rounded-xl shadow-xl hover:scale-105 transition-all flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                <span>Enregistrer les Paramètres SSO</span>
+              </button>
+            </div>
+          </div>
         </form>
 
       </div>

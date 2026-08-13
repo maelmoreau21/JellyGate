@@ -42,6 +42,7 @@ import (
 
 // SettingsHandler gère les routes de configuration.
 type SettingsHandler struct {
+	cfg        *config.Config
 	db         *database.DB
 	jfClient   *jellyfin.Client
 	authClient authentik.Client
@@ -65,8 +66,79 @@ func (h *SettingsHandler) tr(r *http.Request, key, fallback string) string {
 }
 
 // NewSettingsHandler crée un nouveau handler de paramètres.
-func NewSettingsHandler(db *database.DB, jf *jellyfin.Client, authClient authentik.Client, renderer *render.Engine) *SettingsHandler {
-	return &SettingsHandler{db: db, jfClient: jf, authClient: authClient, renderer: renderer}
+func NewSettingsHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, authClient authentik.Client, renderer *render.Engine) *SettingsHandler {
+	return &SettingsHandler{cfg: cfg, db: db, jfClient: jf, authClient: authClient, renderer: renderer}
+}
+
+// resolveEffectiveAuthentikConfig combine la configuration stockée en base SQL avec les variables d'environnement par défaut.
+func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConfig {
+	cfg := config.AuthentikConfig{
+		Enabled:           false,
+		UserGroup:         "jellygate-users",
+		AdminGroup:        "jellygate-admins",
+		JellyfinUserGroup: "jellyfin-users",
+		EnrollmentFlowSlug: "default-enrollment-flow",
+	}
+	if h.db != nil {
+		dbCfg, err := h.db.GetAuthentikConfig()
+		if err == nil {
+			cfg = dbCfg
+		}
+	}
+	if h.cfg == nil {
+		return cfg
+	}
+	env := h.cfg.Authentik
+
+	if cfg.URL == "" {
+		cfg.URL = env.URL
+	}
+	if cfg.IssuerURL == "" {
+		cfg.IssuerURL = env.IssuerURL
+	}
+	if cfg.ClientID == "" {
+		cfg.ClientID = env.ClientID
+	}
+	if cfg.ClientSecret == "" {
+		cfg.ClientSecret = env.ClientSecret
+	}
+	if cfg.RedirectURL == "" {
+		cfg.RedirectURL = env.RedirectURL
+	}
+	if cfg.APIToken == "" {
+		cfg.APIToken = env.APIToken
+	}
+	if cfg.UserGroup == "" || cfg.UserGroup == "jellygate-users" {
+		if env.UserGroup != "" {
+			cfg.UserGroup = env.UserGroup
+		}
+	}
+	if cfg.AdminGroup == "" || cfg.AdminGroup == "jellygate-admins" {
+		if env.AdminGroup != "" {
+			cfg.AdminGroup = env.AdminGroup
+		}
+	}
+	if cfg.JellyfinUserGroup == "" || cfg.JellyfinUserGroup == "jellyfin-users" {
+		if env.JellyfinUserGroup != "" {
+			cfg.JellyfinUserGroup = env.JellyfinUserGroup
+		}
+	}
+	if cfg.EnrollmentFlowSlug == "" || cfg.EnrollmentFlowSlug == "default-enrollment-flow" {
+		if env.EnrollmentFlowSlug != "" {
+			cfg.EnrollmentFlowSlug = env.EnrollmentFlowSlug
+		}
+	}
+	if !cfg.Enabled && env.Enabled {
+		if h.db == nil {
+			cfg.Enabled = true
+		} else {
+			raw, err := h.db.GetSetting(database.SettingAuthentikConfig)
+			if err != nil || strings.TrimSpace(raw) == "" {
+				cfg.Enabled = true
+			}
+		}
+	}
+	return cfg
 }
 
 const maskedSecretValue = "********"
@@ -164,7 +236,7 @@ func (h *SettingsHandler) SaveAuthentik(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	existing, _ := h.db.GetAuthentikConfig()
+	existing := h.resolveEffectiveAuthentikConfig()
 	if isMaskedSecret(input.APIToken) || input.APIToken == "" {
 		input.APIToken = existing.APIToken
 	}
@@ -188,14 +260,10 @@ func (h *SettingsHandler) GetAuthentikHealth(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	cfg, err := h.db.GetAuthentikConfig()
-	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur lecture configuration Authentik"})
-		return
-	}
+	cfg := h.resolveEffectiveAuthentikConfig()
 
 	var client authentik.Client = h.authClient
-	if client == nil || cfg.URL != "" {
+	if client == nil || cfg.URL != "" || cfg.IssuerURL != "" {
 		client = authentik.NewClient(cfg)
 	}
 
@@ -331,14 +399,12 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	defaultLang := h.db.GetDefaultLang()
 
-	authentikCfg, err := h.db.GetAuthentikConfig()
-	if err != nil {
-		slog.Error("Erreur lecture config Authentik", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture configuration Authentik",
-		})
-		return
+	authentikCfg := h.resolveEffectiveAuthentikConfig()
+	if authentikCfg.ClientSecret != "" {
+		authentikCfg.ClientSecret = maskedSecretValue
+	}
+	if authentikCfg.APIToken != "" {
+		authentikCfg.APIToken = maskedSecretValue
 	}
 
 	smtpCfg, err := h.db.GetSMTPConfig()

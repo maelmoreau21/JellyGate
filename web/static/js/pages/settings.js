@@ -28,6 +28,168 @@
     };
     let activeEmailEditorTarget = null;
 
+    const ssoPresets = {
+        authentik: {
+            name: 'Authentik',
+            urlPlaceholder: 'https://auth.example.com',
+            issuerPlaceholder: 'https://auth.example.com/application/o/jellygate/',
+            hintUrl: 'Exemple : https://auth.domaine.com',
+            hintIssuer: 'URL complète du Provider OIDC Authentik (/application/o/<app>/)',
+            showApi: true
+        },
+        keycloak: {
+            name: 'Keycloak',
+            urlPlaceholder: 'https://keycloak.example.com',
+            issuerPlaceholder: 'https://keycloak.example.com/realms/master',
+            hintUrl: 'Exemple : https://keycloak.domaine.com',
+            hintIssuer: 'Point d\'accès du Realm : https://keycloak.domaine.com/realms/<nom-du-realm>',
+            showApi: false
+        },
+        authelia: {
+            name: 'Authelia',
+            urlPlaceholder: 'https://auth.example.com',
+            issuerPlaceholder: 'https://auth.example.com/api/oidc',
+            hintUrl: 'Exemple : https://auth.domaine.com',
+            hintIssuer: 'Point d\'accès OIDC Authelia : https://auth.domaine.com/api/oidc',
+            showApi: false
+        },
+        okta: {
+            name: 'Okta / Entra ID',
+            urlPlaceholder: 'https://your-org.okta.com',
+            issuerPlaceholder: 'https://your-org.okta.com/oauth2/default',
+            hintUrl: 'Exemple : https://your-tenant.okta.com',
+            hintIssuer: 'Émetteur d\'autorisation : https://your-tenant.okta.com/oauth2/default',
+            showApi: false
+        },
+        generic: {
+            name: 'Générique',
+            urlPlaceholder: 'https://idp.example.com',
+            issuerPlaceholder: 'https://idp.example.com',
+            hintUrl: 'URL racine de votre serveur d\'identité',
+            hintIssuer: 'URL racine où se situe /.well-known/openid-configuration',
+            showApi: false
+        }
+    };
+
+    function applySSOPreset(presetKey) {
+        const preset = ssoPresets[presetKey] || ssoPresets.generic;
+        document.querySelectorAll('.sso-preset-btn').forEach(btn => {
+            if (btn.dataset.preset === presetKey) {
+                btn.className = 'sso-preset-btn active p-3 rounded-2xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer shadow-lg shadow-indigo-500/10';
+            } else {
+                btn.className = 'sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer';
+            }
+        });
+
+        const urlInput = document.getElementById('authentik_url');
+        const issuerInput = document.getElementById('oidc_issuer_url');
+        const hintUrl = document.getElementById('hint-sso-url');
+        const hintIssuer = document.getElementById('hint-sso-issuer');
+
+        if (urlInput && !urlInput.value) {
+            urlInput.placeholder = preset.urlPlaceholder;
+        }
+        if (issuerInput && !issuerInput.value) {
+            issuerInput.placeholder = preset.issuerPlaceholder;
+        }
+        if (hintUrl) hintUrl.textContent = preset.hintUrl;
+        if (hintIssuer) hintIssuer.textContent = preset.hintIssuer;
+    }
+    window.applySSOPreset = applySSOPreset;
+
+    function copyCallbackURL() {
+        const input = document.getElementById('oidc_redirect_url');
+        const val = (input && input.value) ? input.value : (window.location.origin + '/auth/callback');
+        navigator.clipboard.writeText(val).then(() => {
+            const textSpan = document.getElementById('copy-callback-text');
+            if (textSpan) {
+                const original = textSpan.textContent;
+                textSpan.textContent = 'Copié !';
+                setTimeout(() => { textSpan.textContent = original; }, 2000);
+            }
+            if (window.JG && JG.toast) {
+                JG.toast('URL de redirection copiée dans le presse-papier !', 'success');
+            }
+        }).catch(err => {
+            console.error('Erreur copie presse-papier:', err);
+        });
+    }
+    window.copyCallbackURL = copyCallbackURL;
+
+    function toggleSecretVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (btn) btn.classList.add('text-indigo-400');
+        } else {
+            input.type = 'password';
+            if (btn) btn.classList.remove('text-indigo-400');
+        }
+    }
+    window.toggleSecretVisibility = toggleSecretVisibility;
+
+    async function runSSOHealthCheck() {
+        const spinIcon = document.getElementById('icon-sso-test-spin') || document.getElementById('icon-test-spin');
+        if (spinIcon) spinIcon.classList.add('animate-spin');
+
+        const updateCard = (key, comp) => {
+            const dot = document.getElementById(`dot-sso-${key}`) || document.getElementById(`dot-health-${key}`);
+            const msg = document.getElementById(`msg-sso-${key}`) || document.getElementById(`msg-health-${key}`);
+            const details = document.getElementById(`details-sso-${key}`) || document.getElementById(`details-health-${key}`);
+            if (!comp) return;
+
+            if (msg) msg.textContent = comp.message || 'OK';
+            if (dot) {
+                if (comp.status === 'ok') {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]';
+                } else if (comp.status === 'warning') {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]';
+                } else {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]';
+                }
+            }
+            if (details) {
+                if (comp.details && Object.keys(comp.details).length > 0) {
+                    details.textContent = Object.entries(comp.details).map(([k, v]) => `${k}: ${v}`).join(' | ');
+                } else {
+                    details.textContent = comp.status === 'ok' ? 'Opérationnel' : 'Vérifiez les paramètres';
+                }
+            }
+        };
+
+        try {
+            const res = await (window.JG && JG.api ? JG.api('/admin/api/settings/authentik/health') : fetch('/admin/api/settings/authentik/health').then(r => r.json()));
+            if (res && res.success && res.data && res.data.components) {
+                updateCard('oidc', res.data.components.oidc_discovery);
+                updateCard('api', res.data.components.api);
+                updateCard('enrollment', res.data.components.enrollment_flow);
+                updateCard('groups', res.data.components.groups);
+
+                const badge = document.getElementById('sso-status-badge');
+                if (badge) {
+                    if (res.data.overall_status === 'ok') {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+                        badge.textContent = 'Opérationnel';
+                    } else if (res.data.overall_status === 'warning') {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
+                        badge.textContent = 'Avertissement';
+                    } else {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40';
+                        badge.textContent = 'Erreur Connexion';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Erreur diagnostic SSO:', e);
+        } finally {
+            if (spinIcon) spinIcon.classList.remove('animate-spin');
+        }
+    }
+    window.runSSOHealthCheck = runSSOHealthCheck;
+    window.runAuthentikHealthCheck = runSSOHealthCheck;
+    window.saveAuthentikSettings = (e) => saveSettings('authentik', e);
+
     function t(key, fallback) {
         return i18n[key] || fallback || key;
     }
@@ -1106,6 +1268,71 @@
             applyInvitationProfileConfig(data.invitation_profile || {});
         }
 
+        const authentik = data.authentik || {};
+        if (document.getElementById('form-authentik-settings')) {
+            const enabledToggle = document.getElementById('authentik_enabled');
+            if (enabledToggle) enabledToggle.checked = !!authentik.enabled;
+
+            const urlInput = document.getElementById('authentik_url');
+            if (urlInput) urlInput.value = authentik.authentik_url || '';
+
+            const issuerInput = document.getElementById('oidc_issuer_url');
+            if (issuerInput) issuerInput.value = authentik.oidc_issuer_url || '';
+
+            const clientIdInput = document.getElementById('oidc_client_id');
+            if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
+
+            const clientSecretInput = document.getElementById('oidc_client_secret');
+            if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret ? '********' : '';
+
+            const redirectInput = document.getElementById('oidc_redirect_url');
+            if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
+
+            const tokenInput = document.getElementById('authentik_api_token');
+            if (tokenInput) tokenInput.value = authentik.authentik_api_token ? '********' : '';
+
+            const userGrpInput = document.getElementById('user_group');
+            if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
+
+            const adminGrpInput = document.getElementById('admin_group');
+            if (adminGrpInput) adminGrpInput.value = authentik.admin_group || 'jellygate-admins';
+
+            const jfGrpInput = document.getElementById('jellyfin_user_group');
+            if (jfGrpInput) jfGrpInput.value = authentik.jellyfin_user_group || 'jellyfin-users';
+
+            const flowInput = document.getElementById('enrollment_flow_slug');
+            if (flowInput) flowInput.value = authentik.enrollment_flow_slug || 'default-enrollment-flow';
+
+            // Auto-détecter et appliquer le preset
+            let detectedPreset = 'authentik';
+            const issuer = (authentik.oidc_issuer_url || '').toLowerCase();
+            if (issuer.includes('/realms/')) {
+                detectedPreset = 'keycloak';
+            } else if (issuer.includes('/api/oidc')) {
+                detectedPreset = 'authelia';
+            } else if (issuer.includes('okta.com') || issuer.includes('microsoft') || issuer.includes('windows.net') || issuer.includes('login.microsoftonline.com')) {
+                detectedPreset = 'okta';
+            } else if (issuer && !issuer.includes('/application/o/')) {
+                detectedPreset = 'generic';
+            }
+            applySSOPreset(detectedPreset);
+
+            const badge = document.getElementById('sso-status-badge');
+            if (badge) {
+                if (authentik.enabled) {
+                    badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+                    badge.textContent = 'SSO Activé';
+                } else {
+                    badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/20 text-slate-400 border border-slate-500/30';
+                    badge.textContent = 'Désactivé';
+                }
+            }
+
+            if (authentik.enabled || authentik.authentik_url || authentik.oidc_issuer_url) {
+                setTimeout(runSSOHealthCheck, 300);
+            }
+        }
+
 
 
         if (document.getElementById('form-smtp')) {
@@ -1268,6 +1495,20 @@
                 templates_by_lang: templatesByLang,
                 multilingual_enabled: emailTemplatesMultilingualEnabled,
             };
+        } else if (section === 'authentik') {
+            body = {
+                enabled: document.getElementById('authentik_enabled') ? document.getElementById('authentik_enabled').checked : false,
+                authentik_url: document.getElementById('authentik_url') ? document.getElementById('authentik_url').value.trim() : '',
+                oidc_issuer_url: document.getElementById('oidc_issuer_url') ? document.getElementById('oidc_issuer_url').value.trim() : '',
+                oidc_client_id: document.getElementById('oidc_client_id') ? document.getElementById('oidc_client_id').value.trim() : '',
+                oidc_client_secret: document.getElementById('oidc_client_secret') ? document.getElementById('oidc_client_secret').value : '',
+                oidc_redirect_url: document.getElementById('oidc_redirect_url') ? document.getElementById('oidc_redirect_url').value.trim() : '',
+                authentik_api_token: document.getElementById('authentik_api_token') ? document.getElementById('authentik_api_token').value : '',
+                user_group: document.getElementById('user_group') ? document.getElementById('user_group').value.trim() : 'jellygate-users',
+                admin_group: document.getElementById('admin_group') ? document.getElementById('admin_group').value.trim() : 'jellygate-admins',
+                jellyfin_user_group: document.getElementById('jellyfin_user_group') ? document.getElementById('jellyfin_user_group').value.trim() : 'jellyfin-users',
+                enrollment_flow_slug: document.getElementById('enrollment_flow_slug') ? document.getElementById('enrollment_flow_slug').value.trim() : 'default-enrollment-flow',
+            };
         } else if (section === 'backup') {
             const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
             document.getElementById('backup-retention').value = '7';
@@ -1292,6 +1533,20 @@
             }
             if (section === 'auth-session' && res.data) {
                 setAuthSessionDuration(res.data.remember_30_days !== false);
+            }
+            if (section === 'authentik') {
+                const enabledToggle = document.getElementById('authentik_enabled');
+                const badge = document.getElementById('sso-status-badge');
+                if (badge && enabledToggle) {
+                    if (enabledToggle.checked) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+                        badge.textContent = 'SSO Activé';
+                    } else {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/20 text-slate-400 border border-slate-500/30';
+                        badge.textContent = 'Désactivé';
+                    }
+                }
+                runSSOHealthCheck();
             }
             if (section === 'general') {
                 refreshPortalShortcuts(body);
@@ -1730,7 +1985,10 @@
             });
         });
 
-        const requestedTab = String(window.location.hash || '').replace(/^#/, '').trim();
+        let requestedTab = String(window.location.hash || '').replace(/^#/, '').trim();
+        if (requestedTab === 'sso') {
+            requestedTab = 'authentik';
+        }
         if (requestedTab && document.getElementById(`tab-${requestedTab}`) && document.getElementById(`panel-${requestedTab}`)) {
             switchTab(requestedTab);
         }
@@ -1739,7 +1997,7 @@
             ['form-general', 'general'],
             ['form-auth-session', 'auth-session'],
             ['form-invitation-profile', 'invitation-profile'],
-
+            ['form-authentik-settings', 'authentik'],
             ['form-smtp', 'smtp'],
             ['form-webhooks', 'webhooks'],
             ['form-email-templates', 'email-templates'],

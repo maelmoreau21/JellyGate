@@ -140,7 +140,7 @@ func TestLocalLoginSubmit(t *testing.T) {
 		}
 	})
 
-	t.Run("successful login with credentials redirects to /admin/authentik", func(t *testing.T) {
+	t.Run("successful login with credentials redirects to /admin/settings#authentik", func(t *testing.T) {
 		handler := NewAuthHandler(&config.Config{
 			BaseURL:   "http://jellygate.local",
 			SecretKey: testAuthSecret,
@@ -163,8 +163,8 @@ func TestLocalLoginSubmit(t *testing.T) {
 		if rec.Code != http.StatusSeeOther {
 			t.Fatalf("status = %d, want %d", rec.Code, http.StatusSeeOther)
 		}
-		if got := rec.Header().Get("Location"); got != "/admin/authentik" {
-			t.Fatalf("Location = %q, want /admin/authentik", got)
+		if got := rec.Header().Get("Location"); got != "/admin/settings#authentik" {
+			t.Fatalf("Location = %q, want /admin/settings#authentik", got)
 		}
 
 		cookies := rec.Result().Cookies()

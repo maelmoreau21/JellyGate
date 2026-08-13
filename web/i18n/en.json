@@ -1038,6 +1038,7 @@
   "settings_tab_general": "General",
   "settings_tab_ldap": "LDAP",
   "settings_tab_smtp": "SMTP",
+  "settings_tab_sso": "SSO & Directory",
   "settings_tab_webhooks": "Webhooks",
   "settings_telegram_bot_token": "Bot token",
   "settings_telegram_chat_id": "Chat ID",

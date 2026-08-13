@@ -27,7 +27,18 @@ func newTestSettingsHandler(t *testing.T) (*SettingsHandler, *database.DB) {
 		_ = db.Close()
 	})
 
-	return NewSettingsHandler(db, nil, nil, nil), db
+	cfg := &config.Config{
+		Authentik: config.AuthentikConfig{
+			Enabled:           true,
+			URL:               "https://auth.example.com",
+			IssuerURL:         "https://auth.example.com/application/o/jellygate/",
+			ClientID:          "test-client-id",
+			UserGroup:         "custom-users",
+			AdminGroup:        "custom-admins",
+			JellyfinUserGroup: "custom-jellyfin",
+		},
+	}
+	return NewSettingsHandler(cfg, db, nil, nil, nil), db
 }
 
 func newAdminRequest(method, target string, body []byte) *http.Request {
@@ -144,6 +155,40 @@ func TestSettingsHandlerSaveAuthentik(t *testing.T) {
 	}
 	if !saved.Enabled || saved.URL != "https://auth.example.com" || saved.UserGroup != "jellygate-users" {
 		t.Fatalf("saved Authentik config mismatch: %+v", saved)
+	}
+}
+
+func TestSettingsHandlerGetAllWithEnvDefaults(t *testing.T) {
+	handler, _ := newTestSettingsHandler(t)
+
+	rec := httptest.NewRecorder()
+	handler.GetAll(rec, newAdminRequest(http.MethodGet, "/admin/api/settings", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GetAll status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Success bool             `json:"success"`
+		Data    settingsResponse `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if !resp.Data.Authentik.Enabled {
+		t.Fatalf("expected Authentik.Enabled=true from env defaults, got false")
+	}
+	if resp.Data.Authentik.URL != "https://auth.example.com" {
+		t.Fatalf("expected Authentik.URL=https://auth.example.com, got %q", resp.Data.Authentik.URL)
+	}
+	if resp.Data.Authentik.UserGroup != "custom-users" {
+		t.Fatalf("expected Authentik.UserGroup=custom-users, got %q", resp.Data.Authentik.UserGroup)
+	}
+	if resp.Data.Authentik.AdminGroup != "custom-admins" {
+		t.Fatalf("expected Authentik.AdminGroup=custom-admins, got %q", resp.Data.Authentik.AdminGroup)
+	}
+	if resp.Data.Authentik.JellyfinUserGroup != "custom-jellyfin" {
+		t.Fatalf("expected Authentik.JellyfinUserGroup=custom-jellyfin, got %q", resp.Data.Authentik.JellyfinUserGroup)
 	}
 }
 

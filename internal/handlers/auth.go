@@ -399,8 +399,8 @@ func (h *AuthHandler) LocalLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	h.logAction("auth.local.success", expectedUser, "local_admin", fmt.Sprintf("IP: %s", r.RemoteAddr))
 	logSecurityEvent(h.db, r, "admin_login", "auth.local.success", "info", expectedUser, "local_admin", "Connexion de secours réussie", nil)
 
-	// Redirige directement vers la page de configuration Authentik pour régler les paramètres
-	http.Redirect(w, r, "/admin/authentik", http.StatusSeeOther)
+	// Redirige vers la configuration SSO dans les paramètres
+	http.Redirect(w, r, "/admin/settings#authentik", http.StatusSeeOther)
 }
 
 // LoginSubmit redirige les requêtes de formulaire obsolètes vers Authentik OIDC (POST /admin/login).
