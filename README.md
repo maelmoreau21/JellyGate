@@ -48,12 +48,37 @@ cp .env.example .env
 
 ### 2. Configure Environment Variables (`.env`)
 
+> [!IMPORTANT]
+> **Required Environment Variables:**
+> - `JELLYGATE_SECRET`: **Mandatory**. Secret key for session cookie signing (min. **32 characters**). The app will fail to start if this is missing or shorter than 32 characters.
+> - **Authentik Integration** (when SSO is enabled, default): `AUTHENTIK_URL`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, and `AUTHENTIK_API_TOKEN` are **Required**.
+> - **PostgreSQL Database** (when `DB_TYPE=postgres`): `DB_HOST`, `DB_USER`, and `DB_NAME` are **Required**.
+
+| Variable | Status | Description | Default / Example |
+| --- | --- | --- | --- |
+| `JELLYGATE_SECRET` | **REQUIRED** | Session signing secret key (**min 32 chars**) | `openssl rand -hex 32` |
+| `JELLYGATE_BASE_URL` | Optional | Public base URL of JellyGate | `http://localhost:8097` |
+| `AUTHENTIK_URL` | **REQUIRED** (SSO) | Base URL of Authentik instance | `https://authentik.example.com` |
+| `OIDC_ISSUER_URL` | **REQUIRED** (SSO) | Authentik OIDC Issuer URL | `https://authentik.example.com/application/o/jellygate/` |
+| `OIDC_CLIENT_ID` | **REQUIRED** (SSO) | OIDC Client ID | `jellygate_client_id` |
+| `OIDC_CLIENT_SECRET` | **REQUIRED** (SSO) | OIDC Client Secret | `jellygate_client_secret` |
+| `OIDC_REDIRECT_URL` | **REQUIRED** (SSO) | OIDC Redirect callback URL | `http://localhost:8097/auth/callback` |
+| `AUTHENTIK_API_TOKEN` | **REQUIRED** (SSO) | Authentik API Service Account Token | `ak_api_token_here` |
+| `DB_TYPE` | Optional | Database engine (`sqlite` or `postgres`) | `sqlite` |
+| `DB_HOST` | **REQUIRED** (Postgres) | PostgreSQL server hostname | `localhost` |
+| `DB_USER` | **REQUIRED** (Postgres) | PostgreSQL user name | `jellygate` |
+| `DB_NAME` | **REQUIRED** (Postgres) | PostgreSQL database name | `jellygate` |
+| `JELLYFIN_URL` | Optional | Jellyfin server URL | `http://jellyfin:8096` |
+| `JELLYFIN_API_KEY` | Optional | Jellyfin Admin API Key | `your_jellyfin_api_key` |
+
+Example `.env` configuration:
+
 ```env
-# Application Secret
-JELLYGATE_SECRET=your_random_32_character_secret_key
+# Application Secret (REQUIRED, min 32 chars)
+JELLYGATE_SECRET=change_this_to_a_secure_random_32_character_string
 JELLYGATE_BASE_URL=http://localhost:8097
 
-# Authentik OIDC Settings
+# Authentik OIDC Settings (REQUIRED for SSO)
 AUTHENTIK_URL=https://authentik.example.com
 OIDC_ISSUER_URL=https://authentik.example.com/application/o/jellygate/
 OIDC_CLIENT_ID=jellygate_client_id
@@ -61,7 +86,7 @@ OIDC_CLIENT_SECRET=jellygate_client_secret
 OIDC_REDIRECT_URL=http://localhost:8097/auth/callback
 AUTHENTIK_API_TOKEN=ak_api_token_here
 
-# Jellyfin Connection
+# Jellyfin Connection (Optional)
 JELLYFIN_URL=http://jellyfin:8096
 JELLYFIN_API_KEY=your_jellyfin_api_key
 ```

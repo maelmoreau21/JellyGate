@@ -25,6 +25,10 @@ Avant de connecter JellyGate, assurez-vous de disposer sur votre instance Authen
 
 ## 2. Configuration dans JellyGate
 
+> [!IMPORTANT]
+> **Variables obligatoires pour Authentik :**
+> Lorsque `AUTHENTIK_ENABLED=true` (par défaut), toutes les variables ci-dessous (`AUTHENTIK_URL`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, et `AUTHENTIK_API_TOKEN`) sont **obligatoires** pour assurer l'authentification SSO OIDC et l'émission des tokens d'invitation.
+
 Renseignez les variables d'environnement dans votre fichier `.env` ou directement sur la page d'administration `/admin/authentik` :
 
 ```env

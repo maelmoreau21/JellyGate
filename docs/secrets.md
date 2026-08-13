@@ -6,6 +6,12 @@ Do not commit secrets (API keys, private keys, secret tokens) into the repositor
 - Keep real secrets in a local file ignored by Git: ` .env.local` (already in `.gitignore`).
 - Use the provided pre-commit hook to avoid accidentally committing secrets.
 
+> [!IMPORTANT]
+> **Mandatory Variables for JellyGate:**
+> - `JELLYGATE_SECRET`: **Strictly Mandatory**. Secret key for session cookie signing (minimum **32 characters**). The app will fail validation and refuse to boot without it.
+> - **Authentik Integration** (`AUTHENTIK_ENABLED=true`, enabled by default): `AUTHENTIK_URL`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, and `AUTHENTIK_API_TOKEN` are **Required**.
+> - **PostgreSQL Database** (`DB_TYPE=postgres`): `DB_HOST`, `DB_USER`, and `DB_NAME` are **Required**.
+
 ## Generating `JELLYGATE_SECRET`
 
 Recommended length: 32 bytes (hex encoded → 64 hex chars).
