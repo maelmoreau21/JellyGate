@@ -373,10 +373,10 @@ func (c *oidcClient) DetermineUserRole(groups []string) (isAdmin bool, hasAccess
 	}
 
 	for _, g := range groups {
-		if g == adminGroup {
+		if g == adminGroup || g == "jellygate-admins" || g == "authentik Admins" || g == "authentik-admins" || g == "admins" || g == "jellyfin-admins" {
 			return true, true
 		}
-		if g == userGroup {
+		if g == userGroup || g == "jellygate-users" || g == "jellyfin-users" || g == "users" {
 			hasAccess = true
 		}
 	}
