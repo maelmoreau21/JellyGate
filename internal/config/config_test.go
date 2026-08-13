@@ -133,4 +133,35 @@ func TestOIDCAndAuthentikConfigLoading(t *testing.T) {
 			t.Errorf("expected Authentik.URL https://auth.mydomain.com, got %s", cfg.Authentik.URL)
 		}
 	})
+
+	t.Run("loads with JELLYGATE_ prefixed variable aliases", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_OIDC_ENABLED", "true")
+		t.Setenv("JELLYGATE_OIDC_URL", "https://authentik.dfmag.fr/application/o/jellygate/")
+		t.Setenv("JELLYGATE_OIDC_CLIENT_ID", "dfmag-client")
+		t.Setenv("JELLYGATE_OIDC_CLIENT_SECRET", "dfmag-secret")
+		t.Setenv("JELLYGATE_AUTHENTIK_API_TOKEN", "dfmag-token")
+		t.Setenv("AUTHENTIK_URL", "https://authentik.dfmag.fr")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !cfg.Authentik.Enabled {
+			t.Errorf("expected Authentik.Enabled to be true")
+		}
+		if cfg.Authentik.URL != "https://authentik.dfmag.fr" {
+			t.Errorf("expected URL https://authentik.dfmag.fr, got %s", cfg.Authentik.URL)
+		}
+		if cfg.Authentik.ClientID != "dfmag-client" {
+			t.Errorf("expected ClientID dfmag-client, got %s", cfg.Authentik.ClientID)
+		}
+		if cfg.Authentik.ClientSecret != "dfmag-secret" {
+			t.Errorf("expected ClientSecret dfmag-secret, got %s", cfg.Authentik.ClientSecret)
+		}
+		if cfg.Authentik.APIToken != "dfmag-token" {
+			t.Errorf("expected APIToken dfmag-token, got %s", cfg.Authentik.APIToken)
+		}
+	})
 }

@@ -1500,17 +1500,17 @@ func Load() (*Config, error) {
 		},
 
 		Authentik: AuthentikConfig{
-			Enabled:            getEnvBool("AUTHENTIK_ENABLED", getEnvBool("OIDC_ENABLED", getEnv("AUTHENTIK_URL", "") != "" || getEnv("OIDC_URL", "") != "" || getEnv("OIDC_ISSUER_URL", "") != "" || getEnv("OIDC_CLIENT_ID", "") != "")),
-			URL:                strings.TrimRight(strings.TrimSpace(getEnv("AUTHENTIK_URL", "")), "/"),
-			IssuerURL:          strings.TrimRight(strings.TrimSpace(getEnv("OIDC_URL", getEnv("OIDC_ISSUER_URL", ""))), "/"),
-			ClientID:           strings.TrimSpace(getEnv("OIDC_CLIENT_ID", "")),
-			ClientSecret:       strings.TrimSpace(getEnv("OIDC_CLIENT_SECRET", "")),
-			RedirectURL:        strings.TrimSpace(getEnv("OIDC_REDIRECT_URL", "")),
-			APIToken:           strings.TrimSpace(getEnv("AUTHENTIK_API_TOKEN", "")),
-			UserGroup:          getEnv("AUTHENTIK_USER_GROUP", getEnv("OIDC_USER_GROUP", "jellygate-users")),
-			AdminGroup:         getEnv("AUTHENTIK_ADMIN_GROUP", getEnv("OIDC_ADMIN_GROUP", "jellygate-admins")),
-			JellyfinUserGroup:  getEnv("JELLYFIN_USER_GROUP", getEnv("AUTHENTIK_JELLYFIN_USER_GROUP", "jellyfin-users")),
-			EnrollmentFlowSlug: getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW", "default-enrollment-flow")),
+			Enabled:            getEnvBool("AUTHENTIK_ENABLED", getEnvBool("OIDC_ENABLED", getEnvBool("JELLYGATE_OIDC_ENABLED", getEnv("AUTHENTIK_URL", "") != "" || getEnv("JELLYGATE_AUTHENTIK_URL", "") != "" || getEnv("OIDC_URL", "") != "" || getEnv("JELLYGATE_OIDC_URL", "") != "" || getEnv("OIDC_ISSUER_URL", "") != "" || getEnv("OIDC_CLIENT_ID", "") != "" || getEnv("JELLYGATE_OIDC_CLIENT_ID", "") != ""))),
+			URL:                strings.TrimRight(strings.TrimSpace(getEnv("AUTHENTIK_URL", getEnv("JELLYGATE_AUTHENTIK_URL", ""))), "/"),
+			IssuerURL:          strings.TrimRight(strings.TrimSpace(getEnv("OIDC_URL", getEnv("JELLYGATE_OIDC_URL", getEnv("OIDC_ISSUER_URL", "")))), "/"),
+			ClientID:           strings.TrimSpace(getEnv("OIDC_CLIENT_ID", getEnv("JELLYGATE_OIDC_CLIENT_ID", ""))),
+			ClientSecret:       strings.TrimSpace(getEnv("OIDC_CLIENT_SECRET", getEnv("JELLYGATE_OIDC_CLIENT_SECRET", ""))),
+			RedirectURL:        strings.TrimSpace(getEnv("OIDC_REDIRECT_URL", getEnv("JELLYGATE_OIDC_REDIRECT_URL", ""))),
+			APIToken:           strings.TrimSpace(getEnv("AUTHENTIK_API_TOKEN", getEnv("JELLYGATE_AUTHENTIK_API_TOKEN", ""))),
+			UserGroup:          getEnv("AUTHENTIK_USER_GROUP", getEnv("JELLYGATE_AUTHENTIK_USER_GROUP", getEnv("OIDC_USER_GROUP", "jellygate-users"))),
+			AdminGroup:         getEnv("AUTHENTIK_ADMIN_GROUP", getEnv("JELLYGATE_AUTHENTIK_ADMIN_GROUP", getEnv("OIDC_ADMIN_GROUP", "jellygate-admins"))),
+			JellyfinUserGroup:  getEnv("JELLYFIN_USER_GROUP", getEnv("JELLYGATE_JELLYFIN_USER_GROUP", getEnv("AUTHENTIK_JELLYFIN_USER_GROUP", "jellyfin-users"))),
+			EnrollmentFlowSlug: getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW", "default-enrollment-flow"))),
 		},
 	}
 
