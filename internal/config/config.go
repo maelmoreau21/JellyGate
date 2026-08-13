@@ -1521,6 +1521,12 @@ func Load() (*Config, error) {
 	}
 	if cfg.Authentik.IssuerURL == "" && cfg.Authentik.URL != "" {
 		cfg.Authentik.IssuerURL = cfg.Authentik.URL + "/application/o/jellygate/"
+	} else if cfg.Authentik.IssuerURL != "" {
+		if u, err := url.Parse(cfg.Authentik.IssuerURL); err == nil {
+			if u.Path == "" || u.Path == "/" {
+				cfg.Authentik.IssuerURL = strings.TrimRight(cfg.Authentik.IssuerURL, "/") + "/application/o/jellygate/"
+			}
+		}
 	}
 	if cfg.Authentik.RedirectURL == "" && cfg.BaseURL != "" {
 		cfg.Authentik.RedirectURL = strings.TrimRight(cfg.BaseURL, "/") + "/auth/callback"

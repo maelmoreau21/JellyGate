@@ -114,4 +114,23 @@ func TestOIDCAndAuthentikConfigLoading(t *testing.T) {
 			t.Errorf("expected derived IssuerURL %s, got %s", expectedIssuer, cfg.Authentik.IssuerURL)
 		}
 	})
+
+	t.Run("auto-appends /application/o/jellygate/ if OIDC_URL is only a domain", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("OIDC_ENABLED", "true")
+		t.Setenv("OIDC_URL", "https://auth.mydomain.com")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		expectedIssuer := "https://auth.mydomain.com/application/o/jellygate/"
+		if cfg.Authentik.IssuerURL != expectedIssuer {
+			t.Errorf("expected IssuerURL %s, got %s", expectedIssuer, cfg.Authentik.IssuerURL)
+		}
+		if cfg.Authentik.URL != "https://auth.mydomain.com" {
+			t.Errorf("expected Authentik.URL https://auth.mydomain.com, got %s", cfg.Authentik.URL)
+		}
+	})
 }
