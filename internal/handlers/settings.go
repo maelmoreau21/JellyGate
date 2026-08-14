@@ -89,64 +89,77 @@ func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConf
 	}
 
 	var hasDBConfig bool
-	// 1. Charger les valeurs existantes depuis la base de données SQL si présentes
 	if h.db != nil {
 		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil {
 			if dbCfg.URL != "" || dbCfg.IssuerURL != "" || dbCfg.ClientID != "" || dbCfg.APIToken != "" || dbCfg.Enabled {
 				hasDBConfig = true
 				cfg = dbCfg
-				if cfg.UserGroup == "" {
-					cfg.UserGroup = "jellygate-users"
-				}
-				if cfg.AdminGroup == "" {
-					cfg.AdminGroup = "jellygate-admins"
-				}
-				if cfg.JellyfinUserGroup == "" {
-					cfg.JellyfinUserGroup = "jellyfin-users"
-				}
-				if cfg.EnrollmentFlowSlug == "" {
-					cfg.EnrollmentFlowSlug = "default-enrollment-flow"
-				}
 			}
 		}
 	}
 
-	// 2. Si aucune configuration en base, charger les variables d'environnement (Docker Compose / .env)
-	if !hasDBConfig && h.cfg != nil {
+	// Compléter les champs manquants avec l'environnement (Docker Compose / .env)
+	if h.cfg != nil {
 		env := h.cfg.Authentik
-		if strings.TrimSpace(env.URL) != "" {
+		var importedFromEnv bool
+
+		if cfg.URL == "" && env.URL != "" {
 			cfg.URL = strings.TrimSpace(env.URL)
+			importedFromEnv = true
 		}
-		if strings.TrimSpace(env.IssuerURL) != "" {
+		if cfg.IssuerURL == "" && env.IssuerURL != "" {
 			cfg.IssuerURL = strings.TrimSpace(env.IssuerURL)
+			importedFromEnv = true
 		}
-		if strings.TrimSpace(env.ClientID) != "" {
+		if cfg.ClientID == "" && env.ClientID != "" {
 			cfg.ClientID = strings.TrimSpace(env.ClientID)
+			importedFromEnv = true
 		}
-		if strings.TrimSpace(env.ClientSecret) != "" {
+		if cfg.ClientSecret == "" && env.ClientSecret != "" {
 			cfg.ClientSecret = strings.TrimSpace(env.ClientSecret)
+			importedFromEnv = true
 		}
-		if strings.TrimSpace(env.RedirectURL) != "" {
+		if cfg.RedirectURL == "" && env.RedirectURL != "" {
 			cfg.RedirectURL = strings.TrimSpace(env.RedirectURL)
+			importedFromEnv = true
 		}
-		if strings.TrimSpace(env.APIToken) != "" {
+		if cfg.APIToken == "" && env.APIToken != "" {
 			cfg.APIToken = strings.TrimSpace(env.APIToken)
+			importedFromEnv = true
 		}
-		if strings.TrimSpace(env.UserGroup) != "" {
+		if (cfg.UserGroup == "" || cfg.UserGroup == "jellygate-users") && env.UserGroup != "" {
 			cfg.UserGroup = strings.TrimSpace(env.UserGroup)
 		}
-		if strings.TrimSpace(env.AdminGroup) != "" {
+		if (cfg.AdminGroup == "" || cfg.AdminGroup == "jellygate-admins") && env.AdminGroup != "" {
 			cfg.AdminGroup = strings.TrimSpace(env.AdminGroup)
 		}
-		if strings.TrimSpace(env.JellyfinUserGroup) != "" {
+		if (cfg.JellyfinUserGroup == "" || cfg.JellyfinUserGroup == "jellyfin-users") && env.JellyfinUserGroup != "" {
 			cfg.JellyfinUserGroup = strings.TrimSpace(env.JellyfinUserGroup)
 		}
-		if strings.TrimSpace(env.EnrollmentFlowSlug) != "" {
+		if (cfg.EnrollmentFlowSlug == "" || cfg.EnrollmentFlowSlug == "default-enrollment-flow") && env.EnrollmentFlowSlug != "" {
 			cfg.EnrollmentFlowSlug = strings.TrimSpace(env.EnrollmentFlowSlug)
 		}
-		if env.Enabled || (env.URL != "" || env.IssuerURL != "" || env.ClientID != "") {
+		if !cfg.Enabled && (env.Enabled || (env.URL != "" || env.IssuerURL != "" || env.ClientID != "")) {
 			cfg.Enabled = true
+			importedFromEnv = true
 		}
+
+		if (!hasDBConfig || importedFromEnv) && h.db != nil && (cfg.URL != "" || cfg.IssuerURL != "" || cfg.ClientID != "") {
+			_ = h.db.SaveAuthentikConfig(cfg)
+		}
+	}
+
+	if cfg.UserGroup == "" {
+		cfg.UserGroup = "jellygate-users"
+	}
+	if cfg.AdminGroup == "" {
+		cfg.AdminGroup = "jellygate-admins"
+	}
+	if cfg.JellyfinUserGroup == "" {
+		cfg.JellyfinUserGroup = "jellyfin-users"
+	}
+	if cfg.EnrollmentFlowSlug == "" {
+		cfg.EnrollmentFlowSlug = "default-enrollment-flow"
 	}
 
 	return cfg
@@ -289,7 +302,7 @@ func (h *SettingsHandler) GetAuthentikHealth(w http.ResponseWriter, r *http.Requ
 	})
 }
 
-// ReloadAuthentikFromEnv recharge la configuration SSO directement depuis les variables d'environnement (Docker Compose).
+// ReloadAuthentikFromEnv recharge la configuration SSO directement depuis les variables d'environnement (Docker Compose) et l'enregistre en base.
 func (h *SettingsHandler) ReloadAuthentikFromEnv(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
@@ -304,18 +317,19 @@ func (h *SettingsHandler) ReloadAuthentikFromEnv(w http.ResponseWriter, r *http.
 	}
 
 	envCfg := h.cfg.Authentik
-	masked := envCfg
-	if masked.APIToken != "" {
-		masked.APIToken = maskedSecretValue
+	if h.db != nil {
+		if err := h.db.SaveAuthentikConfig(envCfg); err != nil {
+			slog.Warn("Erreur persistance SSO depuis environnement", "error", err)
+		}
 	}
-	if masked.ClientSecret != "" {
-		masked.ClientSecret = maskedSecretValue
+	if h.OnAuthentikReload != nil {
+		h.OnAuthentikReload(envCfg)
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Paramètres SSO rechargés depuis l'environnement Docker (.env)",
-		Data:    masked,
+		Message: "Paramètres SSO rechargés depuis l'environnement Docker (.env) et enregistrés en base",
+		Data:    envCfg,
 	})
 }
 
@@ -575,12 +589,6 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	defaultLang := h.db.GetDefaultLang()
 
 	authentikCfg := h.resolveEffectiveAuthentikConfig()
-	if authentikCfg.ClientSecret != "" {
-		authentikCfg.ClientSecret = maskedSecretValue
-	}
-	if authentikCfg.APIToken != "" {
-		authentikCfg.APIToken = maskedSecretValue
-	}
 
 	smtpCfg, err := h.db.GetSMTPConfig()
 	if err != nil {
@@ -618,14 +626,6 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		authSessionCfg = database.DefaultAuthSessionConfig()
 	}
 
-	// Masquer le token API et le client secret Authentik ainsi que le mot de passe SMTP dans la réponse
-	maskedAuthentik := authentikCfg
-	if maskedAuthentik.APIToken != "" {
-		maskedAuthentik.APIToken = maskedSecretValue
-	}
-	if maskedAuthentik.ClientSecret != "" {
-		maskedAuthentik.ClientSecret = maskedSecretValue
-	}
 	maskedSMTP := smtpCfg
 	if maskedSMTP.Password != "" {
 		maskedSMTP.Password = maskedSecretValue
@@ -660,7 +660,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			PortalLinks:                       portalLinks,
 			InvitationProfile:                 inviteProfileCfg,
 			AuthSession:                       authSessionCfg,
-			Authentik:                         maskedAuthentik,
+			Authentik:                         authentikCfg,
 			SMTP:                              maskedSMTP,
 			Webhooks:                          maskedWebhooksConfig(webhooksCfg),
 			Backup:                            backupCfg,

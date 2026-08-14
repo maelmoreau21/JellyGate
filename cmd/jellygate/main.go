@@ -263,7 +263,8 @@ func main() {
 		r.Post("/logout", authHandler.Logout)
 	})
 
-	// Accès direct /local pour la connexion d'urgence et /logout
+	// Accès direct /login, /local pour la connexion d'urgence et /logout
+	r.Get("/login", authHandler.LoginPage)
 	r.Get("/local", authHandler.LocalLoginPage)
 	r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/local", authHandler.LocalLoginSubmit)
 	r.Get("/logout", authHandler.Logout)

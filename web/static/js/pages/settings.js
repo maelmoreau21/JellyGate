@@ -157,19 +157,13 @@
                 if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
 
                 const clientSecretInput = document.getElementById('oidc_client_secret');
-                if (clientSecretInput) {
-                    clientSecretInput.value = '';
-                    clientSecretInput.placeholder = authentik.oidc_client_secret ? '•••••••••••• (Secret enregistré - laisser vide pour conserver)' : '••••••••••••';
-                }
+                if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret || '';
 
                 const redirectInput = document.getElementById('oidc_redirect_url');
                 if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
 
                 const tokenInput = document.getElementById('authentik_api_token');
-                if (tokenInput) {
-                    tokenInput.value = '';
-                    tokenInput.placeholder = authentik.authentik_api_token ? 'ak-token-•••••••• (Token enregistré - laisser vide pour conserver)' : 'ak-token-••••••••';
-                }
+                if (tokenInput) tokenInput.value = authentik.authentik_api_token || '';
 
                 const userGrpInput = document.getElementById('user_group');
                 if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
@@ -1460,19 +1454,13 @@
             if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
 
             const clientSecretInput = document.getElementById('oidc_client_secret');
-            if (clientSecretInput) {
-                clientSecretInput.value = '';
-                clientSecretInput.placeholder = authentik.oidc_client_secret ? '•••••••••••• (Secret enregistré - laisser vide pour conserver)' : '••••••••••••';
-            }
+            if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret || '';
 
             const redirectInput = document.getElementById('oidc_redirect_url');
             if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
 
             const tokenInput = document.getElementById('authentik_api_token');
-            if (tokenInput) {
-                tokenInput.value = '';
-                tokenInput.placeholder = authentik.authentik_api_token ? 'ak-token-•••••••• (Token enregistré - laisser vide pour conserver)' : 'ak-token-••••••••';
-            }
+            if (tokenInput) tokenInput.value = authentik.authentik_api_token || '';
 
             const userGrpInput = document.getElementById('user_group');
             if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';

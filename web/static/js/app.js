@@ -483,6 +483,10 @@ JG.initPasswordToggles = function () {
     const passwordInputs = document.querySelectorAll('input[type="password"]');
     passwordInputs.forEach(input => {
         if (input.dataset.hasPasswordToggle) return;
+        if (input.parentNode && (input.parentNode.classList.contains('jg-password-wrapper') || input.parentNode.querySelector('.jg-password-toggle') || input.parentNode.querySelector('[data-toggle-secret]') || input.parentNode.querySelector('#toggle-password-btn'))) {
+            input.dataset.hasPasswordToggle = 'true';
+            return;
+        }
         input.dataset.hasPasswordToggle = 'true';
 
         // Create a wrapper div specifically for the input to ensure the toggle button

@@ -353,9 +353,9 @@ func TestOIDCLogout(t *testing.T) {
 		t.Fatalf("Expected 303 redirect, got %d", rec.Code)
 	}
 
-	expectedEndSession := "https://auth.example.com/application/o/jellygate/end-session/"
-	if rec.Header().Get("Location") != expectedEndSession {
-		t.Errorf("Expected logout redirect to %s, got %s", expectedEndSession, rec.Header().Get("Location"))
+	expectedLogin := "/admin/login"
+	if rec.Header().Get("Location") != expectedLogin {
+		t.Errorf("Expected logout redirect to %s, got %s", expectedLogin, rec.Header().Get("Location"))
 	}
 
 	// Verify session cookie cleared

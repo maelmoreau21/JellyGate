@@ -61,14 +61,14 @@ func (h *AuthHandler) tr(r *http.Request, key, fallback string) string {
 	return value
 }
 
-// LoginPage redirige l'utilisateur vers le flux OIDC Authentik (GET /admin/login).
+// LoginPage affiche la page de connexion JellyGate avec le bouton de connexion SSO et l'accès de secours (GET /admin/login ou GET /login).
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	if h.hasValidSession(r) {
 		http.Redirect(w, r, "/admin/", http.StatusSeeOther)
 		return
 	}
 
-	if r.URL.Query().Get("error") != "" && h.renderer != nil {
+	if h.renderer != nil {
 		td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 		td.Error = r.URL.Query().Get("error")
 		td.Data["SubmittedUsername"] = strings.TrimSpace(r.URL.Query().Get("username"))
@@ -78,7 +78,7 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		td.Data["JellyTrackURL"] = links.JellyTrackURL
 		td.Data["OIDCEnabled"] = true
 		td.Data["OIDCLoginURL"] = "/auth/login"
-		td.Data["LocalAdminEnabled"] = h.cfg != nil && h.cfg.LocalAdmin.Enabled
+		td.Data["LocalAdminEnabled"] = true
 		td.Section = "login"
 		if err := h.renderer.Render(w, "admin/login.html", td); err == nil {
 			return
@@ -438,17 +438,8 @@ func (h *AuthHandler) resolvePreferredLang(authentikID, username string) string 
 	return lang
 }
 
-// Logout deconnecte l'utilisateur en supprimant le cookie de session et en invalidant OIDC si applicable.
+// Logout deconnecte l'utilisateur en supprimant le cookie de session et redirige vers la page de connexion JellyGate.
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	if sess == nil {
-		if cookie, err := r.Cookie(session.CookieName); err == nil && h.cfg != nil {
-			if s, err := session.Verify(cookie.Value, h.cfg.SecretKey); err == nil {
-				sess = s
-			}
-		}
-	}
-
 	// #nosec G124 -- clearing uses the same Secure policy as the session cookie.
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
@@ -467,23 +458,5 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Deconnexion utilisateur", "remote", r.RemoteAddr)
 	h.logAction("admin.logout", "", "", fmt.Sprintf("IP: %s", r.RemoteAddr))
 
-	// Si l'utilisateur était connecté en compte local (aucun AuthentikID), redirection directe vers login
-	isLocalSession := sess != nil && sess.AuthentikID == ""
-	if !isLocalSession {
-		if h.oidcClient != nil {
-			endSessionURL := h.oidcClient.GetEndSessionURL(r.Context())
-			if endSessionURL != "" && endSessionURL != "/auth/login" {
-				http.Redirect(w, r, endSessionURL, http.StatusSeeOther)
-				return
-			}
-		}
-
-		if h.cfg != nil && h.cfg.Authentik.URL != "" {
-			endSessionURL := strings.TrimRight(h.cfg.Authentik.URL, "/") + "/application/o/jellygate/end-session/"
-			http.Redirect(w, r, endSessionURL, http.StatusSeeOther)
-			return
-		}
-	}
-
-	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
 }
