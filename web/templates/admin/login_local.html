@@ -45,7 +45,7 @@
                         <label for="password" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mot de passe de secours</label>
                         <div class="relative">
                             <input type="password" id="password" name="password" required placeholder="Mot de passe local" class="jg-input w-full rounded-xl text-sm pr-10">
-                            <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200">
+                            <button type="button" id="toggle-password-btn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200" title="Afficher/Masquer">
                                 <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -120,14 +120,12 @@
 
 {{ define "scripts" }}
 <script nonce="{{ .ScriptNonce }}">
-function togglePasswordVisibility() {
-    const input = document.getElementById('password');
-    if (!input) return;
-    if (input.type === 'password') {
-        input.type = 'text';
-    } else {
-        input.type = 'password';
-    }
-}
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('toggle-password-btn')?.addEventListener('click', () => {
+        const input = document.getElementById('password');
+        if (!input) return;
+        input.type = input.type === 'password' ? 'text' : 'password';
+    });
+});
 </script>
 {{ end }}

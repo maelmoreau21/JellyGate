@@ -71,126 +71,8 @@
         }
     };
 
-    const ssoGuides = {
-        authentik: {
-            title: 'Guide de Configuration : Authentik',
-            badge: 'OIDC + Outpost LDAP',
-            icon: '🟣',
-            html: `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-indigo-300">1. Fournisseur OIDC (Applications > Providers)</div>
-                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                            <li>Type : <span class="font-mono text-white">OAuth2/OpenID Provider</span></li>
-                            <li>Client Type : <span class="font-mono text-white">Confidential</span></li>
-                            <li>Redirect URIs : Renseignez exactement l'URL Callback ci-dessous</li>
-                            <li>Scopes : <span class="font-mono text-emerald-400">openid, email, profile</span></li>
-                        </ul>
-                    </div>
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-indigo-300">2. Token Service Account & LDAP</div>
-                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                            <li>Service Account : <span class="font-mono text-white">Directory > Service Accounts</span></li>
-                            <li>Groupes requis : <span class="font-mono text-white">jellygate-users</span>, <span class="font-mono text-white">jellygate-admins</span></li>
-                            <li>Outpost LDAP Jellyfin : Associez le groupe <span class="font-mono text-white">jellyfin-users</span></li>
-                        </ul>
-                    </div>
-                </div>
-            `
-        },
-        keycloak: {
-            title: 'Guide de Configuration : Keycloak',
-            badge: 'Realm OIDC / Groups Mapper',
-            icon: '🔵',
-            html: `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-blue-300">1. Client OIDC dans votre Realm</div>
-                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                            <li>Client ID : <span class="font-mono text-white">jellygate</span></li>
-                            <li>Client authentication : <span class="font-mono text-white">ON</span></li>
-                            <li>Valid Redirect URIs : Copiez l'URL de Callback JellyGate</li>
-                        </ul>
-                    </div>
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-blue-300">2. Mapper de Groupes (Client Scopes)</div>
-                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                            <li>Ajoutez un mapper de type <span class="font-mono text-white">Group Membership</span></li>
-                            <li>Token Claim Name : <span class="font-mono text-emerald-400">groups</span></li>
-                            <li>Full group path : <span class="font-mono text-white">OFF</span></li>
-                        </ul>
-                    </div>
-                </div>
-            `
-        },
-        authelia: {
-            title: 'Guide de Configuration : Authelia',
-            badge: 'OIDC 1.0 + LLDAP / OpenLDAP',
-            icon: '🔴',
-            html: `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-red-300">1. Déclaration dans configuration.yml</div>
-                        <pre class="p-2 rounded-lg bg-black/40 text-[10px] font-mono text-slate-200 overflow-x-auto">identity_providers:
-  oidc:
-    clients:
-      - client_id: jellygate
-        client_secret: '$plaintext$votre_secret'
-        authorization_policy: two_factor
-        redirect_uris:
-          - https://votre-jellygate/auth/callback
-        scopes: [openid, groups, email, profile]</pre>
-                    </div>
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-red-300">2. Annuaire LLDAP / LDAP</div>
-                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                            <li>Émetteur : <span class="font-mono text-white">https://auth.domaine.com/api/oidc</span></li>
-                            <li>Mappez les groupes <span class="font-mono text-white">jellygate-users</span> et <span class="font-mono text-white">jellyfin-users</span></li>
-                        </ul>
-                    </div>
-                </div>
-            `
-        },
-        okta: {
-            title: 'Guide de Configuration : Okta / Entra ID',
-            badge: 'Cloud Identity Provider',
-            icon: '🔷',
-            html: `
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-sky-300">1. Application Web / OIDC</div>
-                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                            <li>Sign-in redirect URIs : Copiez l'URL de Callback ci-dessous</li>
-                            <li>Grant type : <span class="font-mono text-white">Authorization Code</span></li>
-                        </ul>
-                    </div>
-                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
-                        <div class="font-bold text-sky-300">2. Claim des Groupes</div>
-                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
-                            <li>Inclure le claim <span class="font-mono text-emerald-400">groups</span> dans le Token ID</li>
-                            <li>Filtre d'expression : <span class="font-mono text-white">.*</span> ou <span class="font-mono text-white">jelly.*</span></li>
-                        </ul>
-                    </div>
-                </div>
-            `
-        },
-        generic: {
-            title: 'Guide de Configuration : Fournisseur Générique OIDC',
-            badge: 'Standard OpenID Connect Discovery',
-            icon: '🌐',
-            html: `
-                <div class="p-3 rounded-xl bg-black/20 border border-white/5 text-xs space-y-1.5">
-                    <div class="font-bold text-emerald-300">Spécifications OpenID Connect requises</div>
-                    <p class="text-slate-300 text-[11px]">Le point d'accès <span class="font-mono text-white">Issuer URL</span> doit exposer le document standard <span class="font-mono text-white">/.well-known/openid-configuration</span>.</p>
-                    <p class="text-slate-300 text-[11px]">Le token ID ou l'endpoint userinfo doit renvoyer le claim <span class="font-mono text-emerald-400">groups</span> (tableau de chaînes de caractères) pour le contrôle d'accès.</p>
-                </div>
-            `
-        }
-    };
-
     function applySSOPreset(presetKey) {
         const preset = ssoPresets[presetKey] || ssoPresets.generic;
-        const guide = ssoGuides[presetKey] || ssoGuides.generic;
 
         document.querySelectorAll('.sso-preset-btn').forEach(btn => {
             if (btn.dataset.preset === presetKey) {
@@ -213,16 +95,6 @@
         }
         if (hintUrl) hintUrl.textContent = preset.hintUrl;
         if (hintIssuer) hintIssuer.textContent = preset.hintIssuer;
-
-        const guideIcon = document.getElementById('guide-preset-icon');
-        const guideTitle = document.getElementById('guide-preset-title');
-        const guideBadge = document.getElementById('guide-preset-badge');
-        const guideBody = document.getElementById('guide-preset-body');
-
-        if (guideIcon) guideIcon.textContent = guide.icon;
-        if (guideTitle) guideTitle.textContent = guide.title;
-        if (guideBadge) guideBadge.textContent = guide.badge;
-        if (guideBody) guideBody.innerHTML = guide.html;
     }
     window.applySSOPreset = applySSOPreset;
 
@@ -2345,6 +2217,29 @@
         document.getElementById('backup-create-btn')?.addEventListener('click', createBackupNow);
         document.getElementById('backup-import-btn')?.addEventListener('click', importBackup);
         document.getElementById('btn-auth-session-revoke-all')?.addEventListener('click', revokeAuthSessions);
+        document.getElementById('btn-reload-sso-env')?.addEventListener('click', reloadSSOFromEnv);
+        document.getElementById('btn-test-sso')?.addEventListener('click', runSSOHealthCheck);
+        document.getElementById('btn-copy-callback-url')?.addEventListener('click', copyCallbackURL);
+        document.getElementById('btn-test-sso-user')?.addEventListener('click', testSSOUser);
+        document.getElementById('test_sso_username')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                testSSOUser();
+            }
+        });
+        document.querySelectorAll('.sso-preset-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const preset = btn.dataset.preset || 'generic';
+                applySSOPreset(preset);
+            });
+        });
+        document.querySelectorAll('[data-toggle-secret]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.toggleSecret;
+                toggleSecretVisibility(targetId, btn);
+            });
+        });
+
         document.getElementById('btn-fetch-server-name')?.addEventListener('click', async () => {
             const btn = document.getElementById('btn-fetch-server-name');
             if (btn) btn.disabled = true;

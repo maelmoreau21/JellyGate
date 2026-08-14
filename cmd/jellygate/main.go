@@ -127,24 +127,17 @@ func main() {
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
 	authentikCfg := cfg.Authentik
 	if db != nil {
-		if dbAuthCfg, err := db.GetAuthentikConfig(); err == nil && dbAuthCfg.URL != "" {
-			if authentikCfg.URL == "" {
-				authentikCfg.URL = dbAuthCfg.URL
-			}
-			if authentikCfg.IssuerURL == "" {
-				authentikCfg.IssuerURL = dbAuthCfg.IssuerURL
-			}
-			if authentikCfg.ClientID == "" {
-				authentikCfg.ClientID = dbAuthCfg.ClientID
-			}
-			if authentikCfg.ClientSecret == "" {
-				authentikCfg.ClientSecret = dbAuthCfg.ClientSecret
-			}
-			if authentikCfg.APIToken == "" {
-				authentikCfg.APIToken = dbAuthCfg.APIToken
-			}
-			if dbAuthCfg.Enabled {
-				authentikCfg.Enabled = true
+		if dbAuthCfg, err := db.GetAuthentikConfig(); err == nil && (dbAuthCfg.URL != "" || dbAuthCfg.IssuerURL != "" || dbAuthCfg.ClientID != "" || dbAuthCfg.APIToken != "" || dbAuthCfg.Enabled) {
+			authentikCfg = dbAuthCfg
+		} else {
+			// Si la base n'a pas encore de configuration enregistrée mais que des variables d'environnement sont présentes dans Docker Compose
+			if cfg.Authentik.URL != "" || cfg.Authentik.IssuerURL != "" || cfg.Authentik.ClientID != "" || cfg.Authentik.APIToken != "" {
+				if err := db.SaveAuthentikConfig(cfg.Authentik); err != nil {
+					slog.Warn("Erreur persistance initiale Authentik config en base", "error", err)
+				} else {
+					slog.Info("Configuration SSO/Authentik importée de l'environnement Docker vers la base de données")
+					authentikCfg = cfg.Authentik
+				}
 			}
 		}
 	}
@@ -181,6 +174,16 @@ func main() {
 		newNotifier := notify.New(c)
 		inviteHandler.SetNotifier(newNotifier)
 		slog.Info("🔄 Webhooks rechargés")
+	}
+	settingsHandler.OnAuthentikReload = func(c config.AuthentikConfig) {
+		newOIDC := oidc.NewClient(c)
+		newAuthClient := authentik.NewClient(c)
+		authHandler.SetOIDCClient(newOIDC)
+		authHandler.SetAuthentikClient(newAuthClient)
+		inviteHandler.SetAuthentikClient(newAuthClient)
+		adminHandler.SetAuthentikClient(newAuthClient)
+		settingsHandler.SetAuthentikClient(newAuthClient)
+		slog.Info("🔄 Clients OIDC & Authentik rechargés", "enabled", c.Enabled, "url", c.URL)
 	}
 
 	// ── 4. Configurer le routeur Chi ────────────────────────────────────────
@@ -260,9 +263,11 @@ func main() {
 		r.Post("/logout", authHandler.Logout)
 	})
 
-	// Accès direct /local pour la connexion d'urgence
+	// Accès direct /local pour la connexion d'urgence et /logout
 	r.Get("/local", authHandler.LocalLoginPage)
 	r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/local", authHandler.LocalLoginSubmit)
+	r.Get("/logout", authHandler.Logout)
+	r.Post("/logout", authHandler.Logout)
 
 	// ── Routes admin (authentification requise) ─────────────────────────────
 	r.Route("/admin", func(r chi.Router) {
@@ -272,7 +277,8 @@ func main() {
 		r.Get("/login/local", authHandler.LocalLoginPage)
 		r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/login/local", authHandler.LocalLoginSubmit)
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute), jgmw.RequireCSRF()).Post("/login", authHandler.LoginSubmit)
-		r.With(jgmw.RequireCSRF()).Post("/logout", authHandler.Logout)
+		r.Get("/logout", authHandler.Logout)
+		r.Post("/logout", authHandler.Logout)
 
 		if cfg.EnableDebugRoutes {
 			slog.Warn("Routes debug admin activées: à ne jamais utiliser en production")

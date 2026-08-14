@@ -209,6 +209,9 @@ func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, a
 // SetMailer remplace le Mailer SMTP (rechargement à chaud).
 func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
+// SetAuthentikClient remplace le client Authentik / SSO (rechargement à chaud).
+func (h *AdminHandler) SetAuthentikClient(auth authentik.Client) { h.authClient = auth }
+
 func (h *AdminHandler) tr(r *http.Request, key, fallback string) string {
 	if h.renderer == nil {
 		return fallback

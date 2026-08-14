@@ -37,7 +37,7 @@
         </div>
 
         <div class="flex items-center gap-3 flex-shrink-0">
-            <button id="btn-test-sso" onclick="runSSOHealthCheck()" class="jg-btn jg-btn-primary px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl shadow-lg hover:scale-105 transition-all">
+            <button id="btn-test-sso" class="jg-btn jg-btn-primary px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl shadow-lg hover:scale-105 transition-all">
                 <svg id="icon-sso-test-spin" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
@@ -50,31 +50,31 @@
     <div class="glass-card p-6 rounded-3xl border border-white/10 shadow-xl">
         <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Sélectionnez votre Fournisseur d'Identité</label>
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="sso-preset-selector">
-            <button type="button" onclick="applySSOPreset('authentik')" class="sso-preset-btn active p-3 rounded-2xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authentik">
+            <button type="button" class="sso-preset-btn active p-3 rounded-2xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authentik">
                 <span class="text-lg">🟣</span>
                 <span class="text-xs font-bold text-white group-hover:text-indigo-300">Authentik</span>
                 <span class="text-[10px] text-slate-400">OIDC + Outpost LDAP</span>
             </button>
 
-            <button type="button" onclick="applySSOPreset('keycloak')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="keycloak">
+            <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="keycloak">
                 <span class="text-lg">🔵</span>
                 <span class="text-xs font-bold text-white group-hover:text-blue-300">Keycloak</span>
                 <span class="text-[10px] text-slate-400">Realm OIDC / Groups</span>
             </button>
 
-            <button type="button" onclick="applySSOPreset('authelia')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authelia">
+            <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authelia">
                 <span class="text-lg">🔴</span>
                 <span class="text-xs font-bold text-white group-hover:text-red-300">Authelia</span>
                 <span class="text-[10px] text-slate-400">OIDC + LLDAP / LDAP</span>
             </button>
 
-            <button type="button" onclick="applySSOPreset('okta')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="okta">
+            <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="okta">
                 <span class="text-lg">🔷</span>
                 <span class="text-xs font-bold text-white group-hover:text-sky-300">Okta / Entra ID</span>
                 <span class="text-[10px] text-slate-400">Cloud Identity SSO</span>
             </button>
 
-            <button type="button" onclick="applySSOPreset('generic')" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="generic">
+            <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="generic">
                 <span class="text-lg">🌐</span>
                 <span class="text-xs font-bold text-white group-hover:text-emerald-300">Générique</span>
                 <span class="text-[10px] text-slate-400">OIDC standard / LDAP</span>
@@ -134,7 +134,7 @@
             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Configurez l'instance SSO, le client OIDC, le token API et le mappage des groupes</p>
         </div>
 
-        <form id="form-authentik-settings" onsubmit="saveAuthentikSettings(event)" class="space-y-6">
+        <form id="form-authentik-settings" class="space-y-6">
             <div class="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-indigo-500/30 transition-all">
                 <div class="space-y-1">
                     <label for="authentik_enabled" class="text-sm font-bold text-slate-900 dark:text-white cursor-pointer">Activer l'intégration SSO & OIDC</label>
@@ -168,7 +168,7 @@
                     <label for="oidc_client_secret" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Client Secret</label>
                     <div class="relative">
                         <input type="password" id="oidc_client_secret" name="oidc_client_secret" placeholder="••••••••••••" class="jg-input w-full rounded-xl text-sm pr-10">
-                        <button type="button" onclick="toggleSecretVisibility('oidc_client_secret', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Afficher/Masquer">
+                        <button type="button" data-toggle-secret="oidc_client_secret" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Afficher/Masquer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
                     </div>
@@ -178,7 +178,7 @@
                     <label for="oidc_redirect_url" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Redirect URL (Callback)</label>
                     <div class="flex items-center gap-2">
                         <input type="url" id="oidc_redirect_url" name="oidc_redirect_url" placeholder="https://jellygate.example.com/auth/callback" class="jg-input w-full rounded-xl text-sm font-mono" required>
-                        <button type="button" onclick="copyCallbackURL()" class="jg-btn jg-btn-ghost px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl border border-white/10 hover:bg-white/10 flex-shrink-0" title="Copier">
+                        <button type="button" id="btn-copy-callback-url" class="jg-btn jg-btn-ghost px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl border border-white/10 hover:bg-white/10 flex-shrink-0" title="Copier">
                             <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                             <span id="copy-callback-text">Copier</span>
                         </button>
@@ -189,7 +189,7 @@
                     <label for="authentik_api_token" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Token API REST Fournisseur</label>
                     <div class="relative">
                         <input type="password" id="authentik_api_token" name="authentik_api_token" placeholder="ak-token-••••••••" class="jg-input w-full rounded-xl text-sm pr-10">
-                        <button type="button" onclick="toggleSecretVisibility('authentik_api_token', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Afficher/Masquer">
+                        <button type="button" data-toggle-secret="authentik_api_token" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" title="Afficher/Masquer">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
                         </button>
                     </div>
