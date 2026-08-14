@@ -1,7 +1,7 @@
-{{/* login_local.html — Connexion de secours locale administrateur */}}
+{{/* login_local.html — Connexion locale administrateur */}}
 {{ template "base.html" . }}
 
-{{ define "title" }}Connexion de secours — JellyGate{{ end }}
+{{ define "title" }}Connexion locale — JellyGate{{ end }}
 
 {{ define "head" }}{{ end }}
 
@@ -23,7 +23,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                     </div>
-                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">Accès de Secours</h1>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white">Connexion Locale</h1>
                     <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-2">Authentification locale d'administration</p>
                 </div>
 
@@ -42,40 +42,22 @@
                     </div>
 
                     <div>
-                        <label for="password" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mot de passe de secours</label>
-                        <div class="relative">
-                            <input type="password" id="password" name="password" required placeholder="Mot de passe local" class="jg-input w-full rounded-xl text-sm pr-10">
-                            <button type="button" id="toggle-password-btn" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-200" title="Afficher/Masquer">
-                                <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                            </button>
-                        </div>
+                        <label for="password" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mot de passe</label>
+                        <input type="password" id="password" name="password" required placeholder="Mot de passe local" class="jg-input w-full rounded-xl text-sm">
                     </div>
 
                     <button type="submit" class="jg-btn jg-btn-primary w-full h-12 font-extrabold tracking-widest uppercase transition-all rounded-xl shadow-xl hover:-translate-y-0.5 text-xs flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
                         </svg>
-                        Déverrouiller l'administration
+                        Se connecter
                     </button>
                 </form>
                 {{ else }}
-                <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-slate-300 leading-relaxed space-y-3 text-left">
-                    <div class="font-bold text-amber-400 flex items-center gap-2">
+                <div class="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-slate-300 leading-relaxed text-center">
+                    <div class="font-bold text-amber-400 flex items-center justify-center gap-2">
                         <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Compte local désactivé
-                    </div>
-                    <p class="text-slate-400">
-                        Pour des raisons de sécurité, le compte local de secours est désactivé par défaut.
-                    </p>
-                    <p class="text-slate-400">
-                        Pour l'activer, ajoutez ces variables dans votre fichier <code class="text-indigo-400">.env</code> :
-                    </p>
-                    <div class="p-3 rounded-xl bg-black/40 font-mono text-[11px] text-slate-300 space-y-1 select-all border border-white/5">
-                        <div>JELLYGATE_LOCAL_ADMIN_USER=admin</div>
-                        <div>JELLYGATE_LOCAL_ADMIN_PASSWORD=votre_mot_de_passe</div>
                     </div>
                 </div>
                 {{ end }}
@@ -100,16 +82,16 @@
                 </svg>
             </div>
             
-            <h2 class="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Accès Administrateur d'Urgence</h2>
+            <h2 class="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tight">Connexion Locale d'Administration</h2>
             <p class="text-jg-text-muted font-medium mb-6 text-sm leading-relaxed max-w-sm">
-                Ce mode de connexion vous permet d'accéder au panneau d'administration de JellyGate même en cas d'indisponibilité ou d'erreur de configuration de votre fournisseur Authentik.
+                Ce mode de connexion vous permet d'accéder au panneau d'administration de JellyGate avec votre compte administrateur local.
             </p>
 
             <div class="p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-slate-400 leading-relaxed text-left space-y-2">
                 <div class="font-bold text-slate-300">💡 Une fois connecté :</div>
-                <div>1. Rendez-vous dans <strong>Paramètres > Authentik</strong>.</div>
-                <div>2. Utilisez l'outil <strong>Tester la connexion</strong> pour diagnostiquer l'état d'Authentik.</div>
-                <div>3. Ajustez vos paramètres (URL, Groupes, Tokens) et enregistrez directement.</div>
+                <div>1. Rendez-vous dans <strong>Paramètres > SSO & Annuaire</strong>.</div>
+                <div>2. Utilisez l'outil <strong>Tester la connexion</strong> pour diagnostiquer l'état de votre SSO.</div>
+                <div>3. Ajustez vos paramètres et enregistrez directement.</div>
             </div>
 
         </div>
