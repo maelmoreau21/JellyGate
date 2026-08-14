@@ -584,62 +584,38 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	smtpCfg, err := h.db.GetSMTPConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config SMTP", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: h.tr(r, "settings_error_smtp_read", "Erreur lecture configuration SMTP"),
-		})
-		return
+		slog.Warn("Erreur lecture config SMTP (utilisation valeurs par défaut)", "error", err)
+		smtpCfg = config.SMTPConfig{}
 	}
 
 	webhooksCfg, err := h.db.GetWebhooksConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Webhooks", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture configuration Webhooks",
-		})
-		return
+		slog.Warn("Erreur lecture config Webhooks (utilisation valeurs par défaut)", "error", err)
+		webhooksCfg = config.WebhooksConfig{}
 	}
 
 	backupCfg, err := h.db.GetBackupConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Backup", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture configuration sauvegardes",
-		})
-		return
+		slog.Warn("Erreur lecture config Backup (utilisation valeurs par défaut)", "error", err)
+		backupCfg = config.DefaultBackupConfig()
 	}
 
 	portalLinks, err := h.db.GetPortalLinksConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Portal Links", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture des URLs publiques",
-		})
-		return
+		slog.Warn("Erreur lecture config Portal Links (utilisation valeurs par défaut)", "error", err)
+		portalLinks = config.PortalLinksConfig{}
 	}
 
 	inviteProfileCfg, err := h.db.GetInvitationProfileConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Invitation Profile", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture du profil d'invitation",
-		})
-		return
+		slog.Warn("Erreur lecture config Invitation Profile (utilisation valeurs par défaut)", "error", err)
+		inviteProfileCfg = config.DefaultInvitationProfileConfig()
 	}
 
 	authSessionCfg, err := h.db.GetAuthSessionConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config AuthSession", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: h.tr(r, "settings_auth_session_read_error", "Erreur lecture de la politique de session"),
-		})
-		return
+		slog.Warn("Erreur lecture config AuthSession (utilisation valeurs par défaut)", "error", err)
+		authSessionCfg = database.DefaultAuthSessionConfig()
 	}
 
 	// Masquer le token API et le client secret Authentik ainsi que le mot de passe SMTP dans la réponse

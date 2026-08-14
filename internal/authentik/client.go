@@ -584,11 +584,11 @@ func (c *client) CheckEnrollment(ctx context.Context, flowSlug string) HealthCom
 	}
 
 	endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(slug))
-	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+	_, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return HealthComponent{
 			Status:  "warning",
-			Message: fmt.Sprintf("Vérification du flow d'enrollment impossible: %v", err),
+			Message: fmt.Sprintf("Vérification du flux impossible: %v", err),
 			Details: map[string]string{"flow_slug": slug},
 		}
 	}
@@ -596,22 +596,30 @@ func (c *client) CheckEnrollment(ctx context.Context, flowSlug string) HealthCom
 	if statusCode == http.StatusOK {
 		return HealthComponent{
 			Status:  "ok",
-			Message: fmt.Sprintf("Flow d'enrollment '%s' accessible", slug),
+			Message: fmt.Sprintf("Flux d'inscription '%s' accessible", slug),
 			Details: map[string]string{"flow_slug": slug},
 		}
 	}
 
 	if statusCode == http.StatusNotFound {
 		return HealthComponent{
-			Status:  "error",
-			Message: fmt.Sprintf("Flow d'enrollment '%s' introuvable dans Authentik", slug),
+			Status:  "warning",
+			Message: fmt.Sprintf("Flux d'inscription '%s' non configuré dans Authentik (optionnel)", slug),
+			Details: map[string]string{"flow_slug": slug},
+		}
+	}
+
+	if statusCode == http.StatusForbidden || statusCode == http.StatusUnauthorized {
+		return HealthComponent{
+			Status:  "warning",
+			Message: "Permissions insuffisantes pour vérifier le flux d'inscription",
 			Details: map[string]string{"flow_slug": slug},
 		}
 	}
 
 	return HealthComponent{
 		Status:  "warning",
-		Message: fmt.Sprintf("Réponse inattendue lors de la vérification du flow '%s' (HTTP %d): %s", slug, statusCode, string(respBody)),
+		Message: fmt.Sprintf("Flux '%s' (HTTP %d)", slug, statusCode),
 		Details: map[string]string{"flow_slug": slug, "http_code": strconv.Itoa(statusCode)},
 	}
 }
@@ -626,22 +634,28 @@ func (c *client) CheckGroups(ctx context.Context, groups []string) HealthCompone
 	}
 	if len(checkedGroups) == 0 {
 		return HealthComponent{
-			Status:  "warning",
+			Status:  "ok",
 			Message: "Aucun groupe configuré pour vérification",
 		}
 	}
 
-	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/core/groups/", nil)
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/core/groups/?page_size=200", nil)
 	if err != nil {
 		return HealthComponent{
-			Status:  "error",
+			Status:  "warning",
 			Message: fmt.Sprintf("Impossible de lister les groupes Authentik: %v", err),
+		}
+	}
+	if statusCode == http.StatusForbidden || statusCode == http.StatusUnauthorized {
+		return HealthComponent{
+			Status:  "warning",
+			Message: "Permissions insuffisantes pour lister les groupes via l'API",
 		}
 	}
 	if statusCode != http.StatusOK {
 		return HealthComponent{
-			Status:  "error",
-			Message: fmt.Sprintf("Erreur listing groupes Authentik HTTP %d: %s", statusCode, string(respBody)),
+			Status:  "warning",
+			Message: fmt.Sprintf("Erreur listing groupes HTTP %d: %s", statusCode, string(respBody)),
 		}
 	}
 
@@ -670,8 +684,8 @@ func (c *client) CheckGroups(ctx context.Context, groups []string) HealthCompone
 
 	if len(missing) > 0 {
 		return HealthComponent{
-			Status:  "error",
-			Message: fmt.Sprintf("Groupe(s) Authentik manquant(s): %s", strings.Join(missing, ", ")),
+			Status:  "warning",
+			Message: fmt.Sprintf("Groupe(s) manquant(s) dans Authentik: %s (à créer dans Authentik > Annuaire > Groupes)", strings.Join(missing, ", ")),
 			Details: details,
 		}
 	}
@@ -702,13 +716,14 @@ func (c *client) CheckHealth(ctx context.Context, cfg config.AuthentikConfig) *H
 	groupsComp := c.CheckGroups(ctx, []string{cfg.UserGroup, cfg.AdminGroup, cfg.JellyfinUserGroup})
 	res.Components["groups"] = groupsComp
 
-	for _, comp := range res.Components {
-		if comp.Status == "error" {
-			res.OverallStatus = "error"
-			break
-		} else if comp.Status == "warning" && res.OverallStatus != "error" {
-			res.OverallStatus = "warning"
-		}
+	if apiComp.Status == "error" && oidcComp.Status == "error" {
+		res.OverallStatus = "error"
+	} else if apiComp.Status == "error" || oidcComp.Status == "error" {
+		res.OverallStatus = "warning"
+	} else if enrollComp.Status == "warning" || enrollComp.Status == "error" || groupsComp.Status == "warning" || groupsComp.Status == "error" {
+		res.OverallStatus = "warning"
+	} else {
+		res.OverallStatus = "ok"
 	}
 
 	return res

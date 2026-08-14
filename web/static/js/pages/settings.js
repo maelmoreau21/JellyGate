@@ -122,10 +122,16 @@
         if (!input) return;
         if (input.type === 'password') {
             input.type = 'text';
-            if (btn) btn.classList.add('text-indigo-400');
+            if (btn) {
+                btn.innerHTML = `<svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>`;
+                btn.setAttribute('title', 'Masquer');
+            }
         } else {
             input.type = 'password';
-            if (btn) btn.classList.remove('text-indigo-400');
+            if (btn) {
+                btn.innerHTML = `<svg class="w-4 h-4 text-slate-400 hover:text-white eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`;
+                btn.setAttribute('title', 'Afficher');
+            }
         }
     }
     window.toggleSecretVisibility = toggleSecretVisibility;
@@ -151,13 +157,19 @@
                 if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
 
                 const clientSecretInput = document.getElementById('oidc_client_secret');
-                if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret ? '********' : '';
+                if (clientSecretInput) {
+                    clientSecretInput.value = '';
+                    clientSecretInput.placeholder = authentik.oidc_client_secret ? '•••••••••••• (Secret enregistré - laisser vide pour conserver)' : '••••••••••••';
+                }
 
                 const redirectInput = document.getElementById('oidc_redirect_url');
                 if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
 
                 const tokenInput = document.getElementById('authentik_api_token');
-                if (tokenInput) tokenInput.value = authentik.authentik_api_token ? '********' : '';
+                if (tokenInput) {
+                    tokenInput.value = '';
+                    tokenInput.placeholder = authentik.authentik_api_token ? 'ak-token-•••••••• (Token enregistré - laisser vide pour conserver)' : 'ak-token-••••••••';
+                }
 
                 const userGrpInput = document.getElementById('user_group');
                 if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
@@ -335,10 +347,10 @@
                 if (badge) {
                     if (res.data.overall_status === 'ok') {
                         badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
-                        badge.textContent = 'Opérationnel';
+                        badge.textContent = 'Connecté & Opérationnel';
                     } else if (res.data.overall_status === 'warning') {
-                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
-                        badge.textContent = 'Avertissement';
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]';
+                        badge.textContent = 'Partiel / Attention';
                     } else {
                         badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40';
                         badge.textContent = 'Erreur Connexion';
@@ -1448,13 +1460,19 @@
             if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
 
             const clientSecretInput = document.getElementById('oidc_client_secret');
-            if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret ? '********' : '';
+            if (clientSecretInput) {
+                clientSecretInput.value = '';
+                clientSecretInput.placeholder = authentik.oidc_client_secret ? '•••••••••••• (Secret enregistré - laisser vide pour conserver)' : '••••••••••••';
+            }
 
             const redirectInput = document.getElementById('oidc_redirect_url');
             if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
 
             const tokenInput = document.getElementById('authentik_api_token');
-            if (tokenInput) tokenInput.value = authentik.authentik_api_token ? '********' : '';
+            if (tokenInput) {
+                tokenInput.value = '';
+                tokenInput.placeholder = authentik.authentik_api_token ? 'ak-token-•••••••• (Token enregistré - laisser vide pour conserver)' : 'ak-token-••••••••';
+            }
 
             const userGrpInput = document.getElementById('user_group');
             if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
