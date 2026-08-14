@@ -17,7 +17,7 @@
                 </svg>
             </div>
             <h1 class="text-2xl font-bold mb-1">{{ .T "invite_heading" }}</h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{{ .T "invite_subheading" }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ printf (.T "invite_subheading") (or .Data.JellyfinServerName "Jellyfin") }}</p>
             {{ if .Invitation }}
             {{ if .Invitation.Label }}
             <span
@@ -44,6 +44,16 @@
             </div>
             <h1 class="text-xl font-bold mb-3">{{ .T "success" }}</h1>
             <p class="text-slate-600 dark:text-slate-300">{{ .SuccessMessage }}</p>
+            {{ if .Data.RecoveryURL }}
+            <div class="mt-6">
+                <a href="{{ .Data.RecoveryURL }}" class="jg-btn jg-btn-primary w-full text-base py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25">
+                    <span>{{ .T "invite_set_password" }}</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </a>
+            </div>
+            {{ end }}
             {{ if .Data.InviteSuccessHTML }}
             <div class="jg-markdown-panel mt-6 text-left">
                 {{ .Data.InviteSuccessHTML }}
@@ -68,27 +78,46 @@
             {{ end }}
         </div>
         {{ else }}
-        <div class="glass-card p-8 glow-accent text-center">
+        <div class="glass-card p-8 glow-accent">
             {{ if .Data.InviteIntroHTML }}
             <div class="jg-markdown-panel mb-6 text-left">
                 {{ .Data.InviteIntroHTML }}
             </div>
             {{ end }}
 
-            {{ if .Data.AuthentikEnrollmentURL }}
-            <div class="space-y-4">
-                <p class="text-sm text-slate-400 mb-6">
-                    Cette invitation vous donne accès au serveur via Authentik. Cliquez ci-dessous pour créer votre compte et configurer vos accès.
-                </p>
-                <a href="{{ .Data.AuthentikEnrollmentURL }}" class="jg-btn jg-btn-primary w-full text-lg py-4 flex items-center justify-center gap-3 shadow-lg shadow-purple-500/25">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
-                    </svg>
-                    <span>S'inscrire avec Authentik</span>
-                </a>
+            {{ if .Error }}
+            <div class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300 text-left">
+                {{ .Error }}
             </div>
-            {{ else }}
-            <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate>
+            {{ end }}
+
+            <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate
+                data-username-min-length="{{ or .Data.UsernameMinLength 3 }}"
+                data-username-max-length="{{ or .Data.UsernameMaxLength 32 }}"
+                data-require-email="{{ or .Data.RequireEmail false }}">
+
+                {{/* Username */}}
+                <div class="mb-5 text-left">
+                    <label class="jg-label" for="username">{{ .T "field_username" }}</label>
+                    <input type="text" id="username" name="username" class="jg-input"
+                        placeholder="john_doe" autocomplete="username" autofocus required
+                        value="{{ .Data.SubmittedUsername }}">
+                </div>
+
+                {{/* Email */}}
+                <div class="mb-5 text-left">
+                    <label class="jg-label" for="email">
+                        {{ .T "field_email" }}
+                        {{ if not .Data.RequireEmail }}
+                        <span class="text-xs text-slate-400 font-normal">({{ .T "optional" }})</span>
+                        {{ end }}
+                    </label>
+                    <input type="email" id="email" name="email" class="jg-input"
+                        placeholder="john@example.com" autocomplete="email"
+                        {{ if .Data.RequireEmail }}required{{ end }}
+                        value="{{ .Data.SubmittedEmail }}">
+                </div>
+
                 {{ if .Data.CaptchaEnabled }}
                 <div class="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                     <label class="jg-label" for="captcha_answer">Protection anti-abus</label>
@@ -102,13 +131,21 @@
                 </div>
                 {{ end }}
 
-                <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-4 flex items-center justify-center gap-3 shadow-lg shadow-purple-500/25">
-                    <span>Rejoindre via Authentik</span>
+                <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25" id="submit-btn">
+                    <span>{{ .T "invite_submit" }}</span>
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                 </button>
             </form>
+
+            {{ if .Data.AuthentikEnrollmentURL }}
+            <div class="mt-4 pt-4 border-t border-white/5 text-center">
+                <a href="{{ .Data.AuthentikEnrollmentURL }}" class="text-xs text-purple-400 hover:text-purple-300 transition-colors inline-flex items-center gap-1.5">
+                    <span>{{ .T "invite_or_authentik_flow" }}</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                </a>
+            </div>
             {{ end }}
         </div>
 

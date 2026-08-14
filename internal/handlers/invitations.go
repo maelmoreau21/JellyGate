@@ -8,6 +8,7 @@ package handlers
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -151,15 +152,15 @@ func (h *InvitationHandler) logInviteAction(r *http.Request, action, actor, targ
 
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ GET /invite/{code} Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
-// InvitePage affiche le formulaire d'inscription pour un code d'invitation donnÃƒÂ©.
+// InvitePage affiche le formulaire d'inscription pour un code d'invitation donné.
 func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	code := chi.URLParam(r, "code")
 
-	// VÃƒÂ©rifier que l'invitation existe et est valide
+	// Vérifier que l'invitation existe et est valide
 	inv, err := h.getValidInvitation(code)
 	if err != nil {
-		slog.Warn("Invitation invalide consultÃƒÂ©e", "code_fingerprint", tokenLogFingerprint(code), "error", err)
-		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirÃƒÂ©e"), http.StatusNotFound)
+		slog.Warn("Invitation invalide consultée", "code_fingerprint", tokenLogFingerprint(code), "error", err)
+		http.Error(w, h.tr(r, "invite_error_invalid_or_expired", "Invitation invalide ou expirée"), http.StatusNotFound)
 		return
 	}
 
@@ -170,6 +171,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
 	td.Data["JellyTrackURL"] = links.JellyTrackURL
+	td.Data["JellyfinServerName"] = links.JellyfinServerName
 	productCfg, _ := h.db.GetProductFeaturesConfig()
 	td.Data["InviteIntroHTML"] = renderProductMarkdownHTML(productCfg.Content.InviteIntroMarkdown)
 	if productCfg.AntiAbuse.Enabled && productCfg.AntiAbuse.Captcha {
@@ -178,15 +180,32 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		td.Data["CaptchaQuestion"] = question
 		td.Data["CaptchaToken"] = token
 	}
-	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
-		authURL := strings.TrimRight(h.cfg.Authentik.URL, "/")
-		if authURL == "" && h.cfg.Authentik.IssuerURL != "" {
-			u, err := url.Parse(h.cfg.Authentik.IssuerURL)
-			if err == nil {
+
+	var profile jellyfin.InviteProfile
+	if strings.TrimSpace(inv.JellyfinProfile) != "" {
+		_ = json.Unmarshal([]byte(inv.JellyfinProfile), &profile)
+	}
+	minLen, maxLen := resolveInviteUsernamePolicy(profile)
+	td.Data["UsernameMinLength"] = minLen
+	td.Data["UsernameMaxLength"] = maxLen
+	td.Data["RequireEmail"] = profile.RequireEmail
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	if h.authClient != nil && authentikEnabled {
+		authURL := strings.TrimRight(authCfg.URL, "/")
+		if authURL == "" && h.cfg != nil {
+			authURL = strings.TrimRight(h.cfg.Authentik.URL, "/")
+		}
+		if authURL == "" && authCfg.IssuerURL != "" {
+			if u, err := url.Parse(authCfg.IssuerURL); err == nil {
 				authURL = u.Scheme + "://" + u.Host
 			}
 		}
-		flowSlug := strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
 		if flowSlug == "" {
 			flowSlug = "default-enrollment-flow"
 		}
@@ -229,19 +248,21 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	code := chi.URLParam(r, "code")
 	remoteAddr := r.RemoteAddr
 
-	slog.Info("Ã¢Å¡Â¡ DÃƒÂ©but du flux d'inscription",
+	slog.Info("⚡ Début du flux d'inscription",
 		"code", code,
 		"remote", remoteAddr,
 	)
 
-	// Ã¢â€�â‚¬Ã¢â€�â‚¬ Parsing du formulaire Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+	// Parsing du formulaire
 	if err := r.ParseForm(); err != nil {
 		slog.Error("Erreur parsing formulaire inscription", "error", err)
-		http.Error(w, h.tr(r, "common_bad_request", "RequÃƒÂªte invalide"), http.StatusBadRequest)
+		http.Error(w, h.tr(r, "common_bad_request", "Requête invalide"), http.StatusBadRequest)
 		return
 	}
 
 	submittedUsername := strings.TrimSpace(r.FormValue("username"))
+	submittedEmail := strings.TrimSpace(r.FormValue("email"))
+
 	antiAbuseCfg := h.inviteAntiAbuseConfig()
 	if blocked, retryAfter := h.isInviteBlocked(r, antiAbuseCfg); blocked {
 		h.logInviteAction(r, "invite.anti_abuse.blocked", submittedUsername, code, fmt.Sprintf("retry_after=%s", retryAfter.Round(time.Second)))
@@ -257,9 +278,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�
-	// Ãƒâ€°TAPE 1 : Validation SQLite
-	// Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�Ã¢â€¢Â�
+	// ÉTAPE 1 : Validation invitation
 	slog.Info("📋 Validation de l'invitation", "code", code)
 
 	inv, err := h.getValidInvitation(code)
@@ -276,47 +295,126 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
-		authURL := strings.TrimRight(h.cfg.Authentik.URL, "/")
-		if authURL == "" && h.cfg.Authentik.IssuerURL != "" {
-			u, err := url.Parse(h.cfg.Authentik.IssuerURL)
-			if err == nil {
-				authURL = u.Scheme + "://" + u.Host
-			}
+	var profile jellyfin.InviteProfile
+	if strings.TrimSpace(inv.JellyfinProfile) != "" {
+		_ = json.Unmarshal([]byte(inv.JellyfinProfile), &profile)
+	}
+
+	form, err := h.validatePendingInviteForm(r, &profile)
+	if err != nil {
+		h.recordInviteFailure(r, antiAbuseCfg)
+		td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+		td.Section = "login"
+		td.Invitation = inv
+		td.Error = err.Error()
+		links := resolvePortalLinks(h.cfg, h.db)
+		td.Data["JellyfinURL"] = links.JellyfinURL
+		td.Data["JellyseerrURL"] = links.JellyseerrURL
+		td.Data["JellyTrackURL"] = links.JellyTrackURL
+		td.Data["JellyfinServerName"] = links.JellyfinServerName
+		td.Data["SubmittedUsername"] = submittedUsername
+		td.Data["SubmittedEmail"] = submittedEmail
+		minLen, maxLen := resolveInviteUsernamePolicy(profile)
+		td.Data["UsernameMinLength"] = minLen
+		td.Data["UsernameMaxLength"] = maxLen
+		td.Data["RequireEmail"] = profile.RequireEmail
+		_ = h.renderer.Render(w, "invite.html", td)
+		return
+	}
+
+	// ÉTAPE 2 : Réservation de l'utilisation de l'invitation
+	if err := h.reserveInvitationUse(inv); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// ÉTAPE 3 : Provisioning automatique
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+
+	var recoveryURL string
+	var authentikID string
+
+	if h.authClient != nil && authentikEnabled {
+		userGroup := authCfg.JellyfinUserGroup
+		if userGroup == "" && h.cfg != nil {
+			userGroup = h.cfg.Authentik.JellyfinUserGroup
 		}
-		flowSlug := strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
-		if flowSlug == "" {
-			flowSlug = "default-enrollment-flow"
+		if userGroup == "" {
+			userGroup = "jellyfin-users"
 		}
-		if authURL != "" {
-			invToken := inv.Code
-			var stageToken sql.NullString
-			_ = h.db.QueryRow(`SELECT authentik_invitation_id FROM invitations WHERE code = ?`, inv.Code).Scan(&stageToken)
-			if stageToken.Valid && strings.TrimSpace(stageToken.String) != "" {
-				invToken = strings.TrimSpace(stageToken.String)
-			} else {
-				if tokenID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+inv.Code, time.Now().Add(7*24*time.Hour), map[string]interface{}{
-					"invitation_code": inv.Code,
-					"sponsor":         inv.CreatedBy,
-				}, true, flowSlug); authErr == nil && tokenID != "" {
-					invToken = tokenID
-					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tokenID, inv.ID)
-				}
-			}
-			enrollURL := fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authURL, flowSlug, url.QueryEscape(invToken))
-			http.Redirect(w, r, enrollURL, http.StatusSeeOther)
+
+		authResp, authErr := h.authClient.CreateUser(r.Context(), authentik.UserCreatePayload{
+			Username: form.Username,
+			Name:     form.Username,
+			Email:    form.Email,
+			IsActive: true,
+			Groups:   []string{userGroup},
+		})
+		if authErr != nil || authResp == nil {
+			h.releaseInvitationUse(inv)
+			slog.Error("Échec création utilisateur Authentik via invitation", "username", form.Username, "error", authErr)
+			td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+			td.Section = "login"
+			td.Invitation = inv
+			td.Error = h.tr(r, "invite_error_authentik_create", "Erreur lors de la création du compte dans Authentik") + ": " + fmt.Sprintf("%v", authErr)
+			links := resolvePortalLinks(h.cfg, h.db)
+			td.Data["JellyfinURL"] = links.JellyfinURL
+			td.Data["JellyseerrURL"] = links.JellyseerrURL
+			td.Data["JellyTrackURL"] = links.JellyTrackURL
+			td.Data["JellyfinServerName"] = links.JellyfinServerName
+			td.Data["SubmittedUsername"] = form.Username
+			td.Data["SubmittedEmail"] = form.Email
+			minLen, maxLen := resolveInviteUsernamePolicy(profile)
+			td.Data["UsernameMinLength"] = minLen
+			td.Data["UsernameMaxLength"] = maxLen
+			td.Data["RequireEmail"] = profile.RequireEmail
+			_ = h.renderer.Render(w, "invite.html", td)
 			return
+		}
+
+		if authResp.ID != "" {
+			authentikID = authResp.ID
+		} else if authResp.PK > 0 {
+			authentikID = fmt.Sprintf("%d", authResp.PK)
+		}
+
+		if authResp.PK > 0 {
+			if link, errLink := h.authClient.CreateRecoveryLink(r.Context(), authResp.PK); errLink == nil && strings.TrimSpace(link) != "" {
+				recoveryURL = strings.TrimSpace(link)
+			}
 		}
 	}
 
+	provisionPlan := inviteProvisionPlan{EffectiveProfile: profile}
+	if resolvedPlan, err := h.resolveInviteProvisionPlan(profile); err == nil {
+		provisionPlan = resolvedPlan
+	}
+
+	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, "", authentikID, true); err != nil {
+		h.releaseInvitationUse(inv)
+		slog.Error("Échec enregistrement utilisateur JellyGate", "username", form.Username, "error", err)
+		h.logInviteAction(r, "invite.sqlite.failed", form.Username, inv.Code, err.Error())
+		http.Error(w, h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte"), http.StatusInternalServerError)
+		return
+	}
+
+	h.recordInviteSuccess(r)
+	h.logInviteAction(r, "invite.signup.completed", form.Username, inv.Code, fmt.Sprintf("authentik_id=%s; recovery=%t", authentikID, recoveryURL != ""))
+
+	if recoveryURL != "" {
+		http.Redirect(w, r, recoveryURL, http.StatusSeeOther)
+		return
+	}
+
+	successMsg := fmt.Sprintf(h.tr(r, "invite_success_created", "Bienvenue %s ! Votre compte a été créé avec succès."), form.Username)
 	h.renderInviteSuccessPage(
 		w,
 		r,
 		inv,
-		h.tr(r, "invite_authentik_required", "Veuillez contacter l'administrateur pour finaliser l'intégration Authentik."),
-		false,
+		successMsg,
+		true,
 	)
-	h.recordInviteSuccess(r)
 }
 
 func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *http.Request, inv *invitation, message string, accountCreated bool) {
@@ -329,6 +427,7 @@ func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *ht
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.Data["JellyseerrURL"] = links.JellyseerrURL
 	td.Data["JellyTrackURL"] = links.JellyTrackURL
+	td.Data["JellyfinServerName"] = links.JellyfinServerName
 	productCfg, _ := h.db.GetProductFeaturesConfig()
 	td.Data["InviteSuccessHTML"] = renderProductMarkdownHTML(productCfg.Content.InviteSuccessMarkdown)
 
@@ -338,9 +437,6 @@ func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *ht
 	}
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ MÃƒÂ©thodes internes Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-
-// validateForm valide et extrait les donnÃƒÂ©es du formulaire d'inscription.
 func (h *InvitationHandler) validateForm(r *http.Request, profile *jellyfin.InviteProfile) (*inviteFormData, error) {
 	username := strings.TrimSpace(r.FormValue("username"))
 	email := strings.TrimSpace(r.FormValue("email"))
@@ -677,7 +773,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 	}
 
 	slog.Info("Enregistrement utilisateur JellyGate (Identité via Authentik)", "username", form.Username)
-	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, "", emailVerified); err != nil {
+	if err := h.registerUser(r.Context(), form, inv, provisionPlan.EffectiveProfile, "", "", emailVerified); err != nil {
 		slog.Error("Échec enregistrement utilisateur JellyGate", "username", form.Username, "error", err)
 		h.logInviteAction(r, "invite.sqlite.failed", form.Username, inv.Code, err.Error())
 		return nil, inviteSignupFailure(fmt.Errorf("%s", h.tr(r, "invite_error_persist", "Erreur lors de l'enregistrement du compte")), true)
@@ -690,7 +786,7 @@ func (h *InvitationHandler) completeInviteSignup(r *http.Request, inv *invitatio
 
 // registerUser insère l'utilisateur dans SQLite et incrémente le compteur
 // d'utilisation de l'invitation. Les deux opérations sont dans une transaction.
-func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormData, inv *invitation, profile jellyfin.InviteProfile, jellyfinID string, emailVerified bool) error {
+func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormData, inv *invitation, profile jellyfin.InviteProfile, jellyfinID string, authentikID string, emailVerified bool) error {
 	tx, err := h.db.Begin()
 	if err != nil {
 		return fmt.Errorf("impossible de démarrer la transaction: %w", err)
@@ -777,20 +873,37 @@ func (h *InvitationHandler) registerUser(ctx context.Context, form *inviteFormDa
 	var sponsorUserID int64
 	_ = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, inv.CreatedBy).Scan(&sponsorUserID)
 
-	var authentikID string
-	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
-		authResp, authErr := h.authClient.CreateUser(ctx, authentik.UserCreatePayload{
-			Username: form.Username,
-			Email:    form.Email,
-			IsActive: true,
-		})
-		if authErr == nil && authResp != nil {
-			authentikID = authResp.ID
-			if sponsorUserID > 0 {
-				_, _ = h.db.Exec(`UPDATE users SET authentik_id = ?, invited_by_id = ? WHERE id = ?`, authentikID, sponsorUserID, newUserID)
-			} else {
-				_, _ = h.db.Exec(`UPDATE users SET authentik_id = ? WHERE id = ?`, authentikID, newUserID)
+	if authentikID == "" && h.authClient != nil {
+		authCfg, _ := h.db.GetAuthentikConfig()
+		if (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled {
+			userGroup := authCfg.JellyfinUserGroup
+			if userGroup == "" && h.cfg != nil {
+				userGroup = h.cfg.Authentik.JellyfinUserGroup
 			}
+			if userGroup == "" {
+				userGroup = "jellyfin-users"
+			}
+			authResp, authErr := h.authClient.CreateUser(ctx, authentik.UserCreatePayload{
+				Username: form.Username,
+				Name:     form.Username,
+				Email:    form.Email,
+				IsActive: true,
+				Groups:   []string{userGroup},
+			})
+			if authErr == nil && authResp != nil {
+				if authResp.ID != "" {
+					authentikID = authResp.ID
+				} else if authResp.PK > 0 {
+					authentikID = fmt.Sprintf("%d", authResp.PK)
+				}
+			}
+		}
+	}
+	if authentikID != "" {
+		if sponsorUserID > 0 {
+			_, _ = h.db.Exec(`UPDATE users SET authentik_id = ?, invited_by_id = ? WHERE id = ?`, authentikID, sponsorUserID, newUserID)
+		} else {
+			_, _ = h.db.Exec(`UPDATE users SET authentik_id = ? WHERE id = ?`, authentikID, newUserID)
 		}
 	} else if sponsorUserID > 0 {
 		_, _ = h.db.Exec(`UPDATE users SET invited_by_id = ? WHERE id = ?`, sponsorUserID, newUserID)

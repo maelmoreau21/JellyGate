@@ -212,17 +212,100 @@ func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 		}
 	})
 
-	t.Run("Get Referral Tree", func(t *testing.T) {
+	t.Run("InvitePage Renders Form and Dynamic Server Name", func(t *testing.T) {
 		renderEngine, _ := newTestRenderEngine(t)
-		adminHandler := NewAdminHandler(cfg, db, nil, mockAuthentik, nil, renderEngine)
+		invHandler := NewInvitationHandler(cfg, db, nil, nil, nil, renderEngine)
+		invHandler.SetAuthentikClient(mockAuthentik)
 
-		req := httptest.NewRequest(http.MethodGet, "/admin/api/users/referrals", nil)
+		_ = db.SavePortalLinksConfig(config.PortalLinksConfig{JellyfinServerName: "MonSuperJellyfin"})
+		_ = db.SaveProductFeaturesConfig(config.ProductFeaturesConfig{
+			AntiAbuse: config.AntiAbuseConfig{Enabled: false, Captcha: false},
+		})
+
+		// Create an invitation
+		_, err := db.Exec(`INSERT INTO invitations (code, max_uses, used_count, created_by, expires_at) VALUES ('JG-TESTCODE', 5, 0, 'sponsor_alice', datetime('now', '+7 days'))`)
+		if err != nil {
+			t.Fatalf("Insert invitation failed: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodGet, "/invite/JG-TESTCODE", nil)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("code", "JG-TESTCODE")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
 		rec := httptest.NewRecorder()
-
-		adminHandler.GetReferrals(rec, req)
+		invHandler.InvitePage(rec, req)
 
 		if rec.Code != http.StatusOK {
-			t.Fatalf("GetReferrals failed status %d: %s", rec.Code, rec.Body.String())
+			t.Fatalf("InvitePage returned %d: %s", rec.Code, rec.Body.String())
+		}
+		body := rec.Body.String()
+		if !strings.Contains(body, "MonSuperJellyfin") {
+			t.Errorf("Expected body to contain server name 'MonSuperJellyfin', got: %s", body)
+		}
+		if !strings.Contains(body, `name="username"`) {
+			t.Errorf("Expected body to contain username input field")
+		}
+		if !strings.Contains(body, `name="email"`) {
+			t.Errorf("Expected body to contain email input field")
+		}
+	})
+
+	t.Run("InviteSubmit Automatically Provisions User in Authentik and Links Sponsor", func(t *testing.T) {
+		renderEngine, _ := newTestRenderEngine(t)
+		invHandler := NewInvitationHandler(cfg, db, nil, nil, nil, renderEngine)
+		invHandler.SetAuthentikClient(mockAuthentik)
+
+		_ = db.SaveProductFeaturesConfig(config.ProductFeaturesConfig{
+			AntiAbuse: config.AntiAbuseConfig{Enabled: false, Captcha: false},
+		})
+
+		formValues := url.Values{
+			"username": []string{"bob_invitee"},
+			"email":    []string{"bob@example.com"},
+		}
+		req := newFormRequest(http.MethodPost, "/invite/JG-TESTCODE", formValues)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("code", "JG-TESTCODE")
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		rec := httptest.NewRecorder()
+		invHandler.InviteSubmit(rec, req)
+
+		// Should redirect to recovery link or return 200/303
+		if rec.Code != http.StatusSeeOther && rec.Code != http.StatusOK {
+			t.Fatalf("InviteSubmit failed with status %d: %s", rec.Code, rec.Body.String())
+		}
+
+		// Verify user exists in database
+		var createdUser struct {
+			ID          int64
+			Username    string
+			Email       string
+			AuthentikID string
+			InvitedByID int64
+		}
+		err := db.QueryRow(`SELECT id, username, email, COALESCE(authentik_id, ''), COALESCE(invited_by_id, 0) FROM users WHERE username = 'bob_invitee'`).Scan(
+			&createdUser.ID, &createdUser.Username, &createdUser.Email, &createdUser.AuthentikID, &createdUser.InvitedByID,
+		)
+		if err != nil {
+			t.Fatalf("User was not found in DB: %v", err)
+		}
+		if createdUser.Username != "bob_invitee" || createdUser.Email != "bob@example.com" {
+			t.Errorf("Unexpected user values: %+v", createdUser)
+		}
+		if createdUser.AuthentikID == "" {
+			t.Errorf("Expected user to have authentik_id set")
+		}
+		if createdUser.InvitedByID != sponsorID {
+			t.Errorf("Expected invited_by_id=%d, got %d", sponsorID, createdUser.InvitedByID)
+		}
+
+		// Verify invitation usage count incremented
+		var usedCount int
+		_ = db.QueryRow(`SELECT used_count FROM invitations WHERE code = 'JG-TESTCODE'`).Scan(&usedCount)
+		if usedCount != 1 {
+			t.Errorf("Expected used_count=1, got %d", usedCount)
 		}
 	})
 }

@@ -466,7 +466,7 @@
   "invite_open_jellyseerr": "打开 seerrr",
   "invite_open_jellytrack": "打开 jellytrack",
   "invite_quick_links": "快速链接",
-  "invite_subheading": "填写表格加入媒体库",
+  "invite_subheading": "填写表格加入 %s",
   "invite_submit": "创建我的账户",
   "invite_success_hybrid": "欢迎你，{username}。你的账户已在 Jellyfin 和 LDAP 中创建。",
   "invite_success_ldap_only": "欢迎{username}！您的帐户是在 LDAP 中创建的。 Jellyfin 访问将使用您的 LDAP 集成。",

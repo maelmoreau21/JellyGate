@@ -466,7 +466,7 @@
   "invite_open_jellyseerr": "seerrr openen",
   "invite_open_jellytrack": "jellytrack openen",
   "invite_quick_links": "Snelle links",
-  "invite_subheading": "Vul het formulier in om je bij de mediabibliotheek aan te sluiten",
+  "invite_subheading": "Vul het formulier in om je bij %s aan te sluiten",
   "invite_submit": "Mijn account aanmaken",
   "invite_success_hybrid": "Welkom {username}. Je account is aangemaakt in Jellyfin en in LDAP.",
   "invite_success_ldap_only": "Welkom {username}. Je account is aangemaakt in LDAP. Toegang tot Jellyfin gebruikt je LDAP-integratie.",

@@ -466,7 +466,7 @@
   "invite_open_jellyseerr": "Apri seerrr",
   "invite_open_jellytrack": "Apri jellytrack",
   "invite_quick_links": "Collegamenti rapidi",
-  "invite_subheading": "Compila il modulo per unirti alla libreria multimediale",
+  "invite_subheading": "Compila il modulo per unirti a %s",
   "invite_submit": "Crea il mio account",
   "invite_success_hybrid": "Benvenuto {username}. Il tuo account e stato creato in Jellyfin e in LDAP.",
   "invite_success_ldap_only": "Benvenuto {username}. Il tuo account e stato creato in LDAP. L accesso a Jellyfin usera la tua integrazione LDAP.",
