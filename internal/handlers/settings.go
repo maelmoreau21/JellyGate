@@ -70,7 +70,8 @@ func NewSettingsHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client
 	return &SettingsHandler{cfg: cfg, db: db, jfClient: jf, authClient: authClient, renderer: renderer}
 }
 
-// resolveEffectiveAuthentikConfig combine la configuration stockée en base SQL avec les variables d'environnement par défaut.
+// resolveEffectiveAuthentikConfig combine la configuration stockée en base SQL avec les variables d'environnement.
+// Les variables d'environnement (Docker Compose / .env) prennent TOUJOURS le dessus sur la base SQL.
 func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConfig {
 	cfg := config.AuthentikConfig{
 		Enabled:            false,
@@ -79,65 +80,84 @@ func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConf
 		JellyfinUserGroup:  "jellyfin-users",
 		EnrollmentFlowSlug: "default-enrollment-flow",
 	}
+
+	// 1. Charger les valeurs existantes depuis la base de données SQL si présentes
 	if h.db != nil {
-		dbCfg, err := h.db.GetAuthentikConfig()
-		if err == nil {
-			cfg = dbCfg
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil {
+			if dbCfg.URL != "" {
+				cfg.URL = dbCfg.URL
+			}
+			if dbCfg.IssuerURL != "" {
+				cfg.IssuerURL = dbCfg.IssuerURL
+			}
+			if dbCfg.ClientID != "" {
+				cfg.ClientID = dbCfg.ClientID
+			}
+			if dbCfg.ClientSecret != "" {
+				cfg.ClientSecret = dbCfg.ClientSecret
+			}
+			if dbCfg.RedirectURL != "" {
+				cfg.RedirectURL = dbCfg.RedirectURL
+			}
+			if dbCfg.APIToken != "" {
+				cfg.APIToken = dbCfg.APIToken
+			}
+			if dbCfg.UserGroup != "" {
+				cfg.UserGroup = dbCfg.UserGroup
+			}
+			if dbCfg.AdminGroup != "" {
+				cfg.AdminGroup = dbCfg.AdminGroup
+			}
+			if dbCfg.JellyfinUserGroup != "" {
+				cfg.JellyfinUserGroup = dbCfg.JellyfinUserGroup
+			}
+			if dbCfg.EnrollmentFlowSlug != "" {
+				cfg.EnrollmentFlowSlug = dbCfg.EnrollmentFlowSlug
+			}
+			cfg.Enabled = dbCfg.Enabled
 		}
 	}
+
 	if h.cfg == nil {
 		return cfg
 	}
 	env := h.cfg.Authentik
 
-	if cfg.URL == "" {
-		cfg.URL = env.URL
+	// 2. Les variables définies dans l'environnement (Docker Compose / .env) prennent TOUJOURS le dessus
+	if strings.TrimSpace(env.URL) != "" {
+		cfg.URL = strings.TrimSpace(env.URL)
 	}
-	if cfg.IssuerURL == "" {
-		cfg.IssuerURL = env.IssuerURL
+	if strings.TrimSpace(env.IssuerURL) != "" {
+		cfg.IssuerURL = strings.TrimSpace(env.IssuerURL)
 	}
-	if cfg.ClientID == "" {
-		cfg.ClientID = env.ClientID
+	if strings.TrimSpace(env.ClientID) != "" {
+		cfg.ClientID = strings.TrimSpace(env.ClientID)
 	}
-	if cfg.ClientSecret == "" {
-		cfg.ClientSecret = env.ClientSecret
+	if strings.TrimSpace(env.ClientSecret) != "" {
+		cfg.ClientSecret = strings.TrimSpace(env.ClientSecret)
 	}
-	if cfg.RedirectURL == "" {
-		cfg.RedirectURL = env.RedirectURL
+	if strings.TrimSpace(env.RedirectURL) != "" {
+		cfg.RedirectURL = strings.TrimSpace(env.RedirectURL)
 	}
-	if cfg.APIToken == "" {
-		cfg.APIToken = env.APIToken
+	if strings.TrimSpace(env.APIToken) != "" {
+		cfg.APIToken = strings.TrimSpace(env.APIToken)
 	}
-	if cfg.UserGroup == "" || cfg.UserGroup == "jellygate-users" {
-		if env.UserGroup != "" {
-			cfg.UserGroup = env.UserGroup
-		}
+	if strings.TrimSpace(env.UserGroup) != "" {
+		cfg.UserGroup = strings.TrimSpace(env.UserGroup)
 	}
-	if cfg.AdminGroup == "" || cfg.AdminGroup == "jellygate-admins" {
-		if env.AdminGroup != "" {
-			cfg.AdminGroup = env.AdminGroup
-		}
+	if strings.TrimSpace(env.AdminGroup) != "" {
+		cfg.AdminGroup = strings.TrimSpace(env.AdminGroup)
 	}
-	if cfg.JellyfinUserGroup == "" || cfg.JellyfinUserGroup == "jellyfin-users" {
-		if env.JellyfinUserGroup != "" {
-			cfg.JellyfinUserGroup = env.JellyfinUserGroup
-		}
+	if strings.TrimSpace(env.JellyfinUserGroup) != "" {
+		cfg.JellyfinUserGroup = strings.TrimSpace(env.JellyfinUserGroup)
 	}
-	if cfg.EnrollmentFlowSlug == "" || cfg.EnrollmentFlowSlug == "default-enrollment-flow" {
-		if env.EnrollmentFlowSlug != "" {
-			cfg.EnrollmentFlowSlug = env.EnrollmentFlowSlug
-		}
+	if strings.TrimSpace(env.EnrollmentFlowSlug) != "" {
+		cfg.EnrollmentFlowSlug = strings.TrimSpace(env.EnrollmentFlowSlug)
 	}
-	if !cfg.Enabled && env.Enabled {
-		if h.db == nil {
-			cfg.Enabled = true
-		} else {
-			raw, err := h.db.GetSetting(database.SettingAuthentikConfig)
-			if err != nil || strings.TrimSpace(raw) == "" {
-				cfg.Enabled = true
-			}
-		}
+	if env.Enabled || (env.URL != "" || env.IssuerURL != "" || env.ClientID != "") {
+		cfg.Enabled = true
 	}
+
 	return cfg
 }
 
