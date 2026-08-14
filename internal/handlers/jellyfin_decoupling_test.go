@@ -87,6 +87,14 @@ func (m *mockAuthentikDecoupledClient) ListUsers(ctx context.Context) ([]authent
 		{ID: "auth-sub-123", PK: 1, Username: "testuser", Email: "user@example.com", IsActive: true},
 	}, nil
 }
+func (m *mockAuthentikDecoupledClient) GetUserByUsername(ctx context.Context, username string) (*authentik.UserDetailResponse, error) {
+	return &authentik.UserDetailResponse{
+		PK:       1,
+		Username: username,
+		IsActive: true,
+		Groups:   []string{"jellygate-users"},
+	}, nil
+}
 func (m *mockAuthentikDecoupledClient) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
 	return "stage-pk-456", nil
 }

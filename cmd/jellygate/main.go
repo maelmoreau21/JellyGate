@@ -372,6 +372,8 @@ func main() {
 					r.Post("/authentik", settingsHandler.SaveAuthentik)
 					r.Get("/authentik/health", settingsHandler.GetAuthentikHealth)
 					r.Post("/authentik/test", settingsHandler.GetAuthentikHealth)
+					r.Post("/authentik/reload-env", settingsHandler.ReloadAuthentikFromEnv)
+					r.Post("/authentik/test-user", settingsHandler.TestAuthentikUser)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)

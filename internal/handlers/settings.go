@@ -294,6 +294,166 @@ func (h *SettingsHandler) GetAuthentikHealth(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+// ReloadAuthentikFromEnv recharge la configuration SSO directement depuis les variables d'environnement (Docker Compose).
+func (h *SettingsHandler) ReloadAuthentikFromEnv(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	if h.cfg == nil {
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: false,
+			Message: "Aucune configuration d'environnement disponible",
+		})
+		return
+	}
+
+	envCfg := h.cfg.Authentik
+	masked := envCfg
+	if masked.APIToken != "" {
+		masked.APIToken = maskedSecretValue
+	}
+	if masked.ClientSecret != "" {
+		masked.ClientSecret = maskedSecretValue
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Paramètres SSO rechargés depuis l'environnement Docker (.env)",
+		Data:    masked,
+	})
+}
+
+type testUserPayload struct {
+	Username string `json:"username"`
+}
+
+type testUserResult struct {
+	Found            bool     `json:"found"`
+	Username         string   `json:"username"`
+	Name             string   `json:"name,omitempty"`
+	Email            string   `json:"email,omitempty"`
+	IsActive         bool     `json:"is_active"`
+	Groups           []string `json:"groups"`
+	IsJellyGateUser  bool     `json:"is_jellygate_user"`
+	IsJellyGateAdmin bool     `json:"is_jellygate_admin"`
+	IsJellyfinUser   bool     `json:"is_jellyfin_user"`
+	Source           string   `json:"source"`
+}
+
+// TestAuthentikUser vérifie l'existence et les appartenances aux groupes d'un utilisateur dans le SSO / annuaire.
+func (h *SettingsHandler) TestAuthentikUser(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	var input testUserPayload
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil || strings.TrimSpace(input.Username) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Nom d'utilisateur requis",
+		})
+		return
+	}
+
+	username := strings.TrimSpace(input.Username)
+	cfg := h.resolveEffectiveAuthentikConfig()
+
+	reqUserGroup := strings.TrimSpace(cfg.UserGroup)
+	if reqUserGroup == "" {
+		reqUserGroup = "jellygate-users"
+	}
+	reqAdminGroup := strings.TrimSpace(cfg.AdminGroup)
+	if reqAdminGroup == "" {
+		reqAdminGroup = "jellygate-admins"
+	}
+	reqJfGroup := strings.TrimSpace(cfg.JellyfinUserGroup)
+	if reqJfGroup == "" {
+		reqJfGroup = "jellyfin-users"
+	}
+
+	hasGroup := func(groups []string, target string) bool {
+		for _, g := range groups {
+			if strings.EqualFold(strings.TrimSpace(g), target) {
+				return true
+			}
+		}
+		return false
+	}
+
+	// 1. Essayer via le client Authentik REST API si configuré
+	var client authentik.Client = h.authClient
+	if client == nil || cfg.URL != "" || cfg.IssuerURL != "" {
+		client = authentik.NewClient(cfg)
+	}
+
+	if client != nil && cfg.APIToken != "" {
+		user, err := client.GetUserByUsername(r.Context(), username)
+		if err == nil && user != nil {
+			writeJSON(w, http.StatusOK, APIResponse{
+				Success: true,
+				Data: testUserResult{
+					Found:            true,
+					Username:         user.Username,
+					Name:             user.Name,
+					Email:            user.Email,
+					IsActive:         user.IsActive,
+					Groups:           user.Groups,
+					IsJellyGateUser:  hasGroup(user.Groups, reqUserGroup) || hasGroup(user.Groups, reqAdminGroup),
+					IsJellyGateAdmin: hasGroup(user.Groups, reqAdminGroup),
+					IsJellyfinUser:   hasGroup(user.Groups, reqJfGroup),
+					Source:           "authentik_api",
+				},
+			})
+			return
+		}
+	}
+
+	// 2. Recherche de secours dans la base locale / Jellyfin
+	if h.db != nil {
+		var (
+			dbUser      string
+			dbEmail     string
+			dbCanInvite bool
+			dbIsActive  bool
+		)
+		err := h.db.QueryRow(
+			`SELECT username, email, can_invite, is_active FROM users WHERE username = ? OR email = ? LIMIT 1`,
+			username, username,
+		).Scan(&dbUser, &dbEmail, &dbCanInvite, &dbIsActive)
+		if err == nil {
+			groups := []string{reqUserGroup}
+			if dbCanInvite {
+				groups = append(groups, reqAdminGroup)
+			}
+			groups = append(groups, reqJfGroup)
+			writeJSON(w, http.StatusOK, APIResponse{
+				Success: true,
+				Data: testUserResult{
+					Found:            true,
+					Username:         dbUser,
+					Email:            dbEmail,
+					IsActive:         dbIsActive,
+					Groups:           groups,
+					IsJellyGateUser:  true,
+					IsJellyGateAdmin: dbCanInvite,
+					IsJellyfinUser:   true,
+					Source:           "database",
+				},
+			})
+			return
+		}
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data: testUserResult{
+			Found:    false,
+			Username: username,
+		},
+	})
+}
+
 // ── Structures de réponse ─────────────────────────────────────────────────────────────
 
 // settingsResponse contient toute la configuration pour le frontend.

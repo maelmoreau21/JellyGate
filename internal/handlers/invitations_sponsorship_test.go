@@ -65,6 +65,14 @@ func (m *mockAuthentikClient) DeleteUser(ctx context.Context, userPK int64) erro
 func (m *mockAuthentikClient) ListUsers(ctx context.Context) ([]authentik.UserResponse, error) {
 	return nil, nil
 }
+func (m *mockAuthentikClient) GetUserByUsername(ctx context.Context, username string) (*authentik.UserDetailResponse, error) {
+	return &authentik.UserDetailResponse{
+		PK:       42,
+		Username: username,
+		IsActive: true,
+		Groups:   []string{"jellygate-users"},
+	}, nil
+}
 
 func (m *mockAuthentikClient) CheckHealth(ctx context.Context, cfg config.AuthentikConfig) *authentik.HealthCheckResult {
 	return &authentik.HealthCheckResult{OverallStatus: "ok"}

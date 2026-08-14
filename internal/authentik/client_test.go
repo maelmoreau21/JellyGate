@@ -30,8 +30,19 @@ func TestAuthentikClient(t *testing.T) {
 		case http.MethodGet:
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"results": []UserResponse{
-					{PK: 42, ID: "uuid-test-1234", Username: "testuser", Email: "test@example.com", IsActive: true},
+				"results": []map[string]interface{}{
+					{
+						"pk":        42,
+						"uid":       "uuid-test-1234",
+						"username":  "testuser",
+						"name":      "Test User",
+						"email":     "test@example.com",
+						"is_active": true,
+						"groups_obj": []map[string]string{
+							{"pk": "grp-1", "name": "jellygate-users"},
+							{"pk": "grp-2", "name": "jellygate-admins"},
+						},
+					},
 				},
 			})
 		default:
@@ -127,6 +138,16 @@ func TestAuthentikClient(t *testing.T) {
 		}
 		if len(users) != 1 || users[0].Username != "testuser" {
 			t.Errorf("Unexpected users list: %+v", users)
+		}
+	})
+
+	t.Run("GetUserByUsername", func(t *testing.T) {
+		user, err := cli.GetUserByUsername(context.Background(), "testuser")
+		if err != nil {
+			t.Fatalf("GetUserByUsername failed: %v", err)
+		}
+		if user.Username != "testuser" || user.PK != 42 || len(user.Groups) != 2 {
+			t.Errorf("Unexpected user details: %+v", user)
 		}
 	})
 

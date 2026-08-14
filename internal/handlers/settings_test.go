@@ -593,3 +593,66 @@ func readZipEntryForTest(t *testing.T, raw []byte, name string) string {
 	t.Fatalf("zip entry %s not found", name)
 	return ""
 }
+
+func TestSettingsHandlerReloadAuthentikFromEnv(t *testing.T) {
+	handler, _ := newTestSettingsHandler(t)
+
+	rec := httptest.NewRecorder()
+	handler.ReloadAuthentikFromEnv(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/authentik/reload-env", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ReloadAuthentikFromEnv status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Success bool                   `json:"success"`
+		Data    config.AuthentikConfig `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("ReloadAuthentikFromEnv success = false")
+	}
+	if resp.Data.URL != "https://auth.example.com" {
+		t.Errorf("expected URL https://auth.example.com, got %s", resp.Data.URL)
+	}
+	if resp.Data.UserGroup != "custom-users" {
+		t.Errorf("expected UserGroup custom-users, got %s", resp.Data.UserGroup)
+	}
+}
+
+func TestSettingsHandlerTestAuthentikUser(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	// Inserer un utilisateur local de test
+	_, err := db.Exec(`INSERT INTO users (username, email, can_invite, is_active, created_at) VALUES ('testadmin', 'testadmin@example.com', 1, 1, datetime('now'))`)
+	if err != nil {
+		t.Fatalf("insert user error = %v", err)
+	}
+
+	payload := []byte(`{"username":"testadmin"}`)
+	rec := httptest.NewRecorder()
+	handler.TestAuthentikUser(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/authentik/test-user", payload))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("TestAuthentikUser status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Success bool           `json:"success"`
+		Data    testUserResult `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !resp.Success || !resp.Data.Found {
+		t.Fatalf("expected user to be found: %+v", resp)
+	}
+	if !resp.Data.IsJellyGateAdmin {
+		t.Errorf("expected is_jellygate_admin to be true")
+	}
+	if !resp.Data.IsJellyGateUser {
+		t.Errorf("expected is_jellygate_user to be true")
+	}
+}

@@ -35,6 +35,17 @@ type UserResponse struct {
 	IsActive bool   `json:"is_active"`
 }
 
+// UserDetailResponse représente les détails complets d'un utilisateur Authentik incluant ses groupes.
+type UserDetailResponse struct {
+	PK       int64    `json:"pk"`
+	ID       string   `json:"uid"`
+	Username string   `json:"username"`
+	Name     string   `json:"name"`
+	Email    string   `json:"email"`
+	IsActive bool     `json:"is_active"`
+	Groups   []string `json:"groups"`
+}
+
 // InvitationTokenResponse représente une invitation stage Authentik.
 type InvitationTokenResponse struct {
 	PK        string                 `json:"pk"`
@@ -76,6 +87,7 @@ type Client interface {
 	DeleteUser(ctx context.Context, userPK int64) error
 	DeleteUserByString(ctx context.Context, authentikID string) error
 	ListUsers(ctx context.Context) ([]UserResponse, error)
+	GetUserByUsername(ctx context.Context, username string) (*UserDetailResponse, error)
 
 	CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (invitationID string, err error)
 	ListInvitationStageTokens(ctx context.Context) ([]InvitationTokenResponse, error)
@@ -302,6 +314,66 @@ func (c *client) ListUsers(ctx context.Context) ([]UserResponse, error) {
 	}
 
 	return users, nil
+}
+
+func (c *client) GetUserByUsername(ctx context.Context, username string) (*UserDetailResponse, error) {
+	trimmed := strings.TrimSpace(username)
+	if trimmed == "" {
+		return nil, fmt.Errorf("username required")
+	}
+	endpoint := fmt.Sprintf("/api/v3/core/users/?username=%s", url.QueryEscape(trimmed))
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	if statusCode != http.StatusOK {
+		return nil, fmt.Errorf("user lookup returned status %d: %s", statusCode, string(respBody))
+	}
+
+	var pageResp struct {
+		Results []struct {
+			PK        int64    `json:"pk"`
+			ID        string   `json:"uid"`
+			Username  string   `json:"username"`
+			Name      string   `json:"name"`
+			Email     string   `json:"email"`
+			IsActive  bool     `json:"is_active"`
+			Groups    []string `json:"groups"`
+			GroupsObj []struct {
+				PK   string `json:"pk"`
+				Name string `json:"name"`
+			} `json:"groups_obj"`
+		} `json:"results"`
+	}
+
+	if err := json.Unmarshal(respBody, &pageResp); err != nil {
+		return nil, fmt.Errorf("failed to parse user search response: %w", err)
+	}
+
+	for _, u := range pageResp.Results {
+		if strings.EqualFold(u.Username, trimmed) {
+			groupNames := make([]string, 0)
+			for _, g := range u.GroupsObj {
+				if strings.TrimSpace(g.Name) != "" {
+					groupNames = append(groupNames, g.Name)
+				}
+			}
+			if len(groupNames) == 0 && len(u.Groups) > 0 {
+				groupNames = u.Groups
+			}
+			return &UserDetailResponse{
+				PK:       u.PK,
+				ID:       u.ID,
+				Username: u.Username,
+				Name:     u.Name,
+				Email:    u.Email,
+				IsActive: u.IsActive,
+				Groups:   groupNames,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("utilisateur introuvable")
 }
 
 func (c *client) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {

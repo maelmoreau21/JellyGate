@@ -71,8 +71,127 @@
         }
     };
 
+    const ssoGuides = {
+        authentik: {
+            title: 'Guide de Configuration : Authentik',
+            badge: 'OIDC + Outpost LDAP',
+            icon: '🟣',
+            html: `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-indigo-300">1. Fournisseur OIDC (Applications > Providers)</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                            <li>Type : <span class="font-mono text-white">OAuth2/OpenID Provider</span></li>
+                            <li>Client Type : <span class="font-mono text-white">Confidential</span></li>
+                            <li>Redirect URIs : Renseignez exactement l'URL Callback ci-dessous</li>
+                            <li>Scopes : <span class="font-mono text-emerald-400">openid, email, profile</span></li>
+                        </ul>
+                    </div>
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-indigo-300">2. Token Service Account & LDAP</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                            <li>Service Account : <span class="font-mono text-white">Directory > Service Accounts</span></li>
+                            <li>Groupes requis : <span class="font-mono text-white">jellygate-users</span>, <span class="font-mono text-white">jellygate-admins</span></li>
+                            <li>Outpost LDAP Jellyfin : Associez le groupe <span class="font-mono text-white">jellyfin-users</span></li>
+                        </ul>
+                    </div>
+                </div>
+            `
+        },
+        keycloak: {
+            title: 'Guide de Configuration : Keycloak',
+            badge: 'Realm OIDC / Groups Mapper',
+            icon: '🔵',
+            html: `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-blue-300">1. Client OIDC dans votre Realm</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                            <li>Client ID : <span class="font-mono text-white">jellygate</span></li>
+                            <li>Client authentication : <span class="font-mono text-white">ON</span></li>
+                            <li>Valid Redirect URIs : Copiez l'URL de Callback JellyGate</li>
+                        </ul>
+                    </div>
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-blue-300">2. Mapper de Groupes (Client Scopes)</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                            <li>Ajoutez un mapper de type <span class="font-mono text-white">Group Membership</span></li>
+                            <li>Token Claim Name : <span class="font-mono text-emerald-400">groups</span></li>
+                            <li>Full group path : <span class="font-mono text-white">OFF</span></li>
+                        </ul>
+                    </div>
+                </div>
+            `
+        },
+        authelia: {
+            title: 'Guide de Configuration : Authelia',
+            badge: 'OIDC 1.0 + LLDAP / OpenLDAP',
+            icon: '🔴',
+            html: `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-red-300">1. Déclaration dans configuration.yml</div>
+                        <pre class="p-2 rounded-lg bg-black/40 text-[10px] font-mono text-slate-200 overflow-x-auto">identity_providers:
+  oidc:
+    clients:
+      - client_id: jellygate
+        client_secret: '$plaintext$votre_secret'
+        authorization_policy: two_factor
+        redirect_uris:
+          - https://votre-jellygate/auth/callback
+        scopes: [openid, groups, email, profile]</pre>
+                    </div>
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-red-300">2. Annuaire LLDAP / LDAP</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                            <li>Émetteur : <span class="font-mono text-white">https://auth.domaine.com/api/oidc</span></li>
+                            <li>Mappez les groupes <span class="font-mono text-white">jellygate-users</span> et <span class="font-mono text-white">jellyfin-users</span></li>
+                        </ul>
+                    </div>
+                </div>
+            `
+        },
+        okta: {
+            title: 'Guide de Configuration : Okta / Entra ID',
+            badge: 'Cloud Identity Provider',
+            icon: '🔷',
+            html: `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-sky-300">1. Application Web / OIDC</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                            <li>Sign-in redirect URIs : Copiez l'URL de Callback ci-dessous</li>
+                            <li>Grant type : <span class="font-mono text-white">Authorization Code</span></li>
+                        </ul>
+                    </div>
+                    <div class="space-y-1.5 p-3 rounded-xl bg-black/20 border border-white/5">
+                        <div class="font-bold text-sky-300">2. Claim des Groupes</div>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300 text-[11px]">
+                            <li>Inclure le claim <span class="font-mono text-emerald-400">groups</span> dans le Token ID</li>
+                            <li>Filtre d'expression : <span class="font-mono text-white">.*</span> ou <span class="font-mono text-white">jelly.*</span></li>
+                        </ul>
+                    </div>
+                </div>
+            `
+        },
+        generic: {
+            title: 'Guide de Configuration : Fournisseur Générique OIDC',
+            badge: 'Standard OpenID Connect Discovery',
+            icon: '🌐',
+            html: `
+                <div class="p-3 rounded-xl bg-black/20 border border-white/5 text-xs space-y-1.5">
+                    <div class="font-bold text-emerald-300">Spécifications OpenID Connect requises</div>
+                    <p class="text-slate-300 text-[11px]">Le point d'accès <span class="font-mono text-white">Issuer URL</span> doit exposer le document standard <span class="font-mono text-white">/.well-known/openid-configuration</span>.</p>
+                    <p class="text-slate-300 text-[11px]">Le token ID ou l'endpoint userinfo doit renvoyer le claim <span class="font-mono text-emerald-400">groups</span> (tableau de chaînes de caractères) pour le contrôle d'accès.</p>
+                </div>
+            `
+        }
+    };
+
     function applySSOPreset(presetKey) {
         const preset = ssoPresets[presetKey] || ssoPresets.generic;
+        const guide = ssoGuides[presetKey] || ssoGuides.generic;
+
         document.querySelectorAll('.sso-preset-btn').forEach(btn => {
             if (btn.dataset.preset === presetKey) {
                 btn.className = 'sso-preset-btn active p-3 rounded-2xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer shadow-lg shadow-indigo-500/10';
@@ -94,6 +213,16 @@
         }
         if (hintUrl) hintUrl.textContent = preset.hintUrl;
         if (hintIssuer) hintIssuer.textContent = preset.hintIssuer;
+
+        const guideIcon = document.getElementById('guide-preset-icon');
+        const guideTitle = document.getElementById('guide-preset-title');
+        const guideBadge = document.getElementById('guide-preset-badge');
+        const guideBody = document.getElementById('guide-preset-body');
+
+        if (guideIcon) guideIcon.textContent = guide.icon;
+        if (guideTitle) guideTitle.textContent = guide.title;
+        if (guideBadge) guideBadge.textContent = guide.badge;
+        if (guideBody) guideBody.innerHTML = guide.html;
     }
     window.applySSOPreset = applySSOPreset;
 
@@ -128,6 +257,170 @@
         }
     }
     window.toggleSecretVisibility = toggleSecretVisibility;
+
+    async function reloadSSOFromEnv() {
+        const spinIcon = document.getElementById('icon-reload-sso-spin');
+        if (spinIcon) spinIcon.classList.add('animate-spin');
+
+        try {
+            const res = await JG.api('/admin/api/settings/authentik/reload-env', { method: 'POST' });
+            if (res && res.success && res.data) {
+                const authentik = res.data;
+                const enabledToggle = document.getElementById('authentik_enabled');
+                if (enabledToggle) enabledToggle.checked = !!authentik.enabled;
+
+                const urlInput = document.getElementById('authentik_url');
+                if (urlInput) urlInput.value = authentik.authentik_url || '';
+
+                const issuerInput = document.getElementById('oidc_issuer_url');
+                if (issuerInput) issuerInput.value = authentik.oidc_issuer_url || '';
+
+                const clientIdInput = document.getElementById('oidc_client_id');
+                if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
+
+                const clientSecretInput = document.getElementById('oidc_client_secret');
+                if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret ? '********' : '';
+
+                const redirectInput = document.getElementById('oidc_redirect_url');
+                if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
+
+                const tokenInput = document.getElementById('authentik_api_token');
+                if (tokenInput) tokenInput.value = authentik.authentik_api_token ? '********' : '';
+
+                const userGrpInput = document.getElementById('user_group');
+                if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
+
+                const adminGrpInput = document.getElementById('admin_group');
+                if (adminGrpInput) adminGrpInput.value = authentik.admin_group || 'jellygate-admins';
+
+                const jfGrpInput = document.getElementById('jellyfin_user_group');
+                if (jfGrpInput) jfGrpInput.value = authentik.jellyfin_user_group || 'jellyfin-users';
+
+                const flowInput = document.getElementById('enrollment_flow_slug');
+                if (flowInput) flowInput.value = authentik.enrollment_flow_slug || 'default-enrollment-flow';
+
+                JG.toast('Paramètres SSO rechargés depuis Docker (.env) !', 'success');
+                setTimeout(runSSOHealthCheck, 300);
+            } else {
+                JG.toast((res && res.message) || 'Erreur de rechargement des variables d\'environnement', 'error');
+            }
+        } catch (e) {
+            console.error('Erreur reloadSSOFromEnv:', e);
+            JG.toast('Erreur de communication avec le serveur', 'error');
+        } finally {
+            if (spinIcon) spinIcon.classList.remove('animate-spin');
+        }
+    }
+    window.reloadSSOFromEnv = reloadSSOFromEnv;
+
+    async function testSSOUser() {
+        const input = document.getElementById('test_sso_username');
+        const username = input ? input.value.trim() : '';
+        if (!username) {
+            JG.toast('Veuillez saisir un identifiant utilisateur à tester', 'error');
+            if (input) input.focus();
+            return;
+        }
+
+        const spinIcon = document.getElementById('icon-test-user-spin');
+        if (spinIcon) spinIcon.classList.add('animate-spin');
+
+        const resultsContainer = document.getElementById('test-sso-user-results');
+        if (resultsContainer) resultsContainer.classList.remove('hidden');
+
+        try {
+            const res = await JG.api('/admin/api/settings/authentik/test-user', {
+                method: 'POST',
+                body: JSON.stringify({ username })
+            });
+
+            if (!resultsContainer) return;
+
+            if (res && res.success && res.data) {
+                const u = res.data;
+                if (!u.found) {
+                    resultsContainer.innerHTML = `
+                        <div class="flex items-center gap-3 text-red-300">
+                            <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-white">Utilisateur "${JG.esc(username)}" introuvable</div>
+                                <p class="text-[11px] text-slate-400">Aucun compte correspondant trouvé dans l'annuaire ou la base de données.</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const groupsHtml = (u.groups && u.groups.length > 0)
+                        ? u.groups.map(g => `<span class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono">${JG.esc(g)}</span>`).join(' ')
+                        : '<span class="text-slate-500 text-[11px] italic">Aucun groupe</span>';
+
+                    resultsContainer.innerHTML = `
+                        <div class="space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center font-bold text-indigo-300">
+                                        ${JG.esc(u.username.charAt(0).toUpperCase())}
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-extrabold text-white flex items-center gap-2">
+                                            <span>${JG.esc(u.username)}</span>
+                                            ${u.is_active ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Actif</span>' : '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-500/20 text-red-300 border border-red-500/40">Inactif</span>'}
+                                        </div>
+                                        <div class="text-xs text-slate-400">${JG.esc(u.email || 'Aucune adresse e-mail')}</div>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider self-start sm:self-auto">Source : ${JG.esc(u.source || 'SSO')}</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div class="p-3 rounded-xl border ${u.is_jellygate_user ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'} flex items-center gap-2.5">
+                                    <span class="text-base">${u.is_jellygate_user ? '✅' : '❌'}</span>
+                                    <div>
+                                        <div class="text-xs font-bold text-white">Accès JellyGate</div>
+                                        <div class="text-[10px] text-slate-400">${u.is_jellygate_user ? 'Autorisé' : 'Non autorisé'}</div>
+                                    </div>
+                                </div>
+
+                                <div class="p-3 rounded-xl border ${u.is_jellygate_admin ? 'bg-purple-500/10 border-purple-500/30 text-purple-300' : 'bg-slate-500/10 border-slate-500/20 text-slate-400'} flex items-center gap-2.5">
+                                    <span class="text-base">${u.is_jellygate_admin ? '👑' : '👤'}</span>
+                                    <div>
+                                        <div class="text-xs font-bold text-white">Droits Admin</div>
+                                        <div class="text-[10px] text-slate-400">${u.is_jellygate_admin ? 'Administrateur' : 'Utilisateur standard'}</div>
+                                    </div>
+                                </div>
+
+                                <div class="p-3 rounded-xl border ${u.is_jellyfin_user ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'} flex items-center gap-2.5">
+                                    <span class="text-base">${u.is_jellyfin_user ? '🎬' : '⚠️'}</span>
+                                    <div>
+                                        <div class="text-xs font-bold text-white">Accès Jellyfin LDAP</div>
+                                        <div class="text-[10px] text-slate-400">${u.is_jellyfin_user ? 'Synchronisé' : 'Hors groupe Jellyfin'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Groupes Détectés :</span>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${groupsHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                resultsContainer.innerHTML = `<div class="text-xs text-red-400">${JG.esc((res && res.message) || 'Erreur lors du test')}</div>`;
+            }
+        } catch (e) {
+            console.error('Erreur testSSOUser:', e);
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '<div class="text-xs text-red-400">Erreur lors de la vérification de l\'utilisateur</div>';
+            }
+        } finally {
+            if (spinIcon) spinIcon.classList.remove('animate-spin');
+        }
+    }
+    window.testSSOUser = testSSOUser;
 
     async function runSSOHealthCheck() {
         const spinIcon = document.getElementById('icon-sso-test-spin') || document.getElementById('icon-test-spin');
