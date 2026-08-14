@@ -488,6 +488,20 @@
             }).join('');
         }
 
+        const toggleSecurityBtn = document.getElementById('btn-toggle-security-panel');
+        if (toggleSecurityBtn) {
+            toggleSecurityBtn.addEventListener('click', () => {
+                const panel = document.getElementById('invite-security-panel');
+                const chevron = document.getElementById('security-chevron');
+                if (panel) {
+                    const isHidden = panel.classList.toggle('hidden');
+                    if (chevron) {
+                        chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
+                    }
+                }
+            });
+        }
+
         function renderInvitations(list) {
             const tbody = document.getElementById('invites-tbody');
             if (!tbody) return;
@@ -513,32 +527,32 @@
                 
                 const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
                 const badge = isOver 
-                    ? `<span class="ml-2 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeExpired)}</span>` 
-                    : `<span class="ml-2 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase">${JG.esc(i18n.badgeActive)}</span>`;
+                    ? `<span class="badge badge-danger">${JG.esc(i18n.badgeExpired)}</span>` 
+                    : `<span class="badge badge-success">${JG.esc(i18n.badgeActive)}</span>`;
 
                 return `<tr class="${isOver ? 'opacity-40' : 'hover:bg-white/[0.02] transition-colors'}">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <code class="px-2.5 py-1.5 bg-jg-bg-secondary border border-jg-border rounded-lg text-jg-accent font-black text-xs tracking-wider select-all shadow-inner">${invitation.code}</code>
+                    <td class="px-5 py-4">
+                        <div class="flex items-center gap-2.5">
+                            <code class="px-2.5 py-1 bg-black/40 border border-purple-500/30 rounded-lg text-purple-300 font-mono font-bold text-xs tracking-wider select-all shadow-inner">${invitation.code}</code>
                             <div class="flex items-center gap-1">
-                                <button class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text transition-all action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle)}">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                <button class="jg-btn-icon action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle)}">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 </button>
-                                <button class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-accent transition-all action-qr-code" data-link="${encodeURIComponent(link)}" title="QR Code">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                                <button class="jg-btn-icon jg-btn-icon-accent action-qr-code" data-link="${encodeURIComponent(link)}" title="QR Code">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                                 </button>
                             </div>
                         </div>
                     </td>
-                    <td class="px-6 py-4 font-black text-jg-text">${invitation.used_count} / ${invitation.max_uses > 0 ? invitation.max_uses : '∞'} ${badge}</td>
-                    <td class="px-6 py-4 text-xs font-bold text-jg-text-muted uppercase tracking-widest">${expDate}</td>
-                    <td class="px-6 py-4 border-l border-jg-border">
-                        <div class="font-bold text-jg-text">${JG.esc(expiryLabel)} · <span class="text-jg-accent">${JG.esc(roleLabel)}</span></div>
-                        <div class="text-[10px] text-jg-text-muted uppercase tracking-wider mt-1">${JG.esc(deleteLabel)} | ${JG.esc(groupLabel)} | LANG: ${JG.esc(String(inviteLang).toUpperCase())}</div>
+                    <td class="px-5 py-4"><div class="flex items-center gap-2"><span class="font-bold text-slate-100 text-sm">${invitation.used_count} / ${invitation.max_uses > 0 ? invitation.max_uses : '∞'}</span> ${badge}</div></td>
+                    <td class="px-5 py-4"><span class="badge badge-muted">${expDate}</span></td>
+                    <td class="px-5 py-4">
+                        <div class="font-bold text-slate-100 text-xs">${JG.esc(expiryLabel)} · <span class="text-purple-400">${JG.esc(roleLabel)}</span></div>
+                        <div class="text-[10px] text-slate-400 uppercase tracking-wider mt-1">${JG.esc(deleteLabel)} | ${JG.esc(groupLabel)} | LANG: ${JG.esc(String(inviteLang).toUpperCase())}</div>
                     </td>
-                    <td class="px-6 py-4 text-xs font-bold text-jg-text-muted uppercase tracking-widest">${JG.esc(invitation.created_by || 'System')}</td>
-                    <td class="px-6 py-4 text-right">
-                        <button class="p-2 rounded-lg bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-lg shadow-rose-500/10 action-delete-invite" data-id="${invitation.id}">
+                    <td class="px-5 py-4"><span class="badge badge-accent">${JG.esc(invitation.created_by || 'System')}</span></td>
+                    <td class="px-5 py-4 text-right">
+                        <button class="jg-btn-icon jg-btn-icon-danger action-delete-invite" data-id="${invitation.id}" title="${JG.esc(i18n.delete || 'Supprimer')}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </td>

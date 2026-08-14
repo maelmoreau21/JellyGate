@@ -243,7 +243,7 @@
                 const userID = String(user.id);
                 const checked = selectedIds.has(userID) ? 'checked' : '';
                 const isSelected = selectedIds.has(userID);
-                const bgClass = isSelected ? 'is-selected bg-jg-accent/10' : 'hover:bg-white/[0.03]';
+                const bgClass = isSelected ? 'is-selected bg-purple-500/15' : 'hover:bg-white/[0.03]';
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
                 const displayUsername = user.username || ('#' + user.id);
                 const rowSelectLabel = `${columnLabels.select}: ${displayUsername}`;
@@ -252,32 +252,44 @@
                 const toggleTitle = `${user.is_active ? (i18n.deactivate || 'Deactivate') : (i18n.activate || 'Activate')}: ${displayUsername}`;
                 const deleteTitle = `${i18n.delete || 'Delete'}: ${displayUsername}`;
                 
-                let avatarHtml = `<div class="w-8 h-8 rounded-full bg-jg-accent/20 flex items-center justify-center font-bold text-jg-accent text-xs">${JG.esc(displayUsername.charAt(0).toUpperCase())}</div>`;
+                let avatarHtml = `<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center font-black text-purple-300 text-xs shadow-sm flex-shrink-0">${JG.esc(displayUsername.charAt(0).toUpperCase())}</div>`;
                 if (user.jellyfin_id && user.jellyfin_primary_image_tag) {
                     const avatarUrl = `/admin/api/users/${user.id}/avatar?tag=${user.jellyfin_primary_image_tag}`;
-                    avatarHtml = `<img src="${avatarUrl}" class="w-8 h-8 rounded-full object-cover border border-white/10" alt="${escAttr(displayUsername)}" data-avatar-fallback="true">`
-                               + `<div class="w-8 h-8 rounded-full bg-jg-accent/20 items-center justify-center font-bold text-jg-accent text-xs hidden">${JG.esc(displayUsername.charAt(0).toUpperCase())}</div>`;
+                    avatarHtml = `<img src="${avatarUrl}" class="w-9 h-9 rounded-xl object-cover border border-white/15 shadow-sm flex-shrink-0" alt="${escAttr(displayUsername)}" data-avatar-fallback="true">`
+                               + `<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 items-center justify-center font-black text-purple-300 text-xs shadow-sm flex-shrink-0 hidden">${JG.esc(displayUsername.charAt(0).toUpperCase())}</div>`;
                 }
 
-                return '<tr class="group ' + bgClass + ' border-b border-white/5">'
-                    + '<td data-label="' + escAttr(columnLabels.select) + '" class="px-6 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox" data-id="' + user.id + '" aria-label="' + escAttr(rowSelectLabel) + '" ' + checked + '></td>'
-                    + '<td data-label="' + escAttr(columnLabels.username) + '" class="px-4 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col"><span class="font-bold">' + JG.esc(displayUsername) + '</span><span class="text-xs text-jg-text-muted">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
-                    + '<td data-label="' + escAttr(columnLabels.status) + '" class="px-4 py-4">' + userStatusBadge(user) + '</td>'
-                    + '<td data-label="' + escAttr(columnLabels.jellyfin) + '" class="px-4 py-4">' + jellyfinStatusBadge(user) + '</td>'
-                    + '<td data-label="' + escAttr(columnLabels.preset) + '" class="px-4 py-4">' + (function() {
-                        const p = jellyfinPresets.find(pr => pr.id === user.preset_id);
-                        const status = user.profile_apply_status || '';
-                        const statusLabel = status === 'failed'
-                            ? '<span class="block text-[10px] text-rose-400 mt-1" title="' + escAttr(user.profile_apply_error || '') + '">Profil non applique</span>'
-                            : (status === 'applied' ? '<span class="block text-[10px] text-emerald-400 mt-1">Profil applique</span>' : '<span class="block text-[10px] text-jg-text-muted mt-1">Application en attente</span>');
-                        return JG.esc(p ? p.name : (user.preset_id || '\u2014')) + statusLabel;
-                    })() + '</td>'
-                    + '<td data-label="' + escAttr(columnLabels.expiry) + '" class="px-4 py-4">' + JG.esc(expiry) + '</td>'
-                    + '<td data-label="' + escAttr(columnLabels.actions) + '" class="px-6 py-4 text-right jg-users-actions"><div class="jg-row-actions flex justify-end gap-2">'
-                    + '<button class="action-timeline jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '" title="' + escAttr(timelineTitle) + '" aria-label="' + escAttr(timelineTitle) + '">\uD83D\uDCCA</button>'
-                    + '<button class="action-edit jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '" title="' + escAttr(editTitle) + '" aria-label="' + escAttr(editTitle) + '">\u270F\uFE0F</button>'
-                    + '<button class="action-toggle jg-btn jg-btn-ghost jg-btn-sm" data-id="' + user.id + '" title="' + escAttr(toggleTitle) + '" aria-label="' + escAttr(toggleTitle) + '">' + (user.is_active ? '\uD83D\uDD13' : '\uD83D\uDD12') + '</button>'
-                    + '<button class="action-delete jg-btn jg-btn-sm jg-btn-danger" data-id="' + user.id + '" title="' + escAttr(deleteTitle) + '" aria-label="' + escAttr(deleteTitle) + '">\uD83D\uDDD1\uFE0F</button>'
+                const presetObj = jellyfinPresets.find(pr => pr.id === user.preset_id);
+                const presetLabel = presetObj ? presetObj.name : (user.preset_id ? user.preset_id : '\u2014');
+                const presetStatus = user.profile_apply_status || '';
+                const presetStatusBadge = presetStatus === 'failed'
+                    ? '<span class="block text-[10px] text-rose-400 font-bold mt-1" title="' + escAttr(user.profile_apply_error || '') + '">Non appliqué</span>'
+                    : (presetStatus === 'applied' ? '<span class="block text-[10px] text-emerald-400 font-medium mt-1">Appliqué</span>' : '');
+
+                let expiryHtml = '<span class="text-xs text-jg-text-muted font-medium">\u2014</span>';
+                if (user.access_expires_at) {
+                    const expired = isExpired(user);
+                    expiryHtml = expired
+                        ? '<span class="badge badge-danger">' + JG.esc(expiry) + '</span>'
+                        : '<span class="badge badge-info">' + JG.esc(expiry) + '</span>';
+                }
+
+                const lockIconSvg = user.is_active
+                    ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>'
+                    : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>';
+
+                return '<tr class="group ' + bgClass + ' transition-colors">'
+                    + '<td data-label="' + escAttr(columnLabels.select) + '" class="px-5 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer" data-id="' + user.id + '" aria-label="' + escAttr(rowSelectLabel) + '" ' + checked + '></td>'
+                    + '<td data-label="' + escAttr(columnLabels.username) + '" class="px-5 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col min-w-0"><span class="font-bold text-sm text-slate-100 truncate">' + JG.esc(displayUsername) + '</span><span class="text-xs text-slate-400 truncate">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
+                    + '<td data-label="' + escAttr(columnLabels.status) + '" class="px-5 py-4">' + userStatusBadge(user) + '</td>'
+                    + '<td data-label="' + escAttr(columnLabels.jellyfin) + '" class="px-5 py-4">' + jellyfinStatusBadge(user) + '</td>'
+                    + '<td data-label="' + escAttr(columnLabels.preset) + '" class="px-5 py-4"><span class="badge badge-accent">' + JG.esc(presetLabel) + '</span>' + presetStatusBadge + '</td>'
+                    + '<td data-label="' + escAttr(columnLabels.expiry) + '" class="px-5 py-4">' + expiryHtml + '</td>'
+                    + '<td data-label="' + escAttr(columnLabels.actions) + '" class="px-5 py-4 text-right jg-users-actions"><div class="jg-row-actions justify-end">'
+                    + '<button class="action-timeline jg-btn-icon jg-btn-icon-accent" data-id="' + user.id + '" title="' + escAttr(timelineTitle) + '" aria-label="' + escAttr(timelineTitle) + '"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></button>'
+                    + '<button class="action-edit jg-btn-icon" data-id="' + user.id + '" title="' + escAttr(editTitle) + '" aria-label="' + escAttr(editTitle) + '"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg></button>'
+                    + '<button class="action-toggle jg-btn-icon ' + (user.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300') + '" data-id="' + user.id + '" title="' + escAttr(toggleTitle) + '" aria-label="' + escAttr(toggleTitle) + '">' + lockIconSvg + '</button>'
+                    + '<button class="action-delete jg-btn-icon jg-btn-icon-danger" data-id="' + user.id + '" title="' + escAttr(deleteTitle) + '" aria-label="' + escAttr(deleteTitle) + '"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>'
                     + '</div></td></tr>';
             }).join('');
             tbody.querySelectorAll('[data-avatar-fallback]').forEach((img) => {

@@ -190,28 +190,30 @@
         els['profiles-list'].innerHTML = rows.map(({ preset, index }) => {
             const active = index === state.selected ? 'is-selected' : '';
             const libs = profileLibrariesLabel(preset);
-            const admin = preset.is_administrator ? `<span class="jg-ds-tag danger">${JG.esc(t('tagAdmin', 'Admin'))}</span>` : '';
-            const invite = (preset.can_invite || preset.can_create_invitations) ? `<span class="jg-ds-tag">${JG.esc(t('tagSponsor', 'Parrain'))}</span>` : '';
-            const temp = preset.is_temporary ? `<span class="jg-ds-tag">${JG.esc(t('tagTemporary', 'Temp'))}</span>` : '';
+            const admin = preset.is_administrator ? `<span class="badge badge-danger">${JG.esc(t('tagAdmin', 'Admin'))}</span>` : '';
+            const invite = (preset.can_invite || preset.can_create_invitations) ? `<span class="badge badge-accent">${JG.esc(t('tagSponsor', 'Parrain'))}</span>` : '';
+            const temp = preset.is_temporary ? `<span class="badge badge-warning">${JG.esc(t('tagTemporary', 'Temp'))}</span>` : '';
             const rights = [
                 preset.enable_remote_access !== false ? t('profiles_field_remote', 'Remote') : '',
                 preset.enable_download ? t('tagDownload', 'Download') : '',
                 preset.enable_media_playback !== false ? t('profiles_field_playback', 'Lecture') : '',
-            ].filter(Boolean).join(' / ') || '-';
+            ].filter(Boolean).join(' · ') || '—';
             const inviteLabel = (preset.can_invite || preset.can_create_invitations)
-                ? `${t('tagSponsor', 'Parrain')}${preset.invite_quota_day ? ` / ${preset.invite_quota_day}/j` : ''}`
-                : t('none', 'Aucun');
-            return `<tr class="jg-profile-row ${active}" data-profile-index="${index}" aria-current="${index === state.selected ? 'true' : 'false'}">
-                <td data-label="${JG.esc(t('tableName', 'Profil'))}" class="px-4 py-4">
-                    <div class="font-bold text-jg-text">${JG.esc(presetName(preset))}</div>
-                    <div class="text-xs text-jg-text-muted mt-1">${JG.esc(preset.description || preset.id || '')}</div>
-                    <div class="jg-profile-badges mt-2 justify-start">${admin}${invite}${temp}</div>
+                ? `<span class="badge badge-accent">${t('tagSponsor', 'Parrain')}${preset.invite_quota_day ? ` (${preset.invite_quota_day}/j)` : ''}</span>`
+                : `<span class="text-xs text-jg-text-muted font-medium">${t('none', 'Aucun')}</span>`;
+            return `<tr class="jg-profile-row ${active} transition-colors" data-profile-index="${index}" aria-current="${index === state.selected ? 'true' : 'false'}">
+                <td data-label="${JG.esc(t('tableName', 'Profil'))}" class="px-5 py-4">
+                    <div class="font-bold text-slate-100 text-sm">${JG.esc(presetName(preset))}</div>
+                    <div class="text-xs text-slate-400 mt-0.5">${JG.esc(preset.description || preset.id || '')}</div>
+                    <div class="flex items-center gap-1.5 mt-2">${admin}${invite}${temp}</div>
                 </td>
-                <td data-label="${JG.esc(t('tableAccess', 'Acces'))}" class="px-4 py-4 text-xs font-bold text-jg-text-muted">${JG.esc(rights)}</td>
-                <td data-label="${JG.esc(t('tableLibraries', 'Bibliotheques'))}" class="px-4 py-4 text-xs font-bold text-jg-text-muted">${JG.esc(libs)}</td>
-                <td data-label="${JG.esc(t('tableInvites', 'Invitations'))}" class="px-4 py-4 text-xs font-bold text-jg-text-muted">${JG.esc(inviteLabel)}</td>
-                <td data-label="${JG.esc(t('tableActions', 'Actions'))}" class="px-6 py-4 text-right">
-                    <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm profile-row-edit" data-profile-index="${index}">${JG.esc(t('edit', 'Modifier'))}</button>
+                <td data-label="${JG.esc(t('tableAccess', 'Acces'))}" class="px-5 py-4"><span class="badge badge-muted">${JG.esc(rights)}</span></td>
+                <td data-label="${JG.esc(t('tableLibraries', 'Bibliotheques'))}" class="px-5 py-4"><span class="badge badge-info">${JG.esc(libs)}</span></td>
+                <td data-label="${JG.esc(t('tableInvites', 'Invitations'))}" class="px-5 py-4">${inviteLabel}</td>
+                <td data-label="${JG.esc(t('tableActions', 'Actions'))}" class="px-5 py-4 text-right">
+                    <button type="button" class="jg-btn-icon profile-row-edit" data-profile-index="${index}" title="${JG.esc(t('edit', 'Modifier'))}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </button>
                 </td>
             </tr>`;
         }).join('');

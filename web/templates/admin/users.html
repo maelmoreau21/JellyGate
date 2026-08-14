@@ -25,50 +25,70 @@
 </div>
 
 {{/* ── Stats Row ──────────────────────────────────────────────────────── */}}
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-    <div class="jg-card jg-glass p-5 border-l-4 border-l-jg-border-strong flex flex-col justify-center">
-        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_total") "Total" }}</div>
-        <div class="text-2xl font-extrabold" id="users-stat-total">0</div>
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-4">
+        <div class="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+        </div>
+        <div>
+            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ or (.T "users_overview_total") "Total" }}</div>
+            <div class="text-2xl font-black text-slate-100" id="users-stat-total">0</div>
+        </div>
     </div>
-    <div class="jg-card jg-glass p-5 border-l-4 border-l-jg-accent flex flex-col justify-center">
-        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_filtered") "Filtrés" }}</div>
-        <div class="text-2xl font-extrabold text-jg-accent" id="users-stat-filtered">0</div>
+    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-4">
+        <div class="w-11 h-11 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+        </div>
+        <div>
+            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ or (.T "users_overview_filtered") "Filtrés" }}</div>
+            <div class="text-2xl font-black text-indigo-400" id="users-stat-filtered">0</div>
+        </div>
     </div>
-    <div class="jg-card jg-glass p-5 border-l-4 border-l-amber-400 flex flex-col justify-center">
-        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_inviters") "Parrains" }}</div>
-        <div class="text-2xl font-extrabold text-amber-400" id="users-stat-inviters">0</div>
+    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-4">
+        <div class="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+        </div>
+        <div>
+            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ or (.T "users_overview_inviters") "Parrains" }}</div>
+            <div class="text-2xl font-black text-amber-400" id="users-stat-inviters">0</div>
+        </div>
     </div>
-    <div class="jg-card jg-glass p-5 border-l-4 border-l-rose-400 flex flex-col justify-center">
-        <div class="text-[11px] text-jg-text/60 font-bold uppercase tracking-widest mb-1">{{ or (.T "users_overview_expiring") "En expiration" }}</div>
-        <div class="text-2xl font-extrabold text-rose-400" id="users-stat-expiring">0</div>
+    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-4">
+        <div class="w-11 h-11 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        </div>
+        <div>
+            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ or (.T "users_overview_expiring") "En expiration" }}</div>
+            <div class="text-2xl font-black text-rose-400" id="users-stat-expiring">0</div>
+        </div>
     </div>
 </div>
 
 <div class="space-y-6">
     {{/* ── Unified Search & Filter Bar ───────────────────────────────────── */}}
-    <div class="jg-card p-5 shadow-xl border-white/5 mb-8">
-        <div class="flex flex-col md:flex-row md:items-center gap-5">
+    <div class="jg-card p-4 shadow-lg border-white/5 mb-6">
+        <div class="flex flex-col md:flex-row md:items-center gap-4">
             <div class="relative flex-1 group">
-                <input type="text" id="search-users" class="jg-input h-14 pl-16 text-sm rounded-2xl w-full transition-all focus:border-jg-accent/40 bg-white/5" style="padding-left: 4rem !important" placeholder='{{ .T "users_search_placeholder" }}'>
-                <svg class="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-jg-text-muted group-focus-within:text-jg-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input type="text" id="search-users" class="jg-input h-11 pl-11 text-sm rounded-xl w-full transition-all focus:border-jg-accent/40 bg-black/20" placeholder='{{ .T "users_search_placeholder" }}'>
+                <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-jg-accent transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             </div>
-            <div class="flex items-center gap-3">
-                <button id="btn-toggle-filters" class="jg-btn jg-btn-ghost h-14 px-8 flex items-center gap-3 font-bold whitespace-nowrap border border-white/10 rounded-2xl hover:bg-white/10 transition-all">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+            <div class="flex items-center gap-2">
+                <button id="btn-toggle-filters" class="jg-btn jg-btn-ghost h-11 px-5 flex items-center gap-2.5 font-bold text-xs whitespace-nowrap border border-white/10 rounded-xl hover:bg-white/10 transition-all">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                     <span>{{ .T "filters" }}</span>
                     <span id="active-filter-count" class="hidden px-2 py-0.5 rounded-full bg-jg-accent text-always-white text-[10px] font-black shadow-lg">0</span>
                 </button>
-                <button id="btn-clear-filters" class="w-14 h-14 flex items-center justify-center rounded-2xl jg-btn-ghost text-rose-400 hover:bg-rose-400/10 border border-white/5 transition-all hidden" title="{{ .T "users_filters_clear" }}">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button id="btn-clear-filters" class="w-11 h-11 flex items-center justify-center rounded-xl jg-btn-ghost text-rose-400 hover:bg-rose-400/10 border border-white/5 transition-all hidden" title="{{ .T "users_filters_clear" }}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
         </div>
 
         {{/* Collapsible Filter Panel */}}
-        <div id="filter-panel" class="hidden mt-4 pt-4 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div id="filter-panel" class="hidden mt-4 pt-4 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2 duration-200">
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "col_status" }}</label>
-                <select id="filter-status" class="jg-input jg-select-premium h-11 text-xs">
+                <select id="filter-status" class="jg-input jg-select-premium h-10 text-xs bg-black/30">
                     <option value="all">{{ .T "users_filter_status_all" }}</option>
                     <option value="active">{{ .T "status_active" }}</option>
                     <option value="inactive">{{ .T "status_inactive" }}</option>
@@ -77,7 +97,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "col_jellyfin" }}</label>
-                <select id="filter-jellyfin" class="jg-input jg-select-premium h-11 text-xs">
+                <select id="filter-jellyfin" class="jg-input jg-select-premium h-10 text-xs bg-black/30">
                     <option value="all">{{ .T "users_filter_jellyfin_all" }}</option>
                     <option value="ok">{{ .T "users_filter_jellyfin_ok" }}</option>
                     <option value="disabled">{{ .T "users_filter_jellyfin_disabled" }}</option>
@@ -86,7 +106,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "users_col_invite" }}</label>
-                <select id="filter-invite" class="jg-input jg-select-premium h-11 text-xs">
+                <select id="filter-invite" class="jg-input jg-select-premium h-10 text-xs bg-black/30">
                     <option value="all">{{ .T "users_filter_invite_all" }}</option>
                     <option value="enabled">{{ .T "users_filter_invite_enabled" }}</option>
                     <option value="disabled">{{ .T "users_filter_invite_disabled" }}</option>
@@ -94,7 +114,7 @@
             </div>
             <div class="jg-filter-group">
                 <label class="jg-filter-label">{{ .T "users_filter_extra_label" }}</label>
-                <select id="filter-extra" class="jg-input jg-select-premium h-11 text-xs">
+                <select id="filter-extra" class="jg-input jg-select-premium h-10 text-xs bg-black/30">
                     <option value="all">{{ .T "users_filter_extra_all" }}</option>
                     <option value="with-email">{{ .T "users_filter_with_email" }}</option>
                     <option value="without-email">{{ .T "users_filter_without_email" }}</option>
@@ -107,33 +127,32 @@
     </div>
 
     {{/* ── Main Full-Width Table ─────────────────────────────────────────── */}}
-    <div class="jg-card p-0 overflow-hidden shadow-2xl relative border-white/5">
-        <div class="p-6 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="jg-card p-0 overflow-hidden shadow-2xl relative border border-white/5">
+        <div class="px-6 py-4 border-b border-white/5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white/[0.01]">
             <div class="flex items-center gap-3">
-                <h2 class="font-bold text-xl text-jg-text">{{ .T "users_table_title" }}</h2>
-                <span id="user-count" class="px-2.5 py-0.5 rounded-full bg-jg-accent/10 text-jg-accent text-xs font-black"></span>
+                <h2 class="font-bold text-lg text-slate-100">{{ .T "users_table_title" }}</h2>
+                <span id="user-count" class="px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-bold"></span>
             </div>
         </div>
 
-                <div class="jg-table-container mt-4 overflow-x-auto w-full border border-jg-border rounded">
-                    <table class="jg-table jg-users-table min-w-full w-full text-sm text-left align-middle whitespace-nowrap">
-                        <thead>
-                            <tr>
-                                <th class="px-6 py-4 w-16 text-center">
-                                    <label class="inline-flex items-center justify-center gap-2 cursor-pointer" for="check-all" title='{{ .T "users_bulk_step_select" }}'>
-                                        <input type="checkbox" id="check-all" class="form-checkbox" aria-label='{{ .T "users_bulk_step_select" }}'>
-                                        <span class="jg-th-label">{{ .T "users_col_select" }}</span>
-                                    </label>
-                                </th>
-                                <th class="px-4 py-4">{{ .T "col_username" }}</th>
-                                <th class="px-4 py-4">{{ .T "col_status" }}</th>
-                                <th class="px-4 py-4">{{ .T "col_jellyfin" }}</th>
-                                <th class="px-4 py-4">{{ .T "users_col_preset" }}</th>
-                                <th class="px-4 py-4">{{ .T "users_col_expiry" }}</th>
-                                <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-tbody" class="divide-y divide-jg-border bg-black/5">
+        <div class="jg-table-container overflow-x-auto w-full">
+            <table class="jg-table jg-users-table min-w-full w-full text-sm text-left align-middle">
+                <thead>
+                    <tr>
+                        <th class="w-14 text-center">
+                            <label class="inline-flex items-center justify-center cursor-pointer" for="check-all" title='{{ .T "users_bulk_step_select" }}'>
+                                <input type="checkbox" id="check-all" class="form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer" aria-label='{{ .T "users_bulk_step_select" }}'>
+                            </label>
+                        </th>
+                        <th class="w-1/3 min-w-[200px]">{{ .T "col_username" }}</th>
+                        <th class="w-32">{{ .T "col_status" }}</th>
+                        <th class="w-32">{{ .T "col_jellyfin" }}</th>
+                        <th class="w-40">{{ .T "users_col_preset" }}</th>
+                        <th class="w-36">{{ .T "users_col_expiry" }}</th>
+                        <th class="w-36 text-right">{{ .T "col_actions" }}</th>
+                    </tr>
+                </thead>
+                <tbody id="users-tbody" class="divide-y divide-white/5">
                             <tr>
                                 <td colspan="7" class="text-center py-24">
                                     <div class="flex flex-col items-center gap-3">
