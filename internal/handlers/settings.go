@@ -282,7 +282,7 @@ func (h *SettingsHandler) GetAuthentikHealth(w http.ResponseWriter, r *http.Requ
 
 	cfg := h.resolveEffectiveAuthentikConfig()
 
-	var client authentik.Client = h.authClient
+	client := h.authClient
 	if client == nil || cfg.URL != "" || cfg.IssuerURL != "" {
 		client = authentik.NewClient(cfg)
 	}
@@ -382,7 +382,7 @@ func (h *SettingsHandler) TestAuthentikUser(w http.ResponseWriter, r *http.Reque
 	}
 
 	// 1. Essayer via le client Authentik REST API si configuré
-	var client authentik.Client = h.authClient
+	client := h.authClient
 	if client == nil || cfg.URL != "" || cfg.IssuerURL != "" {
 		client = authentik.NewClient(cfg)
 	}
