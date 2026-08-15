@@ -22,6 +22,10 @@ type mockAuthentikClient struct {
 	createdUsers []string
 }
 
+func (m *mockAuthentikClient) ResolveGroupID(ctx context.Context, nameOrPK string) (string, error) {
+	return "00000000-0000-0000-0000-000000000001", nil
+}
+
 func (m *mockAuthentikClient) CreateUser(ctx context.Context, payload authentik.UserCreatePayload) (*authentik.UserResponse, error) {
 	m.createdUsers = append(m.createdUsers, payload.Username)
 	return &authentik.UserResponse{

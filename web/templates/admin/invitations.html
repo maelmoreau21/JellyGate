@@ -348,20 +348,31 @@
 {{/* ── QR Code Modal ─────────────────────────────────────────────────── */}}
 <div id="qr-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" data-modal-close="qr-modal"></div>
-    <div class="jg-card jg-glass w-full max-w-sm relative z-10 text-center animate-in fade-in zoom-in duration-200">
-        <button data-modal-close="qr-modal" class="absolute right-4 top-4 p-2 rounded-lg hover:bg-white/5 text-jg-text-muted hover:text-rose-400 transition-colors">
+    <div class="jg-card jg-glass w-full max-w-sm relative z-10 text-center animate-in fade-in zoom-in duration-200 border border-white/15 p-6 rounded-3xl shadow-2xl">
+        <button data-modal-close="qr-modal" class="absolute right-4 top-4 p-2 rounded-xl hover:bg-white/10 text-jg-text-muted hover:text-rose-400 transition-colors" title="Fermer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
-        <h3 class="text-xl font-bold mb-6 text-jg-text flex items-center justify-center gap-2">
-            <svg class="w-6 h-6 text-jg-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+        <div class="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mx-auto mb-3 shadow-lg">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+        </div>
+        <h3 class="text-lg font-bold text-jg-text">
             {{ .T "invitations_qr_title" }}
         </h3>
-        <div class="bg-white p-4 rounded-xl mx-auto inline-block border border-jg-border shadow-[0_0_20px_rgba(45,212,191,0.2)]">
+        <p class="text-xs text-jg-text-muted mt-1 mb-4">Scannez pour rejoindre ou partagez le lien directement</p>
+        <div class="bg-white p-4 rounded-2xl mx-auto inline-block border-2 border-indigo-500/20 shadow-xl">
             <img id="qr-code-img" src="" alt="QR Code" class="w-48 h-48 mx-auto" />
         </div>
-        <div class="mt-6">
-            <button id="qr-copy-btn" class="jg-btn jg-btn-primary h-11 px-6 w-full font-bold uppercase tracking-widest text-xs">
-                {{ .T "invitations_copy_link" }}
+        <div id="qr-link-preview" class="text-[11px] font-mono text-indigo-300 bg-indigo-950/40 border border-indigo-500/20 rounded-xl px-3 py-2 mt-4 truncate select-all">
+            --
+        </div>
+        <div class="mt-4 flex flex-col gap-2">
+            <button id="qr-copy-btn" class="jg-btn jg-btn-primary h-11 px-6 w-full font-bold uppercase tracking-wider text-xs flex items-center justify-center gap-2 rounded-xl shadow-lg">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <span>{{ .T "invitations_copy_link" }}</span>
+            </button>
+            <button id="qr-download-btn" class="jg-btn jg-btn-ghost h-10 px-4 w-full text-xs font-semibold text-slate-300 hover:text-white border border-white/10 hover:bg-white/5 flex items-center justify-center gap-2 rounded-xl">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                <span>Télécharger l'image</span>
             </button>
         </div>
     </div>
@@ -446,5 +457,6 @@
         },
     };
 </script>
+<script src="/static/js/libs/qrcode.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 <script src="/static/js/pages/invitations.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

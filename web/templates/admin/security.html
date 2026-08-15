@@ -1,76 +1,322 @@
+{{/* security.html — Dashboard et Journal de Sécurité JellyGate */}}
 {{ template "admin_shell.html" . }}
 
-{{ define "title" }}Sécurité — JellyGate{{ end }}
+{{ define "title" }}Sécurité & Audit — JellyGate Administration{{ end }}
 
 {{ define "admin_content" }}
-<div class="jg-page-header jg-ds-header">
-    <div>
-        <div class="jg-ds-kicker">Security Studio</div>
-        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">Sécurité</h1>
-        <p class="text-jg-text-muted mt-2">IP bloquées, CAPTCHA échoués, invitations invalides, connexions admin et alertes SMTP.</p>
+<div class="space-y-6">
+    {{/* ── Fil d'Ariane ──────────────────────────────────────────────────────── */}}
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-xs font-semibold text-slate-400">
+            <a href="/admin/" class="hover:text-white transition-colors">Tableau de bord</a>
+            <span>/</span>
+            <span class="text-indigo-400">Sécurité & Audit</span>
+        </div>
+        <div class="flex items-center gap-2">
+            <span id="security-last-updated" class="text-[11px] text-slate-400 hidden sm:inline-block">Dernière synchro : --</span>
+        </div>
     </div>
-    <button id="security-refresh" class="jg-btn jg-btn-ghost h-11 px-4">
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M20 9a8 8 0 00-14.9-3M4 15a8 8 0 0014.9 3" /></svg>
-        Actualiser
-    </button>
+
+    {{/* ── En-tête Principal ─────────────────────────────────────────────────── */}}
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 glass-card p-6 rounded-3xl border border-white/10 shadow-xl bg-gradient-to-r from-slate-900/80 via-indigo-950/30 to-slate-900/80">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 drop-shadow-md flex-shrink-0">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v5c0 4.418-2.91 8.32-7 9-4.09-.68-7-4.582-7-9V7l7-4z" />
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-3">
+                    <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight">Centre de Sécurité</h1>
+                    <span id="security-health-badge" class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Système sain
+                    </span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Surveillance en temps réel des accès, détection des abus, filtrage anti-bot et journalisation d'audit.</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <button id="security-refresh" class="jg-btn jg-btn-primary px-5 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl shadow-lg hover:scale-105 transition-all">
+                <svg id="security-refresh-icon" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Actualiser</span>
+            </button>
+        </div>
+    </div>
+
+    {{/* ── Grille des Métriques KPI ───────────────────────────────────────────── */}}
+    <div id="security-overview" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
+        {{/* IP Bloquées */}}
+        <div class="glass-card p-4 rounded-2xl border border-rose-500/20 bg-rose-500/5 shadow-lg flex flex-col justify-between hover:border-rose-500/40 transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-rose-300">IPs Bloquées</span>
+                <div class="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center text-rose-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-white" data-key="blocked_ips">0</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">24h glissantes</div>
+            </div>
+        </div>
+
+        {{/* Échecs CAPTCHA */}}
+        <div class="glass-card p-4 rounded-2xl border border-amber-500/20 bg-amber-500/5 shadow-lg flex flex-col justify-between hover:border-amber-500/40 transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-300">Échecs CAPTCHA</span>
+                <div class="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center text-amber-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-white" data-key="captcha_failures">0</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Tentatives bots</div>
+            </div>
+        </div>
+
+        {{/* Invitations Invalides */}}
+        <div class="glass-card p-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/5 shadow-lg flex flex-col justify-between hover:border-yellow-500/40 transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-yellow-300">Invites Invalides</span>
+                <div class="w-7 h-7 rounded-lg bg-yellow-500/15 flex items-center justify-center text-yellow-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-white" data-key="invalid_invitations">0</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Expirées / inconnues</div>
+            </div>
+        </div>
+
+        {{/* Connexions Admin */}}
+        <div class="glass-card p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 shadow-lg flex flex-col justify-between hover:border-emerald-500/40 transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Connexions Admin</span>
+                <div class="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center text-emerald-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-white" data-key="admin_logins">0</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Accès réussis</div>
+            </div>
+        </div>
+
+        {{/* Échecs Admin */}}
+        <div class="glass-card p-4 rounded-2xl border border-red-500/20 bg-red-500/5 shadow-lg flex flex-col justify-between hover:border-red-500/40 transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-red-300">Échecs Auth</span>
+                <div class="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center text-red-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-white" data-key="admin_login_failures">0</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Refus de connexion</div>
+            </div>
+        </div>
+
+        {{/* SMTP */}}
+        <div class="glass-card p-4 rounded-2xl border border-sky-500/20 bg-sky-500/5 shadow-lg flex flex-col justify-between hover:border-sky-500/40 transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-sky-300">Erreurs SMTP</span>
+                <div class="w-7 h-7 rounded-lg bg-sky-500/15 flex items-center justify-center text-sky-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-white" data-key="smtp_errors">0</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Échecs d'envois</div>
+            </div>
+        </div>
+
+        {{/* Alertes Suspectes */}}
+        <div class="glass-card p-4 rounded-2xl border border-purple-500/20 bg-purple-500/5 shadow-lg flex flex-col justify-between hover:border-purple-500/40 transition-all">
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-purple-300">Alertes Critiques</span>
+                <div class="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center text-purple-400">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                </div>
+            </div>
+            <div class="mt-3">
+                <div class="text-2xl font-black text-white" data-key="suspicious_alerts">0</div>
+                <div class="text-[10px] text-slate-400 mt-0.5">Non résolues</div>
+            </div>
+        </div>
+    </div>
+
+    {{/* ── Journal des Événements & Filtres ──────────────────────────────────── */}}
+    <div class="glass-card rounded-3xl border border-white/10 shadow-2xl overflow-hidden">
+        {{/* Header du Journal */}}
+        <div class="p-6 border-b border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+                <h2 class="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Journal des Événements de Sécurité
+                </h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Audit structuré et traçabilité détaillée des actions sensibles</p>
+            </div>
+
+            {{/* Barre d'outils / Filtres */}}
+            <div class="flex flex-wrap items-center gap-2.5">
+                <div class="relative min-w-[200px]">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </span>
+                    <input id="security-search" type="text" class="jg-input pl-9 pr-8 h-10 w-full text-xs rounded-xl border border-white/10 bg-white/5 focus:border-indigo-500/50" placeholder="Rechercher (IP, acteur, message)...">
+                    <button id="security-search-clear" class="hidden absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-white">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                </div>
+
+                <select id="security-category" class="jg-input jg-select-premium h-10 text-xs rounded-xl border border-white/10 bg-white/5 min-w-[150px]">
+                    <option value="">Toutes catégories</option>
+                    <option value="invite_abuse">IP bloquées</option>
+                    <option value="captcha">CAPTCHA</option>
+                    <option value="invalid_invite">Invitations invalides</option>
+                    <option value="admin_login">Connexions admin</option>
+                    <option value="oidc_login">Authentification OIDC</option>
+                    <option value="smtp">SMTP & Emails</option>
+                </select>
+
+                <select id="security-severity" class="jg-input jg-select-premium h-10 text-xs rounded-xl border border-white/10 bg-white/5 min-w-[140px]">
+                    <option value="">Toutes sévérités</option>
+                    <option value="info">🔵 Information</option>
+                    <option value="warning">🟠 Avertissement</option>
+                    <option value="critical">🔴 Critique</option>
+                </select>
+
+                <button id="security-reset-filters" class="jg-btn jg-btn-ghost h-10 px-3 text-xs rounded-xl border border-white/10 hover:bg-white/5 text-slate-400 hover:text-white" title="Réinitialiser les filtres">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                </button>
+            </div>
+        </div>
+
+        {{/* Table des Événements */}}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-white/10 bg-white/[0.02] text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <th class="px-5 py-3.5">Heure</th>
+                        <th class="px-4 py-3.5">Sévérité</th>
+                        <th class="px-4 py-3.5">Catégorie & Type</th>
+                        <th class="px-4 py-3.5">Acteur</th>
+                        <th class="px-4 py-3.5">Cible</th>
+                        <th class="px-4 py-3.5">IP</th>
+                        <th class="px-5 py-3.5">Message / Détails</th>
+                        <th class="px-4 py-3.5 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="security-events-body" class="divide-y divide-white/5 text-slate-200 font-medium">
+                    <tr>
+                        <td colspan="8" class="text-center py-16 text-slate-400">
+                            <div class="flex flex-col items-center justify-center gap-3">
+                                <span class="spinner w-6 h-6 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></span>
+                                <span>Chargement du journal de sécurité...</span>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {{/* Pagination & Stats */}}
+        <div class="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-white/[0.01] text-xs text-slate-400">
+            <div id="security-count-summary">Affichage des événements récents</div>
+            <div class="flex items-center gap-2">
+                <button id="security-prev-page" class="jg-btn jg-btn-ghost px-3 py-1.5 text-xs rounded-lg border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed" disabled>
+                    Précédent
+                </button>
+                <span id="security-page-num" class="px-2 font-mono font-bold text-slate-300">Page 1</span>
+                <button id="security-next-page" class="jg-btn jg-btn-ghost px-3 py-1.5 text-xs rounded-lg border border-white/10 disabled:opacity-30 disabled:cursor-not-allowed" disabled>
+                    Suivant
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<section id="security-overview" class="jg-ds-metrics">
-    <div class="jg-ds-metric"><span>IP bloquées</span><strong data-key="blocked_ips">0</strong></div>
-    <div class="jg-ds-metric"><span>CAPTCHA échoués</span><strong data-key="captcha_failures">0</strong></div>
-    <div class="jg-ds-metric"><span>Invitations invalides</span><strong data-key="invalid_invitations">0</strong></div>
-    <div class="jg-ds-metric"><span>Connexions admin</span><strong data-key="admin_logins">0</strong></div>
-    <div class="jg-ds-metric"><span>Échecs admin</span><strong data-key="admin_login_failures">0</strong></div>
-    <div class="jg-ds-metric"><span>SMTP</span><strong data-key="smtp_errors">0</strong></div>
-    <div class="jg-ds-metric danger"><span>Alertes suspectes</span><strong data-key="suspicious_alerts">0</strong></div>
-</section>
+{{/* ── Modale d'Inspection des Détails d'un Événement ──────────────────────── */}}
+<div id="security-detail-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" data-modal-close="security-detail-modal"></div>
+    <div class="jg-card jg-glass w-full max-w-2xl relative z-10 text-left animate-in fade-in zoom-in duration-200 border border-white/15 p-6 rounded-3xl shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-white/10 pb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-white">Détails de l'Événement</h3>
+                    <div id="modal-event-id" class="text-[11px] text-slate-400 font-mono">--</div>
+                </div>
+            </div>
+            <button data-modal-close="security-detail-modal" class="p-2 rounded-xl hover:bg-white/10 text-slate-400 hover:text-rose-400 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+        </div>
 
-<section class="jg-ds-panel mt-8">
-    <div class="jg-ds-panel-head">
-        <div>
-            <h2>Journal sécurité</h2>
-            <p>Événements structurés sur les dernières actions sensibles.</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Sévérité</div>
+                <div id="modal-event-severity" class="mt-1">--</div>
+            </div>
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Catégorie</div>
+                <div id="modal-event-category" class="mt-1 text-xs font-semibold text-indigo-300">--</div>
+            </div>
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Date & Heure</div>
+                <div id="modal-event-date" class="mt-1 text-xs text-slate-200">--</div>
+            </div>
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Adresse IP</div>
+                <div id="modal-event-ip" class="mt-1 text-xs font-mono text-cyan-300">--</div>
+            </div>
         </div>
-        <div class="jg-ds-toolbar">
-            <select id="security-category" class="jg-input jg-select-premium h-10">
-                <option value="">Toutes catégories</option>
-                <option value="invite_abuse">IP bloquées</option>
-                <option value="captcha">CAPTCHA</option>
-                <option value="invalid_invite">Invitations invalides</option>
-                <option value="admin_login">Connexions admin</option>
-                <option value="smtp">SMTP</option>
-            </select>
-            <select id="security-severity" class="jg-input jg-select-premium h-10">
-                <option value="">Toutes sévérités</option>
-                <option value="info">Info</option>
-                <option value="warning">Warning</option>
-                <option value="critical">Critical</option>
-            </select>
-            <input id="security-search" class="jg-input h-10" placeholder="Rechercher">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Acteur</div>
+                <div id="modal-event-actor" class="mt-1 text-xs font-mono text-slate-200">--</div>
+            </div>
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <div class="text-[10px] uppercase font-bold text-slate-400">Cible</div>
+                <div id="modal-event-target" class="mt-1 text-xs font-mono text-slate-200">--</div>
+            </div>
+        </div>
+
+        <div class="space-y-1.5">
+            <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Message / Description</label>
+            <div id="modal-event-message" class="p-3 rounded-xl bg-black/40 border border-white/10 text-xs font-medium text-slate-200 select-all">
+                --
+            </div>
+        </div>
+
+        <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+                <label class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Métadonnées Techniques (Payload JSON)</label>
+                <button id="modal-copy-json" class="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 flex items-center gap-1">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    <span>Copier JSON</span>
+                </button>
+            </div>
+            <pre id="modal-event-metadata" class="p-3.5 rounded-xl bg-black/60 border border-white/10 text-[11px] font-mono text-emerald-300 overflow-x-auto max-h-48 select-all">{}</pre>
+        </div>
+
+        <div class="pt-2 flex justify-end">
+            <button data-modal-close="security-detail-modal" class="jg-btn jg-btn-ghost px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-xl border border-white/10 hover:bg-white/5">
+                Fermer
+            </button>
         </div>
     </div>
-    <div class="jg-table-wrap overflow-x-auto">
-        <table class="jg-table jg-ds-table w-full text-sm">
-            <thead>
-                <tr>
-                    <th>Heure</th>
-                    <th>Catégorie</th>
-                    <th>Type</th>
-                    <th>Sévérité</th>
-                    <th>Acteur</th>
-                    <th>Cible</th>
-                    <th>IP</th>
-                    <th>Message</th>
-                </tr>
-            </thead>
-            <tbody id="security-events-body">
-                <tr><td colspan="8" class="text-center py-12 text-jg-text-muted">Chargement...</td></tr>
-            </tbody>
-        </table>
-    </div>
-</section>
+</div>
 {{ end }}
 
 {{ define "scripts" }}
-<script src="/static/js/pages/security.js" nonce="{{ .ScriptNonce }}"></script>
+<script src="/static/js/pages/security.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 {{ end }}

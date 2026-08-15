@@ -76,6 +76,7 @@ type Client interface {
 	CheckEnrollment(ctx context.Context, flowSlug string) HealthComponent
 	CheckGroups(ctx context.Context, groups []string) HealthComponent
 
+	ResolveGroupID(ctx context.Context, nameOrPK string) (string, error)
 	CreateUser(ctx context.Context, payload UserCreatePayload) (*UserResponse, error)
 	CreateRecoveryLink(ctx context.Context, authentikPK int64) (recoveryLink string, err error)
 	AddUserToGroup(ctx context.Context, userPK int64, groupID string) error
@@ -157,9 +158,97 @@ func (c *client) doRequest(ctx context.Context, method, endpoint string, bodyObj
 	return respBody, resp.StatusCode, nil
 }
 
+// isUUID vérifie si une chaîne correspond au format d'un UUID valide.
+func isUUID(s string) bool {
+	s = strings.TrimSpace(s)
+	if len(s) != 36 {
+		return false
+	}
+	for i, c := range s {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			if c != '-' {
+				return false
+			}
+		} else {
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// ResolveGroupID résout un nom de groupe ou identifiant vers l'UUID PK du groupe Authentik.
+func (c *client) ResolveGroupID(ctx context.Context, nameOrPK string) (string, error) {
+	trimmed := strings.TrimSpace(nameOrPK)
+	if trimmed == "" {
+		return "", fmt.Errorf("nom ou identifiant de groupe vide")
+	}
+	if isUUID(trimmed) {
+		return trimmed, nil
+	}
+
+	// 1. Recherche par nom direct dans Authentik
+	endpoint := fmt.Sprintf("/api/v3/core/groups/?name=%s", url.QueryEscape(trimmed))
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err == nil && statusCode == http.StatusOK {
+		var pageResp struct {
+			Results []struct {
+				PK   string `json:"pk"`
+				Name string `json:"name"`
+			} `json:"results"`
+		}
+		if err := json.Unmarshal(respBody, &pageResp); err == nil {
+			for _, g := range pageResp.Results {
+				if strings.EqualFold(g.Name, trimmed) && g.PK != "" {
+					return g.PK, nil
+				}
+			}
+		}
+	}
+
+	// 2. Recherche dans le listing global des groupes en cas de non correspondance stricte
+	respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, "/api/v3/core/groups/?page_size=200", nil)
+	if err == nil && statusCode == http.StatusOK {
+		var pageResp struct {
+			Results []struct {
+				PK   string `json:"pk"`
+				Name string `json:"name"`
+			} `json:"results"`
+		}
+		if err := json.Unmarshal(respBody, &pageResp); err == nil {
+			for _, g := range pageResp.Results {
+				if strings.EqualFold(g.Name, trimmed) && g.PK != "" {
+					return g.PK, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("groupe Authentik introuvable: %s", trimmed)
+}
+
 func (c *client) CreateUser(ctx context.Context, payload UserCreatePayload) (*UserResponse, error) {
 	if payload.Name == "" {
 		payload.Name = payload.Username
+	}
+
+	// Résolution des noms de groupes en UUIDs pour l'API Authentik v3
+	if len(payload.Groups) > 0 {
+		resolvedGroups := make([]string, 0, len(payload.Groups))
+		for _, g := range payload.Groups {
+			trimmed := strings.TrimSpace(g)
+			if trimmed == "" {
+				continue
+			}
+			pk, err := c.ResolveGroupID(ctx, trimmed)
+			if err == nil && pk != "" {
+				resolvedGroups = append(resolvedGroups, pk)
+			} else if isUUID(trimmed) {
+				resolvedGroups = append(resolvedGroups, trimmed)
+			}
+		}
+		payload.Groups = resolvedGroups
 	}
 
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, "/api/v3/core/users/", payload)
@@ -203,7 +292,11 @@ func (c *client) CreateRecoveryLink(ctx context.Context, authentikPK int64) (str
 }
 
 func (c *client) AddUserToGroup(ctx context.Context, userPK int64, groupID string) error {
-	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/add_user/", groupID)
+	resolvedID, err := c.ResolveGroupID(ctx, groupID)
+	if err == nil && resolvedID != "" {
+		groupID = resolvedID
+	}
+	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/add_user/", url.PathEscape(groupID))
 	payload := map[string]int64{"pk": userPK}
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, payload)
 	if err != nil {
@@ -216,7 +309,11 @@ func (c *client) AddUserToGroup(ctx context.Context, userPK int64, groupID strin
 }
 
 func (c *client) RemoveUserFromGroup(ctx context.Context, userPK int64, groupID string) error {
-	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/remove_user/", groupID)
+	resolvedID, err := c.ResolveGroupID(ctx, groupID)
+	if err == nil && resolvedID != "" {
+		groupID = resolvedID
+	}
+	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/remove_user/", url.PathEscape(groupID))
 	payload := map[string]int64{"pk": userPK}
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, payload)
 	if err != nil {
@@ -229,7 +326,11 @@ func (c *client) RemoveUserFromGroup(ctx context.Context, userPK int64, groupID 
 }
 
 func (c *client) AddUserToGroupByString(ctx context.Context, authentikID string, groupID string) error {
-	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/add_user/", groupID)
+	resolvedID, err := c.ResolveGroupID(ctx, groupID)
+	if err == nil && resolvedID != "" {
+		groupID = resolvedID
+	}
+	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/add_user/", url.PathEscape(groupID))
 	payload := map[string]string{"pk": authentikID}
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, payload)
 	if err != nil {
@@ -242,7 +343,11 @@ func (c *client) AddUserToGroupByString(ctx context.Context, authentikID string,
 }
 
 func (c *client) RemoveUserFromGroupByString(ctx context.Context, authentikID string, groupID string) error {
-	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/remove_user/", groupID)
+	resolvedID, err := c.ResolveGroupID(ctx, groupID)
+	if err == nil && resolvedID != "" {
+		groupID = resolvedID
+	}
+	endpoint := fmt.Sprintf("/api/v3/core/groups/%s/remove_user/", url.PathEscape(groupID))
 	payload := map[string]string{"pk": authentikID}
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, payload)
 	if err != nil {

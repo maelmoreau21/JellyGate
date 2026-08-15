@@ -697,12 +697,33 @@
             if (qrBtn) {
                 const link = decodeURIComponent(qrBtn.getAttribute('data-link'));
                 const img = document.getElementById('qr-code-img');
-                if (img) img.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(link)}`;
+                const preview = document.getElementById('qr-link-preview');
+                if (preview) {
+                    preview.textContent = link;
+                }
+                if (img) {
+                    if (window.JGQRCode && typeof window.JGQRCode.toDataURL === 'function') {
+                        img.src = window.JGQRCode.toDataURL(link, { size: 280, margin: 2, darkColor: '#09090b', lightColor: '#ffffff' });
+                    } else {
+                        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="10" y="100">QR Code</text></svg>')}`;
+                    }
+                }
                 const qrCopyBtn = document.getElementById('qr-copy-btn');
                 if (qrCopyBtn) {
                     qrCopyBtn.onclick = () => {
                         copyLinkToClipboard(link);
                         JG.closeModal('qr-modal');
+                    };
+                }
+                const qrDownloadBtn = document.getElementById('qr-download-btn');
+                if (qrDownloadBtn) {
+                    qrDownloadBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = img ? img.src : link;
+                        a.download = 'jellygate-invitation-qr.svg';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
                     };
                 }
                 JG.openModal('qr-modal');

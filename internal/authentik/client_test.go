@@ -65,6 +65,20 @@ func TestAuthentikClient(t *testing.T) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	})
 
+	mux.HandleFunc("/api/v3/core/groups/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"results": []map[string]interface{}{
+				{"pk": "11111111-2222-3333-4444-555555555555", "name": "jellyfin-users"},
+				{"pk": "22222222-3333-4444-5555-666666666666", "name": "jellygate-users"},
+			},
+		})
+	})
+
+	mux.HandleFunc("/api/v3/core/groups/11111111-2222-3333-4444-555555555555/add_user/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	mux.HandleFunc("/api/v3/stages/invitation/invitations/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -99,6 +113,43 @@ func TestAuthentikClient(t *testing.T) {
 	}
 
 	cli := NewClient(cfg)
+
+	t.Run("ResolveGroupID", func(t *testing.T) {
+		// Existing UUID passes through
+		const directUUID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+		resolved, err := cli.ResolveGroupID(context.Background(), directUUID)
+		if err != nil || resolved != directUUID {
+			t.Fatalf("Expected direct UUID pass-through %s, got %s (err: %v)", directUUID, resolved, err)
+		}
+
+		// Named group gets resolved
+		resolvedName, err := cli.ResolveGroupID(context.Background(), "jellyfin-users")
+		if err != nil || resolvedName != "11111111-2222-3333-4444-555555555555" {
+			t.Fatalf("Expected resolved UUID 11111111-2222-3333-4444-555555555555, got %s (err: %v)", resolvedName, err)
+		}
+	})
+
+	t.Run("CreateUserWithNamedGroups", func(t *testing.T) {
+		resp, err := cli.CreateUser(context.Background(), UserCreatePayload{
+			Username: "newuserwithgroup",
+			Email:    "groupuser@example.com",
+			IsActive: true,
+			Groups:   []string{"jellyfin-users"},
+		})
+		if err != nil {
+			t.Fatalf("CreateUser failed: %v", err)
+		}
+		if resp.PK != 42 {
+			t.Errorf("Unexpected user response: %+v", resp)
+		}
+	})
+
+	t.Run("AddUserToGroupNamed", func(t *testing.T) {
+		err := cli.AddUserToGroup(context.Background(), 42, "jellyfin-users")
+		if err != nil {
+			t.Fatalf("AddUserToGroup with name failed: %v", err)
+		}
+	})
 
 	t.Run("CreateUser", func(t *testing.T) {
 		resp, err := cli.CreateUser(context.Background(), UserCreatePayload{

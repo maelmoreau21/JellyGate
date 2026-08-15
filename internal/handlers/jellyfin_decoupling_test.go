@@ -41,6 +41,9 @@ func (m *mockAuthentikDecoupledClient) CheckEnrollment(ctx context.Context, flow
 func (m *mockAuthentikDecoupledClient) CheckGroups(ctx context.Context, groups []string) authentik.HealthComponent {
 	return authentik.HealthComponent{Status: "ok"}
 }
+func (m *mockAuthentikDecoupledClient) ResolveGroupID(ctx context.Context, nameOrPK string) (string, error) {
+	return "00000000-0000-0000-0000-000000000001", nil
+}
 func (m *mockAuthentikDecoupledClient) CreateUser(ctx context.Context, payload authentik.UserCreatePayload) (*authentik.UserResponse, error) {
 	m.userActive[payload.Username] = payload.IsActive
 	m.userGroups[payload.Username] = payload.Groups
