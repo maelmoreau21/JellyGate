@@ -1496,7 +1496,7 @@
             if (tokenInput) tokenInput.value = authentik.authentik_api_token || '';
 
             const flowInput = document.getElementById('enrollment_flow_slug');
-            if (flowInput) flowInput.value = authentik.enrollment_flow_slug || 'default-enrollment-flow';
+            if (flowInput) flowInput.value = authentik.enrollment_flow_slug || '';
 
             const badge = document.getElementById('sso-status-badge');
             if (badge) {
@@ -1676,7 +1676,7 @@
                 user_group: document.getElementById('user_group') ? document.getElementById('user_group').value.trim() : 'jellygate-users',
                 admin_group: document.getElementById('admin_group') ? document.getElementById('admin_group').value.trim() : 'jellygate-admins',
                 authentik_api_token: document.getElementById('authentik_api_token') ? document.getElementById('authentik_api_token').value : '',
-                enrollment_flow_slug: document.getElementById('enrollment_flow_slug') ? document.getElementById('enrollment_flow_slug').value.trim() : 'default-enrollment-flow',
+                enrollment_flow_slug: document.getElementById('enrollment_flow_slug') ? document.getElementById('enrollment_flow_slug').value.trim() : '',
             };
         } else if (section === 'backup') {
             const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
@@ -2138,7 +2138,33 @@
         JG.toast((res && res.message) || t('backup_delete_error', 'Delete failed'), 'error');
     }
 
+    function initCallbackURL() {
+        const callbackUrl = window.location.origin + '/auth/callback';
+        const displayEl = document.getElementById('display-callback-url');
+        if (displayEl) displayEl.textContent = callbackUrl;
+    }
+
+    function copyCallbackURL() {
+        const callbackUrl = window.location.origin + '/auth/callback';
+        navigator.clipboard.writeText(callbackUrl).then(() => {
+            const textSpan = document.getElementById('copy-callback-text');
+            if (textSpan) {
+                const original = textSpan.textContent;
+                textSpan.textContent = 'Copié !';
+                setTimeout(() => { textSpan.textContent = original; }, 2000);
+            }
+            if (window.JG && typeof JG.toast === 'function') {
+                JG.toast('URL de redirection copiée !', 'success');
+            }
+        }).catch(() => {
+            if (window.JG && typeof JG.toast === 'function') {
+                JG.toast('Impossible de copier l\'URL', 'error');
+            }
+        });
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
+        initCallbackURL();
         document.querySelectorAll('[data-tab-target]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const target = btn.dataset.tabTarget || 'general';

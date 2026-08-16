@@ -1519,10 +1519,10 @@ func Load() (*Config, error) {
 			ClientSecret:       strings.TrimSpace(getEnv("OIDC_CLIENT_SECRET", getEnv("JELLYGATE_OIDC_CLIENT_SECRET", ""))),
 			RedirectURL:        strings.TrimSpace(getEnv("OIDC_REDIRECT_URL", getEnv("JELLYGATE_OIDC_REDIRECT_URL", ""))),
 			APIToken:           strings.TrimSpace(getEnv("OIDC_API_TOKEN", getEnv("AUTHENTIK_API_TOKEN", getEnv("JELLYGATE_OIDC_API_TOKEN", getEnv("JELLYGATE_AUTHENTIK_API_TOKEN", ""))))),
-			UserGroup:          getEnv("OIDC_USER_GROUP", getEnv("AUTHENTIK_USER_GROUP", getEnv("JELLYGATE_OIDC_USER_GROUP", getEnv("JELLYGATE_AUTHENTIK_USER_GROUP", "jellygate-users")))),
-			AdminGroup:         getEnv("OIDC_ADMIN_GROUP", getEnv("AUTHENTIK_ADMIN_GROUP", getEnv("JELLYGATE_OIDC_ADMIN_GROUP", getEnv("JELLYGATE_AUTHENTIK_ADMIN_GROUP", "jellygate-admins")))),
-			JellyfinUserGroup:  getEnv("OIDC_JELLYFIN_USER_GROUP", getEnv("JELLYFIN_USER_GROUP", getEnv("AUTHENTIK_JELLYFIN_USER_GROUP", getEnv("JELLYGATE_JELLYFIN_USER_GROUP", "jellyfin-users")))),
-			EnrollmentFlowSlug: getEnv("OIDC_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_OIDC_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW", "default-enrollment-flow"))))),
+			UserGroup:          getEnv("OIDC_USER_GROUP", getEnv("AUTHENTIK_USER_GROUP", getEnv("JELLYGATE_OIDC_USER_GROUP", getEnv("JELLYGATE_AUTHENTIK_USER_GROUP", "")))),
+			AdminGroup:         getEnv("OIDC_ADMIN_GROUP", getEnv("AUTHENTIK_ADMIN_GROUP", getEnv("JELLYGATE_OIDC_ADMIN_GROUP", getEnv("JELLYGATE_AUTHENTIK_ADMIN_GROUP", "")))),
+			JellyfinUserGroup:  getEnv("OIDC_JELLYFIN_USER_GROUP", getEnv("JELLYFIN_USER_GROUP", getEnv("AUTHENTIK_JELLYFIN_USER_GROUP", getEnv("JELLYGATE_JELLYFIN_USER_GROUP", "")))),
+			EnrollmentFlowSlug: getEnv("OIDC_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_OIDC_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW", ""))))),
 		},
 
 		LocalAdmin: LocalAdminConfig{
