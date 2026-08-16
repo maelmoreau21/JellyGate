@@ -136,60 +136,97 @@
     }
     window.toggleSecretVisibility = toggleSecretVisibility;
 
-    async function reloadSSOFromEnv() {
-        const spinIcon = document.getElementById('icon-reload-sso-spin');
+    async function testJellyfinConnection(options = {}) {
+        const spinIcon = document.getElementById('icon-jf-test-spin');
         if (spinIcon) spinIcon.classList.add('animate-spin');
 
+        const updateCard = (key, text, dotClass, detailsText) => {
+            const dot = document.getElementById(`dot-jf-${key}`);
+            const msg = document.getElementById(`msg-jf-${key}`);
+            const details = document.getElementById(`details-jf-${key}`);
+            if (msg) msg.textContent = text || '—';
+            if (dot && dotClass) dot.className = `w-2.5 h-2.5 rounded-full ${dotClass}`;
+            if (details) details.textContent = detailsText || '—';
+        };
+
+        const serverUrlInput = document.getElementById('jellyfin-server-url');
+        const apiKeyInput = document.getElementById('jellyfin-api-key');
+
+        const payload = {};
+        if (serverUrlInput && serverUrlInput.value) {
+            payload.url = serverUrlInput.value.trim();
+        }
+        if (apiKeyInput && apiKeyInput.value) {
+            payload.api_key = apiKeyInput.value.trim();
+        }
+
         try {
-            const res = await JG.api('/admin/api/settings/authentik/reload-env', { method: 'POST' });
+            const res = await JG.api('/admin/api/settings/jellyfin/test', {
+                method: 'POST',
+                body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined
+            });
+
             if (res && res.success && res.data) {
-                const authentik = res.data;
-                const enabledToggle = document.getElementById('authentik_enabled');
-                if (enabledToggle) enabledToggle.checked = !!authentik.enabled;
-
-                const urlInput = document.getElementById('authentik_url');
-                if (urlInput) urlInput.value = authentik.authentik_url || '';
-
-                const issuerInput = document.getElementById('oidc_issuer_url');
-                if (issuerInput) issuerInput.value = authentik.oidc_issuer_url || '';
-
-                const clientIdInput = document.getElementById('oidc_client_id');
-                if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
-
-                const clientSecretInput = document.getElementById('oidc_client_secret');
-                if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret || '';
-
-                const redirectInput = document.getElementById('oidc_redirect_url');
-                if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
-
-                const tokenInput = document.getElementById('authentik_api_token');
-                if (tokenInput) tokenInput.value = authentik.authentik_api_token || '';
-
-                const userGrpInput = document.getElementById('user_group');
-                if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
-
-                const adminGrpInput = document.getElementById('admin_group');
-                if (adminGrpInput) adminGrpInput.value = authentik.admin_group || 'jellygate-admins';
-
-                const jfGrpInput = document.getElementById('jellyfin_user_group');
-                if (jfGrpInput) jfGrpInput.value = authentik.jellyfin_user_group || 'jellyfin-users';
-
-                const flowInput = document.getElementById('enrollment_flow_slug');
-                if (flowInput) flowInput.value = authentik.enrollment_flow_slug || 'default-enrollment-flow';
-
-                JG.toast('Paramètres SSO rechargés depuis Docker (.env) !', 'success');
-                setTimeout(runSSOHealthCheck, 300);
+                const d = res.data;
+                const badge = document.getElementById('jf-status-badge');
+                if (d.status === 'ok') {
+                    if (badge) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+                        badge.textContent = 'Connecté & Opérationnel';
+                    }
+                    updateCard('status', 'Connecté', 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]', d.url || 'API Joignable');
+                    updateCard('version', d.version || 'Inconnue', 'bg-emerald-500', 'Jellyfin Core');
+                    updateCard('name', d.server_name || 'Jellyfin', 'bg-emerald-500', 'Instance');
+                    updateCard('auth', 'Valide & Autorisé', 'bg-emerald-500', 'Droits Admin OK');
+                    if (!options.silent) {
+                        JG.toast('Connexion au serveur Jellyfin réussie !', 'success');
+                    }
+                } else if (d.status === 'warning') {
+                    if (badge) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
+                        badge.textContent = 'Clé API Invalide';
+                    }
+                    updateCard('status', 'Joignable', 'bg-amber-500', d.url || 'Public Info OK');
+                    updateCard('version', d.version || 'Inconnue', 'bg-emerald-500', 'Jellyfin Core');
+                    updateCard('name', d.server_name || 'Jellyfin', 'bg-emerald-500', 'Instance');
+                    updateCard('auth', 'Refusée', 'bg-amber-500', d.auth_error || 'Vérifiez la clé API');
+                    if (!options.silent) {
+                        JG.toast('Serveur Jellyfin joignable mais clé API invalide', 'warning');
+                    }
+                } else {
+                    if (badge) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40';
+                        badge.textContent = 'Inaccessible';
+                    }
+                    updateCard('status', 'Inaccessible', 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]', d.public_error || 'Erreur réseau');
+                    updateCard('version', '—', 'bg-slate-500', 'Jellyfin Core');
+                    updateCard('name', '—', 'bg-slate-500', 'Instance');
+                    updateCard('auth', 'Non vérifiée', 'bg-slate-500', 'En attente');
+                    if (!options.silent) {
+                        JG.toast((res && res.message) || 'Impossible de joindre le serveur Jellyfin', 'error');
+                    }
+                }
             } else {
-                JG.toast((res && res.message) || 'Erreur de rechargement des variables d\'environnement', 'error');
+                const badge = document.getElementById('jf-status-badge');
+                if (badge) {
+                    badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40';
+                    badge.textContent = 'Erreur';
+                }
+                updateCard('status', 'Erreur', 'bg-red-500', (res && res.message) || 'Inaccessible');
+                if (!options.silent) {
+                    JG.toast((res && res.message) || 'Erreur de connexion Jellyfin', 'error');
+                }
             }
         } catch (e) {
-            console.error('Erreur reloadSSOFromEnv:', e);
-            JG.toast('Erreur de communication avec le serveur', 'error');
+            console.error('Erreur testJellyfinConnection:', e);
+            if (!options.silent) {
+                JG.toast('Erreur de communication avec le serveur', 'error');
+            }
         } finally {
             if (spinIcon) spinIcon.classList.remove('animate-spin');
         }
     }
-    window.reloadSSOFromEnv = reloadSSOFromEnv;
+    window.testJellyfinConnection = testJellyfinConnection;
 
     async function testSSOUser() {
         const input = document.getElementById('test_sso_username');
@@ -1435,8 +1472,25 @@
             setAuthSessionDuration(authSession.remember_30_days !== false);
         }
 
-        if (document.getElementById('form-invitation-profile')) {
-            applyInvitationProfileConfig(data.invitation_profile || {});
+        if (document.getElementById('form-jellyfin-settings')) {
+            const jf = data.jellyfin || {};
+            const urlInput = document.getElementById('jellyfin-server-url');
+            const apiKeyInput = document.getElementById('jellyfin-api-key');
+            if (urlInput) urlInput.value = jf.url || '';
+            if (apiKeyInput) apiKeyInput.value = jf.api_key || '';
+
+            const envNotice = document.getElementById('jf-env-notice');
+            if (envNotice) {
+                if (data.jellyfin_env_managed) {
+                    envNotice.classList.remove('hidden');
+                } else {
+                    envNotice.classList.add('hidden');
+                }
+            }
+
+            if (jf.url) {
+                setTimeout(() => testJellyfinConnection({ silent: true }), 250);
+            }
         }
 
         const authentik = data.authentik || {};
@@ -1589,22 +1643,11 @@
             body = {
                 remember_30_days: getAuthSessionRemember30Days(),
             };
-        } else if (section === 'invitation-profile') {
+        } else if (section === 'jellyfin') {
             body = {
-                ...currentInvitationProfile,
-                require_email: document.getElementById('invite-profile-require-email').checked,
-                require_email_verification: document.getElementById('invite-profile-require-email-verification').checked,
-                email_verification_policy: document.getElementById('invite-profile-email-verification-policy').value || 'required',
-                username_min_length: parseInt(document.getElementById('invite-profile-user-min').value, 10) || 3,
-                username_max_length: parseInt(document.getElementById('invite-profile-user-max').value, 10) || 32,
-                password_min_length: parseInt(document.getElementById('invite-profile-pw-min').value, 10) || 8,
-                password_max_length: parseInt(document.getElementById('invite-profile-pw-max').value, 10) || 128,
-                password_require_upper: document.getElementById('invite-profile-pw-upper').checked,
-                password_require_lower: document.getElementById('invite-profile-pw-lower').checked,
-                password_require_digit: document.getElementById('invite-profile-pw-digit').checked,
-                password_require_special: document.getElementById('invite-profile-pw-special').checked,
+                url: document.getElementById('jellyfin-server-url').value.trim(),
+                api_key: document.getElementById('jellyfin-api-key').value.trim(),
             };
-
         } else if (section === 'smtp') {
             body = {
                 host: document.getElementById('smtp-host').value,
@@ -2166,8 +2209,8 @@
 
         [
             ['form-general', 'general'],
+            ['form-jellyfin-settings', 'jellyfin'],
             ['form-auth-session', 'auth-session'],
-            ['form-invitation-profile', 'invitation-profile'],
             ['form-authentik-settings', 'authentik'],
             ['form-smtp', 'smtp'],
             ['form-webhooks', 'webhooks'],
@@ -2179,10 +2222,6 @@
                 form.addEventListener('submit', (event) => saveSettings(section, event));
             }
         });
-
-
-        document.getElementById('invite-profile-require-email-verification')?.addEventListener('change', syncInviteEmailRequirementFromVerification);
-        document.getElementById('invite-profile-email-verification-policy')?.addEventListener('change', syncInviteEmailPolicyControls);
 
         const toggle = document.getElementById('sidebar-toggle');
         if (toggle) {
@@ -2219,11 +2258,13 @@
             }
         });
 
-
         document.getElementById('backup-create-btn')?.addEventListener('click', createBackupNow);
         document.getElementById('backup-import-btn')?.addEventListener('click', importBackup);
         document.getElementById('btn-auth-session-revoke-all')?.addEventListener('click', revokeAuthSessions);
-        document.getElementById('btn-reload-sso-env')?.addEventListener('click', reloadSSOFromEnv);
+        document.getElementById('btn-test-jellyfin')?.addEventListener('click', () => testJellyfinConnection());
+        document.getElementById('btn-toggle-jf-api-key')?.addEventListener('click', function () {
+            toggleSecretVisibility('jellyfin-api-key', this);
+        });
         document.getElementById('btn-test-sso')?.addEventListener('click', runSSOHealthCheck);
         document.getElementById('btn-copy-callback-url')?.addEventListener('click', copyCallbackURL);
         document.getElementById('btn-test-sso-user')?.addEventListener('click', testSSOUser);

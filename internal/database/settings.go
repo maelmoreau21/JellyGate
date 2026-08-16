@@ -37,6 +37,7 @@ const (
 	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
 	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
 	SettingAuthentikConfig             = "authentik_config"               // JSON: config.AuthentikConfig
+	SettingJellyfinConfig              = "jellyfin_config"                // JSON: config.JellyfinConfig
 )
 
 // AuthSessionConfig controle la duree des sessions persistantes et la
@@ -286,6 +287,42 @@ func (db *DB) IsAuthentikEnabled() bool {
 		return false
 	}
 	return cfg.Enabled
+}
+
+// ── Jellyfin Config ──────────────────────────────────────────────────────────
+
+// GetJellyfinConfig récupère la configuration du serveur Jellyfin depuis la base.
+func (db *DB) GetJellyfinConfig() (config.JellyfinConfig, error) {
+	var cfg config.JellyfinConfig
+
+	raw, err := db.GetSetting(SettingJellyfinConfig)
+	if err != nil {
+		return cfg, err
+	}
+	if raw == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config Jellyfin", "error", err)
+		return cfg, nil
+	}
+
+	cfg.URL = strings.TrimSpace(cfg.URL)
+	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
+	return cfg, nil
+}
+
+// SaveJellyfinConfig sauvegarde la configuration du serveur Jellyfin dans la base.
+func (db *DB) SaveJellyfinConfig(cfg config.JellyfinConfig) error {
+	cfg.URL = strings.TrimSpace(cfg.URL)
+	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
+
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return fmt.Errorf("SaveJellyfinConfig marshal: %w", err)
+	}
+	return db.SetSetting(SettingJellyfinConfig, string(data))
 }
 
 // ── SMTP Config ─────────────────────────────────────────────────────────────

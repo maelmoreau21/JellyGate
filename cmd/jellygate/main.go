@@ -86,10 +86,21 @@ func main() {
 		}
 	}
 
-	// ── 3b. Initialiser les clients de service à partir des settings DB ──
-	jfClient := jellyfin.New(cfg.Jellyfin)
+	// ── 3b. Initialiser les clients de service à partir des settings DB & Env ──
+	jellyfinCfg := cfg.Jellyfin
+	if db != nil {
+		if dbJfCfg, err := db.GetJellyfinConfig(); err == nil {
+			if strings.TrimSpace(jellyfinCfg.URL) == "" {
+				jellyfinCfg.URL = dbJfCfg.URL
+			}
+			if strings.TrimSpace(jellyfinCfg.APIKey) == "" {
+				jellyfinCfg.APIKey = dbJfCfg.APIKey
+			}
+		}
+	}
+	jfClient := jellyfin.New(jellyfinCfg)
 	if jfClient.IsConfigured() {
-		slog.Info("Client Jellyfin initialisé", "url", cfg.Jellyfin.URL)
+		slog.Info("Client Jellyfin initialisé", "url", jellyfinCfg.URL)
 		go jfClient.LogDiagnostics()
 	} else {
 		slog.Info("Intégration Jellyfin non configurée (démarrage en mode pur Authentik)")
@@ -127,17 +138,39 @@ func main() {
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
 	authentikCfg := cfg.Authentik
 	if db != nil {
-		if dbAuthCfg, err := db.GetAuthentikConfig(); err == nil && (dbAuthCfg.URL != "" || dbAuthCfg.IssuerURL != "" || dbAuthCfg.ClientID != "" || dbAuthCfg.APIToken != "" || dbAuthCfg.Enabled) {
-			authentikCfg = dbAuthCfg
-		} else {
-			// Si la base n'a pas encore de configuration enregistrée mais que des variables d'environnement sont présentes dans Docker Compose
-			if cfg.Authentik.URL != "" || cfg.Authentik.IssuerURL != "" || cfg.Authentik.ClientID != "" || cfg.Authentik.APIToken != "" {
-				if err := db.SaveAuthentikConfig(cfg.Authentik); err != nil {
-					slog.Warn("Erreur persistance initiale Authentik config en base", "error", err)
-				} else {
-					slog.Info("Configuration SSO/Authentik importée de l'environnement Docker vers la base de données")
-					authentikCfg = cfg.Authentik
-				}
+		if dbAuthCfg, err := db.GetAuthentikConfig(); err == nil {
+			if strings.TrimSpace(authentikCfg.URL) == "" {
+				authentikCfg.URL = dbAuthCfg.URL
+			}
+			if strings.TrimSpace(authentikCfg.IssuerURL) == "" {
+				authentikCfg.IssuerURL = dbAuthCfg.IssuerURL
+			}
+			if strings.TrimSpace(authentikCfg.ClientID) == "" {
+				authentikCfg.ClientID = dbAuthCfg.ClientID
+			}
+			if strings.TrimSpace(authentikCfg.ClientSecret) == "" {
+				authentikCfg.ClientSecret = dbAuthCfg.ClientSecret
+			}
+			if strings.TrimSpace(authentikCfg.RedirectURL) == "" {
+				authentikCfg.RedirectURL = dbAuthCfg.RedirectURL
+			}
+			if strings.TrimSpace(authentikCfg.APIToken) == "" {
+				authentikCfg.APIToken = dbAuthCfg.APIToken
+			}
+			if strings.TrimSpace(authentikCfg.UserGroup) == "" {
+				authentikCfg.UserGroup = dbAuthCfg.UserGroup
+			}
+			if strings.TrimSpace(authentikCfg.AdminGroup) == "" {
+				authentikCfg.AdminGroup = dbAuthCfg.AdminGroup
+			}
+			if strings.TrimSpace(authentikCfg.JellyfinUserGroup) == "" {
+				authentikCfg.JellyfinUserGroup = dbAuthCfg.JellyfinUserGroup
+			}
+			if strings.TrimSpace(authentikCfg.EnrollmentFlowSlug) == "" {
+				authentikCfg.EnrollmentFlowSlug = dbAuthCfg.EnrollmentFlowSlug
+			}
+			if !authentikCfg.Enabled {
+				authentikCfg.Enabled = dbAuthCfg.Enabled
 			}
 		}
 	}
@@ -184,6 +217,13 @@ func main() {
 		adminHandler.SetAuthentikClient(newAuthClient)
 		settingsHandler.SetAuthentikClient(newAuthClient)
 		slog.Info("🔄 Clients OIDC & Authentik rechargés", "enabled", c.Enabled, "url", c.URL)
+	}
+	settingsHandler.OnJellyfinReload = func(c config.JellyfinConfig) {
+		jfClient.UpdateConfig(c)
+		if jfClient.IsConfigured() {
+			go jfClient.LogDiagnostics()
+		}
+		slog.Info("🔄 Client Jellyfin rechargé", "url", c.URL)
 	}
 
 	// ── 4. Configurer le routeur Chi ────────────────────────────────────────
@@ -381,6 +421,9 @@ func main() {
 					r.Post("/authentik/test", settingsHandler.GetAuthentikHealth)
 					r.Post("/authentik/reload-env", settingsHandler.ReloadAuthentikFromEnv)
 					r.Post("/authentik/test-user", settingsHandler.TestAuthentikUser)
+					r.Post("/jellyfin", settingsHandler.SaveJellyfin)
+					r.Get("/jellyfin/health", settingsHandler.TestJellyfin)
+					r.Post("/jellyfin/test", settingsHandler.TestJellyfin)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)

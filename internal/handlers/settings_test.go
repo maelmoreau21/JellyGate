@@ -656,3 +656,73 @@ func TestSettingsHandlerTestAuthentikUser(t *testing.T) {
 		t.Errorf("expected is_jellygate_user to be true")
 	}
 }
+
+func TestSettingsHandlerSaveJellyfin(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	var reloadedConfig config.JellyfinConfig
+	handler.OnJellyfinReload = func(c config.JellyfinConfig) {
+		reloadedConfig = c
+	}
+
+	payload := []byte(`{"url":"http://192.168.1.50:8096","api_key":"test_jf_key_123"}`)
+	rec := httptest.NewRecorder()
+	handler.SaveJellyfin(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/jellyfin", payload))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("SaveJellyfin status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	saved, err := db.GetJellyfinConfig()
+	if err != nil {
+		t.Fatalf("GetJellyfinConfig error: %v", err)
+	}
+	if saved.URL != "http://192.168.1.50:8096" {
+		t.Errorf("expected URL http://192.168.1.50:8096, got %s", saved.URL)
+	}
+	if saved.APIKey != "test_jf_key_123" {
+		t.Errorf("expected APIKey test_jf_key_123, got %s", saved.APIKey)
+	}
+	if reloadedConfig.URL != "http://192.168.1.50:8096" {
+		t.Errorf("expected callback reloaded URL http://192.168.1.50:8096, got %s", reloadedConfig.URL)
+	}
+}
+
+func TestSettingsHandlerJellyfinEnvPrecedence(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	// Save one config in DB
+	_ = db.SaveJellyfinConfig(config.JellyfinConfig{
+		URL:    "http://from-db:8096",
+		APIKey: "db_api_key",
+	})
+
+	// Handler has app config with Env overrides
+	handler.cfg.Jellyfin = config.JellyfinConfig{
+		URL:    "http://from-env:8096",
+		APIKey: "env_api_key",
+	}
+
+	rec := httptest.NewRecorder()
+	handler.GetAll(rec, newAdminRequest(http.MethodGet, "/admin/api/settings", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GetAll status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Success bool             `json:"success"`
+		Data    settingsResponse `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	// Environment variable must take strict precedence
+	if resp.Data.Jellyfin.URL != "http://from-env:8096" {
+		t.Errorf("expected Jellyfin URL from env 'http://from-env:8096', got %s", resp.Data.Jellyfin.URL)
+	}
+	if !resp.Data.JellyfinEnvManaged {
+		t.Errorf("expected JellyfinEnvManaged to be true")
+	}
+}

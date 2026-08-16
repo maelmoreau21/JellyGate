@@ -52,6 +52,7 @@ type SettingsHandler struct {
 	OnSMTPReload      func(config.SMTPConfig)
 	OnWebhooksReload  func(config.WebhooksConfig)
 	OnAuthentikReload func(config.AuthentikConfig)
+	OnJellyfinReload  func(config.JellyfinConfig)
 }
 
 func (h *SettingsHandler) tr(r *http.Request, key, fallback string) string {
@@ -76,9 +77,13 @@ func (h *SettingsHandler) SetAuthentikClient(authClient authentik.Client) {
 	h.authClient = authClient
 }
 
+// SetJellyfinClient met à jour le client Jellyfin.
+func (h *SettingsHandler) SetJellyfinClient(jfClient *jellyfin.Client) {
+	h.jfClient = jfClient
+}
+
 // resolveEffectiveAuthentikConfig combine la configuration stockée en base SQL avec les variables d'environnement.
-// Si une configuration est présente en base SQL, elle est prioritaire.
-// Sinon, les variables d'environnement (Docker Compose / .env) sont utilisées en repli.
+// Les variables d'environnement (Docker Compose / .env) sont STRICTEMENT prioritaires.
 func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConfig {
 	cfg := config.AuthentikConfig{
 		Enabled:            false,
@@ -88,64 +93,50 @@ func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConf
 		EnrollmentFlowSlug: "default-enrollment-flow",
 	}
 
-	var hasDBConfig bool
 	if h.db != nil {
 		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil {
 			if dbCfg.URL != "" || dbCfg.IssuerURL != "" || dbCfg.ClientID != "" || dbCfg.APIToken != "" || dbCfg.Enabled {
-				hasDBConfig = true
 				cfg = dbCfg
 			}
 		}
 	}
 
-	// Compléter les champs manquants avec l'environnement (Docker Compose / .env)
+	// Les variables d'environnement Docker écrasent systématiquement la config DB si définies
 	if h.cfg != nil {
 		env := h.cfg.Authentik
-		var importedFromEnv bool
 
-		if cfg.URL == "" && env.URL != "" {
+		if strings.TrimSpace(env.URL) != "" {
 			cfg.URL = strings.TrimSpace(env.URL)
-			importedFromEnv = true
 		}
-		if cfg.IssuerURL == "" && env.IssuerURL != "" {
+		if strings.TrimSpace(env.IssuerURL) != "" {
 			cfg.IssuerURL = strings.TrimSpace(env.IssuerURL)
-			importedFromEnv = true
 		}
-		if cfg.ClientID == "" && env.ClientID != "" {
+		if strings.TrimSpace(env.ClientID) != "" {
 			cfg.ClientID = strings.TrimSpace(env.ClientID)
-			importedFromEnv = true
 		}
-		if cfg.ClientSecret == "" && env.ClientSecret != "" {
+		if strings.TrimSpace(env.ClientSecret) != "" {
 			cfg.ClientSecret = strings.TrimSpace(env.ClientSecret)
-			importedFromEnv = true
 		}
-		if cfg.RedirectURL == "" && env.RedirectURL != "" {
+		if strings.TrimSpace(env.RedirectURL) != "" {
 			cfg.RedirectURL = strings.TrimSpace(env.RedirectURL)
-			importedFromEnv = true
 		}
-		if cfg.APIToken == "" && env.APIToken != "" {
+		if strings.TrimSpace(env.APIToken) != "" {
 			cfg.APIToken = strings.TrimSpace(env.APIToken)
-			importedFromEnv = true
 		}
-		if (cfg.UserGroup == "" || cfg.UserGroup == "jellygate-users") && env.UserGroup != "" {
+		if strings.TrimSpace(env.UserGroup) != "" {
 			cfg.UserGroup = strings.TrimSpace(env.UserGroup)
 		}
-		if (cfg.AdminGroup == "" || cfg.AdminGroup == "jellygate-admins") && env.AdminGroup != "" {
+		if strings.TrimSpace(env.AdminGroup) != "" {
 			cfg.AdminGroup = strings.TrimSpace(env.AdminGroup)
 		}
-		if (cfg.JellyfinUserGroup == "" || cfg.JellyfinUserGroup == "jellyfin-users") && env.JellyfinUserGroup != "" {
+		if strings.TrimSpace(env.JellyfinUserGroup) != "" {
 			cfg.JellyfinUserGroup = strings.TrimSpace(env.JellyfinUserGroup)
 		}
-		if (cfg.EnrollmentFlowSlug == "" || cfg.EnrollmentFlowSlug == "default-enrollment-flow") && env.EnrollmentFlowSlug != "" {
+		if strings.TrimSpace(env.EnrollmentFlowSlug) != "" {
 			cfg.EnrollmentFlowSlug = strings.TrimSpace(env.EnrollmentFlowSlug)
 		}
-		if !cfg.Enabled && (env.Enabled || (env.URL != "" || env.IssuerURL != "" || env.ClientID != "")) {
+		if env.Enabled || (env.URL != "" || env.IssuerURL != "" || env.ClientID != "") {
 			cfg.Enabled = true
-			importedFromEnv = true
-		}
-
-		if (!hasDBConfig || importedFromEnv) && h.db != nil && (cfg.URL != "" || cfg.IssuerURL != "" || cfg.ClientID != "") {
-			_ = h.db.SaveAuthentikConfig(cfg)
 		}
 	}
 
@@ -163,6 +154,45 @@ func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConf
 	}
 
 	return cfg
+}
+
+func (h *SettingsHandler) isAuthentikEnvManaged() bool {
+	if h.cfg == nil {
+		return false
+	}
+	env := h.cfg.Authentik
+	return strings.TrimSpace(env.URL) != "" || strings.TrimSpace(env.IssuerURL) != "" || strings.TrimSpace(env.ClientID) != "" || strings.TrimSpace(env.APIToken) != ""
+}
+
+// resolveEffectiveJellyfinConfig combine la configuration stockée en base SQL avec les variables d'environnement.
+// Les variables d'environnement Docker / .env (JELLYFIN_URL, JELLYFIN_API_KEY) sont STRICTEMENT prioritaires.
+func (h *SettingsHandler) resolveEffectiveJellyfinConfig() config.JellyfinConfig {
+	var cfg config.JellyfinConfig
+
+	if h.db != nil {
+		if dbCfg, err := h.db.GetJellyfinConfig(); err == nil {
+			cfg = dbCfg
+		}
+	}
+
+	// Les variables d'environnement Docker écrasent systématiquement la config DB si définies
+	if h.cfg != nil {
+		if strings.TrimSpace(h.cfg.Jellyfin.URL) != "" {
+			cfg.URL = strings.TrimSpace(h.cfg.Jellyfin.URL)
+		}
+		if strings.TrimSpace(h.cfg.Jellyfin.APIKey) != "" {
+			cfg.APIKey = strings.TrimSpace(h.cfg.Jellyfin.APIKey)
+		}
+	}
+
+	return cfg
+}
+
+func (h *SettingsHandler) isJellyfinEnvManaged() bool {
+	if h.cfg == nil {
+		return false
+	}
+	return strings.TrimSpace(h.cfg.Jellyfin.URL) != "" || strings.TrimSpace(h.cfg.Jellyfin.APIKey) != ""
 }
 
 const maskedSecretValue = "********"
@@ -476,6 +506,9 @@ type settingsResponse struct {
 	InvitationProfile                 config.InvitationProfileConfig         `json:"invitation_profile"`
 	AuthSession                       database.AuthSessionConfig             `json:"auth_session"`
 	Authentik                         config.AuthentikConfig                 `json:"authentik"`
+	AuthentikEnvManaged               bool                                   `json:"authentik_env_managed"`
+	Jellyfin                          config.JellyfinConfig                  `json:"jellyfin"`
+	JellyfinEnvManaged                bool                                   `json:"jellyfin_env_managed"`
 	SMTP                              config.SMTPConfig                      `json:"smtp"`
 	Webhooks                          config.WebhooksConfig                  `json:"webhooks"`
 	Backup                            config.BackupConfig                    `json:"backup"`
@@ -649,6 +682,12 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		trimEmailTemplateSubjects(&emailTemplatesCfg)
 	}
 
+	effectiveJellyfin := h.resolveEffectiveJellyfinConfig()
+	maskedJellyfin := effectiveJellyfin
+	if maskedJellyfin.APIKey != "" {
+		maskedJellyfin.APIKey = maskedSecretValue
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
@@ -661,6 +700,9 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			InvitationProfile:                 inviteProfileCfg,
 			AuthSession:                       authSessionCfg,
 			Authentik:                         authentikCfg,
+			AuthentikEnvManaged:               h.isAuthentikEnvManaged(),
+			Jellyfin:                          maskedJellyfin,
+			JellyfinEnvManaged:                h.isJellyfinEnvManaged(),
 			SMTP:                              maskedSMTP,
 			Webhooks:                          maskedWebhooksConfig(webhooksCfg),
 			Backup:                            backupCfg,
@@ -861,6 +903,131 @@ func (h *SettingsHandler) FetchJellyfinServerName(w http.ResponseWriter, r *http
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data:    map[string]string{"server_name": serverName},
+	})
+}
+
+// SaveJellyfin sauvegarde la configuration du serveur Jellyfin.
+func (h *SettingsHandler) SaveJellyfin(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	var input config.JellyfinConfig
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	existing, _ := h.db.GetJellyfinConfig()
+	if isMaskedSecret(input.APIKey) || strings.TrimSpace(input.APIKey) == "" {
+		input.APIKey = existing.APIKey
+	}
+
+	input.URL = strings.TrimSpace(input.URL)
+	if input.URL != "" && !strings.HasPrefix(input.URL, "http://") && !strings.HasPrefix(input.URL, "https://") {
+		input.URL = "http://" + input.URL
+	}
+	input.URL = strings.TrimRight(input.URL, "/")
+
+	if err := h.db.SaveJellyfinConfig(input); err != nil {
+		slog.Error("Erreur sauvegarde config Jellyfin", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur de sauvegarde de la configuration Jellyfin",
+		})
+		return
+	}
+
+	effective := h.resolveEffectiveJellyfinConfig()
+	if h.jfClient != nil {
+		h.jfClient.UpdateConfig(effective)
+	}
+	if h.OnJellyfinReload != nil {
+		h.OnJellyfinReload(effective)
+	}
+
+	slog.Info("Configuration Jellyfin sauvegardée", "url", effective.URL)
+	_ = h.db.LogAction("settings.jellyfin.saved", "", "", fmt.Sprintf(`{"url":"%s"}`, effective.URL))
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Configuration Jellyfin sauvegardée",
+		Data: map[string]interface{}{
+			"url":            effective.URL,
+			"configured":     effective.URL != "" && effective.APIKey != "",
+			"env_overridden": h.isJellyfinEnvManaged(),
+		},
+	})
+}
+
+// TestJellyfin teste la connectivité et la clé API avec le serveur Jellyfin.
+func (h *SettingsHandler) TestJellyfin(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	testCfg := h.resolveEffectiveJellyfinConfig()
+	if r.Method == http.MethodPost && r.Body != nil {
+		var input config.JellyfinConfig
+		if err := json.NewDecoder(r.Body).Decode(&input); err == nil && input.URL != "" {
+			if isMaskedSecret(input.APIKey) || strings.TrimSpace(input.APIKey) == "" {
+				input.APIKey = testCfg.APIKey
+			}
+			input.URL = strings.TrimSpace(input.URL)
+			if input.URL != "" && !strings.HasPrefix(input.URL, "http://") && !strings.HasPrefix(input.URL, "https://") {
+				input.URL = "http://" + input.URL
+			}
+			input.URL = strings.TrimRight(input.URL, "/")
+			if h.cfg != nil {
+				if strings.TrimSpace(h.cfg.Jellyfin.URL) != "" {
+					input.URL = strings.TrimSpace(h.cfg.Jellyfin.URL)
+				}
+				if strings.TrimSpace(h.cfg.Jellyfin.APIKey) != "" {
+					input.APIKey = strings.TrimSpace(h.cfg.Jellyfin.APIKey)
+				}
+			}
+			testCfg = input
+		}
+	}
+
+	if strings.TrimSpace(testCfg.URL) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "URL Jellyfin non configurée",
+		})
+		return
+	}
+
+	client := jellyfin.New(testCfg)
+	diag := client.Diagnostics()
+
+	status := "error"
+	message := "Serveur Jellyfin injoignable"
+	if diag.APIKeyValid && diag.Version != "" {
+		status = "ok"
+		message = "Connexion établie avec succès"
+	} else if diag.Version != "" {
+		status = "warning"
+		message = "Serveur joignable mais clé API invalide ou refusée"
+	} else if diag.PublicError != "" {
+		message = "Erreur: " + diag.PublicError
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: status == "ok" || status == "warning",
+		Message: message,
+		Data: map[string]interface{}{
+			"status":         status,
+			"url":            testCfg.URL,
+			"server_name":    diag.ServerName,
+			"version":        diag.Version,
+			"api_key_valid":  diag.APIKeyValid,
+			"public_error":   diag.PublicError,
+			"auth_error":     diag.AuthError,
+			"env_overridden": h.isJellyfinEnvManaged(),
+		},
 	})
 }
 

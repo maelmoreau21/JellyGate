@@ -116,8 +116,8 @@ type AuthentikConfig struct {
 
 // JellyfinConfig contient les paramètres de connexion à Jellyfin.
 type JellyfinConfig struct {
-	URL    string // URL de l'instance Jellyfin (ex: http://jellyfin:8096)
-	APIKey string // Clé API d'administration
+	URL    string `json:"url"`     // URL de l'instance Jellyfin (ex: http://jellyfin:8096)
+	APIKey string `json:"api_key"` // Clé API d'administration
 }
 
 // ThirdPartyConfig contient les paramètres optionnels pour Jellyseerr et JellyTrack.

@@ -68,9 +68,42 @@ func New(cfg config.JellyfinConfig) *Client {
 	}
 }
 
+// UpdateConfig met à jour dynamiquement la configuration du client Jellyfin.
+func (c *Client) UpdateConfig(cfg config.JellyfinConfig) {
+	if c == nil {
+		return
+	}
+	url := strings.TrimRight(cfg.URL, "/")
+	if url != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
+	c.authMu.Lock()
+	defer c.authMu.Unlock()
+	c.baseURL = url
+	c.apiKey = strings.TrimSpace(cfg.APIKey)
+}
+
+// Config retourne une copie de la configuration courante du client.
+func (c *Client) Config() config.JellyfinConfig {
+	if c == nil {
+		return config.JellyfinConfig{}
+	}
+	c.authMu.RLock()
+	defer c.authMu.RUnlock()
+	return config.JellyfinConfig{
+		URL:    c.baseURL,
+		APIKey: c.apiKey,
+	}
+}
+
 // IsConfigured indique si le client Jellyfin dispose d'une URL et d'une clé API valides.
 func (c *Client) IsConfigured() bool {
-	return c != nil && strings.TrimSpace(c.baseURL) != "" && strings.TrimSpace(c.apiKey) != ""
+	if c == nil {
+		return false
+	}
+	c.authMu.RLock()
+	defer c.authMu.RUnlock()
+	return strings.TrimSpace(c.baseURL) != "" && strings.TrimSpace(c.apiKey) != ""
 }
 
 // Status retourne le statut courant de l'intégration Jellyfin.
@@ -395,12 +428,17 @@ func (c *Client) SetUserImage(userID string, contentType string, data []byte) er
 	}
 
 	path := fmt.Sprintf("/Users/%s/Images/Primary", userID)
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, bytes.NewReader(data))
+	c.authMu.RLock()
+	baseURL := c.baseURL
+	apiKey := c.apiKey
+	c.authMu.RUnlock()
+
+	req, err := http.NewRequest(http.MethodPost, baseURL+path, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
+	req.Header.Set("Authorization", AuthorizationHeader(apiKey))
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -753,10 +791,18 @@ func readHTTPDetail(r io.Reader) string {
 // doRequest exécute une requête HTTP vers l'API Jellyfin.
 // Ajoute automatiquement le header d'authentification API key.
 func (c *Client) doRequest(method, path string, body []byte) (*http.Response, error) {
-	if !c.IsConfigured() {
+	if c == nil {
 		return nil, ErrNotConfigured
 	}
-	url := c.baseURL + path
+	c.authMu.RLock()
+	baseURL := c.baseURL
+	apiKey := c.apiKey
+	c.authMu.RUnlock()
+
+	if strings.TrimSpace(baseURL) == "" || strings.TrimSpace(apiKey) == "" {
+		return nil, ErrNotConfigured
+	}
+	url := baseURL + path
 
 	var reqBody io.Reader
 	if body != nil {
@@ -768,7 +814,7 @@ func (c *Client) doRequest(method, path string, body []byte) (*http.Response, er
 		return nil, fmt.Errorf("erreur de création de la requête %s %s: %w", method, path, err)
 	}
 
-	req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
+	req.Header.Set("Authorization", AuthorizationHeader(apiKey))
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
