@@ -132,6 +132,12 @@ func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConf
 		if strings.TrimSpace(env.JellyfinUserGroup) != "" {
 			cfg.JellyfinUserGroup = strings.TrimSpace(env.JellyfinUserGroup)
 		}
+		if strings.TrimSpace(env.InvitersGroup) != "" {
+			cfg.InvitersGroup = strings.TrimSpace(env.InvitersGroup)
+		}
+		if strings.TrimSpace(env.InvitersRecursiveGroup) != "" {
+			cfg.InvitersRecursiveGroup = strings.TrimSpace(env.InvitersRecursiveGroup)
+		}
 		if strings.TrimSpace(env.EnrollmentFlowSlug) != "" {
 			cfg.EnrollmentFlowSlug = strings.TrimSpace(env.EnrollmentFlowSlug)
 		}

@@ -1525,6 +1525,12 @@
             const jfGrpInput = document.getElementById('jellyfin_user_group');
             if (jfGrpInput) jfGrpInput.value = authentik.jellyfin_user_group || 'jellyfin-users';
 
+            const invGrpInput = document.getElementById('inviters_group');
+            if (invGrpInput) invGrpInput.value = authentik.inviters_group || '';
+
+            const invRecGrpInput = document.getElementById('inviters_recursive_group');
+            if (invRecGrpInput) invRecGrpInput.value = authentik.inviters_recursive_group || '';
+
             const flowInput = document.getElementById('enrollment_flow_slug');
             if (flowInput) flowInput.value = authentik.enrollment_flow_slug || 'default-enrollment-flow';
 
@@ -1721,6 +1727,8 @@
                 user_group: document.getElementById('user_group') ? document.getElementById('user_group').value.trim() : 'jellygate-users',
                 admin_group: document.getElementById('admin_group') ? document.getElementById('admin_group').value.trim() : 'jellygate-admins',
                 jellyfin_user_group: document.getElementById('jellyfin_user_group') ? document.getElementById('jellyfin_user_group').value.trim() : 'jellyfin-users',
+                inviters_group: document.getElementById('inviters_group') ? document.getElementById('inviters_group').value.trim() : '',
+                inviters_recursive_group: document.getElementById('inviters_recursive_group') ? document.getElementById('inviters_recursive_group').value.trim() : '',
                 enrollment_flow_slug: document.getElementById('enrollment_flow_slug') ? document.getElementById('enrollment_flow_slug').value.trim() : 'default-enrollment-flow',
             };
         } else if (section === 'backup') {

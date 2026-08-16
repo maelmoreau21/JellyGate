@@ -18,7 +18,7 @@
     </button>
     <button data-tab-target="jellyfin" id="tab-jellyfin" class="tab-btn px-6 py-3 rounded-t-xl text-sm font-bold transition-all whitespace-nowrap border-b-2 border-transparent hover:bg-white/5">
         <div class="flex items-center gap-2">
-            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
             Jellyfin
         </div>
     </button>
@@ -493,7 +493,7 @@
                 2. Mappage des Groupes & Accès (Annuaire LDAP & OIDC)
               </h3>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 <div>
                   <label for="user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Utilisateurs JellyGate</label>
                   <input type="text" id="user_group" name="user_group" placeholder="jellygate-users" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
@@ -511,7 +511,20 @@
                   <input type="text" id="jellyfin_user_group" name="jellyfin_user_group" placeholder="jellyfin-users" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
                   <p class="text-[11px] text-slate-500 mt-1">Groupe synchronisé avec Jellyfin via le plugin LDAP</p>
                 </div>
+
+                <div>
+                  <label for="inviters_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Parrains (Invitations)</label>
+                  <input type="text" id="inviters_group" name="inviters_group" placeholder="jellygate-inviters" class="jg-input w-full rounded-xl text-sm bg-black/20">
+                  <p class="text-[11px] text-slate-500 mt-1">Les membres de ce groupe peuvent créer des liens d'invitation</p>
+                </div>
+
+                <div>
+                  <label for="inviters_recursive_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Parrains Récursif</label>
+                  <input type="text" id="inviters_recursive_group" name="inviters_recursive_group" placeholder="jellygate-inviters-recursive" class="jg-input w-full rounded-xl text-sm bg-black/20">
+                  <p class="text-[11px] text-slate-500 mt-1">Comme le groupe Parrains, mais les invités peuvent aussi parrainer à leur tour</p>
+                </div>
               </div>
+
 
               {{/* Note Explicative LDAP */}}
               <div class="mt-4 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 flex items-start gap-3">

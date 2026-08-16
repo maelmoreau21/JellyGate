@@ -101,18 +101,21 @@ type LocalAdminConfig struct {
 
 // AuthentikConfig contient la configuration OIDC & API Authentik.
 type AuthentikConfig struct {
-	Enabled            bool   `json:"enabled"`
-	URL                string `json:"authentik_url"`
-	IssuerURL          string `json:"oidc_issuer_url"`
-	ClientID           string `json:"oidc_client_id"`
-	ClientSecret       string `json:"oidc_client_secret"`
-	RedirectURL        string `json:"oidc_redirect_url"`
-	APIToken           string `json:"authentik_api_token"`
-	UserGroup          string `json:"user_group"`
-	AdminGroup         string `json:"admin_group"`
-	JellyfinUserGroup  string `json:"jellyfin_user_group"`
-	EnrollmentFlowSlug string `json:"enrollment_flow_slug"`
+	Enabled                 bool   `json:"enabled"`
+	URL                     string `json:"authentik_url"`
+	IssuerURL               string `json:"oidc_issuer_url"`
+	ClientID                string `json:"oidc_client_id"`
+	ClientSecret            string `json:"oidc_client_secret"`
+	RedirectURL             string `json:"oidc_redirect_url"`
+	APIToken                string `json:"authentik_api_token"`
+	UserGroup               string `json:"user_group"`
+	AdminGroup              string `json:"admin_group"`
+	JellyfinUserGroup       string `json:"jellyfin_user_group"`
+	InvitersGroup           string `json:"inviters_group"`            // Groupe Authentik : peut créer des invitations
+	InvitersRecursiveGroup  string `json:"inviters_recursive_group"`  // Groupe Authentik : peut créer des invitations + les invités peuvent aussi inviter
+	EnrollmentFlowSlug      string `json:"enrollment_flow_slug"`
 }
+
 
 // JellyfinConfig contient les paramètres de connexion à Jellyfin.
 type JellyfinConfig struct {
