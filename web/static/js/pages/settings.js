@@ -288,28 +288,20 @@
                                 <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider self-start sm:self-auto">Source : ${JG.esc(u.source || 'SSO')}</span>
                             </div>
 
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div class="p-3 rounded-xl border ${u.is_jellygate_user ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'} flex items-center gap-2.5">
                                     <span class="text-base">${u.is_jellygate_user ? '✅' : '❌'}</span>
                                     <div>
                                         <div class="text-xs font-bold text-white">Accès JellyGate</div>
-                                        <div class="text-[10px] text-slate-400">${u.is_jellygate_user ? 'Autorisé' : 'Non autorisé'}</div>
+                                        <div class="text-[10px] text-slate-400">${u.is_jellygate_user ? 'Membre du groupe utilisateurs' : 'Non autorisé'}</div>
                                     </div>
                                 </div>
 
                                 <div class="p-3 rounded-xl border ${u.is_jellygate_admin ? 'bg-purple-500/10 border-purple-500/30 text-purple-300' : 'bg-slate-500/10 border-slate-500/20 text-slate-400'} flex items-center gap-2.5">
                                     <span class="text-base">${u.is_jellygate_admin ? '👑' : '👤'}</span>
                                     <div>
-                                        <div class="text-xs font-bold text-white">Droits Admin</div>
+                                        <div class="text-xs font-bold text-white">Droits Administrateur</div>
                                         <div class="text-[10px] text-slate-400">${u.is_jellygate_admin ? 'Administrateur' : 'Utilisateur standard'}</div>
-                                    </div>
-                                </div>
-
-                                <div class="p-3 rounded-xl border ${u.is_jellyfin_user ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'} flex items-center gap-2.5">
-                                    <span class="text-base">${u.is_jellyfin_user ? '🎬' : '⚠️'}</span>
-                                    <div>
-                                        <div class="text-xs font-bold text-white">Accès Jellyfin LDAP</div>
-                                        <div class="text-[10px] text-slate-400">${u.is_jellyfin_user ? 'Synchronisé' : 'Hors groupe Jellyfin'}</div>
                                     </div>
                                 </div>
                             </div>
@@ -1495,19 +1487,11 @@
             const adminGrpInput = document.getElementById('admin_group');
             if (adminGrpInput) adminGrpInput.value = authentik.admin_group || 'jellygate-admins';
 
-            // Auto-détecter et appliquer le preset
-            let detectedPreset = 'authentik';
-            const issuer = (authentik.oidc_issuer_url || authentik.authentik_url || '').toLowerCase();
-            if (issuer.includes('/realms/')) {
-                detectedPreset = 'keycloak';
-            } else if (issuer.includes('/api/oidc')) {
-                detectedPreset = 'authelia';
-            } else if (issuer.includes('okta.com') || issuer.includes('microsoft') || issuer.includes('windows.net') || issuer.includes('login.microsoftonline.com')) {
-                detectedPreset = 'okta';
-            } else if (issuer && !issuer.includes('/application/o/')) {
-                detectedPreset = 'generic';
-            }
-            applySSOPreset(detectedPreset);
+            const tokenInput = document.getElementById('authentik_api_token');
+            if (tokenInput) tokenInput.value = authentik.authentik_api_token || '';
+
+            const flowInput = document.getElementById('enrollment_flow_slug');
+            if (flowInput) flowInput.value = authentik.enrollment_flow_slug || 'default-enrollment-flow';
 
             const badge = document.getElementById('sso-status-badge');
             if (badge) {
@@ -1686,6 +1670,8 @@
                 oidc_redirect_url: document.getElementById('oidc_redirect_url') ? document.getElementById('oidc_redirect_url').value.trim() : '',
                 user_group: document.getElementById('user_group') ? document.getElementById('user_group').value.trim() : 'jellygate-users',
                 admin_group: document.getElementById('admin_group') ? document.getElementById('admin_group').value.trim() : 'jellygate-admins',
+                authentik_api_token: document.getElementById('authentik_api_token') ? document.getElementById('authentik_api_token').value : '',
+                enrollment_flow_slug: document.getElementById('enrollment_flow_slug') ? document.getElementById('enrollment_flow_slug').value.trim() : 'default-enrollment-flow',
             };
         } else if (section === 'backup') {
             const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');

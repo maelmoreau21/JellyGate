@@ -300,44 +300,6 @@
             </div>
           </div>
 
-          {{/* Sélecteur de Presets de Fournisseurs */}}
-          <div class="space-y-4">
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Sélectionnez votre Fournisseur d'Identité</label>
-              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" id="sso-preset-selector">
-                <button type="button" class="sso-preset-btn active p-3 rounded-2xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authentik">
-                  <span class="text-lg">🟣</span>
-                  <span class="text-xs font-bold text-white group-hover:text-indigo-300">Authentik</span>
-                  <span class="text-[10px] text-slate-400">OIDC + Outpost LDAP</span>
-                </button>
-
-                <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="keycloak">
-                  <span class="text-lg">🔵</span>
-                  <span class="text-xs font-bold text-white group-hover:text-blue-300">Keycloak</span>
-                  <span class="text-[10px] text-slate-400">Realm OIDC / Groups</span>
-                </button>
-
-                <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="authelia">
-                  <span class="text-lg">🔴</span>
-                  <span class="text-xs font-bold text-white group-hover:text-red-300">Authelia</span>
-                  <span class="text-[10px] text-slate-400">OIDC + LLDAP / LDAP</span>
-                </button>
-
-                <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="okta">
-                  <span class="text-lg">🔷</span>
-                  <span class="text-xs font-bold text-white group-hover:text-sky-300">Okta / Entra ID</span>
-                  <span class="text-[10px] text-slate-400">Cloud Identity SSO</span>
-                </button>
-
-                <button type="button" class="sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer" data-preset="generic">
-                  <span class="text-lg">🌐</span>
-                  <span class="text-xs font-bold text-white group-hover:text-emerald-300">Générique</span>
-                  <span class="text-[10px] text-slate-400">OIDC standard / LDAP</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
           {{/* Tableau de Bord Santé / Diagnostic */}}
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div id="card-sso-oidc" class="glass-card p-4 rounded-2xl border border-white/10 bg-black/20 flex flex-col justify-between">
@@ -351,7 +313,7 @@
 
             <div id="card-sso-api" class="glass-card p-4 rounded-2xl border border-white/10 bg-black/20 flex flex-col justify-between">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">API REST / Service</span>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400">API REST Authentik</span>
                 <span id="dot-sso-api" class="w-2.5 h-2.5 rounded-full bg-slate-500"></span>
               </div>
               <div id="msg-sso-api" class="text-xs font-semibold text-slate-200">Non vérifié</div>
@@ -400,7 +362,7 @@
             <div class="border-t border-white/10 pt-6">
               <h3 class="text-sm font-extrabold uppercase tracking-wider text-indigo-400 mb-4 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-                Configuration OpenID Connect (OIDC)
+                1. Configuration OpenID Connect (OIDC)
               </h3>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -440,7 +402,7 @@
             <div class="border-t border-white/10 pt-6">
               <h3 class="text-sm font-extrabold uppercase tracking-wider text-purple-400 mb-4 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                Groupes & Rôles OIDC
+                2. Groupes & Permissions OIDC
               </h3>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -454,6 +416,31 @@
                   <label for="admin_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Administrateurs (OIDC_ADMIN_GROUP)</label>
                   <input type="text" id="admin_group" name="admin_group" placeholder="jellygate-admins" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
                   <p class="text-[11px] text-slate-500 mt-1">Accorde les droits administrateur dans JellyGate</p>
+                </div>
+              </div>
+            </div>
+
+            {{/* Section 3 : Automatisation API & Inscription (Authentik / API REST) */}}
+            <div id="section-sso-api" class="border-t border-white/10 pt-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+                  3. Automatisation API & Inscription (Authentik / API REST)
+                </h3>
+                <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Spécifique Authentik</span>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label for="authentik_api_token" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Token API REST Authentik</label>
+                  <input type="password" id="authentik_api_token" name="authentik_api_token" placeholder="ak-token-••••••••" class="jg-input w-full rounded-xl text-sm bg-black/20">
+                  <p class="text-[11px] text-slate-500 mt-1">Utilisé pour la création de comptes et les tokens d'invitation (chiffré en base)</p>
+                </div>
+
+                <div>
+                  <label for="enrollment_flow_slug" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Slug Flux d'Inscription (Enrollment Flow)</label>
+                  <input type="text" id="enrollment_flow_slug" name="enrollment_flow_slug" placeholder="default-enrollment-flow" class="jg-input w-full rounded-xl text-sm bg-black/20">
+                  <p class="text-[11px] text-slate-500 mt-1">Slug du flux d'inscription Authentik (ex: default-enrollment-flow)</p>
                 </div>
               </div>
             </div>
