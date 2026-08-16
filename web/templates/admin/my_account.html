@@ -80,7 +80,7 @@
 
     {{/* ── Settings Forms ────────────────────────────────────────── */}}
     <div class="lg:col-span-8 space-y-6">
-        {{/* Contact Info */}}
+        {{/* Contact & Notifications Info */}}
         <section class="jg-card p-8">
             <div class="flex items-center gap-4 mb-8">
                 <div class="w-12 h-12 rounded-2xl bg-jg-accent/10 text-jg-accent flex items-center justify-center">
@@ -95,8 +95,11 @@
             <form id="my-account-form" class="space-y-8 mt-6">
                 <div class="grid grid-cols-1 gap-6">
                     <div class="space-y-2">
-                        <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
-                        <input type="email" id="my-email" class="jg-input h-12 bg-black/20" placeholder="nom@domaine.tld">
+                        <div class="flex items-center justify-between">
+                            <label class="jg-label" for="my-email">{{ .T "my_account_label_email" }}</label>
+                            <span class="text-[10px] text-slate-500 font-mono">LDAP / SSO (Lecture seule)</span>
+                        </div>
+                        <input type="email" id="my-email" class="jg-input h-12 bg-black/20 text-slate-400 cursor-not-allowed opacity-80" readonly>
                     </div>
                 </div>
 
@@ -130,20 +133,6 @@
                     </div>
                 </div>
 
-                <div class="rounded-2xl bg-white/[0.03] border border-white/10 p-6 flex flex-col md:flex-row md:items-start justify-between gap-6 shadow-inner">
-                    <div class="space-y-2">
-                        <div class="text-[10px] font-black uppercase tracking-[0.2em] text-jg-text-muted opacity-70 mb-1">{{ .T "my_account_email_verification_label" }}</div>
-                        <div class="flex items-center gap-2">
-                            <span id="email-verification-status" class="text-xs font-bold leading-none bg-jg-bg-secondary px-3 py-1.5 rounded-full text-jg-text-muted">{{ .T "my_account_email_status_unverified" }}</span>
-                        </div>
-                        <p id="email-verification-help" class="text-xs text-jg-text-muted leading-relaxed max-w-sm">{{ .T "my_account_email_verification_help" }}</p>
-                        <p id="email-pending-value" class="mt-2 text-xs text-jg-accent hidden font-bold"></p>
-                    </div>
-                    <button type="button" id="email-verification-resend" class="jg-btn jg-btn-ghost text-xs font-bold py-2.5 px-6 whitespace-nowrap self-start md:self-auto border border-white/5 bg-black/20 hover:bg-black/40">
-                        {{ .T "my_account_email_verification_resend" }}
-                    </button>
-                </div>
-
                 <div class="flex flex-col gap-4 py-6 border-t border-white/5">
                     <label class="flex items-center gap-4 cursor-pointer group w-fit">
                         <input type="checkbox" id="my-notify-expiry" class="form-checkbox w-5 h-5 rounded border border-white/10 bg-black/50 text-jg-accent accent-jg-accent">
@@ -158,41 +147,6 @@
                 <div class="flex flex-col sm:flex-row justify-end pt-4 gap-4">
                     <button type="submit" class="jg-btn jg-btn-primary px-10 h-12 font-bold tracking-widest uppercase text-xs w-full sm:w-auto shadow-xl">
                         {{ .T "my_account_save_preferences" }}
-                    </button>
-                </div>
-            </form>
-        </section>
-
-        {{/* Password section */}}
-        <section class="jg-card p-8 relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-8 opacity-5">
-                <svg class="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            </div>
-            
-            <div class="flex items-center gap-4 mb-8">
-                <div class="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-                </div>
-                <div>
-                    <h2 class="text-xl font-bold text-jg-text">{{ .T "my_account_section_password" }}</h2>
-                    <p class="text-jg-text-muted text-sm">{{ .T "my_account_password_help" }}</p>
-                </div>
-            </div>
-
-            <form id="my-password-form" class="space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-2">
-                        <label class="jg-label" for="my-password">{{ .T "my_account_label_new_password" }}</label>
-                        <input type="password" id="my-password" class="jg-input h-12" minlength="8" required placeholder='{{ .T "my_account_password_min_hint" }}'>
-                    </div>
-                    <div class="space-y-2">
-                        <label class="jg-label" for="my-password-confirm">{{ .T "my_account_label_confirm_password" }}</label>
-                        <input type="password" id="my-password-confirm" class="jg-input h-12" required>
-                    </div>
-                </div>
-                <div class="flex justify-end pt-2">
-                    <button type="submit" class="jg-btn jg-btn-danger jg-btn-ghost px-10 py-4 font-bold tracking-wide">
-                        {{ .T "my_account_update_password" }}
                     </button>
                 </div>
             </form>

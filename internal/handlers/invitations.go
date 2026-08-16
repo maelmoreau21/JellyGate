@@ -421,6 +421,9 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	h.recordInviteSuccess(r)
 	h.logInviteAction(r, "invite.signup.completed", form.Username, inv.Code, fmt.Sprintf("authentik_id=%s; recovery=%t", authentikID, recoveryURL != ""))
 
+	// Envoi de l'email de bienvenue uniquement après la création effective du compte
+	h.sendInviteWelcomeEmail(r, form.Username, form.Email, provisionPlan.EffectiveProfile)
+
 	if recoveryURL != "" {
 		http.Redirect(w, r, recoveryURL, http.StatusSeeOther)
 		return
@@ -434,6 +437,43 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		successMsg,
 		true,
 	)
+}
+
+func (h *InvitationHandler) sendInviteWelcomeEmail(r *http.Request, username, email string, profile jellyfin.InviteProfile) {
+	if h.mailer == nil || strings.TrimSpace(email) == "" {
+		return
+	}
+	preferredLang := jgmw.LangFromContext(r.Context())
+	emailCfg, usedLang, err := loadEmailTemplatesForLanguage(h.db, preferredLang, emailLanguageContext{
+		PreferredLang: preferredLang,
+		GroupName:     profile.GroupName,
+	})
+	if err != nil || emailCfg.DisableWelcomeEmail {
+		return
+	}
+	defaults := config.DefaultEmailTemplatesForLanguage(usedLang)
+	subject := firstNonEmpty(emailCfg.WelcomeSubject, defaults.WelcomeSubject)
+	body := emailCfg.Welcome
+	if strings.TrimSpace(body) == "" {
+		body = defaults.Welcome
+	}
+	links := resolvePortalLinks(h.cfg, h.db)
+	helpURL := firstNonEmpty(links.JellyGateURL, h.cfg.BaseURL)
+	extra := map[string]string{
+		"Username":           username,
+		"Email":              email,
+		"JellyfinURL":        links.JellyfinURL,
+		"JellyfinServerName": links.JellyfinServerName,
+		"JellyseerrURL":      links.JellyseerrURL,
+		"JellyTrackURL":      links.JellyTrackURL,
+		"JellyGateURL":       helpURL,
+		"HelpURL":            helpURL,
+	}
+	if err := sendTemplateIfConfigured(h.mailer, email, subject, usedLang, "welcome", body, emailCfg, extra); err != nil {
+		slog.Warn("Échec envoi email de bienvenue post-inscription", "username", username, "email", email, "error", err)
+	} else {
+		slog.Info("Email de bienvenue envoyé après création de compte", "username", username, "email", email)
+	}
 }
 
 func (h *InvitationHandler) renderInviteSuccessPage(w http.ResponseWriter, r *http.Request, inv *invitation, message string, accountCreated bool) {

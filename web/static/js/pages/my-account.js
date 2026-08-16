@@ -3,51 +3,6 @@
     const uiLocale = config.uiLocale || undefined;
     const i18n = config.i18n || {};
 
-    function updateEmailVerification(profile) {
-        const statusEl = document.getElementById('email-verification-status');
-        const helpEl = document.getElementById('email-verification-help');
-        const pendingEl = document.getElementById('email-pending-value');
-        const resendBtn = document.getElementById('email-verification-resend');
-        if (!statusEl || !helpEl || !pendingEl || !resendBtn) {
-            return;
-        }
-
-        const email = String(profile.email || '').trim();
-        const pending = String(profile.pending_email || '').trim();
-        const hasConfirmedAddress = !!email && !pending;
-
-        if (!email && !pending) {
-            statusEl.textContent = i18n.emailStatusMissing || 'Missing';
-            helpEl.textContent = i18n.emailVerificationMissing || '';
-            pendingEl.classList.add('hidden');
-            pendingEl.textContent = '';
-            resendBtn.disabled = true;
-            resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            return;
-        }
-
-        resendBtn.disabled = hasConfirmedAddress;
-        resendBtn.classList.toggle('opacity-50', hasConfirmedAddress);
-        resendBtn.classList.toggle('cursor-not-allowed', hasConfirmedAddress);
-
-        if (pending) {
-            statusEl.textContent = i18n.emailStatusPending || 'Pending';
-            helpEl.textContent = i18n.emailVerificationPending || '';
-            pendingEl.textContent = `${i18n.emailPendingLabel || ''} ${pending}`.trim();
-            pendingEl.classList.remove('hidden');
-            return;
-        }
-
-        pendingEl.classList.add('hidden');
-        pendingEl.textContent = '';
-
-        if (hasConfirmedAddress) {
-            statusEl.textContent = i18n.emailStatusVerified || 'Verified';
-            helpEl.textContent = i18n.emailVerificationOk || '';
-            return;
-        }
-    }
-
     function formatDateTime(value, createdAt) {
         if (!value) {
             return i18n.noExpiry || 'No expiry';
@@ -229,7 +184,6 @@
         const optTelegram = document.getElementById('my-opt-telegram');
         if (optTelegram) optTelegram.checked = !!profile.opt_in_telegram;
 
-        updateEmailVerification(profile);
         loadSponsorships();
     }
 
@@ -362,7 +316,6 @@
         const optMatrix = document.getElementById('my-opt-matrix');
 
         const payload = {
-            email: document.getElementById('my-email').value.trim(),
             contact_discord: document.getElementById('my-discord').value.trim(),
             contact_telegram: document.getElementById('my-telegram').value.trim(),
             contact_matrix: document.getElementById('my-matrix')?.value.trim() || '',
@@ -388,62 +341,6 @@
         JG.toast(res.message || i18n.saveError || 'Save failed', 'error');
     }
 
-    async function updateMyPassword(event) {
-        event.preventDefault();
-
-        const password = document.getElementById('my-password').value;
-        const confirmPassword = document.getElementById('my-password-confirm').value;
-        if (password.length < 8) {
-            JG.toast(i18n.passwordTooShort || 'Password too short', 'error');
-            return;
-        }
-        if (password !== confirmPassword) {
-            JG.toast(i18n.passwordMismatch || 'Password mismatch', 'error');
-            return;
-        }
-
-        const res = await JG.api('/admin/api/users/me/password', {
-            method: 'POST',
-            body: JSON.stringify({
-                current_password: 'not_needed_by_admin_token',
-                new_password: password,
-            }),
-        });
-
-        if (res.success) {
-            JG.toast(res.message || i18n.passwordUpdated || 'Password updated', 'success');
-            document.getElementById('my-password-form').reset();
-            return;
-        }
-        JG.toast(res.message || i18n.passwordUpdateError || 'Password update failed', 'error');
-    }
-
-    async function resendEmailVerification() {
-        const btn = document.getElementById('email-verification-resend');
-        if (!btn || btn.disabled) {
-            return;
-        }
-        btn.disabled = true;
-        let restoreButton = true;
-
-        try {
-            const res = await JG.api('/admin/api/users/me/email-verification/resend', {
-                method: 'POST',
-            });
-            if (res.success) {
-                JG.toast(res.message || i18n.emailVerificationSent || 'Verification sent', 'success');
-                await loadMyAccount();
-                restoreButton = false;
-                return;
-            }
-            JG.toast(res.message || i18n.emailVerificationSendError || 'Send failed', 'error');
-        } finally {
-            if (restoreButton) {
-                btn.disabled = false;
-            }
-        }
-    }
-
     document.addEventListener('DOMContentLoaded', async () => {
         document.querySelectorAll('[data-scroll-target]').forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -465,8 +362,6 @@
         }
 
         document.getElementById('my-account-form')?.addEventListener('submit', saveMyAccount);
-        document.getElementById('my-password-form')?.addEventListener('submit', updateMyPassword);
-        document.getElementById('email-verification-resend')?.addEventListener('click', resendEmailVerification);
         document.getElementById('create-sponsor-link-btn')?.addEventListener('click', createSponsorship);
         document.getElementById('avatar-upload')?.addEventListener('change', handleAvatarUpload);
         await loadMyAccount();

@@ -1025,33 +1025,35 @@
     }
 
     function readEmailTemplateLocalizedForm() {
+        const getVal = (id) => document.getElementById(id)?.value || '';
+        const getTrim = (id) => (document.getElementById(id)?.value || '').trim();
         return extractEmailTemplateLocalizedConfig({
-            confirmation: document.getElementById('tpl-confirmation').value,
-            confirmation_subject: document.getElementById('tpl-confirmation-subject').value.trim(),
-            expiry_reminder: document.getElementById('tpl-expiry-reminder').value,
-            expiry_reminder_subject: document.getElementById('tpl-expiry-reminder-subject').value.trim(),
-            invitation: document.getElementById('tpl-invitation').value,
-            invitation_subject: document.getElementById('tpl-invitation-subject').value.trim(),
-            invite_expiry: document.getElementById('tpl-invite-expiry').value,
-            invite_expiry_subject: document.getElementById('tpl-invite-expiry-subject').value.trim(),
-            password_reset: document.getElementById('tpl-password-reset').value,
-            password_reset_subject: document.getElementById('tpl-password-reset-subject').value.trim(),
-            email_verification: document.getElementById('tpl-email-verification').value,
-            email_verification_subject: document.getElementById('tpl-email-verification-subject').value.trim(),
-            user_creation: document.getElementById('tpl-user-creation').value,
-            user_creation_subject: document.getElementById('tpl-user-creation-subject').value.trim(),
-            user_deletion: document.getElementById('tpl-user-deletion').value,
-            user_deletion_subject: document.getElementById('tpl-user-deletion-subject').value.trim(),
-            user_disabled: document.getElementById('tpl-user-disabled').value,
-            user_disabled_subject: document.getElementById('tpl-user-disabled-subject').value.trim(),
-            user_enabled: document.getElementById('tpl-user-enabled').value,
-            user_enabled_subject: document.getElementById('tpl-user-enabled-subject').value.trim(),
-            user_expired: document.getElementById('tpl-user-expired').value,
-            user_expired_subject: document.getElementById('tpl-user-expired-subject').value.trim(),
-            expiry_adjusted: document.getElementById('tpl-expiry-adjusted').value,
-            expiry_adjusted_subject: document.getElementById('tpl-expiry-adjusted-subject').value.trim(),
-            welcome: document.getElementById('tpl-welcome').value,
-            welcome_subject: document.getElementById('tpl-welcome-subject').value.trim(),
+            confirmation: getVal('tpl-confirmation'),
+            confirmation_subject: getTrim('tpl-confirmation-subject'),
+            expiry_reminder: getVal('tpl-expiry-reminder'),
+            expiry_reminder_subject: getTrim('tpl-expiry-reminder-subject'),
+            invitation: getVal('tpl-invitation'),
+            invitation_subject: getTrim('tpl-invitation-subject'),
+            invite_expiry: getVal('tpl-invite-expiry'),
+            invite_expiry_subject: getTrim('tpl-invite-expiry-subject'),
+            password_reset: getVal('tpl-password-reset'),
+            password_reset_subject: getTrim('tpl-password-reset-subject'),
+            email_verification: getVal('tpl-email-verification'),
+            email_verification_subject: getTrim('tpl-email-verification-subject'),
+            user_creation: getVal('tpl-user-creation'),
+            user_creation_subject: getTrim('tpl-user-creation-subject'),
+            user_deletion: getVal('tpl-user-deletion'),
+            user_deletion_subject: getTrim('tpl-user-deletion-subject'),
+            user_disabled: getVal('tpl-user-disabled'),
+            user_disabled_subject: getTrim('tpl-user-disabled-subject'),
+            user_enabled: getVal('tpl-user-enabled'),
+            user_enabled_subject: getTrim('tpl-user-enabled-subject'),
+            user_expired: getVal('tpl-user-expired'),
+            user_expired_subject: getTrim('tpl-user-expired-subject'),
+            expiry_adjusted: getVal('tpl-expiry-adjusted'),
+            expiry_adjusted_subject: getTrim('tpl-expiry-adjusted-subject'),
+            welcome: getVal('tpl-welcome'),
+            welcome_subject: getTrim('tpl-welcome-subject'),
         });
     }
 
@@ -1061,51 +1063,54 @@
 
     function applyEmailTemplateSharedForm(configValue) {
         const value = extractEmailTemplateSharedConfig(configValue);
-        document.getElementById('tpl-base-header').value = value.base_template_header || '';
-        document.getElementById('tpl-base-footer').value = value.base_template_footer || '';
-        document.getElementById('tpl-email-logo-url').value = value.email_logo_url || '';
-        document.getElementById('tpl-enable-confirmation-email').checked = !value.disable_confirmation_email;
-        document.getElementById('tpl-enable-expiry-reminder-email').checked = !value.disable_expiry_reminder_emails;
-        document.getElementById('tpl-expiry-reminder-days').value = value.expiry_reminder_days || 3;
-        document.getElementById('tpl-enable-invite-expiry-email').checked = !value.disable_invite_expiry_email;
-        document.getElementById('tpl-enable-user-creation-email').checked = !value.disable_user_creation_email;
-        document.getElementById('tpl-enable-user-deletion-email').checked = !value.disable_user_deletion_email;
-        document.getElementById('tpl-enable-user-disabled-email').checked = !value.disable_user_disabled_email;
-        document.getElementById('tpl-enable-user-enabled-email').checked = !value.disable_user_enabled_email;
-        document.getElementById('tpl-enable-user-expired-email').checked = !value.disable_user_expired_email;
-        document.getElementById('tpl-enable-expiry-adjusted-email').checked = !value.disable_expiry_adjusted_email;
-        document.getElementById('tpl-enable-welcome-email').checked = !value.disable_welcome_email;
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        const setChecked = (id, c) => { const el = document.getElementById(id); if (el) el.checked = c; };
+        setVal('tpl-base-header', value.base_template_header || '');
+        setVal('tpl-base-footer', value.base_template_footer || '');
+        setVal('tpl-email-logo-url', value.email_logo_url || '');
+        setChecked('tpl-enable-confirmation-email', !value.disable_confirmation_email);
+        setChecked('tpl-enable-expiry-reminder-email', !value.disable_expiry_reminder_emails);
+        setVal('tpl-expiry-reminder-days', value.expiry_reminder_days || 3);
+        setChecked('tpl-enable-invite-expiry-email', !value.disable_invite_expiry_email);
+        setChecked('tpl-enable-user-creation-email', !value.disable_user_creation_email);
+        setChecked('tpl-enable-user-deletion-email', !value.disable_user_deletion_email);
+        setChecked('tpl-enable-user-disabled-email', !value.disable_user_disabled_email);
+        setChecked('tpl-enable-user-enabled-email', !value.disable_user_enabled_email);
+        setChecked('tpl-enable-user-expired-email', !value.disable_user_expired_email);
+        setChecked('tpl-enable-expiry-adjusted-email', !value.disable_expiry_adjusted_email);
+        setChecked('tpl-enable-welcome-email', !value.disable_welcome_email);
         document.querySelectorAll('.email-template-item').forEach((item) => syncEmailTemplateCardState(item));
     }
 
     function applyEmailTemplateLocalizedForm(configValue) {
         const value = extractEmailTemplateLocalizedConfig(configValue);
-        document.getElementById('tpl-confirmation').value = value.confirmation || '';
-        document.getElementById('tpl-confirmation-subject').value = value.confirmation_subject || '';
-        document.getElementById('tpl-expiry-reminder').value = value.expiry_reminder || '';
-        document.getElementById('tpl-expiry-reminder-subject').value = value.expiry_reminder_subject || '';
-        document.getElementById('tpl-invitation').value = value.invitation || '';
-        document.getElementById('tpl-invitation-subject').value = value.invitation_subject || '';
-        document.getElementById('tpl-invite-expiry').value = value.invite_expiry || '';
-        document.getElementById('tpl-invite-expiry-subject').value = value.invite_expiry_subject || '';
-        document.getElementById('tpl-password-reset').value = value.password_reset || '';
-        document.getElementById('tpl-password-reset-subject').value = value.password_reset_subject || '';
-        document.getElementById('tpl-email-verification').value = value.email_verification || '';
-        document.getElementById('tpl-email-verification-subject').value = value.email_verification_subject || '';
-        document.getElementById('tpl-user-creation').value = value.user_creation || '';
-        document.getElementById('tpl-user-creation-subject').value = value.user_creation_subject || '';
-        document.getElementById('tpl-user-deletion').value = value.user_deletion || '';
-        document.getElementById('tpl-user-deletion-subject').value = value.user_deletion_subject || '';
-        document.getElementById('tpl-user-disabled').value = value.user_disabled || '';
-        document.getElementById('tpl-user-disabled-subject').value = value.user_disabled_subject || '';
-        document.getElementById('tpl-user-enabled').value = value.user_enabled || '';
-        document.getElementById('tpl-user-enabled-subject').value = value.user_enabled_subject || '';
-        document.getElementById('tpl-user-expired').value = value.user_expired || '';
-        document.getElementById('tpl-user-expired-subject').value = value.user_expired_subject || '';
-        document.getElementById('tpl-expiry-adjusted').value = value.expiry_adjusted || '';
-        document.getElementById('tpl-expiry-adjusted-subject').value = value.expiry_adjusted_subject || '';
-        document.getElementById('tpl-welcome').value = value.welcome || '';
-        document.getElementById('tpl-welcome-subject').value = value.welcome_subject || '';
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setVal('tpl-confirmation', value.confirmation || '');
+        setVal('tpl-confirmation-subject', value.confirmation_subject || '');
+        setVal('tpl-expiry-reminder', value.expiry_reminder || '');
+        setVal('tpl-expiry-reminder-subject', value.expiry_reminder_subject || '');
+        setVal('tpl-invitation', value.invitation || '');
+        setVal('tpl-invitation-subject', value.invitation_subject || '');
+        setVal('tpl-invite-expiry', value.invite_expiry || '');
+        setVal('tpl-invite-expiry-subject', value.invite_expiry_subject || '');
+        setVal('tpl-password-reset', value.password_reset || '');
+        setVal('tpl-password-reset-subject', value.password_reset_subject || '');
+        setVal('tpl-email-verification', value.email_verification || '');
+        setVal('tpl-email-verification-subject', value.email_verification_subject || '');
+        setVal('tpl-user-creation', value.user_creation || '');
+        setVal('tpl-user-creation-subject', value.user_creation_subject || '');
+        setVal('tpl-user-deletion', value.user_deletion || '');
+        setVal('tpl-user-deletion-subject', value.user_deletion_subject || '');
+        setVal('tpl-user-disabled', value.user_disabled || '');
+        setVal('tpl-user-disabled-subject', value.user_disabled_subject || '');
+        setVal('tpl-user-enabled', value.user_enabled || '');
+        setVal('tpl-user-enabled-subject', value.user_enabled_subject || '');
+        setVal('tpl-user-expired', value.user_expired || '');
+        setVal('tpl-user-expired-subject', value.user_expired_subject || '');
+        setVal('tpl-expiry-adjusted', value.expiry_adjusted || '');
+        setVal('tpl-expiry-adjusted-subject', value.expiry_adjusted_subject || '');
+        setVal('tpl-welcome', value.welcome || '');
+        setVal('tpl-welcome-subject', value.welcome_subject || '');
         bindEmailEditorTargets();
     }
 
