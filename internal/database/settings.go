@@ -318,7 +318,7 @@ func (db *DB) SaveJellyfinConfig(cfg config.JellyfinConfig) error {
 	cfg.URL = strings.TrimSpace(cfg.URL)
 	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
 
-	data, err := json.Marshal(cfg)
+	data, err := json.Marshal(cfg) // #nosec G117 -- Jellyfin API key is marshaled for database settings persistence.
 	if err != nil {
 		return fmt.Errorf("SaveJellyfinConfig marshal: %w", err)
 	}
