@@ -818,7 +818,14 @@ func (c *client) CheckHealth(ctx context.Context, cfg config.AuthentikConfig) *H
 	enrollComp := c.CheckEnrollment(ctx, cfg.EnrollmentFlowSlug)
 	res.Components["enrollment_flow"] = enrollComp
 
-	groupsComp := c.CheckGroups(ctx, []string{cfg.UserGroup, cfg.AdminGroup, cfg.JellyfinUserGroup})
+	checkGroupsList := []string{cfg.UserGroup, cfg.AdminGroup, cfg.JellyfinUserGroup}
+	if strings.TrimSpace(cfg.InvitersGroup) != "" {
+		checkGroupsList = append(checkGroupsList, strings.TrimSpace(cfg.InvitersGroup))
+	}
+	if strings.TrimSpace(cfg.InvitersRecursiveGroup) != "" {
+		checkGroupsList = append(checkGroupsList, strings.TrimSpace(cfg.InvitersRecursiveGroup))
+	}
+	groupsComp := c.CheckGroups(ctx, checkGroupsList)
 	res.Components["groups"] = groupsComp
 
 	if apiComp.Status == "error" && oidcComp.Status == "error" {

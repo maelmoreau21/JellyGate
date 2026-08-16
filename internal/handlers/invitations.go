@@ -300,7 +300,12 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 		_ = json.Unmarshal([]byte(inv.JellyfinProfile), &profile)
 	}
 
-	form, err := h.validatePendingInviteForm(r, &profile)
+	var form *inviteFormData
+	if strings.TrimSpace(r.FormValue("password")) != "" {
+		form, err = h.validateForm(r, &profile)
+	} else {
+		form, err = h.validatePendingInviteForm(r, &profile)
+	}
 	if err != nil {
 		h.recordInviteFailure(r, antiAbuseCfg)
 		td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
@@ -336,12 +341,26 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 	var authentikID string
 
 	if h.authClient != nil && authentikEnabled {
-		userGroup := authCfg.JellyfinUserGroup
-		if userGroup == "" && h.cfg != nil {
-			userGroup = h.cfg.Authentik.JellyfinUserGroup
+		var targetGroups []string
+		if profile.GroupName != "" {
+			targetGroups = append(targetGroups, profile.GroupName)
+		} else {
+			userGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+			if userGroup == "" && h.cfg != nil {
+				userGroup = strings.TrimSpace(h.cfg.Authentik.JellyfinUserGroup)
+			}
+			if userGroup == "" {
+				userGroup = "jellyfin-users"
+			}
+			targetGroups = append(targetGroups, userGroup)
 		}
-		if userGroup == "" {
-			userGroup = "jellyfin-users"
+
+		if profile.CanInvite {
+			invGroup := strings.TrimSpace(authCfg.InvitersGroup)
+			if invGroup == "" {
+				invGroup = "jellygate-inviters"
+			}
+			targetGroups = append(targetGroups, invGroup)
 		}
 
 		authResp, authErr := h.authClient.CreateUser(r.Context(), authentik.UserCreatePayload{
@@ -349,7 +368,7 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			Name:     form.Username,
 			Email:    form.Email,
 			IsActive: true,
-			Groups:   []string{userGroup},
+			Groups:   targetGroups,
 		})
 		if authErr != nil || authResp == nil {
 			h.releaseInvitationUse(inv)

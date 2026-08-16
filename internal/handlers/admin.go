@@ -829,8 +829,24 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 	if sess == nil {
 		return false
 	}
-	if sess.IsAdmin {
+	if sess.IsAdmin || sess.CanInvite || sess.CanInviteRecursive {
 		return true
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	invGroup := authCfg.InvitersGroup
+	if invGroup == "" {
+		invGroup = "jellygate-inviters"
+	}
+	invRecGroup := authCfg.InvitersRecursiveGroup
+	if invRecGroup == "" {
+		invRecGroup = "jellygate-inviters-recursive"
+	}
+
+	for _, g := range sess.Groups {
+		if strings.EqualFold(g, invGroup) || strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters") || strings.EqualFold(g, "jellygate-inviters-recursive") {
+			return true
+		}
 	}
 
 	_ = h.ensureUserRowForSession(sess)
@@ -854,7 +870,7 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 
 	if presetID.Valid && presetID.String != "" {
 		preset, _ := h.getJellyfinPresetByID(presetID.String)
-		if preset != nil && preset.CanInvite {
+		if preset != nil && (preset.CanInvite || preset.CanCreateInvitations) {
 			return true
 		}
 	}

@@ -267,6 +267,43 @@ func TestDetermineUserRole(t *testing.T) {
 	})
 }
 
+func TestDetermineInviterRole(t *testing.T) {
+	cfg := config.AuthentikConfig{
+		InvitersGroup:          "custom-inviters",
+		InvitersRecursiveGroup: "custom-inviters-recursive",
+	}
+	client := NewClient(cfg)
+
+	t.Run("Standard Inviter", func(t *testing.T) {
+		canInvite, canInviteRecursive := client.DetermineInviterRole([]string{"custom-inviters"})
+		if !canInvite || canInviteRecursive {
+			t.Errorf("Expected canInvite=true, canInviteRecursive=false; got canInvite=%v, canInviteRecursive=%v", canInvite, canInviteRecursive)
+		}
+	})
+
+	t.Run("Recursive Inviter", func(t *testing.T) {
+		canInvite, canInviteRecursive := client.DetermineInviterRole([]string{"custom-inviters-recursive"})
+		if !canInvite || !canInviteRecursive {
+			t.Errorf("Expected canInvite=true, canInviteRecursive=true; got canInvite=%v, canInviteRecursive=%v", canInvite, canInviteRecursive)
+		}
+	})
+
+	t.Run("Default Fallback Group", func(t *testing.T) {
+		defaultClient := NewClient(config.AuthentikConfig{})
+		canInvite, canInviteRecursive := defaultClient.DetermineInviterRole([]string{"jellygate-inviters-recursive"})
+		if !canInvite || !canInviteRecursive {
+			t.Errorf("Expected fallback canInvite=true, canInviteRecursive=true; got canInvite=%v, canInviteRecursive=%v", canInvite, canInviteRecursive)
+		}
+	})
+
+	t.Run("Non-Inviter", func(t *testing.T) {
+		canInvite, canInviteRecursive := client.DetermineInviterRole([]string{"jellyfin-users"})
+		if canInvite || canInviteRecursive {
+			t.Errorf("Expected canInvite=false, canInviteRecursive=false; got canInvite=%v, canInviteRecursive=%v", canInvite, canInviteRecursive)
+		}
+	})
+}
+
 func TestGetEndSessionURL(t *testing.T) {
 	cfg := config.AuthentikConfig{
 		URL:       "https://auth.example.com",

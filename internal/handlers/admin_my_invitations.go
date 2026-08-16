@@ -339,12 +339,56 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 
 	// Invoquer l'API Authentik pour créer une invitation Stage si Authentik est configuré
 	var authentikInvID string
-	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
-		flowSlug := h.cfg.Authentik.EnrollmentFlowSlug
-		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, resolvedExpiry, map[string]interface{}{
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	if h.authClient != nil && authentikEnabled {
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+
+		var targetGroups []string
+		jellyfinGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+		if jellyfinGroup == "" && h.cfg != nil {
+			jellyfinGroup = strings.TrimSpace(h.cfg.Authentik.JellyfinUserGroup)
+		}
+		if jellyfinGroup == "" {
+			jellyfinGroup = "jellyfin-users"
+		}
+		targetGroups = append(targetGroups, jellyfinGroup)
+
+		isRecursive := sess.CanInviteRecursive
+		if !isRecursive {
+			invRecGroup := strings.TrimSpace(authCfg.InvitersRecursiveGroup)
+			if invRecGroup == "" {
+				invRecGroup = "jellygate-inviters-recursive"
+			}
+			for _, g := range sess.Groups {
+				if strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters-recursive") {
+					isRecursive = true
+					break
+				}
+			}
+		}
+
+		if isRecursive {
+			invGroup := strings.TrimSpace(authCfg.InvitersGroup)
+			if invGroup == "" {
+				invGroup = "jellygate-inviters"
+			}
+			targetGroups = append(targetGroups, invGroup)
+		}
+
+		fixedData := map[string]interface{}{
 			"sponsor": sess.Username,
 			"code":    code,
-		}, true, flowSlug)
+			"groups":  targetGroups,
+		}
+
+		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
 		if authErr == nil {
 			authentikInvID = invID
 		} else {
@@ -424,6 +468,34 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 		return limits, nil
 	}
 
+	if sess.CanInvite || sess.CanInviteRecursive {
+		limits.CanInvite = true
+		if sess.CanInviteRecursive {
+			limits.AllowGrant = true
+		}
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	invGroup := strings.TrimSpace(authCfg.InvitersGroup)
+	if invGroup == "" {
+		invGroup = "jellygate-inviters"
+	}
+	invRecGroup := strings.TrimSpace(authCfg.InvitersRecursiveGroup)
+	if invRecGroup == "" {
+		invRecGroup = "jellygate-inviters-recursive"
+	}
+
+	for _, g := range sess.Groups {
+		if strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters-recursive") {
+			limits.CanInvite = true
+			limits.AllowGrant = true
+			break
+		}
+		if strings.EqualFold(g, invGroup) || strings.EqualFold(g, "jellygate-inviters") {
+			limits.CanInvite = true
+		}
+	}
+
 	var (
 		canInvite bool
 		presetID  sql.NullString
@@ -435,7 +507,9 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 	if err != nil && err != sql.ErrNoRows {
 		return limits, err
 	}
-	limits.CanInvite = canInvite
+	if canInvite {
+		limits.CanInvite = true
+	}
 
 	presetIDStr := strings.TrimSpace(presetID.String)
 	if presetIDStr != "" {
@@ -1037,10 +1111,92 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		maxUses = limits.MaxUses
 	}
 
+	// Invoquer l'API Authentik pour créer une invitation Stage si Authentik est configuré
+	var authentikInvID string
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+
+	if h.authClient != nil && authentikEnabled {
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+
+		var targetGroups []string
+		groupName := strings.TrimSpace(profile.GroupName)
+		if groupName != "" {
+			targetGroups = append(targetGroups, groupName)
+		} else {
+			jfGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+			if jfGroup == "" && h.cfg != nil {
+				jfGroup = strings.TrimSpace(h.cfg.Authentik.JellyfinUserGroup)
+			}
+			if jfGroup == "" {
+				jfGroup = "jellyfin-users"
+			}
+			targetGroups = append(targetGroups, jfGroup)
+		}
+
+		isRecursive := sess.CanInviteRecursive
+		if !isRecursive {
+			invRecGroup := strings.TrimSpace(authCfg.InvitersRecursiveGroup)
+			if invRecGroup == "" {
+				invRecGroup = "jellygate-inviters-recursive"
+			}
+			for _, g := range sess.Groups {
+				if strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters-recursive") {
+					isRecursive = true
+					break
+				}
+			}
+		}
+
+		if req.NewUserCanInvite || isRecursive {
+			invGroup := strings.TrimSpace(authCfg.InvitersGroup)
+			if invGroup == "" {
+				invGroup = "jellygate-inviters"
+			}
+			targetGroups = append(targetGroups, invGroup)
+		}
+
+		fixedData := map[string]interface{}{
+			"sponsor": sess.Username,
+			"code":    code,
+			"groups":  targetGroups,
+		}
+		if strings.TrimSpace(req.ForcedUsername) != "" {
+			fixedData["username"] = strings.TrimSpace(req.ForcedUsername)
+		}
+		sendToEmailCandidate := strings.TrimSpace(req.SendToEmail)
+		if sendToEmailCandidate == "" {
+			sendToEmailCandidate = strings.TrimSpace(req.Email)
+		}
+		if sendToEmailCandidate != "" {
+			fixedData["email"] = sendToEmailCandidate
+		}
+
+		var stageExpiry time.Time
+		if expiresAtResponse != nil {
+			if t, tErr := time.Parse(time.RFC3339, fmt.Sprint(expiresAtResponse)); tErr == nil {
+				stageExpiry = t
+			}
+		}
+
+		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, stageExpiry, fixedData, maxUses == 1, flowSlug)
+		if authErr == nil {
+			authentikInvID = invID
+		} else {
+			slog.Warn("Création token invitation Authentik échouée (fallback local)", "error", authErr)
+		}
+	}
+
 	_, err = h.db.Exec(`
-		INSERT INTO invitations (code, label, preferred_lang, max_uses, used_count, jellyfin_profile, expires_at, created_by, profile_id, profile_snapshot, is_temporary, account_duration_days)
-		VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
-		code, label, req.PreferredLang, maxUses, string(profileJSON), expiresAt, sess.Username,
+		INSERT INTO invitations (code, label, preferred_lang, max_uses, used_count, jellyfin_profile, expires_at, created_by, authentik_invitation_id, profile_id, profile_snapshot, is_temporary, account_duration_days)
+		VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		code, label, req.PreferredLang, maxUses, string(profileJSON), expiresAt, sess.Username, authentikInvID,
 		strings.TrimSpace(strings.ToLower(profile.PresetID)), string(profileJSON), profile.IsTemporary, profile.AccountDurationDays)
 
 	if err != nil {
@@ -1156,6 +1312,14 @@ func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID invalide"})
 		return
+	}
+
+	var authInvID sql.NullString
+	_ = h.db.QueryRow(`SELECT authentik_invitation_id FROM invitations WHERE id = ?`, invID).Scan(&authInvID)
+	if authInvID.Valid && authInvID.String != "" && h.authClient != nil {
+		if errDel := h.authClient.DeleteInvitationStageToken(r.Context(), authInvID.String); errDel != nil {
+			slog.Warn("Suppression du token invitation Authentik échouée", "token_id", authInvID.String, "error", errDel)
+		}
 	}
 
 	var errDB error

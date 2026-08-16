@@ -138,6 +138,12 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isAdmin, hasAccess := h.oidcClient.DetermineUserRole(claims.Groups)
+	canInvite, canInviteRecursive := h.oidcClient.DetermineInviterRole(claims.Groups)
+	if isAdmin {
+		canInvite = true
+		canInviteRecursive = true
+	}
+
 	if !hasAccess {
 		slog.Warn("Accès OIDC refusé : aucun groupe autorisé", "username", claims.PreferredUsername, "sub", claims.Sub, "groups", claims.Groups)
 		h.logAction("auth.oidc.unauthorized", claims.PreferredUsername, claims.Sub, fmt.Sprintf("IP: %s, groupes non autorisés: %v", r.RemoteAddr, claims.Groups))
@@ -160,6 +166,9 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 			h.redirectLoginError(w, r, "sync_failed", claims.PreferredUsername)
 			return
 		}
+		if user != nil && canInvite {
+			_, _ = h.db.Exec(`UPDATE users SET can_invite = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, user.ID)
+		}
 	}
 
 	userIDStr := claims.Sub
@@ -172,13 +181,16 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	sessionExpiresAt := now.Add(sessionDuration)
 
 	sess := session.Payload{
-		UserID:      userIDStr,
-		AuthentikID: claims.Sub,
-		Username:    claims.PreferredUsername,
-		Email:       claims.Email,
-		IsAdmin:     isAdmin,
-		Exp:         sessionExpiresAt.Unix(),
-		Iat:         now.Unix(),
+		UserID:             userIDStr,
+		AuthentikID:        claims.Sub,
+		Username:           claims.PreferredUsername,
+		Email:              claims.Email,
+		IsAdmin:            isAdmin,
+		CanInvite:          canInvite,
+		CanInviteRecursive: canInviteRecursive,
+		Groups:             claims.Groups,
+		Exp:                sessionExpiresAt.Unix(),
+		Iat:                now.Unix(),
 	}
 
 	cookieValue, err := session.Sign(sess, h.cfg.SecretKey)

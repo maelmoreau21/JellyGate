@@ -53,6 +53,7 @@ type Client interface {
 	HandleCallback(r *http.Request) (*Claims, error)
 	ValidateIDToken(ctx context.Context, rawIDToken string, expectedNonce string) (*Claims, error)
 	DetermineUserRole(groups []string) (isAdmin bool, hasAccess bool)
+	DetermineInviterRole(groups []string) (canInvite bool, canInviteRecursive bool)
 	GetEndSessionURL(ctx context.Context) string
 }
 
@@ -371,18 +372,47 @@ func (c *oidcClient) DetermineUserRole(groups []string) (isAdmin bool, hasAccess
 	if userGroup == "" {
 		userGroup = "jellygate-users"
 	}
+	invitersGroup := c.cfg.InvitersGroup
+	if invitersGroup == "" {
+		invitersGroup = "jellygate-inviters"
+	}
+	invitersRecGroup := c.cfg.InvitersRecursiveGroup
+	if invitersRecGroup == "" {
+		invitersRecGroup = "jellygate-inviters-recursive"
+	}
 
 	for _, g := range groups {
 		if g == adminGroup || g == "jellygate-admins" || g == "authentik Admins" || g == "authentik-admins" || g == "admins" || g == "jellyfin-admins" {
 			return true, true
 		}
-		if g == userGroup || g == "jellygate-users" || g == "jellyfin-users" || g == "users" {
+		if g == userGroup || g == "jellygate-users" || g == "jellyfin-users" || g == "users" || g == invitersGroup || g == invitersRecGroup {
 			hasAccess = true
 		}
 	}
 
 	// SÉCURITÉ : Aucun groupe autorisé présent -> Accès strictement refusé
 	return false, hasAccess
+}
+
+func (c *oidcClient) DetermineInviterRole(groups []string) (canInvite bool, canInviteRecursive bool) {
+	invitersGroup := c.cfg.InvitersGroup
+	if invitersGroup == "" {
+		invitersGroup = "jellygate-inviters"
+	}
+	invitersRecGroup := c.cfg.InvitersRecursiveGroup
+	if invitersRecGroup == "" {
+		invitersRecGroup = "jellygate-inviters-recursive"
+	}
+
+	for _, g := range groups {
+		if strings.EqualFold(g, invitersRecGroup) || strings.EqualFold(g, "jellygate-inviters-recursive") {
+			return true, true
+		}
+		if strings.EqualFold(g, invitersGroup) || strings.EqualFold(g, "jellygate-inviters") {
+			canInvite = true
+		}
+	}
+	return canInvite, false
 }
 
 func (c *oidcClient) getAuthEndpoint(ctx context.Context) (string, error) {

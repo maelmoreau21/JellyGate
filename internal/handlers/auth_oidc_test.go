@@ -63,7 +63,7 @@ func (m *mockOIDCClient) DetermineUserRole(groups []string) (bool, bool) {
 			isAdmin = true
 			hasAccess = true
 		}
-		if g == "jellygate-users" {
+		if g == "jellygate-users" || g == "jellygate-inviters" || g == "jellygate-inviters-recursive" {
 			hasAccess = true
 		}
 	}
@@ -71,6 +71,19 @@ func (m *mockOIDCClient) DetermineUserRole(groups []string) (bool, bool) {
 		return m.isAdmin, m.hasAccess
 	}
 	return isAdmin, hasAccess
+}
+
+func (m *mockOIDCClient) DetermineInviterRole(groups []string) (bool, bool) {
+	var canInvite, canInviteRecursive bool
+	for _, g := range groups {
+		if g == "jellygate-inviters-recursive" {
+			return true, true
+		}
+		if g == "jellygate-inviters" {
+			canInvite = true
+		}
+	}
+	return canInvite, canInviteRecursive
 }
 
 func (m *mockOIDCClient) GetEndSessionURL(ctx context.Context) string {

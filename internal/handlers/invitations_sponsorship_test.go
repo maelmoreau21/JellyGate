@@ -19,7 +19,14 @@ import (
 )
 
 type mockAuthentikClient struct {
-	createdUsers []string
+	createdUsers      []string
+	lastStageTokenReq struct {
+		Name      string
+		ExpiresAt time.Time
+		FixedData map[string]interface{}
+		SingleUse bool
+		Flow      string
+	}
 }
 
 func (m *mockAuthentikClient) ResolveGroupID(ctx context.Context, nameOrPK string) (string, error) {
@@ -98,6 +105,11 @@ func (m *mockAuthentikClient) DeleteUserByString(ctx context.Context, authentikI
 }
 
 func (m *mockAuthentikClient) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
+	m.lastStageTokenReq.Name = name
+	m.lastStageTokenReq.ExpiresAt = expiresAt
+	m.lastStageTokenReq.FixedData = fixedData
+	m.lastStageTokenReq.SingleUse = singleUse
+	m.lastStageTokenReq.Flow = flow
 	return "stage-pk-123", nil
 }
 
@@ -318,4 +330,95 @@ func newFormRequest(method, target string, values url.Values) *http.Request {
 	req := httptest.NewRequest(method, target, strings.NewReader(values.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	return req
+}
+
+func TestAdminCreateInvitationAuthentikStageToken(t *testing.T) {
+	db := newAuthTestDB(t)
+	cfg := &config.Config{
+		BaseURL:   "http://localhost:8097",
+		SecretKey: testAuthSecret,
+		Authentik: config.AuthentikConfig{
+			Enabled:           true,
+			JellyfinUserGroup: "jellyfin-users",
+			InvitersGroup:     "jellygate-inviters",
+		},
+	}
+
+	_ = db.SaveAuthentikConfig(cfg.Authentik)
+
+	mockAuthentik := &mockAuthentikClient{}
+	renderEngine, _ := newTestRenderEngine(t)
+	adminHandler := NewAdminHandler(cfg, db, nil, mockAuthentik, nil, renderEngine)
+
+	sessCookie, _ := session.Sign(session.Payload{
+		UserID:   "1",
+		Username: "admin_user",
+		IsAdmin:  true,
+		Exp:      time.Now().Add(1 * time.Hour).Unix(),
+	}, cfg.SecretKey)
+
+	payload := CreateInvitationRequest{
+		Label:            "Test Authentik Stage",
+		ForcedUsername:   "forced_alice",
+		SendToEmail:      "alice@example.com",
+		NewUserCanInvite: true,
+		MaxUses:          1,
+		ExpiresInDays:    7,
+	}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/api/invitations", bytes.NewReader(body))
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: sessCookie})
+	req = req.WithContext(session.NewContext(req.Context(), &session.Payload{
+		UserID:   "1",
+		Username: "admin_user",
+		IsAdmin:  true,
+	}))
+
+	rec := httptest.NewRecorder()
+	adminHandler.CreateInvitation(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("CreateInvitation failed status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Verify Authentik Stage Token creation parameters
+	if mockAuthentik.lastStageTokenReq.FixedData == nil {
+		t.Fatalf("Expected Authentik stage token to have FixedData")
+	}
+	if mockAuthentik.lastStageTokenReq.FixedData["username"] != "forced_alice" {
+		t.Errorf("Expected FixedData username='forced_alice', got %v", mockAuthentik.lastStageTokenReq.FixedData["username"])
+	}
+	if mockAuthentik.lastStageTokenReq.FixedData["email"] != "alice@example.com" {
+		t.Errorf("Expected FixedData email='alice@example.com', got %v", mockAuthentik.lastStageTokenReq.FixedData["email"])
+	}
+	if mockAuthentik.lastStageTokenReq.FixedData["sponsor"] != "admin_user" {
+		t.Errorf("Expected FixedData sponsor='admin_user', got %v", mockAuthentik.lastStageTokenReq.FixedData["sponsor"])
+	}
+	groups, ok := mockAuthentik.lastStageTokenReq.FixedData["groups"].([]string)
+	if !ok {
+		t.Fatalf("Expected FixedData groups to be []string, got %T", mockAuthentik.lastStageTokenReq.FixedData["groups"])
+	}
+	var hasJellyfin, hasInviters bool
+	for _, g := range groups {
+		if g == "jellyfin-users" {
+			hasJellyfin = true
+		}
+		if g == "jellygate-inviters" {
+			hasInviters = true
+		}
+	}
+	if !hasJellyfin || !hasInviters {
+		t.Errorf("Expected groups to contain jellyfin-users and jellygate-inviters, got %v", groups)
+	}
+
+	// Verify authentik_invitation_id stored in database
+	var storedAuthID string
+	err := db.QueryRow(`SELECT COALESCE(authentik_invitation_id, '') FROM invitations WHERE label = 'Test Authentik Stage'`).Scan(&storedAuthID)
+	if err != nil {
+		t.Fatalf("Failed to query created invitation: %v", err)
+	}
+	if storedAuthID != "stage-pk-123" {
+		t.Errorf("Expected stored authentik_invitation_id='stage-pk-123', got %q", storedAuthID)
+	}
 }
