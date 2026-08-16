@@ -23,39 +23,25 @@ services:
       - TZ=${TZ:-UTC}
       - JELLYGATE_PORT=8097
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
-      - JELLYGATE_DATA_DIR=/data
       - JELLYGATE_SECRET=${JELLYGATE_SECRET:?❌ JELLYGATE_SECRET is required}
-      - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-en}
-      - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
-      - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
       - JELLYGATE_LOCAL_ADMIN_USER=${JELLYGATE_LOCAL_ADMIN_USER:-admin}
       - JELLYGATE_LOCAL_ADMIN_PASSWORD=${JELLYGATE_LOCAL_ADMIN_PASSWORD:-}
-      # ── OIDC & Identity Provider (Authentik, Keycloak, Authelia, etc.) ─
-      - OIDC_ENABLED=${OIDC_ENABLED:-${AUTHENTIK_ENABLED:-true}}
-      - OIDC_URL=${OIDC_URL:-${AUTHENTIK_URL:-}}
-      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
+
+      # ── OIDC & Identity Provider (SSO) ──────────────────────────────
+      - OIDC_ENABLED=${OIDC_ENABLED:-true}
+      - OIDC_URL=${OIDC_URL:-}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
-      - OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL:-}
-      - OIDC_API_TOKEN=${OIDC_API_TOKEN:-${AUTHENTIK_API_TOKEN:-}}
-      - OIDC_USER_GROUP=${OIDC_USER_GROUP:-${AUTHENTIK_USER_GROUP:-jellygate-users}}
-      - OIDC_ADMIN_GROUP=${OIDC_ADMIN_GROUP:-${AUTHENTIK_ADMIN_GROUP:-jellygate-admins}}
-      - OIDC_JELLYFIN_USER_GROUP=${OIDC_JELLYFIN_USER_GROUP:-${AUTHENTIK_JELLYFIN_USER_GROUP:-jellyfin-users}}
-      - OIDC_ENROLLMENT_FLOW_SLUG=${OIDC_ENROLLMENT_FLOW_SLUG:-${AUTHENTIK_ENROLLMENT_FLOW_SLUG:-default-enrollment-flow}}
-
-      # ── SQL Database (SQLite by default) ────────────────────────────
-      # Note: DB_TYPE will auto-detect 'postgres' if DB_HOST is provided
-      - DB_TYPE=${DB_TYPE:-sqlite}
+      - OIDC_USER_GROUP=${OIDC_USER_GROUP:-jellygate-users}
+      - OIDC_ADMIN_GROUP=${OIDC_ADMIN_GROUP:-jellygate-admins}
 
       # ── Jellyfin (Optional - can also be configured in App UI) ────────
       - JELLYFIN_URL=${JELLYFIN_URL:-}
       - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:-}
 
-      # ── Optional portal integrations (links/fallback) ───────────────
+      # ── Optional portal links ────────────────────────────────────────
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
-      - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
       - JELLYTRACK_URL=${JELLYTRACK_URL:-}
-      - JELLYTRACK_API_KEY=${JELLYTRACK_API_KEY:-}
 
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8097/health"]

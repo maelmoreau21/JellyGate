@@ -147,25 +147,19 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label for="authentik_url" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">URL Instance Fournisseur</label>
-                    <input type="url" id="authentik_url" name="authentik_url" placeholder="https://auth.example.com" class="jg-input w-full rounded-xl text-sm" required>
-                    <p id="hint-sso-url" class="text-[11px] text-slate-500 mt-1">Exemple: https://auth.domain.com</p>
+                <div class="md:col-span-2">
+                    <label for="authentik_url" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">URL Fournisseur OIDC (OIDC_URL)</label>
+                    <input type="url" id="authentik_url" name="authentik_url" placeholder="https://auth.example.com/application/o/jellygate/" class="jg-input w-full rounded-xl text-sm" required>
+                    <p id="hint-sso-url" class="text-[11px] text-slate-500 mt-1">Exemple: https://authentik.example.com/application/o/jellygate/ ou https://keycloak.example.com/realms/master</p>
                 </div>
 
                 <div>
-                    <label for="oidc_issuer_url" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Issuer URL</label>
-                    <input type="url" id="oidc_issuer_url" name="oidc_issuer_url" placeholder="https://auth.example.com/application/o/jellygate/" class="jg-input w-full rounded-xl text-sm" required>
-                    <p id="hint-sso-issuer" class="text-[11px] text-slate-500 mt-1">URL complète du Provider OIDC</p>
-                </div>
-
-                <div>
-                    <label for="oidc_client_id" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Client ID</label>
+                    <label for="oidc_client_id" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Client ID (OIDC_CLIENT_ID)</label>
                     <input type="text" id="oidc_client_id" name="oidc_client_id" placeholder="jellygate" class="jg-input w-full rounded-xl text-sm" required>
                 </div>
 
                 <div>
-                    <label for="oidc_client_secret" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Client Secret</label>
+                    <label for="oidc_client_secret" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Client Secret (OIDC_CLIENT_SECRET)</label>
                     <input type="password" id="oidc_client_secret" name="oidc_client_secret" placeholder="••••••••••••" class="jg-input w-full rounded-xl text-sm">
                     <p class="text-[11px] text-slate-500 mt-1">Secret OAuth2/OIDC (chiffré en base — laisser vide pour conserver)</p>
                 </div>
@@ -173,7 +167,7 @@
                 <div class="md:col-span-2">
                     <label for="oidc_redirect_url" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">OIDC Redirect URL (Callback)</label>
                     <div class="flex items-center gap-2">
-                        <input type="url" id="oidc_redirect_url" name="oidc_redirect_url" placeholder="https://jellygate.example.com/auth/callback" class="jg-input w-full rounded-xl text-sm font-mono" required>
+                        <input type="url" id="oidc_redirect_url" name="oidc_redirect_url" placeholder="https://jellygate.example.com/auth/callback" class="jg-input w-full rounded-xl text-sm font-mono" readonly>
                         <button type="button" id="btn-copy-callback-url" class="jg-btn jg-btn-ghost px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl border border-white/10 hover:bg-white/10 flex-shrink-0" title="Copier">
                             <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                             <span id="copy-callback-text">Copier</span>
@@ -182,29 +176,13 @@
                 </div>
 
                 <div>
-                    <label for="authentik_api_token" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Token API REST Fournisseur</label>
-                    <input type="password" id="authentik_api_token" name="authentik_api_token" placeholder="ak-token-••••••••" class="jg-input w-full rounded-xl text-sm">
-                    <p class="text-[11px] text-slate-500 mt-1">Token API Authentik (chiffré en base — laisser vide pour conserver)</p>
-                </div>
-
-                <div>
-                    <label for="enrollment_flow_slug" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Slug Flow d'Inscription</label>
-                    <input type="text" id="enrollment_flow_slug" name="enrollment_flow_slug" placeholder="default-enrollment-flow" class="jg-input w-full rounded-xl text-sm">
-                </div>
-
-                <div>
-                    <label for="user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Groupe Utilisateurs JellyGate</label>
+                    <label for="user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Groupe Utilisateurs (OIDC_USER_GROUP)</label>
                     <input type="text" id="user_group" name="user_group" placeholder="jellygate-users" class="jg-input w-full rounded-xl text-sm" required>
                 </div>
 
                 <div>
-                    <label for="admin_group" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Groupe Administrateurs JellyGate</label>
+                    <label for="admin_group" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Groupe Administrateurs (OIDC_ADMIN_GROUP)</label>
                     <input type="text" id="admin_group" name="admin_group" placeholder="jellygate-admins" class="jg-input w-full rounded-xl text-sm" required>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label for="jellyfin_user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Groupe Accès Jellyfin (Outpost LDAP)</label>
-                    <input type="text" id="jellyfin_user_group" name="jellyfin_user_group" placeholder="jellyfin-users" class="jg-input w-full rounded-xl text-sm" required>
                 </div>
             </div>
 

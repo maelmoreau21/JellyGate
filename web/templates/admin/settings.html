@@ -134,50 +134,6 @@
           </div>
         </form>
 
-        <div class="mt-8 pt-6 border-t border-black/5 dark:border-white/10">
-          <div class="mb-4">
-            <h3 class="text-lg font-semibold text-white">{{ .T "settings_auth_session_title" }}</h3>
-            <p class="text-sm text-jg-text-muted mt-1">{{ .T "settings_auth_session_desc" }}</p>
-          </div>
-
-          <form id="form-auth-session" class="rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-            <div class="flex flex-col gap-4">
-              <div>
-                <span class="block text-sm font-semibold text-slate-700 dark:text-slate-200">{{ .T "settings_auth_session_duration_label" }}</span>
-                <div class="mt-3 grid gap-3 md:grid-cols-2" role="radiogroup" aria-label='{{ .T "settings_auth_session_duration_label" }}'>
-                  <label class="flex cursor-pointer select-none items-start gap-3 rounded-xl border border-black/5 bg-white/5 p-3 transition hover:border-jg-accent/40 dark:border-white/10 dark:bg-black/10">
-                    <input type="radio" id="auth-session-duration-30-days" name="auth_session_duration" value="30_days" class="form-radio mt-1">
-                    <span>
-                      <span class="block text-sm font-semibold text-slate-700 dark:text-slate-200">{{ .T "settings_auth_session_duration_30_days" }}</span>
-                      <span class="block text-xs leading-5 text-jg-text-muted">{{ .T "settings_auth_session_duration_30_days_help" }}</span>
-                    </span>
-                  </label>
-                  <label class="flex cursor-pointer select-none items-start gap-3 rounded-xl border border-black/5 bg-white/5 p-3 transition hover:border-jg-accent/40 dark:border-white/10 dark:bg-black/10">
-                    <input type="radio" id="auth-session-duration-indefinite" name="auth_session_duration" value="indefinite" class="form-radio mt-1">
-                    <span>
-                      <span class="block text-sm font-semibold text-slate-700 dark:text-slate-200">{{ .T "settings_auth_session_duration_indefinite" }}</span>
-                      <span class="block text-xs leading-5 text-jg-text-muted">{{ .T "settings_auth_session_duration_indefinite_help" }}</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-              <div class="flex justify-end">
-                <button type="submit" class="jg-btn jg-btn-primary px-5 py-2.5">{{ .T "btn_save" }}</button>
-              </div>
-            </div>
-          </form>
-
-          <div class="jg-danger-callout mt-4 p-4">
-            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h4 class="text-sm font-semibold">{{ .T "settings_auth_session_revoke_title" }}</h4>
-                <p class="mt-1 text-xs leading-5">{{ .T "settings_auth_session_revoke_desc" }}</p>
-              </div>
-              <button type="button" id="btn-auth-session-revoke-all" class="jg-btn jg-btn-danger px-5 py-2.5 md:flex-shrink-0">{{ .T "settings_auth_session_revoke_button" }}</button>
-            </div>
-          </div>
-        </div>
-
       </div>
     </div>
 
@@ -444,30 +400,24 @@
             <div class="border-t border-white/10 pt-6">
               <h3 class="text-sm font-extrabold uppercase tracking-wider text-indigo-400 mb-4 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
-                1. Configuration OpenID Connect (OIDC)
+                Configuration OpenID Connect (OIDC)
               </h3>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label for="authentik_url" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">URL de l'Instance Fournisseur (Base URL)</label>
-                  <input type="url" id="authentik_url" name="authentik_url" placeholder="https://auth.example.com" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
-                  <p id="hint-sso-url" class="text-[11px] text-slate-500 mt-1">Exemple : https://auth.domaine.com</p>
+                <div class="md:col-span-2">
+                  <label for="authentik_url" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">URL du Fournisseur OIDC (OIDC_URL)</label>
+                  <input type="url" id="authentik_url" name="authentik_url" placeholder="https://auth.example.com/application/o/jellygate/" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
+                  <p id="hint-sso-url" class="text-[11px] text-slate-500 mt-1">Exemple : https://authentik.example.com/application/o/jellygate/ ou https://keycloak.example.com/realms/master</p>
                 </div>
 
                 <div>
-                  <label for="oidc_issuer_url" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">URL de l'Émetteur OIDC (Issuer URL)</label>
-                  <input type="url" id="oidc_issuer_url" name="oidc_issuer_url" placeholder="https://auth.example.com/application/o/jellygate/" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
-                  <p id="hint-sso-issuer" class="text-[11px] text-slate-500 mt-1">Point d'accès OIDC où se trouve /.well-known/openid-configuration</p>
-                </div>
-
-                <div>
-                  <label for="oidc_client_id" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">OIDC Client ID</label>
+                  <label for="oidc_client_id" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">OIDC Client ID (OIDC_CLIENT_ID)</label>
                   <input type="text" id="oidc_client_id" name="oidc_client_id" placeholder="jellygate" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
-                  <p class="text-[11px] text-slate-500 mt-1">Identifiant client configuré dans votre application OIDC</p>
+                  <p class="text-[11px] text-slate-500 mt-1">Identifiant client configuré dans votre fournisseur OIDC</p>
                 </div>
 
                 <div>
-                  <label for="oidc_client_secret" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">OIDC Client Secret</label>
+                  <label for="oidc_client_secret" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">OIDC Client Secret (OIDC_CLIENT_SECRET)</label>
                   <input type="password" id="oidc_client_secret" name="oidc_client_secret" placeholder="••••••••••••" class="jg-input w-full rounded-xl text-sm bg-black/20">
                   <p class="text-[11px] text-slate-500 mt-1">Secret du client OAuth2/OIDC (chiffré en base — laisser vide pour conserver)</p>
                 </div>
@@ -475,7 +425,7 @@
                 <div class="md:col-span-2">
                   <label for="oidc_redirect_url" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">URL de Redirection (Callback URI)</label>
                   <div class="flex items-center gap-2">
-                    <input type="url" id="oidc_redirect_url" name="oidc_redirect_url" placeholder="https://jellygate.example.com/auth/callback" class="jg-input w-full rounded-xl text-sm bg-black/20 font-mono" required>
+                    <input type="url" id="oidc_redirect_url" name="oidc_redirect_url" placeholder="https://jellygate.example.com/auth/callback" class="jg-input w-full rounded-xl text-sm bg-black/20 font-mono" readonly>
                     <button type="button" id="btn-copy-callback-url" class="jg-btn jg-btn-ghost px-4 py-2.5 text-xs font-bold uppercase tracking-wider flex items-center gap-2 rounded-xl border border-white/10 hover:bg-white/10 flex-shrink-0" title="Copier l'URL de rappel">
                       <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
                       <span id="copy-callback-text">Copier</span>
@@ -486,77 +436,24 @@
               </div>
             </div>
 
-            {{/* Section 2 : Mappage des Groupes & Rôles (LDAP & OIDC) */}}
+            {{/* Section 2 : Mappage des Groupes OIDC */}}
             <div class="border-t border-white/10 pt-6">
               <h3 class="text-sm font-extrabold uppercase tracking-wider text-purple-400 mb-4 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                2. Mappage des Groupes & Accès (Annuaire LDAP & OIDC)
+                Groupes & Rôles OIDC
               </h3>
 
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label for="user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Utilisateurs JellyGate</label>
+                  <label for="user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Utilisateurs (OIDC_USER_GROUP)</label>
                   <input type="text" id="user_group" name="user_group" placeholder="jellygate-users" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
                   <p class="text-[11px] text-slate-500 mt-1">Autorise la connexion standard à JellyGate</p>
                 </div>
 
                 <div>
-                  <label for="admin_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Administrateurs JellyGate</label>
+                  <label for="admin_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Administrateurs (OIDC_ADMIN_GROUP)</label>
                   <input type="text" id="admin_group" name="admin_group" placeholder="jellygate-admins" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
                   <p class="text-[11px] text-slate-500 mt-1">Accorde les droits administrateur dans JellyGate</p>
-                </div>
-
-                <div>
-                  <label for="jellyfin_user_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Accès Jellyfin (LDAP Outpost)</label>
-                  <input type="text" id="jellyfin_user_group" name="jellyfin_user_group" placeholder="jellyfin-users" class="jg-input w-full rounded-xl text-sm bg-black/20" required>
-                  <p class="text-[11px] text-slate-500 mt-1">Groupe synchronisé avec Jellyfin via le plugin LDAP</p>
-                </div>
-
-                <div>
-                  <label for="inviters_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Parrains (Invitations)</label>
-                  <input type="text" id="inviters_group" name="inviters_group" placeholder="jellygate-inviters" class="jg-input w-full rounded-xl text-sm bg-black/20">
-                  <p class="text-[11px] text-slate-500 mt-1">Les membres de ce groupe peuvent créer des liens d'invitation</p>
-                </div>
-
-                <div>
-                  <label for="inviters_recursive_group" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Groupe Parrains Récursif</label>
-                  <input type="text" id="inviters_recursive_group" name="inviters_recursive_group" placeholder="jellygate-inviters-recursive" class="jg-input w-full rounded-xl text-sm bg-black/20">
-                  <p class="text-[11px] text-slate-500 mt-1">Comme le groupe Parrains, mais les invités peuvent aussi parrainer à leur tour</p>
-                </div>
-              </div>
-
-
-              {{/* Note Explicative LDAP */}}
-              <div class="mt-4 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 flex items-start gap-3">
-                <svg class="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <div class="space-y-1">
-                  <span class="font-bold">Liaison LDAP Jellyfin :</span>
-                  <p class="text-purple-300">Dans Jellyfin (Plugin LDAP-Auth), configurez le filtre de recherche avec ce nom de groupe pour que l'adhésion accorde automatiquement l'accès au serveur multimédia.</p>
-                </div>
-              </div>
-            </div>
-
-            {{/* Section 3 : Intégration API & Inscription (Avancé / Authentik) */}}
-            <div id="section-sso-api" class="border-t border-white/10 pt-6">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
-                  3. Automatisation API & Inscription (Authentik / API REST)
-                </h3>
-                <span class="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Optionnel pour Generic OIDC</span>
-              </div>
-
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label for="authentik_api_token" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Token API REST Fournisseur</label>
-                  <input type="password" id="authentik_api_token" name="authentik_api_token" placeholder="ak-token-••••••••" class="jg-input w-full rounded-xl text-sm bg-black/20">
-                  <p class="text-[11px] text-slate-500 mt-1">Utilisé pour l'API et les inscriptions (chiffré en base — laisser vide pour conserver)</p>
-                </div>
-
-                <div>
-                  <label for="enrollment_flow_slug" class="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Slug Flux d'Inscription (Enrollment Flow)</label>
-                  <input type="text" id="enrollment_flow_slug" name="enrollment_flow_slug" placeholder="default-enrollment-flow" class="jg-input w-full rounded-xl text-sm bg-black/20">
-                  <p class="text-[11px] text-slate-500 mt-1">Slug du flux d'inscription Authentik (ex: default-enrollment-flow)</p>
                 </div>
               </div>
             </div>

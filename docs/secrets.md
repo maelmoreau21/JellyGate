@@ -9,8 +9,8 @@ Do not commit secrets (API keys, private keys, secret tokens) into the repositor
 > [!IMPORTANT]
 > **Mandatory Variables for JellyGate:**
 > - `JELLYGATE_SECRET`: **Strictly Mandatory**. Secret key for session cookie signing (minimum **32 characters**). The app will fail validation and refuse to boot without it.
-> - **Authentik Integration** (`AUTHENTIK_ENABLED=true`, enabled by default): `AUTHENTIK_URL`, `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_REDIRECT_URL`, and `AUTHENTIK_API_TOKEN` are **Required**.
-> - **PostgreSQL Database** (`DB_TYPE=postgres`): `DB_HOST`, `DB_USER`, and `DB_NAME` are **Required**.
+> - **OIDC / SSO Integration** (`OIDC_ENABLED=true`, enabled by default): `OIDC_URL`, `OIDC_CLIENT_ID`, and `OIDC_CLIENT_SECRET` are **Required**.
+> - **PostgreSQL Database** (when `DB_HOST` is set): `DB_HOST`, `DB_USER`, `DB_NAME`, and `DB_PASSWORD` are **Required**. (SQLite is used automatically if `DB_HOST` is empty).
 
 ## Generating `JELLYGATE_SECRET`
 

@@ -78,7 +78,7 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		td.Data["JellyTrackURL"] = links.JellyTrackURL
 		td.Data["OIDCEnabled"] = true
 		td.Data["OIDCLoginURL"] = "/auth/login"
-		td.Data["LocalAdminEnabled"] = true
+		td.Data["LocalAdminEnabled"] = h.cfg != nil && h.cfg.LocalAdmin.Enabled
 		td.Section = "login"
 		if err := h.renderer.Render(w, "admin/login.html", td); err == nil {
 			return

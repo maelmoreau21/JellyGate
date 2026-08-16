@@ -22,29 +22,20 @@ services:
       - TZ=${TZ:-UTC}
       - JELLYGATE_PORT=8097
       - JELLYGATE_BASE_URL=${JELLYGATE_BASE_URL:-http://localhost:8097}
-      - JELLYGATE_DATA_DIR=/data
       - JELLYGATE_SECRET=${JELLYGATE_SECRET:?❌ JELLYGATE_SECRET is required}
-      - JELLYGATE_DEFAULT_LANG=${JELLYGATE_DEFAULT_LANG:-en}
-      - JELLYGATE_TRUST_PROXY_HEADERS=${JELLYGATE_TRUST_PROXY_HEADERS:-false}
-      - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
       - JELLYGATE_LOCAL_ADMIN_USER=${JELLYGATE_LOCAL_ADMIN_USER:-admin}
       - JELLYGATE_LOCAL_ADMIN_PASSWORD=${JELLYGATE_LOCAL_ADMIN_PASSWORD:-}
-      # ── OIDC & Identity Provider (Authentik, Keycloak, Authelia, etc.) ─
-      - OIDC_ENABLED=${OIDC_ENABLED:-${AUTHENTIK_ENABLED:-true}}
-      - OIDC_URL=${OIDC_URL:-${AUTHENTIK_URL:-}}
-      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
+
+      # ── OIDC & Identity Provider (SSO) ──────────────────────────────
+      - OIDC_ENABLED=${OIDC_ENABLED:-true}
+      - OIDC_URL=${OIDC_URL:-}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
-      - OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL:-}
-      - OIDC_API_TOKEN=${OIDC_API_TOKEN:-${AUTHENTIK_API_TOKEN:-}}
-      - OIDC_USER_GROUP=${OIDC_USER_GROUP:-${AUTHENTIK_USER_GROUP:-jellygate-users}}
-      - OIDC_ADMIN_GROUP=${OIDC_ADMIN_GROUP:-${AUTHENTIK_ADMIN_GROUP:-jellygate-admins}}
-      - OIDC_JELLYFIN_USER_GROUP=${OIDC_JELLYFIN_USER_GROUP:-${AUTHENTIK_JELLYFIN_USER_GROUP:-jellyfin-users}}
-      - OIDC_ENROLLMENT_FLOW_SLUG=${OIDC_ENROLLMENT_FLOW_SLUG:-${AUTHENTIK_ENROLLMENT_FLOW_SLUG:-default-enrollment-flow}}
+      - OIDC_USER_GROUP=${OIDC_USER_GROUP:-jellygate-users}
+      - OIDC_ADMIN_GROUP=${OIDC_ADMIN_GROUP:-jellygate-admins}
 
       # ── SQL Database (PostgreSQL) ───────────────────────────────────
-      # If DB_HOST is set, DB_TYPE=postgres is automatically detected!
-      - DB_TYPE=${DB_TYPE:-postgres}
+      # When DB_HOST is set, PostgreSQL is automatically used
       - DB_HOST=${DB_HOST:-postgres}
       - DB_PORT=${DB_PORT:-5432}
       - DB_USER=${DB_USER:-${POSTGRES_USER:?❌ POSTGRES_USER or DB_USER is required}}
@@ -56,11 +47,9 @@ services:
       - JELLYFIN_URL=${JELLYFIN_URL:-}
       - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:-}
 
-      # ── Optional portal integrations (links/fallback) ───────────────
+      # ── Optional portal links ────────────────────────────────────────
       - JELLYSEERR_URL=${JELLYSEERR_URL:-}
-      - JELLYSEERR_API_KEY=${JELLYSEERR_API_KEY:-}
       - JELLYTRACK_URL=${JELLYTRACK_URL:-}
-      - JELLYTRACK_API_KEY=${JELLYTRACK_API_KEY:-}
 
     depends_on:
       postgres:

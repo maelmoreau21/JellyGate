@@ -1487,7 +1487,7 @@ func Load() (*Config, error) {
 		TLSKey:            getEnv("JELLYGATE_TLS_KEY", ""),
 		DefaultLang:       NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
 		EnableDebugRoutes: getEnvBool("JELLYGATE_ENABLE_DEBUG_ROUTES", false),
-		TrustProxyHeaders: getEnvBool("JELLYGATE_TRUST_PROXY_HEADERS", false),
+		TrustProxyHeaders: getEnvBool("JELLYGATE_TRUST_PROXY_HEADERS", true),
 
 		Database: DatabaseConfig{
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", ""))),
@@ -1512,9 +1512,9 @@ func Load() (*Config, error) {
 		},
 
 		Authentik: AuthentikConfig{
-			Enabled:            getEnvBool("OIDC_ENABLED", getEnvBool("AUTHENTIK_ENABLED", getEnvBool("JELLYGATE_OIDC_ENABLED", getEnv("OIDC_URL", "") != "" || getEnv("AUTHENTIK_URL", "") != "" || getEnv("JELLYGATE_AUTHENTIK_URL", "") != "" || getEnv("JELLYGATE_OIDC_URL", "") != "" || getEnv("OIDC_ISSUER_URL", "") != "" || getEnv("OIDC_CLIENT_ID", "") != "" || getEnv("JELLYGATE_OIDC_CLIENT_ID", "") != ""))),
-			URL:                strings.TrimRight(strings.TrimSpace(getEnv("AUTHENTIK_URL", getEnv("OIDC_URL", getEnv("JELLYGATE_AUTHENTIK_URL", getEnv("JELLYGATE_OIDC_URL", ""))))), "/"),
-			IssuerURL:          strings.TrimRight(strings.TrimSpace(getEnv("OIDC_ISSUER_URL", getEnv("OIDC_URL", getEnv("AUTHENTIK_URL", getEnv("JELLYGATE_OIDC_URL", ""))))), "/"),
+			Enabled:            getEnvBool("OIDC_ENABLED", getEnvBool("AUTHENTIK_ENABLED", getEnvBool("JELLYGATE_OIDC_ENABLED", true))),
+			URL:                strings.TrimRight(strings.TrimSpace(getEnv("OIDC_URL", getEnv("AUTHENTIK_URL", getEnv("JELLYGATE_AUTHENTIK_URL", getEnv("JELLYGATE_OIDC_URL", ""))))), "/"),
+			IssuerURL:          strings.TrimRight(strings.TrimSpace(getEnv("OIDC_URL", getEnv("OIDC_ISSUER_URL", getEnv("AUTHENTIK_URL", getEnv("JELLYGATE_OIDC_URL", ""))))), "/"),
 			ClientID:           strings.TrimSpace(getEnv("OIDC_CLIENT_ID", getEnv("JELLYGATE_OIDC_CLIENT_ID", ""))),
 			ClientSecret:       strings.TrimSpace(getEnv("OIDC_CLIENT_SECRET", getEnv("JELLYGATE_OIDC_CLIENT_SECRET", ""))),
 			RedirectURL:        strings.TrimSpace(getEnv("OIDC_REDIRECT_URL", getEnv("JELLYGATE_OIDC_REDIRECT_URL", ""))),

@@ -51,8 +51,8 @@ cp .env.example .env
 > [!IMPORTANT]
 > **Required Environment Variables:**
 > - `JELLYGATE_SECRET`: **Mandatory**. Secret key for session cookie signing (min. **32 characters**). The app will fail to start if this is missing or shorter than 32 characters.
-> - **Authentik / OIDC Integration** (when SSO is enabled, default): `OIDC_ENABLED`, `OIDC_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `AUTHENTIK_ENABLED`, `AUTHENTIK_URL`, `AUTHENTIK_API_TOKEN`.
-> - **PostgreSQL Database** (when `DB_TYPE=postgres`): `DB_HOST`, `DB_USER`, and `DB_NAME` are **Required**.
+> - **OIDC / SSO Integration** (when SSO is enabled, default): `OIDC_ENABLED`, `OIDC_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`.
+> - **PostgreSQL Database** (when `DB_HOST` is set): `DB_HOST`, `DB_USER`, `DB_NAME`, `DB_PASSWORD`. (SQLite is used automatically if `DB_HOST` is empty).
 
 | Variable | Status | Description | Default / Example |
 | --- | --- | --- | --- |
@@ -62,13 +62,12 @@ cp .env.example .env
 | `OIDC_URL` | **REQUIRED** (OIDC) | OpenID Connect Authority / Provider Issuer URL | `https://authentik.example.com/application/o/jellygate/` |
 | `OIDC_CLIENT_ID` | **REQUIRED** (OIDC) | OIDC Client ID | `jellygate` |
 | `OIDC_CLIENT_SECRET` | **REQUIRED** (OIDC) | OIDC Client Secret | `jellygate_client_secret` |
-| `AUTHENTIK_ENABLED` | Optional | Enable Authentik API integration | `true` |
-| `AUTHENTIK_URL` | **REQUIRED** (API) | Base URL of Authentik instance | `https://authentik.example.com` |
-| `AUTHENTIK_API_TOKEN` | **REQUIRED** (API) | Authentik API Service Account Token | `ak_api_token_here` |
-| `DB_TYPE` | Optional | Database engine (`sqlite` or `postgres`) | `sqlite` |
-| `DB_HOST` | **REQUIRED** (Postgres) | PostgreSQL server hostname | `localhost` |
-| `DB_USER` | **REQUIRED** (Postgres) | PostgreSQL user name | `jellygate` |
-| `DB_NAME` | **REQUIRED** (Postgres) | PostgreSQL database name | `jellygate` |
+| `OIDC_USER_GROUP` | Optional | Allowed users group name | `jellygate-users` |
+| `OIDC_ADMIN_GROUP` | Optional | Admin users group name | `jellygate-admins` |
+| `DB_HOST` | Optional (Postgres) | PostgreSQL server hostname | `localhost` |
+| `DB_USER` | Optional (Postgres) | PostgreSQL user name | `jellygate` |
+| `DB_PASSWORD` | Optional (Postgres) | PostgreSQL password | `jellygate_password` |
+| `DB_NAME` | Optional (Postgres) | PostgreSQL database name | `jellygate` |
 | `JELLYFIN_URL` | Optional | Jellyfin server URL (configurable in UI) | `http://jellyfin:8096` |
 | `JELLYFIN_API_KEY` | Optional | Jellyfin Admin API Key | `your_jellyfin_api_key` |
 
@@ -84,11 +83,8 @@ OIDC_ENABLED=true
 OIDC_URL=https://authentik.example.com/application/o/jellygate/
 OIDC_CLIENT_ID=jellygate
 OIDC_CLIENT_SECRET=jellygate_client_secret
-
-# Authentik REST API (User & Group Management)
-AUTHENTIK_ENABLED=true
-AUTHENTIK_URL=https://authentik.example.com
-AUTHENTIK_API_TOKEN=ak_api_token_here
+OIDC_USER_GROUP=jellygate-users
+OIDC_ADMIN_GROUP=jellygate-admins
 
 # Jellyfin Connection (Optional - can also be configured in App UI)
 JELLYFIN_URL=http://jellyfin:8096

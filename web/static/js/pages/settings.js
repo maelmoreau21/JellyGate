@@ -1410,22 +1410,6 @@
         backupDatabaseType = normalized;
     }
 
-    function setAuthSessionDuration(remember30Days) {
-        const thirtyDays = document.getElementById('auth-session-duration-30-days');
-        const indefinite = document.getElementById('auth-session-duration-indefinite');
-        if (thirtyDays) {
-            thirtyDays.checked = remember30Days !== false;
-        }
-        if (indefinite) {
-            indefinite.checked = remember30Days === false;
-        }
-    }
-
-    function getAuthSessionRemember30Days() {
-        const selected = document.querySelector('input[name="auth_session_duration"]:checked');
-        return !selected || selected.value !== 'indefinite';
-    }
-
     async function loadSettings() {
         const res = await JG.api('/admin/api/settings');
         if (!res || !res.success) {
@@ -1467,11 +1451,6 @@
             })();
         }
 
-        if (document.getElementById('form-auth-session')) {
-            const authSession = data.auth_session || {};
-            setAuthSessionDuration(authSession.remember_30_days !== false);
-        }
-
         if (document.getElementById('form-jellyfin-settings')) {
             const jf = data.jellyfin || {};
             const urlInput = document.getElementById('jellyfin-server-url');
@@ -1496,13 +1475,10 @@
         const authentik = data.authentik || {};
         if (document.getElementById('form-authentik-settings')) {
             const enabledToggle = document.getElementById('authentik_enabled');
-            if (enabledToggle) enabledToggle.checked = !!authentik.enabled;
+            if (enabledToggle) enabledToggle.checked = authentik.enabled !== false;
 
             const urlInput = document.getElementById('authentik_url');
-            if (urlInput) urlInput.value = authentik.authentik_url || '';
-
-            const issuerInput = document.getElementById('oidc_issuer_url');
-            if (issuerInput) issuerInput.value = authentik.oidc_issuer_url || '';
+            if (urlInput) urlInput.value = authentik.authentik_url || authentik.oidc_issuer_url || '';
 
             const clientIdInput = document.getElementById('oidc_client_id');
             if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
@@ -1513,30 +1489,15 @@
             const redirectInput = document.getElementById('oidc_redirect_url');
             if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
 
-            const tokenInput = document.getElementById('authentik_api_token');
-            if (tokenInput) tokenInput.value = authentik.authentik_api_token || '';
-
             const userGrpInput = document.getElementById('user_group');
             if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
 
             const adminGrpInput = document.getElementById('admin_group');
             if (adminGrpInput) adminGrpInput.value = authentik.admin_group || 'jellygate-admins';
 
-            const jfGrpInput = document.getElementById('jellyfin_user_group');
-            if (jfGrpInput) jfGrpInput.value = authentik.jellyfin_user_group || 'jellyfin-users';
-
-            const invGrpInput = document.getElementById('inviters_group');
-            if (invGrpInput) invGrpInput.value = authentik.inviters_group || '';
-
-            const invRecGrpInput = document.getElementById('inviters_recursive_group');
-            if (invRecGrpInput) invRecGrpInput.value = authentik.inviters_recursive_group || '';
-
-            const flowInput = document.getElementById('enrollment_flow_slug');
-            if (flowInput) flowInput.value = authentik.enrollment_flow_slug || 'default-enrollment-flow';
-
             // Auto-détecter et appliquer le preset
             let detectedPreset = 'authentik';
-            const issuer = (authentik.oidc_issuer_url || '').toLowerCase();
+            const issuer = (authentik.oidc_issuer_url || authentik.authentik_url || '').toLowerCase();
             if (issuer.includes('/realms/')) {
                 detectedPreset = 'keycloak';
             } else if (issuer.includes('/api/oidc')) {
@@ -1550,12 +1511,12 @@
 
             const badge = document.getElementById('sso-status-badge');
             if (badge) {
-                if (authentik.enabled) {
+                if (authentik.enabled !== false && (authentik.authentik_url || authentik.oidc_issuer_url || authentik.oidc_client_id)) {
                     badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
-                    badge.textContent = 'SSO Activé';
+                    badge.textContent = 'SSO Configuré';
                 } else {
                     badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/20 text-slate-400 border border-slate-500/30';
-                    badge.textContent = 'Désactivé';
+                    badge.textContent = 'Non configuré';
                 }
             }
 
@@ -1717,19 +1678,14 @@
             };
         } else if (section === 'authentik') {
             body = {
-                enabled: document.getElementById('authentik_enabled') ? document.getElementById('authentik_enabled').checked : false,
+                enabled: document.getElementById('authentik_enabled') ? document.getElementById('authentik_enabled').checked : true,
                 authentik_url: document.getElementById('authentik_url') ? document.getElementById('authentik_url').value.trim() : '',
-                oidc_issuer_url: document.getElementById('oidc_issuer_url') ? document.getElementById('oidc_issuer_url').value.trim() : '',
+                oidc_issuer_url: document.getElementById('authentik_url') ? document.getElementById('authentik_url').value.trim() : '',
                 oidc_client_id: document.getElementById('oidc_client_id') ? document.getElementById('oidc_client_id').value.trim() : '',
                 oidc_client_secret: document.getElementById('oidc_client_secret') ? document.getElementById('oidc_client_secret').value : '',
                 oidc_redirect_url: document.getElementById('oidc_redirect_url') ? document.getElementById('oidc_redirect_url').value.trim() : '',
-                authentik_api_token: document.getElementById('authentik_api_token') ? document.getElementById('authentik_api_token').value : '',
                 user_group: document.getElementById('user_group') ? document.getElementById('user_group').value.trim() : 'jellygate-users',
                 admin_group: document.getElementById('admin_group') ? document.getElementById('admin_group').value.trim() : 'jellygate-admins',
-                jellyfin_user_group: document.getElementById('jellyfin_user_group') ? document.getElementById('jellyfin_user_group').value.trim() : 'jellyfin-users',
-                inviters_group: document.getElementById('inviters_group') ? document.getElementById('inviters_group').value.trim() : '',
-                inviters_recursive_group: document.getElementById('inviters_recursive_group') ? document.getElementById('inviters_recursive_group').value.trim() : '',
-                enrollment_flow_slug: document.getElementById('enrollment_flow_slug') ? document.getElementById('enrollment_flow_slug').value.trim() : 'default-enrollment-flow',
             };
         } else if (section === 'backup') {
             const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
@@ -1752,9 +1708,6 @@
             JG.toast(res.message || t('settings_saved', 'Settings saved'), 'success');
             if (section === 'invitation-profile') {
                 currentInvitationProfile = { ...body };
-            }
-            if (section === 'auth-session' && res.data) {
-                setAuthSessionDuration(res.data.remember_30_days !== false);
             }
             if (section === 'authentik') {
                 const enabledToggle = document.getElementById('authentik_enabled');
@@ -2218,7 +2171,6 @@
         [
             ['form-general', 'general'],
             ['form-jellyfin-settings', 'jellyfin'],
-            ['form-auth-session', 'auth-session'],
             ['form-authentik-settings', 'authentik'],
             ['form-smtp', 'smtp'],
             ['form-webhooks', 'webhooks'],
