@@ -165,6 +165,53 @@ func TestOIDCAndAuthentikConfigLoading(t *testing.T) {
 		}
 	})
 
+	t.Run("loads pure generic OIDC variables for any provider", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("OIDC_ENABLED", "true")
+		t.Setenv("OIDC_URL", "https://keycloak.example.com/realms/master")
+		t.Setenv("OIDC_ISSUER_URL", "https://keycloak.example.com/realms/master")
+		t.Setenv("OIDC_CLIENT_ID", "keycloak-client")
+		t.Setenv("OIDC_CLIENT_SECRET", "keycloak-secret")
+		t.Setenv("OIDC_API_TOKEN", "kc-admin-token")
+		t.Setenv("OIDC_USER_GROUP", "kc-users")
+		t.Setenv("OIDC_ADMIN_GROUP", "kc-admins")
+		t.Setenv("OIDC_JELLYFIN_USER_GROUP", "kc-jellyfin-users")
+		t.Setenv("OIDC_ENROLLMENT_FLOW_SLUG", "kc-registration")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !cfg.Authentik.Enabled {
+			t.Errorf("expected Enabled to be true")
+		}
+		if cfg.Authentik.URL != "https://keycloak.example.com" {
+			t.Errorf("expected base URL https://keycloak.example.com, got %s", cfg.Authentik.URL)
+		}
+		if cfg.Authentik.IssuerURL != "https://keycloak.example.com/realms/master" {
+			t.Errorf("expected IssuerURL https://keycloak.example.com/realms/master, got %s", cfg.Authentik.IssuerURL)
+		}
+		if cfg.Authentik.ClientID != "keycloak-client" {
+			t.Errorf("expected ClientID keycloak-client, got %s", cfg.Authentik.ClientID)
+		}
+		if cfg.Authentik.APIToken != "kc-admin-token" {
+			t.Errorf("expected APIToken kc-admin-token, got %s", cfg.Authentik.APIToken)
+		}
+		if cfg.Authentik.UserGroup != "kc-users" {
+			t.Errorf("expected UserGroup kc-users, got %s", cfg.Authentik.UserGroup)
+		}
+		if cfg.Authentik.AdminGroup != "kc-admins" {
+			t.Errorf("expected AdminGroup kc-admins, got %s", cfg.Authentik.AdminGroup)
+		}
+		if cfg.Authentik.JellyfinUserGroup != "kc-jellyfin-users" {
+			t.Errorf("expected JellyfinUserGroup kc-jellyfin-users, got %s", cfg.Authentik.JellyfinUserGroup)
+		}
+		if cfg.Authentik.EnrollmentFlowSlug != "kc-registration" {
+			t.Errorf("expected EnrollmentFlowSlug kc-registration, got %s", cfg.Authentik.EnrollmentFlowSlug)
+		}
+	})
+
 	t.Run("local admin is disabled by default when password is empty", func(t *testing.T) {
 		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
 		t.Setenv("JELLYGATE_LOCAL_ADMIN_USER", "")

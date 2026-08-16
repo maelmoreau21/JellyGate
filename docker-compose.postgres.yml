@@ -29,16 +29,18 @@ services:
       - JELLYGATE_ENABLE_DEBUG_ROUTES=${JELLYGATE_ENABLE_DEBUG_ROUTES:-false}
       - JELLYGATE_LOCAL_ADMIN_USER=${JELLYGATE_LOCAL_ADMIN_USER:-admin}
       - JELLYGATE_LOCAL_ADMIN_PASSWORD=${JELLYGATE_LOCAL_ADMIN_PASSWORD:-}
-      # ── OIDC (Authentik SSO Authentication) ──────────────────────────
-      - OIDC_ENABLED=${OIDC_ENABLED:-true}
-      - OIDC_URL=${OIDC_URL:-${OIDC_ISSUER_URL:-}}
+      # ── OIDC & Identity Provider (Authentik, Keycloak, Authelia, etc.) ─
+      - OIDC_ENABLED=${OIDC_ENABLED:-${AUTHENTIK_ENABLED:-true}}
+      - OIDC_URL=${OIDC_URL:-${AUTHENTIK_URL:-}}
+      - OIDC_ISSUER_URL=${OIDC_ISSUER_URL:-}
       - OIDC_CLIENT_ID=${OIDC_CLIENT_ID:-}
       - OIDC_CLIENT_SECRET=${OIDC_CLIENT_SECRET:-}
-
-      # ── Authentik API (User & Group Management) ──────────────────────
-      - AUTHENTIK_ENABLED=${AUTHENTIK_ENABLED:-true}
-      - AUTHENTIK_URL=${AUTHENTIK_URL:-}
-      - AUTHENTIK_API_TOKEN=${AUTHENTIK_API_TOKEN:-}
+      - OIDC_REDIRECT_URL=${OIDC_REDIRECT_URL:-}
+      - OIDC_API_TOKEN=${OIDC_API_TOKEN:-${AUTHENTIK_API_TOKEN:-}}
+      - OIDC_USER_GROUP=${OIDC_USER_GROUP:-${AUTHENTIK_USER_GROUP:-jellygate-users}}
+      - OIDC_ADMIN_GROUP=${OIDC_ADMIN_GROUP:-${AUTHENTIK_ADMIN_GROUP:-jellygate-admins}}
+      - OIDC_JELLYFIN_USER_GROUP=${OIDC_JELLYFIN_USER_GROUP:-${AUTHENTIK_JELLYFIN_USER_GROUP:-jellyfin-users}}
+      - OIDC_ENROLLMENT_FLOW_SLUG=${OIDC_ENROLLMENT_FLOW_SLUG:-${AUTHENTIK_ENROLLMENT_FLOW_SLUG:-default-enrollment-flow}}
 
       # ── SQL Database (PostgreSQL) ───────────────────────────────────
       # If DB_HOST is set, DB_TYPE=postgres is automatically detected!
