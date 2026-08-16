@@ -103,12 +103,14 @@ type client struct {
 
 // NewClient crée une instance de client REST Authentik.
 func NewClient(cfg config.AuthentikConfig) Client {
-	baseURL := strings.TrimRight(cfg.URL, "/")
-	if baseURL == "" && cfg.IssuerURL != "" {
-		u, err := url.Parse(cfg.IssuerURL)
-		if err == nil {
-			baseURL = u.Scheme + "://" + u.Host
-		}
+	rawURL := strings.TrimRight(cfg.URL, "/")
+	if rawURL == "" {
+		rawURL = strings.TrimRight(cfg.IssuerURL, "/")
+	}
+
+	baseURL := rawURL
+	if u, err := url.Parse(rawURL); err == nil && u.Scheme != "" && u.Host != "" {
+		baseURL = u.Scheme + "://" + u.Host
 	}
 
 	return &client{

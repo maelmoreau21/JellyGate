@@ -159,6 +159,23 @@ func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConf
 		cfg.EnrollmentFlowSlug = "default-enrollment-flow"
 	}
 
+	if cfg.URL != "" {
+		if u, err := url.Parse(cfg.URL); err == nil && u.Scheme != "" && u.Host != "" && u.Path != "" && u.Path != "/" {
+			if cfg.IssuerURL == "" || cfg.IssuerURL == cfg.URL {
+				cfg.IssuerURL = cfg.URL
+			}
+			cfg.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if cfg.URL == "" && cfg.IssuerURL != "" {
+		if u, err := url.Parse(cfg.IssuerURL); err == nil && u.Scheme != "" && u.Host != "" {
+			cfg.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if cfg.IssuerURL == "" && cfg.URL != "" {
+		cfg.IssuerURL = cfg.URL + "/application/o/jellygate/"
+	}
+
 	return cfg
 }
 
@@ -302,6 +319,23 @@ func (h *SettingsHandler) SaveAuthentik(w http.ResponseWriter, r *http.Request) 
 	}
 	if isMaskedSecret(input.ClientSecret) || input.ClientSecret == "" {
 		input.ClientSecret = existing.ClientSecret
+	}
+
+	if input.URL != "" {
+		if u, err := url.Parse(input.URL); err == nil && u.Scheme != "" && u.Host != "" && u.Path != "" && u.Path != "/" {
+			if input.IssuerURL == "" || input.IssuerURL == input.URL {
+				input.IssuerURL = input.URL
+			}
+			input.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if input.URL == "" && input.IssuerURL != "" {
+		if u, err := url.Parse(input.IssuerURL); err == nil && u.Scheme != "" && u.Host != "" {
+			input.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if input.IssuerURL == "" && input.URL != "" {
+		input.IssuerURL = input.URL + "/application/o/jellygate/"
 	}
 
 	if err := h.db.SaveAuthentikConfig(input); err != nil {

@@ -1475,7 +1475,7 @@
             if (enabledToggle) enabledToggle.checked = authentik.enabled !== false;
 
             const urlInput = document.getElementById('authentik_url');
-            if (urlInput) urlInput.value = authentik.authentik_url || authentik.oidc_issuer_url || '';
+            if (urlInput) urlInput.value = authentik.oidc_issuer_url || authentik.authentik_url || '';
 
             const clientIdInput = document.getElementById('oidc_client_id');
             if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
