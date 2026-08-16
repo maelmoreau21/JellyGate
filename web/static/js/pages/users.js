@@ -390,7 +390,7 @@
             } else if (action === 'apply_preset') {
                 const opts = jellyfinPresets.map(p => '<option value="' + JG.esc(p.id) + '">' + JG.esc(p.name||p.id) + '</option>').join('');
                 c.innerHTML = '<div><label class="jg-label">' + JG.esc(text.bulkSelectPreset||'Profil') + '</label><select id="bulk-preset" class="jg-input jg-select-premium h-12"><option value="">' + JG.esc(text.bulkSelectPresetPlaceholder||'Select...') + '</option>' + opts + '</select></div>';
-            } else if (['activate','deactivate','delete','send_password_reset'].includes(action)) {
+            } else if (['activate','deactivate','delete'].includes(action)) {
                 c.innerHTML = '<div class="text-center py-8 text-jg-text-muted">' + JG.esc(text.bulkNoExtraParams||'No additional parameters required.') + '</div>';
             } else {
                 c.innerHTML = '<div class="text-center py-12 text-jg-text-muted/40 border-2 border-dashed border-jg-border rounded-2xl bg-white/5">' + JG.esc(i18n.bulkChooseAction||'Choose an action') + '</div>';

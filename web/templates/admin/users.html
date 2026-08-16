@@ -242,7 +242,6 @@
                     <select id="bulk-action" class="jg-input jg-select-premium h-12">
                         <option value="">{{ .T "users_bulk_action_placeholder" }}</option>
                         <option value="send_email">{{ .T "users_action_send_email" }}</option>
-                        <option value="send_password_reset">{{ .T "users_action_send_password_reset" }}</option>
                         <option value="set_expiry">{{ .T "users_action_set_expiry" }}</option>
                         <option value="set_parrainage">{{ .T "users_action_set_invite" }}</option>
                         <option value="jellyfin_policy">{{ .T "users_action_jellyfin_policy" }}</option>
@@ -521,7 +520,6 @@
         },
         bulkActionMeta: {
             send_email: { label: '{{ .T "users_action_send_email" }}', help: '{{ .T "users_action_send_email_help" }}' },
-            send_password_reset: { label: '{{ .T "users_action_send_password_reset" }}', help: '{{ .T "users_action_send_password_reset_help" }}' },
             set_expiry: { label: '{{ .T "users_action_set_expiry" }}', help: '{{ .T "users_action_set_expiry_help" }}' },
             set_parrainage: { label: '{{ .T "users_action_set_invite" }}', help: '{{ .T "users_action_set_invite_help" }}' },
             jellyfin_policy: { label: '{{ .T "users_action_jellyfin_policy" }}', help: '{{ .T "users_action_jellyfin_policy_help" }}' },
