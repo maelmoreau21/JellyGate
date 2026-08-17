@@ -2123,6 +2123,8 @@
                 JG.toast('Impossible de copier l\'URL', 'error');
             }
         });
+    }
+
     async function testSMTPConnection() {
         const btn = document.getElementById('btn-test-smtp');
         const origContent = btn ? btn.innerHTML : '';

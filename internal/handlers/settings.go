@@ -1251,48 +1251,41 @@ func (h *SettingsHandler) TestSMTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Déterminer l'adresse email de l'administrateur connecté
-	targetEmail := strings.TrimSpace(sess.Email)
-	if targetEmail == "" && h.db != nil {
-		var dbEmail string
-		_ = h.db.QueryRow(
-			`SELECT email FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR id = ? LIMIT 1`,
-			sess.AuthentikID, sess.Username, sess.UserID,
-		).Scan(&dbEmail)
-		targetEmail = strings.TrimSpace(dbEmail)
+	type smtpTestInput struct {
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+		From     string `json:"from"`
+		UseTLS   bool   `json:"use_tls"`
+		To       string `json:"to"`
 	}
 
-	// Si toujours vide et client Authentik disponible, interroger Authentik
-	if targetEmail == "" && h.authClient != nil && sess.Username != "" {
-		if u, err := h.authClient.GetUserByUsername(r.Context(), sess.Username); err == nil && u != nil {
-			targetEmail = strings.TrimSpace(u.Email)
-		}
+	var testInput smtpTestInput
+	if r.Method == http.MethodPost && r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&testInput)
 	}
 
-	if targetEmail == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{
-			Success: false,
-			Message: h.tr(r, "settings_smtp_test_no_email", "Aucune adresse e-mail n'est associée à votre compte administrateur. Veuillez renseigner un e-mail dans Mon Compte ou dans Authentik pour recevoir l'e-mail de test."),
-		})
-		return
-	}
-
-	// Récupérer la configuration SMTP à tester (soit depuis le body JSON, soit depuis la base)
+	// Récupérer la configuration SMTP enregistrée
 	smtpCfg, err := h.db.GetSMTPConfig()
 	if err != nil {
 		smtpCfg = config.SMTPConfig{}
 	}
 
-	if r.Method == http.MethodPost && r.Body != nil {
-		var input config.SMTPConfig
-		if err := json.NewDecoder(r.Body).Decode(&input); err == nil && strings.TrimSpace(input.Host) != "" {
-			if isMaskedSecret(input.Password) || input.Password == "" {
-				input.Password = smtpCfg.Password
-			}
-			if input.Port == 0 {
-				input.Port = 587
-			}
-			smtpCfg = input
+	if strings.TrimSpace(testInput.Host) != "" {
+		if isMaskedSecret(testInput.Password) || testInput.Password == "" {
+			testInput.Password = smtpCfg.Password
+		}
+		if testInput.Port == 0 {
+			testInput.Port = 587
+		}
+		smtpCfg = config.SMTPConfig{
+			Host:     testInput.Host,
+			Port:     testInput.Port,
+			Username: testInput.Username,
+			Password: testInput.Password,
+			From:     testInput.From,
+			UseTLS:   testInput.UseTLS,
 		}
 	}
 
@@ -1305,6 +1298,36 @@ func (h *SettingsHandler) TestSMTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if strings.TrimSpace(smtpCfg.From) == "" {
 		smtpCfg.From = "noreply@jellygate.local"
+	}
+
+	// Déterminer l'adresse email de destination pour le test
+	targetEmail := strings.TrimSpace(testInput.To)
+	if targetEmail == "" {
+		targetEmail = strings.TrimSpace(sess.Email)
+	}
+	if targetEmail == "" && h.db != nil {
+		var dbEmail string
+		_ = h.db.QueryRow(
+			`SELECT email FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR id = ? LIMIT 1`,
+			sess.AuthentikID, sess.Username, sess.UserID,
+		).Scan(&dbEmail)
+		targetEmail = strings.TrimSpace(dbEmail)
+	}
+	if targetEmail == "" && h.authClient != nil && sess.Username != "" {
+		if u, err := h.authClient.GetUserByUsername(r.Context(), sess.Username); err == nil && u != nil {
+			targetEmail = strings.TrimSpace(u.Email)
+		}
+	}
+	if targetEmail == "" && strings.TrimSpace(smtpCfg.From) != "" {
+		targetEmail = strings.TrimSpace(smtpCfg.From)
+	}
+
+	if targetEmail == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_smtp_test_no_email", "Aucune adresse e-mail n'est associée à votre compte administrateur. Veuillez renseigner un e-mail dans Mon Compte ou dans Authentik pour recevoir l'e-mail de test."),
+		})
+		return
 	}
 
 	// Instancier le mailer de test
