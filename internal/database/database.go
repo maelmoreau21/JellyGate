@@ -595,9 +595,9 @@ func (db *DB) migrate() error {
 		}
 	}
 
-	if err := db.backfillExistingEmailVerificationState(); err != nil {
-		return fmt.Errorf("backfill email verification historique: %w", err)
-	}
+	// Suppression de la table obsolète email_verifications si elle existe encore
+	_, _ = db.conn.Exec("DROP TABLE IF EXISTS email_verifications")
+
 	if err := db.disableDefaultBackupAutomationTaskOnce(); err != nil {
 		return fmt.Errorf("nettoyage tache backup automation historique: %w", err)
 	}
@@ -667,44 +667,6 @@ func (db *DB) seedDefaultTasks() error {
 	}
 
 	slog.Info("Taches par defaut inserees avec succes")
-	return nil
-}
-
-func (db *DB) backfillExistingEmailVerificationState() error {
-	status, err := db.GetSetting(SettingEmailVerificationBackfillV1)
-	if err != nil {
-		return err
-	}
-	if strings.EqualFold(strings.TrimSpace(status), "done") {
-		return nil
-	}
-
-	query := `UPDATE users
-		SET email_verified = 1, updated_at = datetime('now')
-		WHERE email_verified = 0
-		  AND TRIM(COALESCE(email, '')) <> ''
-		  AND TRIM(COALESCE(pending_email, '')) = ''
-		  AND email_verification_sent_at IS NULL`
-	if db.IsPostgres() {
-		query = `UPDATE users
-			SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP
-			WHERE email_verified = FALSE
-			  AND BTRIM(COALESCE(email, '')) <> ''
-			  AND BTRIM(COALESCE(pending_email, '')) = ''
-			  AND email_verification_sent_at IS NULL`
-	}
-
-	result, err := db.Exec(query)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if err := db.SetSetting(SettingEmailVerificationBackfillV1, "done"); err != nil {
-		return err
-	}
-
-	slog.Info("Backfill verification email historique termine", "rows", rowsAffected)
 	return nil
 }
 

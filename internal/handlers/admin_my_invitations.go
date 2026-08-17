@@ -317,7 +317,6 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	profile := inviteProfileFromPolicyPreset(targetPreset)
 	profile.CanInvite = false
 	profile.RequireEmail = inviteCfg.RequireEmail
-	profile.RequireEmailVerification = resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, false, maxUses)
 	if profile.IsTemporary {
 		duration := profile.AccountDurationDays
 		if duration <= 0 {
@@ -571,28 +570,6 @@ func (h *AdminHandler) countInvitationsCreatedSince(creator string, since time.T
 	}
 
 	return count, nil
-}
-
-func resolveInviteEmailVerificationRequirement(policy string, legacyRequire bool, createdByAdmin bool, maxUses int) bool {
-	mode := strings.TrimSpace(strings.ToLower(policy))
-	switch mode {
-	case "required":
-		return true
-	case "disabled":
-		return false
-	case "admin_bypass":
-		if createdByAdmin {
-			return false
-		}
-		return true
-	case "conditional":
-		if createdByAdmin && maxUses == 1 {
-			return false
-		}
-		return true
-	default:
-		return legacyRequire
-	}
 }
 
 // ListInvitations retourne les invitations SQLite avec pagination et recherche.
@@ -1020,7 +997,6 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 
 	profile.CanInvite = req.NewUserCanInvite
 	profile.RequireEmail = inviteCfg.RequireEmail
-	profile.RequireEmailVerification = resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, sess.IsAdmin, req.MaxUses)
 
 	profile.IsTemporary = req.IsTemporary
 	if preset != nil && preset.IsTemporary {

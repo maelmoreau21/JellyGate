@@ -131,11 +131,8 @@ func TestSecurityOverviewAggregatesEvents(t *testing.T) {
 func TestPendingActionsReturnsExpectedBuckets(t *testing.T) {
 	handler, db := newTestAdminDataStudioHandler(t)
 	expiry := time.Now().Add(48 * time.Hour).Format("2006-01-02 15:04:05")
-	if _, err := db.Exec(`INSERT INTO users (jellyfin_id, username, email, email_verified, pending_email, is_active, access_expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)`, "jf-exp", "expiring", "exp@example.com", true, "", true, expiry); err != nil {
+	if _, err := db.Exec(`INSERT INTO users (jellyfin_id, username, email, is_active, access_expires_at) VALUES (?, ?, ?, ?, ?)`, "jf-exp", "expiring", "exp@example.com", true, expiry); err != nil {
 		t.Fatalf("insert expiring user: %v", err)
-	}
-	if _, err := db.Exec(`INSERT INTO users (jellyfin_id, username, email, email_verified, pending_email, is_active) VALUES (?, ?, ?, ?, ?, ?)`, "jf-mail", "mail", "mail@example.com", false, "new@example.com", true); err != nil {
-		t.Fatalf("insert unverified user: %v", err)
 	}
 	if _, err := db.Exec(`INSERT INTO invitations (code, label, max_uses, used_count, expires_at, created_by) VALUES (?, ?, ?, ?, ?, ?)`, "ABC123", "Test", 1, 0, expiry, "admin"); err != nil {
 		t.Fatalf("insert invitation: %v", err)
@@ -151,7 +148,7 @@ func TestPendingActionsReturnsExpectedBuckets(t *testing.T) {
 	}
 	data := decodeAPIData(t, rec)
 	summary := data["summary"].(map[string]interface{})
-	if summary["expiring_accounts"].(float64) != 1 || summary["unverified_emails"].(float64) != 1 || summary["expiring_invitations"].(float64) != 1 || summary["smtp_errors"].(float64) != 1 {
+	if summary["expiring_accounts"].(float64) != 1 || summary["expiring_invitations"].(float64) != 1 || summary["smtp_errors"].(float64) != 1 {
 		t.Fatalf("summary = %#v", summary)
 	}
 }

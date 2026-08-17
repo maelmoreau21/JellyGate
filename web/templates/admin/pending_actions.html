@@ -7,7 +7,7 @@
     <div>
         <div class="jg-ds-kicker">Operations Studio</div>
         <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">À traiter</h1>
-        <p class="text-jg-text-muted mt-2">Comptes proches expiration, e-mails non vérifiés, invitations à échéance et erreurs SMTP récentes.</p>
+        <p class="text-jg-text-muted mt-2">Comptes proches expiration, invitations à échéance et erreurs SMTP récentes.</p>
     </div>
     <button id="pending-refresh" class="jg-btn jg-btn-ghost h-11 px-4">
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v6h6M20 20v-6h-6M20 9a8 8 0 00-14.9-3M4 15a8 8 0 0014.9 3" /></svg>
@@ -17,7 +17,6 @@
 
 <section id="pending-summary" class="jg-ds-metrics">
     <div class="jg-ds-metric"><span>Comptes à expirer</span><strong data-key="expiring_accounts">0</strong></div>
-    <div class="jg-ds-metric"><span>E-mails non vérifiés</span><strong data-key="unverified_emails">0</strong></div>
     <div class="jg-ds-metric"><span>Invitations proches expiration</span><strong data-key="expiring_invitations">0</strong></div>
     <div class="jg-ds-metric danger"><span>Erreurs SMTP</span><strong data-key="smtp_errors">0</strong></div>
 </section>
@@ -26,10 +25,6 @@
     <section class="jg-ds-panel">
         <div class="jg-ds-panel-head compact"><div><h2>Comptes à expirer</h2><p>Fenêtre 14 jours.</p></div></div>
         <div id="pending-expiring-accounts" class="jg-ds-list"></div>
-    </section>
-    <section class="jg-ds-panel">
-        <div class="jg-ds-panel-head compact"><div><h2>E-mails non vérifiés</h2><p>Comptes avec vérification en attente.</p></div></div>
-        <div id="pending-unverified-emails" class="jg-ds-list"></div>
     </section>
     <section class="jg-ds-panel">
         <div class="jg-ds-panel-head compact"><div><h2>Invitations à échéance</h2><p>Fenêtre 7 jours.</p></div></div>

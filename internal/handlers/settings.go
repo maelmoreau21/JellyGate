@@ -33,6 +33,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
+	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
@@ -1231,7 +1232,151 @@ func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Configuration SMTP sauvegardÃ©e",
+		Message: "Configuration SMTP sauvegardée",
+	})
+}
+
+// TestSMTP teste la configuration SMTP en envoyant un email à l'administrateur connecté.
+func (h *SettingsHandler) TestSMTP(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{
+			Success: false,
+			Message: h.tr(r, "common_unauthorized", "Non autorisé"),
+		})
+		return
+	}
+
+	// Déterminer l'adresse email de l'administrateur connecté
+	targetEmail := strings.TrimSpace(sess.Email)
+	if targetEmail == "" && h.db != nil {
+		var dbEmail string
+		_ = h.db.QueryRow(
+			`SELECT email FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR id = ? LIMIT 1`,
+			sess.AuthentikID, sess.Username, sess.UserID,
+		).Scan(&dbEmail)
+		targetEmail = strings.TrimSpace(dbEmail)
+	}
+
+	// Si toujours vide et client Authentik disponible, interroger Authentik
+	if targetEmail == "" && h.authClient != nil && sess.Username != "" {
+		if u, err := h.authClient.GetUserByUsername(r.Context(), sess.Username); err == nil && u != nil {
+			targetEmail = strings.TrimSpace(u.Email)
+		}
+	}
+
+	if targetEmail == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_smtp_test_no_email", "Aucune adresse e-mail n'est associée à votre compte administrateur. Veuillez renseigner un e-mail dans Mon Compte ou dans Authentik pour recevoir l'e-mail de test."),
+		})
+		return
+	}
+
+	// Récupérer la configuration SMTP à tester (soit depuis le body JSON, soit depuis la base)
+	smtpCfg, err := h.db.GetSMTPConfig()
+	if err != nil {
+		smtpCfg = config.SMTPConfig{}
+	}
+
+	if r.Method == http.MethodPost && r.Body != nil {
+		var input config.SMTPConfig
+		if err := json.NewDecoder(r.Body).Decode(&input); err == nil && strings.TrimSpace(input.Host) != "" {
+			if isMaskedSecret(input.Password) || input.Password == "" {
+				input.Password = smtpCfg.Password
+			}
+			if input.Port == 0 {
+				input.Port = 587
+			}
+			smtpCfg = input
+		}
+	}
+
+	if strings.TrimSpace(smtpCfg.Host) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_smtp_host_required", "L'hôte SMTP est requis pour le test."),
+		})
+		return
+	}
+	if strings.TrimSpace(smtpCfg.From) == "" {
+		smtpCfg.From = "noreply@jellygate.local"
+	}
+
+	// Instancier le mailer de test
+	testMailer, err := mail.New(smtpCfg)
+	if err != nil {
+		slog.Warn("Erreur instanciation mailer de test", "error", err)
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: fmt.Sprintf("Configuration SMTP invalide : %v", err),
+		})
+		return
+	}
+
+	// Tester la connexion (Ping)
+	if err := testMailer.Ping(); err != nil {
+		slog.Warn("Erreur ping SMTP lors du test", "error", err)
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: fmt.Sprintf("Connexion au serveur SMTP impossible : %v", err),
+		})
+		return
+	}
+
+	// Préparer l'email de test HTML
+	nowFormatted := time.Now().Format("02/01/2006 à 15:04:05")
+	subject := fmt.Sprintf("[JellyGate] Test de configuration SMTP (%s)", time.Now().Format("15:04:05"))
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background-color:#0b0f19;color:#e2e8f0;padding:24px;margin:0;}.card{background-color:#131b2e;border:1px solid #1e293b;border-radius:16px;max-width:560px;margin:0 auto;padding:32px;box-shadow:0 10px 25px rgba(0,0,0,0.5);}.header{display:flex;align-items:center;margin-bottom:20px;}.badge{background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#ffffff;font-weight:bold;padding:6px 14px;border-radius:8px;font-size:13px;display:inline-block;margin-bottom:16px;}.title{font-size:20px;font-weight:bold;color:#ffffff;margin:0 0 10px 0;}.text{font-size:14px;line-height:1.6;color:#94a3b8;margin:0 0 20px 0;}.details{background-color:#0b0f19;border:1px solid #1e293b;border-radius:10px;padding:16px;margin-bottom:24px;font-size:13px;}.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1e293b;}.row:last-child{border-bottom:none;}.label{color:#64748b;font-weight:500;}.val{color:#cbd5e1;font-weight:600;}.footer{font-size:12px;color:#64748b;text-align:center;margin-top:24px;}</style></head>
+<body>
+<div class="card">
+  <div class="badge">JellyGate · Test SMTP</div>
+  <h1 class="title">Connexion SMTP réussie !</h1>
+  <p class="text">Bonjour <strong>%s</strong>,<br>Ce message confirme que la configuration du serveur SMTP de votre instance JellyGate est parfaitement fonctionnelle et prête pour l'envoi d'emails.</p>
+  <div class="details">
+    <div class="row"><span class="label">Destinataire</span><span class="val">%s</span></div>
+    <div class="row"><span class="label">Serveur SMTP</span><span class="val">%s:%d</span></div>
+    <div class="row"><span class="label">Expéditeur configuré</span><span class="val">%s</span></div>
+    <div class="row"><span class="label">Chiffrement TLS</span><span class="val">%t</span></div>
+    <div class="row"><span class="label">Date du test</span><span class="val">%s</span></div>
+  </div>
+  <div class="footer">JellyGate SSO & User Management · E-mail automatique de diagnostic</div>
+</div>
+</body>
+</html>`,
+		template.HTMLEscapeString(sess.Username),
+		template.HTMLEscapeString(targetEmail),
+		template.HTMLEscapeString(smtpCfg.Host),
+		smtpCfg.Port,
+		template.HTMLEscapeString(smtpCfg.From),
+		smtpCfg.UseTLS,
+		nowFormatted,
+	)
+
+	if err := testMailer.SendRawHTML(targetEmail, subject, htmlBody); err != nil {
+		slog.Error("Échec envoi email de test SMTP", "to", targetEmail, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: fmt.Sprintf("Échec d'envoi du mail de test à %s : %v", targetEmail, err),
+		})
+		return
+	}
+
+	_ = h.db.LogAction("settings.smtp.tested", sess.Username, targetEmail, fmt.Sprintf("host=%s port=%d", smtpCfg.Host, smtpCfg.Port))
+	slog.Info("E-mail de test SMTP envoyé avec succès", "to", targetEmail, "host", smtpCfg.Host)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: fmt.Sprintf(h.tr(r, "settings_smtp_test_success", "E-mail de test envoyé avec succès à %s"), targetEmail),
+		Data: map[string]interface{}{
+			"recipient": targetEmail,
+		},
 	})
 }
 

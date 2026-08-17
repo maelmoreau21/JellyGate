@@ -245,19 +245,16 @@ func (h *AdminHandler) PendingActions(w http.ResponseWriter, r *http.Request) {
 	smtpSince := now.AddDate(0, 0, -7).Format("2006-01-02 15:04:05")
 
 	expiring := h.pendingExpiringUsers(userHorizon)
-	unverified := h.pendingUnverifiedEmails()
 	invites := h.pendingExpiringInvitations(inviteHorizon)
 	smtpErrors := h.pendingSMTPErrors(smtpSince)
 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
 		"summary": map[string]int{
 			"expiring_accounts":    len(expiring),
-			"unverified_emails":    len(unverified),
 			"expiring_invitations": len(invites),
 			"smtp_errors":          len(smtpErrors),
 		},
 		"expiring_accounts":    expiring,
-		"unverified_emails":    unverified,
 		"expiring_invitations": invites,
 		"smtp_errors":          smtpErrors,
 	}})
@@ -283,30 +280,6 @@ func (h *AdminHandler) pendingExpiringUsers(horizon string) []map[string]interfa
 		var email, expiresAt, action sql.NullString
 		if err := rows.Scan(&id, &username, &email, &expiresAt, &action); err == nil {
 			items = append(items, map[string]interface{}{"id": id, "username": username, "email": email.String, "expires_at": expiresAt.String, "action": action.String})
-		}
-	}
-	return items
-}
-
-func (h *AdminHandler) pendingUnverifiedEmails() []map[string]interface{} {
-	rows, err := h.db.Query(
-		`SELECT id, username, email, pending_email, email_verification_sent_at
-		 FROM users
-		 WHERE email_verified = ? AND ((email IS NOT NULL AND email <> '') OR pending_email <> '')
-		 ORDER BY updated_at DESC LIMIT 50`,
-		false,
-	)
-	if err != nil {
-		return []map[string]interface{}{}
-	}
-	defer rows.Close()
-	items := []map[string]interface{}{}
-	for rows.Next() {
-		var id int64
-		var username string
-		var email, pendingEmail, sentAt sql.NullString
-		if err := rows.Scan(&id, &username, &email, &pendingEmail, &sentAt); err == nil {
-			items = append(items, map[string]interface{}{"id": id, "username": username, "email": email.String, "pending_email": pendingEmail.String, "sent_at": sentAt.String})
 		}
 	}
 	return items
@@ -467,31 +440,29 @@ func (h *AdminHandler) buildInvitationPreview(r *http.Request, sess *session.Pay
 	}
 
 	profile := jellyfin.InviteProfile{
-		EnableAllFolders:         len(req.Libraries) == 0,
-		EnabledFolderIDs:         req.Libraries,
-		EnableDownload:           inviteCfg.EnableDownloads,
-		RequireEmail:             inviteCfg.RequireEmail,
-		RequireEmailVerification: resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, sess.IsAdmin, maxUses),
-		EnableRemoteAccess:       true,
-		UserExpiryDays:           userDays,
-		DisableAfterDays:         userDays,
-		ForcedUsername:           strings.TrimSpace(req.ForcedUsername),
-		CanInvite:                req.NewUserCanInvite && (sess.IsAdmin || limits.AllowGrant),
-		UsernameMinLength:        inviteCfg.UsernameMinLength,
-		UsernameMaxLength:        inviteCfg.UsernameMaxLength,
-		PasswordMinLength:        inviteCfg.PasswordMinLength,
-		PasswordMaxLength:        inviteCfg.PasswordMaxLength,
-		PasswordRequireUpper:     inviteCfg.PasswordRequireUpper,
-		PasswordRequireLower:     inviteCfg.PasswordRequireLower,
-		PasswordRequireDigit:     inviteCfg.PasswordRequireDigit,
-		PasswordRequireSpecial:   inviteCfg.PasswordRequireSpecial,
-		ExpiryAction:             normalizeExpiryAction(inviteCfg.ExpiryAction),
-		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
+		EnableAllFolders:       len(req.Libraries) == 0,
+		EnabledFolderIDs:       req.Libraries,
+		EnableDownload:         inviteCfg.EnableDownloads,
+		RequireEmail:           inviteCfg.RequireEmail,
+		EnableRemoteAccess:     true,
+		UserExpiryDays:         userDays,
+		DisableAfterDays:       userDays,
+		ForcedUsername:         strings.TrimSpace(req.ForcedUsername),
+		CanInvite:              req.NewUserCanInvite && (sess.IsAdmin || limits.AllowGrant),
+		UsernameMinLength:      inviteCfg.UsernameMinLength,
+		UsernameMaxLength:      inviteCfg.UsernameMaxLength,
+		PasswordMinLength:      inviteCfg.PasswordMinLength,
+		PasswordMaxLength:      inviteCfg.PasswordMaxLength,
+		PasswordRequireUpper:   inviteCfg.PasswordRequireUpper,
+		PasswordRequireLower:   inviteCfg.PasswordRequireLower,
+		PasswordRequireDigit:   inviteCfg.PasswordRequireDigit,
+		PasswordRequireSpecial: inviteCfg.PasswordRequireSpecial,
+		ExpiryAction:           normalizeExpiryAction(inviteCfg.ExpiryAction),
+		DeleteAfterDays:        inviteCfg.DeleteAfterDays,
 	}
 	if preset != nil {
 		profile = inviteProfileFromPolicyPreset(preset)
 		profile.RequireEmail = inviteCfg.RequireEmail
-		profile.RequireEmailVerification = resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, sess.IsAdmin, maxUses)
 		profile.UserExpiryDays = userDays
 		profile.DisableAfterDays = userDays
 		profile.ForcedUsername = strings.TrimSpace(req.ForcedUsername)

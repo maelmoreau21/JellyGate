@@ -288,11 +288,6 @@ func main() {
 		}
 	})
 
-	r.Route("/verify-email", func(r chi.Router) {
-		r.Get("/{code}", inviteHandler.VerifyEmailPage)
-		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", inviteHandler.VerifyEmailSubmit)
-	})
-
 	// Routes d'authentification OIDC & locale de secours (publiques)
 	r.Route("/auth", func(r chi.Router) {
 		r.Get("/login", authHandler.LoginRedirect)
@@ -374,7 +369,6 @@ func main() {
 				r.Post("/avatar", adminHandler.UpdateMyAccountAvatar)
 				r.Get("/invitations", adminHandler.GetMyInvitations)
 				r.Post("/invitations", adminHandler.CreateMyInvitation)
-				r.Post("/email-verification/resend", adminHandler.ResendEmailVerification)
 			})
 
 			// ── Routes limitées aux administrateurs purs ────────────────────
@@ -425,6 +419,7 @@ func main() {
 					r.Get("/jellyfin/health", settingsHandler.TestJellyfin)
 					r.Post("/jellyfin/test", settingsHandler.TestJellyfin)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
+					r.Post("/smtp/test", settingsHandler.TestSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)
 					r.Get("/email-templates/export", settingsHandler.ExportEmailTemplates)

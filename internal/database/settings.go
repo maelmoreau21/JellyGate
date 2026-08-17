@@ -34,7 +34,6 @@ const (
 	SettingAuthSessionConfig           = "auth_session_config"            // JSON: AuthSessionConfig
 	SettingBackupLastRun               = "backup_last_run"                // Date locale YYYY-MM-DD
 	SettingDefaultLang                 = "default_lang"                   // Default language of the server (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
-	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
 	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
 	SettingAuthentikConfig             = "authentik_config"               // JSON: config.AuthentikConfig
 	SettingJellyfinConfig              = "jellyfin_config"                // JSON: config.JellyfinConfig
@@ -1117,33 +1116,6 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 func normalizeInvitationProfile(cfg config.InvitationProfileConfig) config.InvitationProfileConfig {
 	cfg.PolicyPresetID = strings.TrimSpace(strings.ToLower(cfg.PolicyPresetID))
 	cfg.TemplateUserID = strings.TrimSpace(cfg.TemplateUserID)
-	cfg.EmailVerificationPolicy = strings.TrimSpace(strings.ToLower(cfg.EmailVerificationPolicy))
-	switch cfg.EmailVerificationPolicy {
-	case "required", "conditional", "admin_bypass", "disabled":
-	default:
-		if cfg.RequireEmailVerification {
-			cfg.EmailVerificationPolicy = "required"
-		} else {
-			cfg.EmailVerificationPolicy = "disabled"
-		}
-	}
-
-	switch cfg.EmailVerificationPolicy {
-	case "required":
-		cfg.RequireEmailVerification = true
-		cfg.RequireEmail = true
-	case "conditional":
-		cfg.RequireEmail = true
-	case "admin_bypass":
-		cfg.RequireEmailVerification = true
-		cfg.RequireEmail = true
-	case "disabled":
-		cfg.RequireEmailVerification = false
-	}
-
-	if cfg.RequireEmailVerification {
-		cfg.RequireEmail = true
-	}
 
 	if cfg.DisableAfterDays < 0 {
 		cfg.DisableAfterDays = 0

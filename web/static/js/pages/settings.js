@@ -1344,62 +1344,24 @@
     function applyInvitationProfileConfig(cfg) {
         const profile = cfg || {};
         currentInvitationProfile = { ...profile };
-        document.getElementById('invite-profile-require-email').checked = profile.require_email !== false;
-        document.getElementById('invite-profile-require-email-verification').checked = profile.require_email_verification !== false;
-        const policySelect = document.getElementById('invite-profile-email-verification-policy');
-        if (policySelect) {
-            const resolvedPolicy = String(profile.email_verification_policy || (profile.require_email_verification === false ? 'disabled' : 'required')).trim().toLowerCase();
-            if (policySelect.querySelector(`option[value="${resolvedPolicy}"]`)) {
-                policySelect.value = resolvedPolicy;
-            } else {
-                policySelect.value = 'required';
-            }
-        }
-        document.getElementById('invite-profile-user-min').value = Number.isInteger(profile.username_min_length) ? profile.username_min_length : 3;
-        document.getElementById('invite-profile-user-max').value = Number.isInteger(profile.username_max_length) ? profile.username_max_length : 32;
-        document.getElementById('invite-profile-pw-min').value = Number.isInteger(profile.password_min_length) ? profile.password_min_length : 8;
-        document.getElementById('invite-profile-pw-max').value = Number.isInteger(profile.password_max_length) ? profile.password_max_length : 128;
-        document.getElementById('invite-profile-pw-upper').checked = !!profile.password_require_upper;
-        document.getElementById('invite-profile-pw-lower').checked = !!profile.password_require_lower;
-        document.getElementById('invite-profile-pw-digit').checked = !!profile.password_require_digit;
-        document.getElementById('invite-profile-pw-special').checked = !!profile.password_require_special;
-        syncInviteEmailPolicyControls();
-        syncInviteEmailRequirementFromVerification();
-    }
-
-    function syncInviteEmailPolicyControls() {
-        const requireEmail = document.getElementById('invite-profile-require-email');
-        const requireVerification = document.getElementById('invite-profile-require-email-verification');
-        const policySelect = document.getElementById('invite-profile-email-verification-policy');
-        if (!requireEmail || !requireVerification || !policySelect) {
-            return;
-        }
-
-        const mode = String(policySelect.value || '').trim().toLowerCase();
-        if (mode === 'required' || mode === 'admin_bypass') {
-            requireVerification.checked = true;
-            requireEmail.checked = true;
-        } else if (mode === 'conditional') {
-            requireEmail.checked = true;
-        } else if (mode === 'disabled') {
-            requireVerification.checked = false;
-        }
-    }
-
-    function syncInviteEmailRequirementFromVerification() {
-        const requireEmail = document.getElementById('invite-profile-require-email');
-        const requireVerification = document.getElementById('invite-profile-require-email-verification');
-        const policySelect = document.getElementById('invite-profile-email-verification-policy');
-        if (!requireEmail || !requireVerification) {
-            return;
-        }
-        if (requireVerification.checked) {
-            requireEmail.checked = true;
-            if (policySelect && policySelect.value === 'disabled') {
-                policySelect.value = 'required';
-            }
-            return;
-        }
+        const reqEmail = document.getElementById('invite-profile-require-email');
+        if (reqEmail) reqEmail.checked = profile.require_email !== false;
+        const userMin = document.getElementById('invite-profile-user-min');
+        if (userMin) userMin.value = Number.isInteger(profile.username_min_length) ? profile.username_min_length : 3;
+        const userMax = document.getElementById('invite-profile-user-max');
+        if (userMax) userMax.value = Number.isInteger(profile.username_max_length) ? profile.username_max_length : 32;
+        const pwMin = document.getElementById('invite-profile-pw-min');
+        if (pwMin) pwMin.value = Number.isInteger(profile.password_min_length) ? profile.password_min_length : 8;
+        const pwMax = document.getElementById('invite-profile-pw-max');
+        if (pwMax) pwMax.value = Number.isInteger(profile.password_max_length) ? profile.password_max_length : 128;
+        const pwUpper = document.getElementById('invite-profile-pw-upper');
+        if (pwUpper) pwUpper.checked = !!profile.password_require_upper;
+        const pwLower = document.getElementById('invite-profile-pw-lower');
+        if (pwLower) pwLower.checked = !!profile.password_require_lower;
+        const pwDigit = document.getElementById('invite-profile-pw-digit');
+        if (pwDigit) pwDigit.checked = !!profile.password_require_digit;
+        const pwSpecial = document.getElementById('invite-profile-pw-special');
+        if (pwSpecial) pwSpecial.checked = !!profile.password_require_special;
     }
 
     function setBackupMode(databaseType) {
@@ -2161,6 +2123,42 @@
                 JG.toast('Impossible de copier l\'URL', 'error');
             }
         });
+    async function testSMTPConnection() {
+        const btn = document.getElementById('btn-test-smtp');
+        const origContent = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="w-4 h-4 animate-spin text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>${t('settings_smtp_test_sending', 'Envoi du test...')}</span>`;
+        }
+
+        try {
+            const payload = {
+                host: document.getElementById('smtp-host')?.value || '',
+                port: parseInt(document.getElementById('smtp-port')?.value, 10) || 587,
+                username: document.getElementById('smtp-username')?.value || '',
+                password: document.getElementById('smtp-password')?.value || '',
+                from: document.getElementById('smtp-from')?.value || '',
+                use_tls: !!document.getElementById('smtp-tls')?.checked,
+            };
+
+            const res = await JG.api('/admin/api/settings/smtp/test', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            if (res && res.success) {
+                JG.toast(res.message || t('settings_smtp_test_success', 'E-mail de test envoyé avec succès'), 'success');
+            } else {
+                JG.toast((res && res.message) || t('settings_smtp_test_failed', 'Échec du test SMTP'), 'error');
+            }
+        } catch (err) {
+            JG.toast(err?.message || t('settings_smtp_test_failed', 'Échec du test SMTP'), 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origContent;
+            }
+        }
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -2238,6 +2236,7 @@
         document.getElementById('backup-create-btn')?.addEventListener('click', createBackupNow);
         document.getElementById('backup-import-btn')?.addEventListener('click', importBackup);
         document.getElementById('btn-auth-session-revoke-all')?.addEventListener('click', revokeAuthSessions);
+        document.getElementById('btn-test-smtp')?.addEventListener('click', testSMTPConnection);
         document.getElementById('btn-test-jellyfin')?.addEventListener('click', () => testJellyfinConnection());
         document.getElementById('btn-toggle-jf-api-key')?.addEventListener('click', function () {
             toggleSecretVisibility('jellyfin-api-key', this);

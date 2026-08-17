@@ -26,8 +26,6 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	var (
 		id              int64
 		email           sql.NullString
-		pendingEmail    sql.NullString
-		emailVerified   bool
 		contactDiscord  sql.NullString
 		contactTelegram sql.NullString
 		contactMatrix   sql.NullString
@@ -44,7 +42,6 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	err := h.db.QueryRow(
 		`SELECT id, email, contact_discord, contact_telegram, contact_matrix,
-		        pending_email, email_verified,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix,
 		        access_expires_at, created_at
@@ -56,8 +53,6 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		&contactDiscord,
 		&contactTelegram,
 		&contactMatrix,
-		&pendingEmail,
-		&emailVerified,
 		&preferredLang,
 		&notifyExpiry,
 		&notifyEvents,
@@ -91,8 +86,6 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 			"username":                   sess.Username,
 			"jellyfin_primary_image_tag": jfPrimaryImageTag,
 			"email":                      email.String,
-			"pending_email":              pendingEmail.String,
-			"email_verified":             emailVerified,
 			"contact_discord":            contactDiscord.String,
 			"contact_telegram":           contactTelegram.String,
 			"contact_matrix":             contactMatrix.String,
@@ -128,8 +121,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	var (
 		userID          int64
 		currentEmail    sql.NullString
-		currentPending  sql.NullString
-		emailVerified   bool
 		currentDiscord  sql.NullString
 		currentTelegram sql.NullString
 		currentMatrix   sql.NullString
@@ -142,7 +133,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		optInMatrix     bool
 	)
 	err := h.db.QueryRow(
-		`SELECT id, email, pending_email, email_verified, contact_discord, contact_telegram, contact_matrix,
+		`SELECT id, email, contact_discord, contact_telegram, contact_matrix,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix
 		 FROM users WHERE authentik_id = ? OR username = ? OR id = ?`,
@@ -150,8 +141,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	).Scan(
 		&userID,
 		&currentEmail,
-		&currentPending,
-		&emailVerified,
 		&currentDiscord,
 		&currentTelegram,
 		&currentMatrix,
@@ -169,8 +158,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newEmail := strings.TrimSpace(currentEmail.String)
-	newPendingEmail := strings.TrimSpace(currentPending.String)
-	newEmailVerified := emailVerified
 	if req.Email != nil {
 		requestedEmail := strings.TrimSpace(*req.Email)
 		if requestedEmail != "" {
@@ -179,17 +166,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
-		switch {
-		case requestedEmail == "":
-			newEmail = ""
-			newPendingEmail = ""
-			newEmailVerified = false
-		case strings.EqualFold(requestedEmail, newEmail):
-			newPendingEmail = ""
-		default:
-			newPendingEmail = requestedEmail
-		}
+		newEmail = requestedEmail
 	}
 	newDiscord := strings.TrimSpace(currentDiscord.String)
 	if req.ContactDiscord != nil {
@@ -243,15 +220,12 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.db.Exec(
 		`UPDATE users
-		 SET email = ?, pending_email = ?, email_verified = ?, contact_discord = ?, contact_telegram = ?, contact_matrix = ?,
+		 SET email = ?, contact_discord = ?, contact_telegram = ?, contact_matrix = ?,
 		     preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
 		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?, opt_in_matrix = ?,
-		     email_verification_sent_at = CASE WHEN ? THEN NULL ELSE email_verification_sent_at END,
 		     updated_at = datetime('now')
 		 WHERE id = ? OR authentik_id = ? OR username = ?`,
 		newEmail,
-		newPendingEmail,
-		newEmailVerified,
 		newDiscord,
 		newTelegram,
 		newMatrix,
@@ -262,7 +236,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		newOptInDiscord,
 		newOptInTelegram,
 		newOptInMatrix,
-		req.Email != nil,
 		userID, sess.AuthentikID, sess.Username,
 	)
 	if err != nil {
@@ -317,16 +290,16 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		Message: message,
 		Data: map[string]interface{}{
 			"email":                  newEmail,
-			"pending_email":          newPendingEmail,
-			"email_verified":         newEmailVerified && newPendingEmail == "",
 			"contact_discord":        newDiscord,
 			"contact_telegram":       newTelegram,
+			"contact_matrix":         newMatrix,
 			"preferred_lang":         newPreferredLang,
 			"notify_expiry_reminder": newNotifyExpiry,
 			"notify_account_events":  newNotifyEvents,
 			"opt_in_email":           newOptInEmail,
 			"opt_in_discord":         newOptInDiscord,
 			"opt_in_telegram":        newOptInTelegram,
+			"opt_in_matrix":          newOptInMatrix,
 		},
 	})
 }
@@ -402,28 +375,5 @@ func (h *AdminHandler) UpdateMyPassword(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusBadRequest, APIResponse{
 		Success: false,
 		Message: h.tr(r, "admin_password_managed_by_authentik", "La gestion du mot de passe s'effectue directement sur le portail Authentik."),
-	})
-}
-
-// ResendEmailVerification renvoie un code de vérification à l'utilisateur connecté.
-func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	if h.mailer == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_mail_service_unavailable", "Service mail non configuré")})
-		return
-	}
-
-	var email, pendingEmail string
-	var emailVerified bool
-	var id int64
-	err := h.db.QueryRow(`SELECT id, email, pending_email, email_verified FROM users WHERE authentik_id = ? OR jellyfin_id = ? OR username = ? OR id = ?`, sess.UserID, sess.UserID, sess.Username, sess.UserID).Scan(&id, &email, &pendingEmail, &emailVerified)
-	if err != nil {
-		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "admin_user_not_found", "Utilisateur introuvable")})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Message: h.tr(r, "admin_email_managed_by_authentik", "La vérification d'email s'effectue directement sur le portail Authentik."),
 	})
 }

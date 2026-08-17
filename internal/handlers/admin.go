@@ -878,7 +878,7 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 	return canInvite
 }
 
-// GetMyAccount, UpdateMyAccount, GetMyInvitations, CreateMyInvitation, UpdateMyAccountAvatar, UpdateMyPassword, ResendEmailVerification have been moved to separate modular files.
+// GetMyAccount, UpdateMyAccount, GetMyInvitations, CreateMyInvitation, UpdateMyAccountAvatar, UpdateMyPassword have been moved to separate modular files.
 
 func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
