@@ -21,24 +21,24 @@ import (
 // ── Clés de settings ────────────────────────────────────────────────────────
 
 const (
-	SettingSMTPConfig                  = "smtp_config"             // JSON: config.SMTPConfig
-	SettingWebhooksConfig              = "webhooks_config"         // JSON: config.WebhooksConfig
-	SettingPortalLinks                 = "portal_links"            // JSON: config.PortalLinksConfig
-	SettingEmailTemplates              = "email_templates"         // JSON: config.EmailTemplatesConfig
-	SettingEmailTemplatesByLang        = "email_templates_by_lang" // JSON: map[lang]config.EmailTemplatesConfig
-	SettingEmailTemplatesMultilingual  = "email_templates_multilingual_enabled"
-	SettingBackupConfig                = "backup_config"                  // JSON: config.BackupConfig
-	SettingProductFeatures             = "product_features"               // JSON: config.ProductFeaturesConfig
-	SettingJellyfinPresets             = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
-	SettingGroupMappings               = "group_mappings"                 // JSON: []config.GroupPolicyMapping
-	SettingInviteProfile               = "invite_profile"                 // JSON: config.InvitationProfileConfig
-	SettingAuthSessionConfig           = "auth_session_config"            // JSON: AuthSessionConfig
-	SettingBackupLastRun               = "backup_last_run"                // Date locale YYYY-MM-DD
-	SettingDefaultLang                 = "default_lang"                   // Default language of the server (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
-	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
-	SettingAuthentikConfig             = "authentik_config"               // JSON: config.AuthentikConfig
-	SettingJellyfinConfig              = "jellyfin_config"                // JSON: config.JellyfinConfig
-	SettingLogRetentionDays            = "log_retention_days"             // Nombre de jours de rétention des logs système (int)
+	SettingSMTPConfig                 = "smtp_config"             // JSON: config.SMTPConfig
+	SettingWebhooksConfig             = "webhooks_config"         // JSON: config.WebhooksConfig
+	SettingPortalLinks                = "portal_links"            // JSON: config.PortalLinksConfig
+	SettingEmailTemplates             = "email_templates"         // JSON: config.EmailTemplatesConfig
+	SettingEmailTemplatesByLang       = "email_templates_by_lang" // JSON: map[lang]config.EmailTemplatesConfig
+	SettingEmailTemplatesMultilingual = "email_templates_multilingual_enabled"
+	SettingBackupConfig               = "backup_config"                  // JSON: config.BackupConfig
+	SettingProductFeatures            = "product_features"               // JSON: config.ProductFeaturesConfig
+	SettingJellyfinPresets            = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
+	SettingGroupMappings              = "group_mappings"                 // JSON: []config.GroupPolicyMapping
+	SettingInviteProfile              = "invite_profile"                 // JSON: config.InvitationProfileConfig
+	SettingAuthSessionConfig          = "auth_session_config"            // JSON: AuthSessionConfig
+	SettingBackupLastRun              = "backup_last_run"                // Date locale YYYY-MM-DD
+	SettingDefaultLang                = "default_lang"                   // Default language of the server (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
+	SettingDefaultBackupTaskCleanupV1 = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
+	SettingAuthentikConfig            = "authentik_config"               // JSON: config.AuthentikConfig
+	SettingJellyfinConfig             = "jellyfin_config"                // JSON: config.JellyfinConfig
+	SettingLogRetentionDays           = "log_retention_days"             // Nombre de jours de rétention des logs système (int)
 )
 
 // AuthSessionConfig controle la duree des sessions persistantes et la

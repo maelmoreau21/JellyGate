@@ -616,7 +616,7 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 		enriched["attributes"] = attrs
 		payload["fixed_data"] = enriched
 	}
-	
+
 	flowUUID, _ := c.resolveFlowInfo(ctx, flow)
 	if flowUUID != "" {
 		payload["flow"] = flowUUID
