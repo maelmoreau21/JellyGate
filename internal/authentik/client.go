@@ -94,6 +94,7 @@ type Client interface {
 	CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (invitationID string, err error)
 	ListInvitationStageTokens(ctx context.Context) ([]InvitationTokenResponse, error)
 	DeleteInvitationStageToken(ctx context.Context, invitationID string) error
+	GetEnrollmentFlowSlug(ctx context.Context, preferred string) string
 }
 
 type client struct {
@@ -486,42 +487,108 @@ func (c *client) GetUserByUsername(ctx context.Context, username string) (*UserD
 
 var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
-func (c *client) resolveFlowUUID(ctx context.Context, flowOrSlug string) string {
+func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string, string) {
 	flow := strings.TrimSpace(flowOrSlug)
-	if flow == "" {
-		return ""
-	}
+
+	// Si c'est un UUID direct
 	if uuidRegex.MatchString(flow) {
-		return flow
+		endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(flow))
+		respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+		if err == nil && statusCode == http.StatusOK {
+			var res struct {
+				PK   string `json:"pk"`
+				Slug string `json:"slug"`
+			}
+			if err := json.Unmarshal(respBody, &res); err == nil && res.PK != "" {
+				return res.PK, res.Slug
+			}
+		}
+		return flow, ""
 	}
 
 	// 1. Essayer /api/v3/flows/instances/<slug>/
-	endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(flow))
-	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
-	if err == nil && statusCode == http.StatusOK {
-		var res struct {
-			PK string `json:"pk"`
+	if flow != "" {
+		endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(flow))
+		respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+		if err == nil && statusCode == http.StatusOK {
+			var res struct {
+				PK   string `json:"pk"`
+				Slug string `json:"slug"`
+			}
+			if err := json.Unmarshal(respBody, &res); err == nil && uuidRegex.MatchString(res.PK) {
+				slug := res.Slug
+				if slug == "" {
+					slug = flow
+				}
+				return res.PK, slug
+			}
 		}
-		if err := json.Unmarshal(respBody, &res); err == nil && uuidRegex.MatchString(res.PK) {
-			return res.PK
+
+		// 2. Essayer /api/v3/flows/instances/?slug=<slug>
+		endpointQuery := fmt.Sprintf("/api/v3/flows/instances/?slug=%s", url.QueryEscape(flow))
+		respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, endpointQuery, nil)
+		if err == nil && statusCode == http.StatusOK {
+			var listRes struct {
+				Results []struct {
+					PK   string `json:"pk"`
+					Slug string `json:"slug"`
+				} `json:"results"`
+			}
+			if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && uuidRegex.MatchString(listRes.Results[0].PK) {
+				slug := listRes.Results[0].Slug
+				if slug == "" {
+					slug = flow
+				}
+				return listRes.Results[0].PK, slug
+			}
 		}
 	}
 
-	// 2. Essayer /api/v3/flows/instances/?slug=<slug>
-	endpointQuery := fmt.Sprintf("/api/v3/flows/instances/?slug=%s", url.QueryEscape(flow))
-	respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, endpointQuery, nil)
+	// 3. Fallback automatique : rechercher les flux avec designation=enrollment
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/flows/instances/?designation=enrollment", nil)
 	if err == nil && statusCode == http.StatusOK {
 		var listRes struct {
 			Results []struct {
-				PK string `json:"pk"`
+				PK   string `json:"pk"`
+				Slug string `json:"slug"`
 			} `json:"results"`
 		}
 		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && uuidRegex.MatchString(listRes.Results[0].PK) {
-			return listRes.Results[0].PK
+			return listRes.Results[0].PK, listRes.Results[0].Slug
 		}
 	}
 
-	return ""
+	// 4. Fallback général : lister les flux disponibles et chercher un flux d'inscription
+	respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, "/api/v3/flows/instances/", nil)
+	if err == nil && statusCode == http.StatusOK {
+		var listRes struct {
+			Results []struct {
+				PK          string `json:"pk"`
+				Slug        string `json:"slug"`
+				Designation string `json:"designation"`
+			} `json:"results"`
+		}
+		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 {
+			for _, f := range listRes.Results {
+				if f.Designation == "enrollment" || strings.Contains(f.Slug, "enroll") || strings.Contains(f.Slug, "invit") || strings.Contains(f.Slug, "inscri") {
+					return f.PK, f.Slug
+				}
+			}
+			return listRes.Results[0].PK, listRes.Results[0].Slug
+		}
+	}
+
+	return "", flow
+}
+
+func (c *client) resolveFlowUUID(ctx context.Context, flowOrSlug string) string {
+	uuid, _ := c.resolveFlowInfo(ctx, flowOrSlug)
+	return uuid
+}
+
+func (c *client) GetEnrollmentFlowSlug(ctx context.Context, preferred string) string {
+	_, slug := c.resolveFlowInfo(ctx, preferred)
+	return slug
 }
 
 func (c *client) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
@@ -549,10 +616,10 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 		enriched["attributes"] = attrs
 		payload["fixed_data"] = enriched
 	}
-	if strings.TrimSpace(flow) != "" {
-		if flowUUID := c.resolveFlowUUID(ctx, flow); flowUUID != "" {
-			payload["flow"] = flowUUID
-		}
+	
+	flowUUID, _ := c.resolveFlowInfo(ctx, flow)
+	if flowUUID != "" {
+		payload["flow"] = flowUUID
 	}
 
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, "/api/v3/stages/invitation/invitations/", payload)

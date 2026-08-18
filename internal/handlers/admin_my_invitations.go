@@ -382,6 +382,8 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		}
 
 		fixedData := map[string]interface{}{
+			"source":                "JellyGate",
+			"created_by":            "JellyGate",
 			"sponsor":               sess.Username,
 			"code":                  code,
 			"invitation_code":       code,
@@ -392,7 +394,8 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 			"account_duration_days": profile.AccountDurationDays,
 		}
 
-		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
+		tokenName := fmt.Sprintf("JellyGate - %s (%s)", code, sess.Username)
+		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), tokenName, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
 		if authErr == nil {
 			authentikInvID = invID
 		} else {
@@ -1149,6 +1152,8 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 
 		fixedData := map[string]interface{}{
+			"source":                "JellyGate",
+			"created_by":            "JellyGate",
 			"sponsor":               sess.Username,
 			"code":                  code,
 			"invitation_code":       code,
@@ -1176,7 +1181,8 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
-		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, stageExpiry, fixedData, maxUses == 1, flowSlug)
+		tokenName := fmt.Sprintf("JellyGate - %s", code)
+		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
 		if authErr == nil {
 			authentikInvID = invID
 		} else {

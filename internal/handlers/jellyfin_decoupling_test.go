@@ -107,6 +107,12 @@ func (m *mockAuthentikDecoupledClient) ListInvitationStageTokens(ctx context.Con
 func (m *mockAuthentikDecoupledClient) DeleteInvitationStageToken(ctx context.Context, invitationID string) error {
 	return nil
 }
+func (m *mockAuthentikDecoupledClient) GetEnrollmentFlowSlug(ctx context.Context, preferred string) string {
+	if preferred != "" {
+		return preferred
+	}
+	return "default-enrollment-flow"
+}
 
 func TestJellyGateStartsWithoutJellyfin(t *testing.T) {
 	cfg := &config.Config{

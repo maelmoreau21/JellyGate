@@ -121,6 +121,13 @@ func (m *mockAuthentikClient) DeleteInvitationStageToken(ctx context.Context, in
 	return nil
 }
 
+func (m *mockAuthentikClient) GetEnrollmentFlowSlug(ctx context.Context, preferred string) string {
+	if preferred != "" {
+		return preferred
+	}
+	return "default-enrollment-flow"
+}
+
 func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 	db := newAuthTestDB(t)
 	cfg := &config.Config{

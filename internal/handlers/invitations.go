@@ -217,6 +217,11 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		if flowSlug == "" && h.cfg != nil {
 			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
 		}
+		if h.authClient != nil {
+			if discovered := h.authClient.GetEnrollmentFlowSlug(r.Context(), flowSlug); discovered != "" {
+				flowSlug = discovered
+			}
+		}
 		if flowSlug == "" {
 			flowSlug = "default-enrollment-flow"
 		}
@@ -239,6 +244,8 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 				targetGroups = append(targetGroups, jellyfinGroup)
 
 				fixedData := map[string]interface{}{
+					"source":                "JellyGate",
+					"created_by":            "JellyGate",
 					"invitation_code":       inv.Code,
 					"code":                  inv.Code,
 					"sponsor":               inv.CreatedBy,
@@ -251,7 +258,8 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 				if inv.ExpiresAt.Valid {
 					stageExpiry = inv.ExpiresAt.Time
 				}
-				if tokenID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+inv.Code, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && tokenID != "" {
+				tokenName := fmt.Sprintf("JellyGate - %s", inv.Code)
+				if tokenID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && tokenID != "" {
 					invToken = tokenID
 					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tokenID, inv.ID)
 				}
