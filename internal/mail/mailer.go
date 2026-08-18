@@ -331,22 +331,34 @@ func (m *Mailer) renderTemplate(templateName string, data interface{}) (string, 
 	return buf.String(), nil
 }
 
-var htmlTagRegex = regexp.MustCompile("<[^>]*>")
+var (
+	styleBlockRegex  = regexp.MustCompile(`(?is)<style\b[^>]*>.*?</style>`)
+	scriptBlockRegex = regexp.MustCompile(`(?is)<script\b[^>]*>.*?</script>`)
+	headBlockRegex   = regexp.MustCompile(`(?is)<head\b[^>]*>.*?</head>`)
+	htmlTagRegex     = regexp.MustCompile(`<[^>]*>`)
+)
 
 func stripHTMLTags(src string) string {
 	s := src
-	// Remplacer les balises <br> et <p> par des sauts de ligne pour un formatage minimal
-	s = regexp.MustCompile(`(?i)<br\s*/?>`).ReplaceAllString(s, "\n")
-	s = regexp.MustCompile(`(?i)</?p\s*/?>`).ReplaceAllString(s, "\n\n")
+	// 1. Supprimer complètement les blocs de styles, scripts et balises d'en-tête avec leur contenu
+	s = styleBlockRegex.ReplaceAllString(s, "")
+	s = scriptBlockRegex.ReplaceAllString(s, "")
+	s = headBlockRegex.ReplaceAllString(s, "")
 
-	// Supprimer toutes les autres balises HTML
+	// 2. Remplacer les balises de structure par des sauts de ligne pour un texte lisible
+	s = regexp.MustCompile(`(?i)<br\s*/?>`).ReplaceAllString(s, "\n")
+	s = regexp.MustCompile(`(?i)</?(?:p|div|tr|h[1-6]|li)\s*/?>`).ReplaceAllString(s, "\n")
+	s = regexp.MustCompile(`(?i)</?td\s*/?>`).ReplaceAllString(s, "  ")
+
+	// 3. Supprimer toutes les autres balises HTML
 	s = htmlTagRegex.ReplaceAllString(s, "")
 
-	// Décoder les entités HTML (ex: &eacute;, &nbsp;, &lt;)
+	// 4. Décoder les entités HTML (ex: &eacute;, &nbsp;, &lt;)
 	s = html.UnescapeString(s)
 
-	// Remplacer les sauts de lignes multiples par au plus deux sauts de ligne
-	s = regexp.MustCompile(`\n{3,}`).ReplaceAllString(s, "\n\n")
+	// 5. Nettoyer les espaces et sauts de lignes multiples
+	s = regexp.MustCompile(`[ \t]+`).ReplaceAllString(s, " ")
+	s = regexp.MustCompile(`\n\s*\n+`).ReplaceAllString(s, "\n\n")
 
 	return strings.TrimSpace(s)
 }

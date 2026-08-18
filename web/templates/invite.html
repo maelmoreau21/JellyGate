@@ -77,6 +77,36 @@
             </div>
             {{ end }}
         </div>
+        {{ if .Data.AuthentikEnrollmentURL }}
+        <div class="glass-card p-8 glow-accent text-center">
+            {{ if .Data.InviteIntroHTML }}
+            <div class="jg-markdown-panel mb-6 text-left">
+                {{ .Data.InviteIntroHTML }}
+            </div>
+            {{ end }}
+
+            {{ if .Error }}
+            <div class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300 text-left">
+                {{ .Error }}
+            </div>
+            {{ end }}
+
+            <div class="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-purple-500/20">
+                <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+
+            <h2 class="text-xl font-bold mb-2 text-slate-100">{{ .T "invite_heading" }}</h2>
+            <p class="text-sm text-slate-400 mb-6">{{ printf (.T "invite_subheading") (or .Data.JellyfinServerName "Jellyfin") }}</p>
+
+            <a href="{{ .Data.AuthentikEnrollmentURL }}" id="authentik-enroll-btn" class="jg-btn jg-btn-primary w-full text-base py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25">
+                <span>{{ .T "invite_submit" }} (Authentik SSO)</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </a>
+        </div>
         {{ else }}
         <div class="glass-card p-8 glow-accent">
             {{ if .Data.InviteIntroHTML }}
@@ -154,21 +184,8 @@
                     </svg>
                 </button>
             </form>
-
-            {{ if .Data.AuthentikEnrollmentURL }}
-            <div class="mt-6 pt-5 border-t border-white/10 text-center space-y-3">
-                <div class="flex items-center gap-3 my-2">
-                    <div class="flex-1 border-t border-white/10"></div>
-                    <span class="text-xs uppercase font-bold text-slate-500">OU</span>
-                    <div class="flex-1 border-t border-white/10"></div>
-                </div>
-                <a href="{{ .Data.AuthentikEnrollmentURL }}" class="jg-btn jg-btn-ghost w-full py-3 text-sm flex items-center justify-center gap-2 border border-purple-500/30 hover:bg-purple-500/10 text-purple-300">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
-                    <span>{{ .T "invite_or_authentik_flow" }}</span>
-                </a>
-            </div>
-            {{ end }}
         </div>
+        {{ end }}
 
         {{/* Footer */}}
         {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}

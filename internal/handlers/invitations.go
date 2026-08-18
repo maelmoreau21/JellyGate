@@ -216,16 +216,44 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 			if stageToken.Valid && strings.TrimSpace(stageToken.String) != "" {
 				invToken = strings.TrimSpace(stageToken.String)
 			} else {
-				// Créer à la volée le token Stage Authentik si inexistant
-				if tokenID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+inv.Code, time.Now().Add(7*24*time.Hour), map[string]interface{}{
-					"invitation_code": inv.Code,
-					"sponsor":         inv.CreatedBy,
-				}, true, flowSlug); authErr == nil && tokenID != "" {
+				// Créer à la volée le token Stage Authentik si inexistant avec l'ensemble des métadonnées
+				var targetGroups []string
+				jellyfinGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+				if jellyfinGroup == "" && h.cfg != nil {
+					jellyfinGroup = strings.TrimSpace(h.cfg.Authentik.JellyfinUserGroup)
+				}
+				if jellyfinGroup == "" {
+					jellyfinGroup = "jellyfin-users"
+				}
+				targetGroups = append(targetGroups, jellyfinGroup)
+
+				fixedData := map[string]interface{}{
+					"invitation_code":       inv.Code,
+					"code":                  inv.Code,
+					"sponsor":               inv.CreatedBy,
+					"groups":                targetGroups,
+					"preset_id":             profile.PresetID,
+					"is_temporary":          profile.IsTemporary,
+					"account_duration_days": profile.AccountDurationDays,
+				}
+				var stageExpiry time.Time
+				if inv.ExpiresAt.Valid {
+					stageExpiry = inv.ExpiresAt.Time
+				}
+				if tokenID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+inv.Code, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && tokenID != "" {
 					invToken = tokenID
 					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tokenID, inv.ID)
 				}
 			}
-			td.Data["AuthentikEnrollmentURL"] = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authURL, flowSlug, url.QueryEscape(invToken))
+			authentikEnrollmentURL := fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authURL, flowSlug, url.QueryEscape(invToken))
+			td.Data["AuthentikEnrollmentURL"] = authentikEnrollmentURL
+
+			// Redirection directe vers le flux d'inscription Authentik (sauf mode prévisualisation explicite)
+			if r.URL.Query().Get("preview") != "1" {
+				_ = h.db.LogAction("invite.redirect_authentik", inv.CreatedBy, inv.Code, fmt.Sprintf("redirected to authentik flow %s from IP %s", flowSlug, r.RemoteAddr))
+				http.Redirect(w, r, authentikEnrollmentURL, http.StatusTemporaryRedirect)
+				return
+			}
 		}
 	}
 

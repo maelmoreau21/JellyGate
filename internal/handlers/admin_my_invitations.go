@@ -382,9 +382,14 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		}
 
 		fixedData := map[string]interface{}{
-			"sponsor": sess.Username,
-			"code":    code,
-			"groups":  targetGroups,
+			"sponsor":               sess.Username,
+			"code":                  code,
+			"invitation_code":       code,
+			"groups":                targetGroups,
+			"preset_id":             targetPreset.ID,
+			"target_preset_name":    targetPreset.Name,
+			"is_temporary":          profile.IsTemporary,
+			"account_duration_days": profile.AccountDurationDays,
 		}
 
 		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), "JG-"+code, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
@@ -1139,9 +1144,14 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 
 		fixedData := map[string]interface{}{
-			"sponsor": sess.Username,
-			"code":    code,
-			"groups":  targetGroups,
+			"sponsor":               sess.Username,
+			"code":                  code,
+			"invitation_code":       code,
+			"groups":                targetGroups,
+			"preset_id":             targetPresetID,
+			"target_preset_name":    targetPresetName,
+			"is_temporary":          profile.IsTemporary,
+			"account_duration_days": profile.AccountDurationDays,
 		}
 		if strings.TrimSpace(req.ForcedUsername) != "" {
 			fixedData["username"] = strings.TrimSpace(req.ForcedUsername)

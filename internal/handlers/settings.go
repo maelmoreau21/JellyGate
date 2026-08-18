@@ -1354,23 +1354,66 @@ func (h *SettingsHandler) TestSMTP(w http.ResponseWriter, r *http.Request) {
 	// Préparer l'email de test HTML
 	nowFormatted := time.Now().Format("02/01/2006 à 15:04:05")
 	subject := fmt.Sprintf("[JellyGate] Test de configuration SMTP (%s)", time.Now().Format("15:04:05"))
+	tlsLabel := "Désactivé"
+	if smtpCfg.UseTLS {
+		if smtpCfg.Port == 465 {
+			tlsLabel = "Activé (SSL/TLS direct)"
+		} else {
+			tlsLabel = "Activé (STARTTLS)"
+		}
+	}
 	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background-color:#0b0f19;color:#e2e8f0;padding:24px;margin:0;}.card{background-color:#131b2e;border:1px solid #1e293b;border-radius:16px;max-width:560px;margin:0 auto;padding:32px;box-shadow:0 10px 25px rgba(0,0,0,0.5);}.header{display:flex;align-items:center;margin-bottom:20px;}.badge{background:linear-gradient(135deg,#06b6d4,#3b82f6);color:#ffffff;font-weight:bold;padding:6px 14px;border-radius:8px;font-size:13px;display:inline-block;margin-bottom:16px;}.title{font-size:20px;font-weight:bold;color:#ffffff;margin:0 0 10px 0;}.text{font-size:14px;line-height:1.6;color:#94a3b8;margin:0 0 20px 0;}.details{background-color:#0b0f19;border:1px solid #1e293b;border-radius:10px;padding:16px;margin-bottom:24px;font-size:13px;}.row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #1e293b;}.row:last-child{border-bottom:none;}.label{color:#64748b;font-weight:500;}.val{color:#cbd5e1;font-weight:600;}.footer{font-size:12px;color:#64748b;text-align:center;margin-top:24px;}</style></head>
-<body>
-<div class="card">
-  <div class="badge">JellyGate · Test SMTP</div>
-  <h1 class="title">Connexion SMTP réussie !</h1>
-  <p class="text">Bonjour <strong>%s</strong>,<br>Ce message confirme que la configuration du serveur SMTP de votre instance JellyGate est parfaitement fonctionnelle et prête pour l'envoi d'emails.</p>
-  <div class="details">
-    <div class="row"><span class="label">Destinataire</span><span class="val">%s</span></div>
-    <div class="row"><span class="label">Serveur SMTP</span><span class="val">%s:%d</span></div>
-    <div class="row"><span class="label">Expéditeur configuré</span><span class="val">%s</span></div>
-    <div class="row"><span class="label">Chiffrement TLS</span><span class="val">%t</span></div>
-    <div class="row"><span class="label">Date du test</span><span class="val">%s</span></div>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test SMTP JellyGate</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b0f19; color: #e2e8f0; padding: 24px; margin: 0;">
+  <div style="display: none; max-height: 0px; overflow: hidden; opacity: 0; font-size: 1px; line-height: 1px; color: #0b0f19;">
+    Connexion SMTP réussie ! Ce message confirme le bon fonctionnement de votre serveur SMTP JellyGate.
   </div>
-  <div class="footer">JellyGate SSO & User Management · E-mail automatique de diagnostic</div>
-</div>
+  <table role="presentation" width="100%%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; margin: 0 auto; background-color: #131b2e; border: 1px solid #1e293b; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+    <tr>
+      <td style="padding: 32px;">
+        <div style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #ffffff; font-weight: bold; padding: 6px 14px; border-radius: 8px; font-size: 12px; display: inline-block; margin-bottom: 18px; letter-spacing: 0.5px; text-transform: uppercase;">
+          JellyGate · Test SMTP
+        </div>
+        <h1 style="font-size: 22px; font-weight: bold; color: #ffffff; margin: 0 0 12px 0;">Connexion SMTP réussie !</h1>
+        <p style="font-size: 14px; line-height: 1.6; color: #94a3b8; margin: 0 0 24px 0;">
+          Bonjour <strong style="color: #f1f5f9;">%s</strong>,<br>
+          Ce message confirme que la configuration du serveur SMTP de votre instance JellyGate est parfaitement fonctionnelle et prête pour l'envoi d'emails.
+        </p>
+
+        <table role="presentation" width="100%%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0b0f19; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 24px; font-size: 13px;">
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Destinataire</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Serveur SMTP</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-weight: 600; text-align: right; font-family: monospace;">%s:%d</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Expéditeur configuré</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Chiffrement TLS</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #10b981; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; color: #64748b; font-weight: 500;">Date du test</td>
+            <td style="padding: 12px 16px; color: #cbd5e1; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+        </table>
+
+        <div style="font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #1e293b; padding-top: 20px;">
+          JellyGate SSO & User Management · E-mail automatique de diagnostic
+        </div>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`,
 		template.HTMLEscapeString(sess.Username),
@@ -1378,7 +1421,7 @@ func (h *SettingsHandler) TestSMTP(w http.ResponseWriter, r *http.Request) {
 		template.HTMLEscapeString(smtpCfg.Host),
 		smtpCfg.Port,
 		template.HTMLEscapeString(smtpCfg.From),
-		smtpCfg.UseTLS,
+		tlsLabel,
 		nowFormatted,
 	)
 
