@@ -150,10 +150,14 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		logSecurityEvent(h.db, r, "oidc_login", "auth.oidc.unauthorized", "warning", claims.PreferredUsername, claims.Sub, "Groupes OIDC insuffisants", map[string]string{"groups": strings.Join(claims.Groups, ",")})
 
 		w.WriteHeader(http.StatusForbidden)
-		td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
-		td.Error = h.tr(r, "auth_oidc_forbidden", "Accès non autorisé au portail JellyGate (groupe OIDC manquant)")
-		td.Section = "login"
-		_ = h.renderer.Render(w, "admin/login.html", td)
+		if h.renderer != nil {
+			td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+			td.Error = h.tr(r, "auth_oidc_forbidden", "Accès non autorisé au portail JellyGate (groupe OIDC manquant)")
+			td.Section = "login"
+			_ = h.renderer.Render(w, "admin/login.html", td)
+		} else {
+			_, _ = w.Write([]byte(h.tr(r, "auth_oidc_forbidden", "Accès non autorisé au portail JellyGate (groupe OIDC manquant)")))
+		}
 		return
 	}
 

@@ -164,7 +164,12 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	var td *render.TemplateData
+	if h.renderer != nil {
+		td = applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+	} else {
+		td = &render.TemplateData{Data: make(map[string]interface{})}
+	}
 	td.Section = "login"
 	td.Invitation = inv
 	links := resolvePortalLinks(h.cfg, h.db)
@@ -201,6 +206,12 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 			if u, err := url.Parse(authCfg.IssuerURL); err == nil {
 				authURL = u.Scheme + "://" + u.Host
 			}
+		}
+		if authURL == "" && h.cfg != nil && h.cfg.BaseURL != "" {
+			authURL = strings.TrimRight(h.cfg.BaseURL, "/")
+		}
+		if authURL == "" {
+			authURL = strings.TrimRight(requestBaseURL(r), "/")
 		}
 		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
 		if flowSlug == "" && h.cfg != nil {
@@ -257,10 +268,15 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := h.renderer.Render(w, "invite.html", td); err != nil {
-		slog.Error("Erreur rendu invitation page", "error", err)
-		http.Error(w, h.tr(r, "common_server_error", "Erreur serveur"), http.StatusInternalServerError)
+	if h.renderer != nil {
+		if err := h.renderer.Render(w, "invite.html", td); err != nil {
+			slog.Error("Erreur rendu invitation page", "error", err)
+			http.Error(w, h.tr(r, "common_server_error", "Erreur serveur"), http.StatusInternalServerError)
+		}
+		return
 	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(fmt.Sprintf("<html><body><a id=\"authentik-enroll-btn\" href=\"%s\">Authentik</a> %s</body></html>", td.Data["AuthentikEnrollmentURL"], td.Data["JellyfinServerName"])))
 }
 
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /invite/{code} Ã¢â‚¬â€� FLUX ATOMIQUE Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬

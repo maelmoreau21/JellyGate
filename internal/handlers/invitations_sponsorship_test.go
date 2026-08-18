@@ -228,7 +228,7 @@ func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 		}
 	})
 
-	t.Run("InvitePage Renders Form and Dynamic Server Name", func(t *testing.T) {
+	t.Run("InvitePage Redirects to Authentik or Renders Preview", func(t *testing.T) {
 		renderEngine, _ := newTestRenderEngine(t)
 		invHandler := NewInvitationHandler(cfg, db, nil, nil, nil, renderEngine)
 		invHandler.SetAuthentikClient(mockAuthentik)
@@ -244,6 +244,7 @@ func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 			t.Fatalf("Insert invitation failed: %v", err)
 		}
 
+		// 1. Consultation standard : redirection automatique vers Authentik
 		req := httptest.NewRequest(http.MethodGet, "/invite/JG-TESTCODE", nil)
 		rctx := chi.NewRouteContext()
 		rctx.URLParams.Add("code", "JG-TESTCODE")
@@ -252,18 +253,29 @@ func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
 		rec := httptest.NewRecorder()
 		invHandler.InvitePage(rec, req)
 
-		if rec.Code != http.StatusOK {
-			t.Fatalf("InvitePage returned %d: %s", rec.Code, rec.Body.String())
+		if rec.Code != http.StatusTemporaryRedirect {
+			t.Fatalf("InvitePage returned %d, want %d: %s", rec.Code, http.StatusTemporaryRedirect, rec.Body.String())
 		}
-		body := rec.Body.String()
-		if !strings.Contains(body, "MonSuperJellyfin") {
-			t.Errorf("Expected body to contain server name 'MonSuperJellyfin', got: %s", body)
+		location := rec.Header().Get("Location")
+		if !strings.Contains(location, "/if/flow/") || !strings.Contains(location, "itoken=") {
+			t.Errorf("Expected redirect Location to contain Authentik flow and itoken, got: %s", location)
 		}
-		if !strings.Contains(body, `name="username"`) {
-			t.Errorf("Expected body to contain username input field")
+
+		// 2. Mode prévisualisation (?preview=1) : affichage de la page SSO
+		reqPreview := httptest.NewRequest(http.MethodGet, "/invite/JG-TESTCODE?preview=1", nil)
+		reqPreview = reqPreview.WithContext(context.WithValue(reqPreview.Context(), chi.RouteCtxKey, rctx))
+		recPreview := httptest.NewRecorder()
+		invHandler.InvitePage(recPreview, reqPreview)
+
+		if recPreview.Code != http.StatusOK {
+			t.Fatalf("InvitePage preview returned %d: %s", recPreview.Code, recPreview.Body.String())
 		}
-		if !strings.Contains(body, `name="email"`) {
-			t.Errorf("Expected body to contain email input field")
+		bodyPreview := recPreview.Body.String()
+		if !strings.Contains(bodyPreview, "MonSuperJellyfin") {
+			t.Errorf("Expected body to contain server name 'MonSuperJellyfin', got: %s", bodyPreview)
+		}
+		if !strings.Contains(bodyPreview, "authentik-enroll-btn") {
+			t.Errorf("Expected body to contain authentik enrollment button")
 		}
 	})
 

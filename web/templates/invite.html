@@ -76,8 +76,7 @@
                 {{ end }}
             </div>
             {{ end }}
-        </div>
-        {{ if .Data.AuthentikEnrollmentURL }}
+        {{ else if .Data.AuthentikEnrollmentURL }}
         <div class="glass-card p-8 glow-accent text-center">
             {{ if .Data.InviteIntroHTML }}
             <div class="jg-markdown-panel mb-6 text-left">

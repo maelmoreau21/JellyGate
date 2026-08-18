@@ -1143,6 +1143,11 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			targetGroups = append(targetGroups, invGroup)
 		}
 
+		targetPresetName := ""
+		if preset != nil {
+			targetPresetName = preset.Name
+		}
+
 		fixedData := map[string]interface{}{
 			"sponsor":               sess.Username,
 			"code":                  code,
