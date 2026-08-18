@@ -374,13 +374,12 @@ func (h *AdminHandler) UserTimeline(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error) {
 	var rec adminUserRecord
-	var email, jellyfinID, authentikID, groupName, presetID, discordContact, telegramContact, profileApplyStatus, profileApplyError sql.NullString
+	var email, jellyfinID, authentikID, groupName, presetID, profileApplyStatus, profileApplyError sql.NullString
 
 	err := h.db.QueryRow(
 		`SELECT id, username, email, jellyfin_id, authentik_id, group_name, preset_id, is_active, can_invite,
-		        contact_discord, contact_telegram,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
-		        opt_in_email, opt_in_discord, opt_in_telegram,
+		        opt_in_email,
 		        expiry_action, expiry_delete_after_days, expired_at,
 		        profile_apply_status, profile_apply_error, profile_applied_at,
 		        access_expires_at, delete_at, created_at
@@ -396,14 +395,10 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 		&presetID,
 		&rec.IsActive,
 		&rec.CanInvite,
-		&discordContact,
-		&telegramContact,
 		&rec.PreferredLang,
 		&rec.NotifyExpiry,
 		&rec.NotifyEvents,
 		&rec.OptInEmail,
-		&rec.OptInDiscord,
-		&rec.OptInTelegram,
 		&rec.ExpiryAction,
 		&rec.DeleteAfterDays,
 		&rec.ExpiredAt,
@@ -423,8 +418,6 @@ func (h *AdminHandler) loadAdminUserByID(userID int64) (*adminUserRecord, error)
 	rec.AuthentikID = authentikID
 	rec.GroupName = groupName.String
 	rec.PresetID = presetID.String
-	rec.ContactDiscord = discordContact.String
-	rec.ContactTelegram = telegramContact.String
 	rec.ProfileApplyStatus = profileApplyStatus.String
 	rec.ProfileApplyError = profileApplyError.String
 

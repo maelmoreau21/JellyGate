@@ -107,16 +107,12 @@ type adminUserRecord struct {
 	AuthentikID        sql.NullString
 	GroupName          string
 	PresetID           string // NEW
-	ContactDiscord     string
-	ContactTelegram    string
 	IsActive           bool
 	CanInvite          bool
 	PreferredLang      string
 	NotifyExpiry       bool
 	NotifyEvents       bool
 	OptInEmail         bool
-	OptInDiscord       bool
-	OptInTelegram      bool
 	ExpiryAction       string
 	DeleteAfterDays    int
 	DeleteAt           sql.NullString
@@ -150,16 +146,10 @@ type CreateAdminUserRequest struct {
 
 type UpdateMyAccountRequest struct {
 	Email                *string `json:"email"`
-	ContactDiscord       *string `json:"contact_discord"`
-	ContactTelegram      *string `json:"contact_telegram"`
-	ContactMatrix        *string `json:"contact_matrix"`
 	PreferredLang        *string `json:"preferred_lang"`
 	NotifyExpiryReminder *bool   `json:"notify_expiry_reminder"`
 	NotifyAccountEvents  *bool   `json:"notify_account_events"`
 	OptInEmail           *bool   `json:"opt_in_email"`
-	OptInDiscord         *bool   `json:"opt_in_discord"`
-	OptInTelegram        *bool   `json:"opt_in_telegram"`
-	OptInMatrix          *bool   `json:"opt_in_matrix"`
 }
 
 type BulkJellyfinPolicyPatch struct {

@@ -26,40 +26,28 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	var (
 		id              int64
 		email           sql.NullString
-		contactDiscord  sql.NullString
-		contactTelegram sql.NullString
-		contactMatrix   sql.NullString
 		preferredLang   string
 		notifyExpiry    bool
 		notifyEvents    bool
 		optInEmail      bool
-		optInDiscord    bool
-		optInTelegram   bool
-		optInMatrix     bool
 		accessExpiresAt sql.NullString
 		createdAt       sql.NullString
 	)
 
 	err := h.db.QueryRow(
-		`SELECT id, email, contact_discord, contact_telegram, contact_matrix,
+		`SELECT id, email,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
-		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix,
+		        opt_in_email,
 		        access_expires_at, created_at
 		 FROM users WHERE authentik_id = ? OR username = ? OR id = ?`,
 		sess.AuthentikID, sess.Username, sess.UserID,
 	).Scan(
 		&id,
 		&email,
-		&contactDiscord,
-		&contactTelegram,
-		&contactMatrix,
 		&preferredLang,
 		&notifyExpiry,
 		&notifyEvents,
 		&optInEmail,
-		&optInDiscord,
-		&optInTelegram,
-		&optInMatrix,
 		&accessExpiresAt,
 		&createdAt,
 	)
@@ -86,16 +74,10 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 			"username":                   sess.Username,
 			"jellyfin_primary_image_tag": jfPrimaryImageTag,
 			"email":                      email.String,
-			"contact_discord":            contactDiscord.String,
-			"contact_telegram":           contactTelegram.String,
-			"contact_matrix":             contactMatrix.String,
 			"preferred_lang":             preferredLang,
 			"notify_expiry_reminder":     notifyExpiry,
 			"notify_account_events":      notifyEvents,
 			"opt_in_email":               optInEmail,
-			"opt_in_discord":             optInDiscord,
-			"opt_in_telegram":            optInTelegram,
-			"opt_in_matrix":              optInMatrix,
 			"is_admin":                   sess.IsAdmin,
 			"access_expires_at":          accessExpiresAt.String,
 			"can_invite":                 h.resolveCanInviteForSession(sess),
@@ -119,38 +101,26 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		userID          int64
-		currentEmail    sql.NullString
-		currentDiscord  sql.NullString
-		currentTelegram sql.NullString
-		currentMatrix   sql.NullString
-		preferredLang   string
-		notifyExpiry    bool
-		notifyEvents    bool
-		optInEmail      bool
-		optInDiscord    bool
-		optInTelegram   bool
-		optInMatrix     bool
+		userID        int64
+		currentEmail  sql.NullString
+		preferredLang string
+		notifyExpiry  bool
+		notifyEvents  bool
+		optInEmail    bool
 	)
 	err := h.db.QueryRow(
-		`SELECT id, email, contact_discord, contact_telegram, contact_matrix,
+		`SELECT id, email,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
-		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix
+		        opt_in_email
 		 FROM users WHERE authentik_id = ? OR username = ? OR id = ?`,
 		sess.AuthentikID, sess.Username, sess.UserID,
 	).Scan(
 		&userID,
 		&currentEmail,
-		&currentDiscord,
-		&currentTelegram,
-		&currentMatrix,
 		&preferredLang,
 		&notifyExpiry,
 		&notifyEvents,
 		&optInEmail,
-		&optInDiscord,
-		&optInTelegram,
-		&optInMatrix,
 	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_profile_read_failed", "Erreur de lecture des préférences")})
@@ -167,18 +137,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		newEmail = requestedEmail
-	}
-	newDiscord := strings.TrimSpace(currentDiscord.String)
-	if req.ContactDiscord != nil {
-		newDiscord = strings.TrimSpace(*req.ContactDiscord)
-	}
-	newTelegram := strings.TrimSpace(currentTelegram.String)
-	if req.ContactTelegram != nil {
-		newTelegram = strings.TrimSpace(*req.ContactTelegram)
-	}
-	newMatrix := strings.TrimSpace(currentMatrix.String)
-	if req.ContactMatrix != nil {
-		newMatrix = strings.TrimSpace(*req.ContactMatrix)
 	}
 
 	newPreferredLang := strings.TrimSpace(preferredLang)
@@ -205,37 +163,17 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	if req.OptInEmail != nil {
 		newOptInEmail = *req.OptInEmail
 	}
-	newOptInDiscord := optInDiscord
-	if req.OptInDiscord != nil {
-		newOptInDiscord = *req.OptInDiscord
-	}
-	newOptInTelegram := optInTelegram
-	if req.OptInTelegram != nil {
-		newOptInTelegram = *req.OptInTelegram
-	}
-	newOptInMatrix := optInMatrix
-	if req.OptInMatrix != nil {
-		newOptInMatrix = *req.OptInMatrix
-	}
 
 	_, err = h.db.Exec(
 		`UPDATE users
-		 SET email = ?, contact_discord = ?, contact_telegram = ?, contact_matrix = ?,
-		     preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
-		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?, opt_in_matrix = ?,
-		     updated_at = datetime('now')
+		 SET email = ?, preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
+		     opt_in_email = ?, updated_at = datetime('now')
 		 WHERE id = ? OR authentik_id = ? OR username = ?`,
 		newEmail,
-		newDiscord,
-		newTelegram,
-		newMatrix,
 		newPreferredLang,
 		newNotifyExpiry,
 		newNotifyEvents,
 		newOptInEmail,
-		newOptInDiscord,
-		newOptInTelegram,
-		newOptInMatrix,
 		userID, sess.AuthentikID, sess.Username,
 	)
 	if err != nil {
@@ -275,13 +213,11 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		"user.profile.updated",
 		sess.Username,
 		sess.Username,
-		fmt.Sprintf(`{"preferred_lang":"%s","notify_expiry":%t,"notify_events":%t,"opt_in_email":%t,"opt_in_discord":%t,"opt_in_telegram":%t}`,
+		fmt.Sprintf(`{"preferred_lang":"%s","notify_expiry":%t,"notify_events":%t,"opt_in_email":%t}`,
 			newPreferredLang,
 			newNotifyExpiry,
 			newNotifyEvents,
 			newOptInEmail,
-			newOptInDiscord,
-			newOptInTelegram,
 		),
 	)
 
@@ -290,16 +226,10 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		Message: message,
 		Data: map[string]interface{}{
 			"email":                  newEmail,
-			"contact_discord":        newDiscord,
-			"contact_telegram":       newTelegram,
-			"contact_matrix":         newMatrix,
 			"preferred_lang":         newPreferredLang,
 			"notify_expiry_reminder": newNotifyExpiry,
 			"notify_account_events":  newNotifyEvents,
 			"opt_in_email":           newOptInEmail,
-			"opt_in_discord":         newOptInDiscord,
-			"opt_in_telegram":        newOptInTelegram,
-			"opt_in_matrix":          newOptInMatrix,
 		},
 	})
 }
