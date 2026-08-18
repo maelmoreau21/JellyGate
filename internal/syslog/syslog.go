@@ -149,7 +149,7 @@ func (m *Manager) rotateLocked() error {
 	filename := fmt.Sprintf("jellygate-%s.log", today)
 	filePath := filepath.Join(m.logsDir, filename)
 
-	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	f, err := os.OpenFile(filepath.Clean(filePath), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600) // #nosec G304 -- generated filename strictly inside logs directory
 	if err != nil {
 		return fmt.Errorf("impossible d'ouvrir le fichier de log %s: %w", filePath, err)
 	}
@@ -237,7 +237,7 @@ func (m *Manager) ReadTail(filename string, maxLines int) ([]string, error) {
 	}
 	m.mu.RUnlock()
 
-	f, err := os.Open(filePath)
+	f, err := os.Open(filepath.Clean(filePath)) // #nosec G304 -- filePath strictly validated by GetLogFilePath
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +322,7 @@ func (m *Manager) ZipAllLogs(w io.Writer) error {
 		}
 
 		filePath := filepath.Join(dir, entry.Name())
-		f, err := os.Open(filePath)
+		f, err := os.Open(filepath.Clean(filePath)) // #nosec G304 -- iterated strictly from directory entries
 		if err != nil {
 			continue
 		}
@@ -338,4 +338,22 @@ func (m *Manager) ZipAllLogs(w io.Writer) error {
 	}
 
 	return nil
+}
+
+// OpenLogFile ouvre un fichier de log validé de manière sécurisée.
+func (m *Manager) OpenLogFile(filename string) (*os.File, os.FileInfo, error) {
+	filePath, err := m.GetLogFilePath(filename)
+	if err != nil {
+		return nil, nil, err
+	}
+	f, err := os.Open(filepath.Clean(filePath)) // #nosec G304 -- filePath strictly validated by GetLogFilePath
+	if err != nil {
+		return nil, nil, err
+	}
+	info, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return nil, nil, err
+	}
+	return f, info, nil
 }

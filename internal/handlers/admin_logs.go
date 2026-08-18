@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -70,15 +71,17 @@ func (h *AdminHandler) DownloadSystemLog(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	filePath, err := mgr.GetLogFilePath(fileName)
+	f, info, err := mgr.OpenLogFile(fileName)
 	if err != nil {
 		http.Error(w, "Fichier introuvable ou nom invalide", http.StatusNotFound)
 		return
 	}
+	defer f.Close()
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fileName))
+	cleanName := filepath.Base(fileName)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, cleanName))
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	http.ServeFile(w, r, filePath)
+	http.ServeContent(w, r, cleanName, info.ModTime(), f)
 }
 
 // DownloadAllSystemLogs génère et télécharge une archive zip de tous les logs système.
