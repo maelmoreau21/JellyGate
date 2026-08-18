@@ -16,6 +16,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
+	"github.com/maelmoreau21/JellyGate/internal/syslog"
 )
 
 type TaskRecord struct {
@@ -79,6 +80,17 @@ func (s *Service) runDailyInternalCleanup(now time.Time) {
 
 	slog.Info("Scheduler: execution de checkExpiringAccounts quotidien", "date", todayStr)
 	s.checkExpiringAccounts()
+
+	// Purge automatique des anciens logs système
+	if mgr := syslog.GetManager(); mgr != nil {
+		retentionDays := s.db.GetLogRetentionDays()
+		purged, err := mgr.PurgeOldLogs(retentionDays)
+		if err != nil {
+			slog.Warn("Scheduler: erreur lors de la purge des anciens logs", "error", err)
+		} else if purged > 0 {
+			slog.Info("Scheduler: purge des anciens fichiers de log terminée", "purged", purged, "retention_days", retentionDays)
+		}
+	}
 
 	_ = s.db.SetSetting("daily_check_last_run", todayStr)
 }

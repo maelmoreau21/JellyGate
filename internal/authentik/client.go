@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -483,6 +484,46 @@ func (c *client) GetUserByUsername(ctx context.Context, username string) (*UserD
 	return nil, fmt.Errorf("utilisateur introuvable")
 }
 
+var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+
+func (c *client) resolveFlowUUID(ctx context.Context, flowOrSlug string) string {
+	flow := strings.TrimSpace(flowOrSlug)
+	if flow == "" {
+		return ""
+	}
+	if uuidRegex.MatchString(flow) {
+		return flow
+	}
+
+	// 1. Essayer /api/v3/flows/instances/<slug>/
+	endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(flow))
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+	if err == nil && statusCode == http.StatusOK {
+		var res struct {
+			PK string `json:"pk"`
+		}
+		if err := json.Unmarshal(respBody, &res); err == nil && uuidRegex.MatchString(res.PK) {
+			return res.PK
+		}
+	}
+
+	// 2. Essayer /api/v3/flows/instances/?slug=<slug>
+	endpointQuery := fmt.Sprintf("/api/v3/flows/instances/?slug=%s", url.QueryEscape(flow))
+	respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, endpointQuery, nil)
+	if err == nil && statusCode == http.StatusOK {
+		var listRes struct {
+			Results []struct {
+				PK string `json:"pk"`
+			} `json:"results"`
+		}
+		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && uuidRegex.MatchString(listRes.Results[0].PK) {
+			return listRes.Results[0].PK
+		}
+	}
+
+	return ""
+}
+
 func (c *client) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
 	payload := map[string]interface{}{
 		"name":       name,
@@ -492,10 +533,26 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 		payload["expires"] = expiresAt.Format(time.RFC3339)
 	}
 	if fixedData != nil {
-		payload["fixed_data"] = fixedData
+		enriched := make(map[string]interface{}, len(fixedData)+2)
+		attrs := make(map[string]interface{})
+		for k, v := range fixedData {
+			enriched[k] = v
+			if k != "attributes" && k != "groups" && k != "username" && k != "email" && k != "name" {
+				attrs[k] = v
+			}
+		}
+		if existingAttrs, ok := fixedData["attributes"].(map[string]interface{}); ok {
+			for k, v := range existingAttrs {
+				attrs[k] = v
+			}
+		}
+		enriched["attributes"] = attrs
+		payload["fixed_data"] = enriched
 	}
 	if strings.TrimSpace(flow) != "" {
-		payload["flow"] = strings.TrimSpace(flow)
+		if flowUUID := c.resolveFlowUUID(ctx, flow); flowUUID != "" {
+			payload["flow"] = flowUUID
+		}
 	}
 
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, "/api/v3/stages/invitation/invitations/", payload)

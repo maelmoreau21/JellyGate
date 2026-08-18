@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,6 +38,7 @@ const (
 	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
 	SettingAuthentikConfig             = "authentik_config"               // JSON: config.AuthentikConfig
 	SettingJellyfinConfig              = "jellyfin_config"                // JSON: config.JellyfinConfig
+	SettingLogRetentionDays            = "log_retention_days"             // Nombre de jours de rétention des logs système (int)
 )
 
 // AuthSessionConfig controle la duree des sessions persistantes et la
@@ -1247,4 +1249,25 @@ func (db *DB) SaveWebhooksConfig(cfg config.WebhooksConfig) error {
 		return fmt.Errorf("SaveWebhooksConfig encrypt: %w", err)
 	}
 	return db.SetSetting(SettingWebhooksConfig, enc)
+}
+
+// GetLogRetentionDays retourne le nombre de jours de rétention des logs système (30 jours par défaut).
+func (db *DB) GetLogRetentionDays() int {
+	raw, err := db.GetSetting(SettingLogRetentionDays)
+	if err != nil || strings.TrimSpace(raw) == "" {
+		return 30
+	}
+	days, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || days <= 0 {
+		return 30
+	}
+	return days
+}
+
+// SaveLogRetentionDays sauvegarde la durée de rétention des logs système en jours.
+func (db *DB) SaveLogRetentionDays(days int) error {
+	if days <= 0 {
+		days = 30
+	}
+	return db.SetSetting(SettingLogRetentionDays, strconv.Itoa(days))
 }

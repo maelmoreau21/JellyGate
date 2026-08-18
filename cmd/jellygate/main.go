@@ -34,6 +34,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/scheduler"
 	"github.com/maelmoreau21/JellyGate/internal/session"
+	"github.com/maelmoreau21/JellyGate/internal/syslog"
 )
 
 func main() {
@@ -59,6 +60,13 @@ func main() {
 		"base_url", cfg.BaseURL,
 		"jellyfin_url", cfg.Jellyfin.URL,
 	)
+
+	// ── 2b. Initialiser le gestionnaire de logs système (disque + console) ──
+	if _, err := syslog.Init(cfg.DataDir); err != nil {
+		slog.Warn("⚠️ Impossible d'initialiser la journalisation sur disque", "error", err)
+	} else {
+		slog.Info("📁 Journalisation système activée", "dir", cfg.DataDir+"/logs")
+	}
 
 	if err := backup.ApplyPendingRestore(cfg.DataDir, cfg.Database.Type); err != nil {
 		slog.Error("Erreur application restauration en attente", "error", err)
@@ -442,6 +450,9 @@ func main() {
 				r.Route("/api/logs", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.LogsAPI)
+					r.Get("/system", adminHandler.SystemLogsAPI)
+					r.Get("/system/download", adminHandler.DownloadSystemLog)
+					r.Get("/system/download-all", adminHandler.DownloadAllSystemLogs)
 				})
 
 				r.Route("/api/security", func(r chi.Router) {

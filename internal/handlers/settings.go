@@ -556,6 +556,7 @@ type settingsResponse struct {
 	EmailTemplates                    config.EmailTemplatesConfig            `json:"email_templates"`
 	EmailTemplatesByLang              map[string]config.EmailTemplatesConfig `json:"email_templates_by_lang"`
 	EmailTemplatesMultilingualEnabled bool                                   `json:"email_templates_multilingual_enabled"`
+	LogRetentionDays                  int                                    `json:"log_retention_days"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
@@ -566,6 +567,7 @@ type generalInput struct {
 	JellyfinServerName string `json:"jellyfin_server_name"`
 	JellyseerrURL      string `json:"jellyseerr_url"`
 	JellyTrackURL      string `json:"jellytrack_url"`
+	LogRetentionDays   int    `json:"log_retention_days"`
 }
 
 type authSessionInput struct {
@@ -750,6 +752,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			EmailTemplates:                    emailTemplatesCfg,
 			EmailTemplatesByLang:              emailTemplatesByLang,
 			EmailTemplatesMultilingualEnabled: h.db.GetEmailTemplatesMultilingualEnabled(),
+			LogRetentionDays:                  h.db.GetLogRetentionDays(),
 		},
 	})
 }
@@ -828,12 +831,19 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Langue par dÃ©faut mise Ã  jour", "lang", input.DefaultLang)
+	slog.Info("Langue par défaut mise à jour", "lang", input.DefaultLang)
+	if input.LogRetentionDays <= 0 {
+		input.LogRetentionDays = 30
+	}
+	if err := h.db.SaveLogRetentionDays(input.LogRetentionDays); err != nil {
+		slog.Error("Erreur sauvegarde log_retention_days", "error", err)
+	}
+
 	_ = h.db.LogAction("settings.general.saved", "", "", "default_lang="+input.DefaultLang)
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: h.tr(r, "settings_success_general_saved", "ParamÃ¨tres gÃ©nÃ©raux sauvegardÃ©s"),
+		Message: h.tr(r, "settings_success_general_saved", "Paramètres généraux sauvegardés"),
 	})
 }
 

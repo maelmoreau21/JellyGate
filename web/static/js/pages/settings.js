@@ -1394,6 +1394,10 @@
             document.getElementById('general-jellyfin-server-name').value = links.jellyfin_server_name || 'Jellyfin';
             document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
             document.getElementById('general-jellytrack-url').value = links.jellytrack_url || '';
+            const retentionField = document.getElementById('log-retention-days');
+            if (retentionField) {
+                retentionField.value = data.log_retention_days || 30;
+            }
             refreshPortalShortcuts(links);
         }
 
@@ -1556,6 +1560,7 @@
                 jellyfin_server_name: document.getElementById('general-jellyfin-server-name').value.trim(),
                 jellyseerr_url: document.getElementById('general-jellyseerr-url').value.trim(),
                 jellytrack_url: document.getElementById('general-jellytrack-url').value.trim(),
+                log_retention_days: parseInt(document.getElementById('log-retention-days')?.value, 10) || 30,
             };
         } else if (section === 'auth-session') {
             body = {
