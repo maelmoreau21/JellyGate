@@ -276,7 +276,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(fmt.Sprintf("<html><body><a id=\"authentik-enroll-btn\" href=\"%s\">Authentik</a> %s</body></html>", td.Data["AuthentikEnrollmentURL"], td.Data["JellyfinServerName"])))
+	_, _ = fmt.Fprintf(w, "<html><body><a id=\"authentik-enroll-btn\" href=\"%s\">Authentik</a> %s</body></html>", td.Data["AuthentikEnrollmentURL"], td.Data["JellyfinServerName"])
 }
 
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /invite/{code} Ã¢â‚¬â€� FLUX ATOMIQUE Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬

@@ -75,6 +75,7 @@ jobs:
           cache-from: type=gha
 
       - name: Smoke test container
+        shell: bash
         run: |
           docker run -d \
             --name jellygate-publish-test \
@@ -84,8 +85,21 @@ jobs:
             -e JELLYFIN_API_KEY=dummykeyforci \
             jellygate:publish-test
           
-          sleep 4
-          curl -f http://localhost:8097/health || curl -f http://localhost:8097/
+          echo "Attente du démarrage du conteneur..."
+          success=0
+          for i in $(seq 1 30); do
+            if curl -s -f http://localhost:8097/health > /dev/null 2>&1 || curl -s -f http://localhost:8097/ > /dev/null 2>&1; then
+              echo "✅ Conteneur démarré et répond correctement !"
+              success=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "$success" -ne 1 ]; then
+            echo "❌ Le conteneur n'a pas répondu à temps."
+            docker logs jellygate-publish-test
+            exit 1
+          fi
           docker rm -f jellygate-publish-test 2>/dev/null || true
 
       - name: Display Container Logs on Failure

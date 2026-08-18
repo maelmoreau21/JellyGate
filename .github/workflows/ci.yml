@@ -74,14 +74,15 @@ jobs:
             jellygate:ci-test
 
       - name: Verify HTTP Health Check
+        shell: bash
         run: |
           echo "Attente du démarrage du conteneur..."
-          for i in {1..15}; do
-            if curl -s -f http://localhost:8097/health > /dev/null || curl -s -f http://localhost:8097/ > /dev/null; then
+          for i in $(seq 1 30); do
+            if curl -s -f http://localhost:8097/health > /dev/null 2>&1 || curl -s -f http://localhost:8097/ > /dev/null 2>&1; then
               echo "✅ Conteneur démarré et répond correctement !"
               exit 0
             fi
-            sleep 2
+            sleep 1
           done
           echo "❌ Le conteneur n'a pas répondu à temps."
           exit 1
