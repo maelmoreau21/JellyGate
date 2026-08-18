@@ -164,8 +164,10 @@
         document.getElementById('account-email-summary').textContent = profile.pending_email || profile.email || '-';
 
         document.getElementById('my-email').value = profile.pending_email || profile.email || '';
-        document.getElementById('my-discord').value = profile.contact_discord || '';
-        document.getElementById('my-telegram').value = profile.contact_telegram || '';
+        const discordInput = document.getElementById('my-discord');
+        if (discordInput) discordInput.value = profile.contact_discord || '';
+        const telegramInput = document.getElementById('my-telegram');
+        if (telegramInput) telegramInput.value = profile.contact_telegram || '';
         const matrixInput = document.getElementById('my-matrix');
         if (matrixInput) matrixInput.value = profile.contact_matrix || '';
 
@@ -314,14 +316,18 @@
         const optDiscord = document.getElementById('my-opt-discord');
         const optTelegram = document.getElementById('my-opt-telegram');
         const optMatrix = document.getElementById('my-opt-matrix');
+        const discordInput = document.getElementById('my-discord');
+        const telegramInput = document.getElementById('my-telegram');
+        const matrixInput = document.getElementById('my-matrix');
 
         const payload = {
-            contact_discord: document.getElementById('my-discord').value.trim(),
-            contact_telegram: document.getElementById('my-telegram').value.trim(),
-            contact_matrix: document.getElementById('my-matrix')?.value.trim() || '',
-            notify_expiry_reminder: document.getElementById('my-notify-expiry').checked,
-            notify_account_events: document.getElementById('my-notify-events').checked,
+            notify_expiry_reminder: document.getElementById('my-notify-expiry')?.checked ?? true,
+            notify_account_events: document.getElementById('my-notify-events')?.checked ?? true,
         };
+
+        if (discordInput) payload.contact_discord = discordInput.value.trim();
+        if (telegramInput) payload.contact_telegram = telegramInput.value.trim();
+        if (matrixInput) payload.contact_matrix = matrixInput.value.trim();
 
         if (optEmail) payload.opt_in_email = optEmail.checked;
         if (optDiscord) payload.opt_in_discord = optDiscord.checked;
