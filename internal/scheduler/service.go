@@ -317,11 +317,7 @@ func (s *Service) ReconcileAuthentik(ctx context.Context) (recreated int, cleane
 					stageExpiry = expiresAt.Time
 				}
 
-				tokenName := fmt.Sprintf("JellyGate - %s", code)
-				if createdBy != "" {
-					tokenName = fmt.Sprintf("JellyGate - %s (%s)", code, createdBy)
-				}
-
+				tokenName := fmt.Sprintf("jellygate-%s", code)
 				newTokPK, tokErr := client.CreateInvitationStageToken(ctx, tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
 				if tokErr == nil && newTokPK != "" {
 					_, _ = s.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, newTokPK, id)
@@ -623,14 +619,13 @@ func (s *Service) checkExpiringAccounts() {
 		return
 	}
 
-	// On cherche les utilisateurs qui expirent dans exactement 2 jours (48h)
-	// On utilise une marge d'erreur de 1 heure pour être sûr de capturer le créneau quotidien.
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+
 	rows, err := s.db.Query(`
 		SELECT username, access_expires_at 
 		FROM users 
 		WHERE is_active = TRUE 
-		  AND access_expires_at IS NOT NULL 
-		  AND date(access_expires_at) = date('now', '+2 days')
+		  AND access_expires_at IS NOT NULL
 	`)
 	if err != nil {
 		slog.Error("Scheduler: erreur checkExpiringAccounts", "error", err)
@@ -643,7 +638,10 @@ func (s *Service) checkExpiringAccounts() {
 		if err := rows.Scan(&username, &expiryStr); err != nil {
 			continue
 		}
-		slog.Info("Scheduler: envoi notification expiration", "user", username, "expiry", expiryStr)
-		s.notifier.NotifyAccessExpiry(username, 2)
+		expiryStr = strings.TrimSpace(expiryStr)
+		if strings.HasPrefix(expiryStr, targetDate) {
+			slog.Info("Scheduler: envoi notification expiration", "user", username, "expiry", expiryStr)
+			s.notifier.NotifyAccessExpiry(username, 2)
+		}
 	}
 }

@@ -605,9 +605,41 @@ func (c *client) GetEnrollmentFlowSlug(ctx context.Context, preferred string) st
 	return slug
 }
 
+func slugifyName(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "jellygate-invitation"
+	}
+	var b strings.Builder
+	lastDash := false
+	for _, r := range raw {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+			b.WriteRune(r)
+			lastDash = false
+		} else {
+			if !lastDash && b.Len() > 0 {
+				b.WriteByte('-')
+				lastDash = true
+			}
+		}
+	}
+	res := strings.Trim(b.String(), "-_")
+	for strings.Contains(res, "--") {
+		res = strings.ReplaceAll(res, "--", "-")
+	}
+	if res == "" {
+		return "jellygate-invitation"
+	}
+	if len(res) > 80 {
+		res = res[:80]
+	}
+	return res
+}
+
 func (c *client) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
+	slugName := slugifyName(name)
 	payload := map[string]interface{}{
-		"name":       name,
+		"name":       slugName,
 		"single_use": singleUse,
 	}
 	if !expiresAt.IsZero() {
@@ -684,7 +716,7 @@ func (c *client) DeleteInvitationStageToken(ctx context.Context, invitationID st
 	if err != nil {
 		return err
 	}
-	if statusCode != http.StatusNoContent && statusCode != http.StatusOK {
+	if statusCode != http.StatusNoContent && statusCode != http.StatusOK && statusCode != http.StatusNotFound {
 		return fmt.Errorf("delete stage invitation returned status %d: %s", statusCode, string(respBody))
 	}
 	return nil

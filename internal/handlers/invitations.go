@@ -272,7 +272,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 				if inv.ExpiresAt.Valid {
 					stageExpiry = inv.ExpiresAt.Time
 				}
-				tokenName := fmt.Sprintf("JellyGate - %s", inv.Code)
+				tokenName := fmt.Sprintf("jellygate-%s", inv.Code)
 				if tokenID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && tokenID != "" {
 					invToken = tokenID
 					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tokenID, inv.ID)

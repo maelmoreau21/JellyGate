@@ -241,12 +241,31 @@ func TestAuthentikClient(t *testing.T) {
 
 	t.Run("CreateInvitationStageToken_30Days", func(t *testing.T) {
 		expiry30d := time.Now().AddDate(0, 0, 30)
-		invID, err := cli.CreateInvitationStageToken(context.Background(), "JG-30DAYS", expiry30d, map[string]interface{}{"sponsor": "alice"}, false, "custom-enrollment-flow")
+		invID, err := cli.CreateInvitationStageToken(context.Background(), "JellyGate - eba500a91f82df6e79fb3c96e65df4fc (admin)", expiry30d, map[string]interface{}{"sponsor": "alice"}, false, "custom-enrollment-flow")
 		if err != nil {
 			t.Fatalf("CreateInvitationStageToken 30 days failed: %v", err)
 		}
 		if invID != "inv-uuid-999" {
 			t.Errorf("Expected inv-uuid-999, got %s", invID)
+		}
+	})
+
+	t.Run("SlugifyName", func(t *testing.T) {
+		tests := []struct {
+			input    string
+			expected string
+		}{
+			{"JellyGate - eba500a91f82df6e79fb3c96e65df4fc", "JellyGate-eba500a91f82df6e79fb3c96e65df4fc"},
+			{"JellyGate - abc (user)", "JellyGate-abc-user"},
+			{"jellygate-123_456", "jellygate-123_456"},
+			{"", "jellygate-invitation"},
+			{"   ", "jellygate-invitation"},
+		}
+		for _, tc := range tests {
+			out := slugifyName(tc.input)
+			if out != tc.expected {
+				t.Errorf("slugifyName(%q) = %q; expected %q", tc.input, out, tc.expected)
+			}
 		}
 	})
 

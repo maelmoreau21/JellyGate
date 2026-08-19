@@ -395,7 +395,7 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 			"account_duration_days": profile.AccountDurationDays,
 		}
 
-		tokenName := fmt.Sprintf("JellyGate - %s (%s)", code, sess.Username)
+		tokenName := fmt.Sprintf("jellygate-%s", code)
 		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
 		if authErr == nil && invID != "" {
 			authentikInvID = invID
@@ -1186,7 +1186,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
-		tokenName := fmt.Sprintf("JellyGate - %s", code)
+		tokenName := fmt.Sprintf("jellygate-%s", code)
 		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
 		if authErr == nil && invID != "" {
 			authentikInvID = invID
