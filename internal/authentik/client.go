@@ -80,6 +80,7 @@ type Client interface {
 	ResolveGroupID(ctx context.Context, nameOrPK string) (string, error)
 	CreateUser(ctx context.Context, payload UserCreatePayload) (*UserResponse, error)
 	CreateRecoveryLink(ctx context.Context, authentikPK int64) (recoveryLink string, err error)
+	CreateRecoveryLinkByString(ctx context.Context, identifier string) (recoveryLink string, err error)
 	AddUserToGroup(ctx context.Context, userPK int64, groupID string) error
 	RemoveUserFromGroup(ctx context.Context, userPK int64, groupID string) error
 	AddUserToGroupByString(ctx context.Context, authentikID string, groupID string) error
@@ -271,8 +272,12 @@ func (c *client) CreateUser(ctx context.Context, payload UserCreatePayload) (*Us
 	return &user, nil
 }
 
-func (c *client) CreateRecoveryLink(ctx context.Context, authentikPK int64) (string, error) {
-	endpoint := fmt.Sprintf("/api/v3/core/users/%d/recovery/link/", authentikPK)
+func (c *client) CreateRecoveryLinkByString(ctx context.Context, identifier string) (string, error) {
+	trimmed := strings.TrimSpace(identifier)
+	if trimmed == "" {
+		return "", fmt.Errorf("identifiant utilisateur Authentik vide")
+	}
+	endpoint := fmt.Sprintf("/api/v3/core/users/%s/recovery/link/", url.PathEscape(trimmed))
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodPost, endpoint, nil)
 	if err != nil {
 		return "", err
@@ -293,6 +298,10 @@ func (c *client) CreateRecoveryLink(ctx context.Context, authentikPK int64) (str
 		return res.Link, nil
 	}
 	return res.URL, nil
+}
+
+func (c *client) CreateRecoveryLink(ctx context.Context, authentikPK int64) (string, error) {
+	return c.CreateRecoveryLinkByString(ctx, strconv.FormatInt(authentikPK, 10))
 }
 
 func (c *client) AddUserToGroup(ctx context.Context, userPK int64, groupID string) error {
@@ -402,7 +411,7 @@ func (c *client) DeleteUser(ctx context.Context, userPK int64) error {
 }
 
 func (c *client) ListUsers(ctx context.Context) ([]UserResponse, error) {
-	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/core/users/", nil)
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/core/users/?page_size=500", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -490,8 +499,8 @@ var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4
 func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string, string) {
 	flow := strings.TrimSpace(flowOrSlug)
 
-	// Si c'est un UUID direct
-	if uuidRegex.MatchString(flow) {
+	// 1. Si c'est un UUID direct
+	if isUUID(flow) {
 		endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(flow))
 		respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
 		if err == nil && statusCode == http.StatusOK {
@@ -506,27 +515,10 @@ func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string
 		return flow, ""
 	}
 
-	// 1. Essayer /api/v3/flows/instances/<slug>/
+	// 2. Essayer par paramètre exact ?slug=<slug>
 	if flow != "" {
-		endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(flow))
-		respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
-		if err == nil && statusCode == http.StatusOK {
-			var res struct {
-				PK   string `json:"pk"`
-				Slug string `json:"slug"`
-			}
-			if err := json.Unmarshal(respBody, &res); err == nil && uuidRegex.MatchString(res.PK) {
-				slug := res.Slug
-				if slug == "" {
-					slug = flow
-				}
-				return res.PK, slug
-			}
-		}
-
-		// 2. Essayer /api/v3/flows/instances/?slug=<slug>
 		endpointQuery := fmt.Sprintf("/api/v3/flows/instances/?slug=%s", url.QueryEscape(flow))
-		respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, endpointQuery, nil)
+		respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpointQuery, nil)
 		if err == nil && statusCode == http.StatusOK {
 			var listRes struct {
 				Results []struct {
@@ -534,12 +526,29 @@ func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string
 					Slug string `json:"slug"`
 				} `json:"results"`
 			}
-			if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && uuidRegex.MatchString(listRes.Results[0].PK) {
+			if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && isUUID(listRes.Results[0].PK) {
 				slug := listRes.Results[0].Slug
 				if slug == "" {
 					slug = flow
 				}
 				return listRes.Results[0].PK, slug
+			}
+		}
+
+		// Essayer par chemin direct /api/v3/flows/instances/<slug>/
+		endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(flow))
+		respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, endpoint, nil)
+		if err == nil && statusCode == http.StatusOK {
+			var res struct {
+				PK   string `json:"pk"`
+				Slug string `json:"slug"`
+			}
+			if err := json.Unmarshal(respBody, &res); err == nil && isUUID(res.PK) {
+				slug := res.Slug
+				if slug == "" {
+					slug = flow
+				}
+				return res.PK, slug
 			}
 		}
 	}
@@ -553,13 +562,13 @@ func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string
 				Slug string `json:"slug"`
 			} `json:"results"`
 		}
-		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && uuidRegex.MatchString(listRes.Results[0].PK) {
+		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && isUUID(listRes.Results[0].PK) {
 			return listRes.Results[0].PK, listRes.Results[0].Slug
 		}
 	}
 
 	// 4. Fallback général : lister les flux disponibles et chercher un flux d'inscription
-	respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, "/api/v3/flows/instances/", nil)
+	respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, "/api/v3/flows/instances/?page_size=200", nil)
 	if err == nil && statusCode == http.StatusOK {
 		var listRes struct {
 			Results []struct {
@@ -570,11 +579,13 @@ func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string
 		}
 		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 {
 			for _, f := range listRes.Results {
-				if f.Designation == "enrollment" || strings.Contains(f.Slug, "enroll") || strings.Contains(f.Slug, "invit") || strings.Contains(f.Slug, "inscri") {
+				if isUUID(f.PK) && (f.Designation == "enrollment" || strings.Contains(f.Slug, "enroll") || strings.Contains(f.Slug, "invit") || strings.Contains(f.Slug, "inscri")) {
 					return f.PK, f.Slug
 				}
 			}
-			return listRes.Results[0].PK, listRes.Results[0].Slug
+			if isUUID(listRes.Results[0].PK) {
+				return listRes.Results[0].PK, listRes.Results[0].Slug
+			}
 		}
 	}
 
@@ -583,7 +594,10 @@ func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string
 
 func (c *client) resolveFlowUUID(ctx context.Context, flowOrSlug string) string {
 	uuid, _ := c.resolveFlowInfo(ctx, flowOrSlug)
-	return uuid
+	if isUUID(uuid) {
+		return uuid
+	}
+	return ""
 }
 
 func (c *client) GetEnrollmentFlowSlug(ctx context.Context, preferred string) string {
@@ -597,7 +611,7 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 		"single_use": singleUse,
 	}
 	if !expiresAt.IsZero() {
-		payload["expires"] = expiresAt.Format(time.RFC3339)
+		payload["expires"] = expiresAt.UTC().Format(time.RFC3339)
 	}
 	if fixedData != nil {
 		enriched := make(map[string]interface{}, len(fixedData)+2)
@@ -618,7 +632,7 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 	}
 
 	flowUUID, _ := c.resolveFlowInfo(ctx, flow)
-	if flowUUID != "" {
+	if isUUID(flowUUID) {
 		payload["flow"] = flowUUID
 	}
 
@@ -641,7 +655,7 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 }
 
 func (c *client) ListInvitationStageTokens(ctx context.Context) ([]InvitationTokenResponse, error) {
-	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/stages/invitation/invitations/", nil)
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/stages/invitation/invitations/?page_size=500", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -814,8 +828,28 @@ func (c *client) CheckEnrollment(ctx context.Context, flowSlug string) HealthCom
 		slug = "default-enrollment-flow"
 	}
 
+	// 1. Essayer par requête ?slug= (recommandé Authentik 2026.8.0)
+	endpointQuery := fmt.Sprintf("/api/v3/flows/instances/?slug=%s", url.QueryEscape(slug))
+	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, endpointQuery, nil)
+	if err == nil && statusCode == http.StatusOK {
+		var listRes struct {
+			Results []struct {
+				PK   string `json:"pk"`
+				Slug string `json:"slug"`
+			} `json:"results"`
+		}
+		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 {
+			return HealthComponent{
+				Status:  "ok",
+				Message: fmt.Sprintf("Flux d'inscription '%s' accessible", slug),
+				Details: map[string]string{"flow_slug": slug, "flow_pk": listRes.Results[0].PK},
+			}
+		}
+	}
+
+	// 2. Essayer par endpoint direct
 	endpoint := fmt.Sprintf("/api/v3/flows/instances/%s/", url.PathEscape(slug))
-	_, statusCode, err := c.doRequest(ctx, http.MethodGet, endpoint, nil)
+	_, statusCode, err = c.doRequest(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
 		return HealthComponent{
 			Status:  "warning",

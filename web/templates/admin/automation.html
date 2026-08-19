@@ -93,6 +93,7 @@
                     <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
                     <select id="task-type" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
                         <option value="sync_users">{{ .T "automation_task_type_sync_users" }}</option>
+                        <option value="sync_authentik">{{ .T "automation_task_type_sync_authentik" }}</option>
                         <option value="cleanup_resets">{{ .T "automation_task_type_cleanup_resets" }}</option>
                     </select>
                 </div>
@@ -439,6 +440,7 @@
             manualSyncUsers: '{{ .T "automation_manual_sync_users" }}',
             manualCleanupResets: '{{ .T "automation_manual_cleanup_resets" }}',
             taskTypeSyncUsers: '{{ .T "automation_task_type_sync_users" }}',
+            taskTypeSyncAuthentik: '{{ .T "automation_task_type_sync_authentik" }}',
             taskTypeCleanupResets: '{{ .T "automation_task_type_cleanup_resets" }}',
             taskTypeAdvancedBadge: '{{ .T "automation_task_type_advanced_badge" }}',
             quickTaskMissing: '{{ .T "automation_manual_task_missing" }}',
@@ -448,6 +450,7 @@
         },
         taskTypeDescriptions: {
             sync_users: '{{ .T "automation_type_sync_users_desc" }}',
+            sync_authentik: '{{ .T "automation_type_sync_authentik_desc" }}',
             cleanup_resets: '{{ .T "automation_type_cleanup_resets_desc" }}',
         },
     };

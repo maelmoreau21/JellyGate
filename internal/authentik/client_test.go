@@ -229,6 +229,27 @@ func TestAuthentikClient(t *testing.T) {
 		}
 	})
 
+	t.Run("CreateRecoveryLinkByString", func(t *testing.T) {
+		link, err := cli.CreateRecoveryLinkByString(context.Background(), "42")
+		if err != nil {
+			t.Fatalf("CreateRecoveryLinkByString failed: %v", err)
+		}
+		if link != "https://auth.example.com/recovery/use-token/token123" {
+			t.Errorf("Unexpected recovery link: %s", link)
+		}
+	})
+
+	t.Run("CreateInvitationStageToken_30Days", func(t *testing.T) {
+		expiry30d := time.Now().AddDate(0, 0, 30)
+		invID, err := cli.CreateInvitationStageToken(context.Background(), "JG-30DAYS", expiry30d, map[string]interface{}{"sponsor": "alice"}, false, "custom-enrollment-flow")
+		if err != nil {
+			t.Fatalf("CreateInvitationStageToken 30 days failed: %v", err)
+		}
+		if invID != "inv-uuid-999" {
+			t.Errorf("Expected inv-uuid-999, got %s", invID)
+		}
+	})
+
 	t.Run("CheckHealth", func(t *testing.T) {
 		res := cli.CheckHealth(context.Background(), cfg)
 		if res == nil {

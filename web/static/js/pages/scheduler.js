@@ -91,6 +91,7 @@
         }
         const taskTypeLabels = {
             sync_users: t('taskTypeSyncUsers', 'Sync users'),
+            sync_authentik: t('taskTypeSyncAuthentik', 'Sync Authentik'),
             cleanup_resets: t('taskTypeCleanupResets', 'Clean reset links'),
         };
         const typeCell = (task) => {

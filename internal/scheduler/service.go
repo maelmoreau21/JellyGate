@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/backup"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
@@ -34,11 +35,12 @@ type TaskRecord struct {
 }
 
 type Service struct {
-	db       *database.DB
-	backup   *backup.Service
-	mailer   *mail.Mailer
-	notifier *notify.Notifier
-	mu       sync.Mutex
+	db         *database.DB
+	backup     *backup.Service
+	mailer     *mail.Mailer
+	notifier   *notify.Notifier
+	authClient authentik.Client
+	mu         sync.Mutex
 }
 
 func NewService(db *database.DB, backupSvc *backup.Service, mailer *mail.Mailer, notifier *notify.Notifier) *Service {
@@ -49,6 +51,27 @@ func (s *Service) SetMailer(m *mail.Mailer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.mailer = m
+}
+
+func (s *Service) SetAuthentikClient(auth authentik.Client) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.authClient = auth
+}
+
+func (s *Service) getEffectiveAuthentikClient() authentik.Client {
+	s.mu.Lock()
+	client := s.authClient
+	s.mu.Unlock()
+	if client != nil {
+		return client
+	}
+	if s.db != nil {
+		if dbCfg, err := s.db.GetAuthentikConfig(); err == nil && (dbCfg.URL != "" || dbCfg.IssuerURL != "") {
+			return authentik.NewClient(dbCfg)
+		}
+	}
+	return nil
 }
 
 func (s *Service) Start(ctx context.Context) {
@@ -80,6 +103,16 @@ func (s *Service) runDailyInternalCleanup(now time.Time) {
 
 	slog.Info("Scheduler: execution de checkExpiringAccounts quotidien", "date", todayStr)
 	s.checkExpiringAccounts()
+
+	// Réconciliation quotidienne Authentik <-> JellyGate
+	if client := s.getEffectiveAuthentikClient(); client != nil {
+		recreated, cleaned, rErr := s.ReconcileAuthentik(context.Background())
+		if rErr != nil {
+			slog.Warn("Scheduler: réconciliation Authentik quotidienne", "error", rErr)
+		} else if recreated > 0 || cleaned > 0 {
+			slog.Info("Scheduler: réconciliation Authentik quotidienne terminée", "recreated", recreated, "cleaned", cleaned)
+		}
+	}
 
 	// Purge automatique des anciens logs système
 	if mgr := syslog.GetManager(); mgr != nil {
@@ -172,11 +205,167 @@ func (s *Service) cleanupClosedInvitations() error {
 	return nil
 }
 
+// ReconcileAuthentik vérifie et synchronise l'état des invitations entre JellyGate et Authentik.
+// Si une invitation active dans JellyGate n'a pas de stage token sur Authentik (ou si celui-ci a été supprimé),
+// elle est automatiquement recréée avec la même date d'expiration et les métadonnées de parrainage.
+// Les invitations expirées ou épuisées sont nettoyées dans Authentik.
+func (s *Service) ReconcileAuthentik(ctx context.Context) (recreated int, cleaned int, err error) {
+	client := s.getEffectiveAuthentikClient()
+	if client == nil {
+		return 0, 0, fmt.Errorf("client Authentik non configuré")
+	}
+
+	authCfg, _ := s.db.GetAuthentikConfig()
+	flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+	if flowSlug == "" {
+		flowSlug = "default-enrollment-flow"
+	}
+
+	// 1. Lister les invitations Authentik actuelles
+	tokens, err := client.ListInvitationStageTokens(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("impossible de lister les tokens Authentik: %w", err)
+	}
+
+	tokenByPK := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	tokenByCode := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	for _, tok := range tokens {
+		if tok.PK != "" {
+			tokenByPK[tok.PK] = tok
+		}
+		if tok.FixedData != nil {
+			if c, ok := tok.FixedData["code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			} else if c, ok := tok.FixedData["invitation_code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			}
+		}
+	}
+
+	// 2. Charger toutes les invitations de JellyGate
+	rows, err := s.db.Query(`
+		SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, authentik_invitation_id, profile_id, is_temporary, account_duration_days
+		FROM invitations
+	`)
+	if err != nil {
+		return 0, 0, fmt.Errorf("lecture invitations JellyGate: %w", err)
+	}
+	defer rows.Close()
+
+	now := time.Now()
+
+	for rows.Next() {
+		var id int64
+		var code, label, jfProfile, createdBy, profileID string
+		var maxUses, usedCount, accountDurationDays int
+		var expiresAt sql.NullTime
+		var authentikID sql.NullString
+		var isTemporary bool
+
+		if err := rows.Scan(&id, &code, &label, &maxUses, &usedCount, &jfProfile, &expiresAt, &createdBy, &authentikID, &profileID, &isTemporary, &accountDurationDays); err != nil {
+			continue
+		}
+
+		code = strings.TrimSpace(code)
+		if code == "" {
+			continue
+		}
+
+		isExpired := expiresAt.Valid && expiresAt.Time.Before(now)
+		isExhausted := maxUses > 0 && usedCount >= maxUses
+		isActive := !isExpired && !isExhausted
+
+		curAuthID := strings.TrimSpace(authentikID.String)
+
+		if isActive {
+			tokenExists := false
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					tokenExists = true
+				}
+			}
+			if !tokenExists {
+				if tok, ok := tokenByCode[code]; ok && tok.PK != "" {
+					tokenExists = true
+					_, _ = s.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tok.PK, id)
+				}
+			}
+
+			// Si le token n'existe pas dans Authentik, le recréer automatiquement
+			if !tokenExists {
+				var targetGroups []string
+				jfGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+				if jfGroup == "" {
+					jfGroup = "jellyfin-users"
+				}
+				targetGroups = append(targetGroups, jfGroup)
+
+				fixedData := map[string]interface{}{
+					"source":                "JellyGate",
+					"created_by":            "JellyGate",
+					"invitation_code":       code,
+					"code":                  code,
+					"sponsor":               createdBy,
+					"groups":                targetGroups,
+					"preset_id":             profileID,
+					"is_temporary":          isTemporary,
+					"account_duration_days": accountDurationDays,
+				}
+
+				var stageExpiry time.Time
+				if expiresAt.Valid {
+					stageExpiry = expiresAt.Time
+				}
+
+				tokenName := fmt.Sprintf("JellyGate - %s", code)
+				if createdBy != "" {
+					tokenName = fmt.Sprintf("JellyGate - %s (%s)", code, createdBy)
+				}
+
+				newTokPK, tokErr := client.CreateInvitationStageToken(ctx, tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
+				if tokErr == nil && newTokPK != "" {
+					_, _ = s.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, newTokPK, id)
+					_ = s.db.LogAction("invite.reconciled", "scheduler", code, fmt.Sprintf("Jeton Authentik recréé avec succès (PK: %s)", newTokPK))
+					slog.Info("Scheduler: invitation Authentik recréée avec succès", "code", code, "pk", newTokPK)
+					recreated++
+				} else {
+					slog.Warn("Scheduler: échec recréation token Authentik", "code", code, "error", tokErr)
+				}
+			}
+		} else {
+			// L'invitation est expirée ou épuisée : nettoyer dans Authentik
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					if delErr := client.DeleteInvitationStageToken(ctx, curAuthID); delErr == nil {
+						_ = s.db.LogAction("invite.authentik_cleanup", "scheduler", code, fmt.Sprintf("Jeton Authentik expiré supprimé (PK: %s)", curAuthID))
+						cleaned++
+					}
+				}
+			}
+		}
+	}
+
+	return recreated, cleaned, nil
+}
+
 func (s *Service) executeTask(task TaskRecord) error {
 	now := time.Now().Format("2006-01-02 15:04:05")
 	_ = now
 
 	switch strings.TrimSpace(task.TaskType) {
+	case "sync_authentik":
+		recreated, cleaned, syncErr := s.ReconcileAuthentik(context.Background())
+		if syncErr != nil {
+			return syncErr
+		}
+		_ = s.db.LogAction("task.sync_authentik", "scheduler", task.Name, fmt.Sprintf("Réconciliation Authentik terminée (%d recréée(s), %d nettoyée(s))", recreated, cleaned))
+
+	case "sync_users":
+		if client := s.getEffectiveAuthentikClient(); client != nil {
+			_, _, _ = s.ReconcileAuthentik(context.Background())
+		}
+		_ = s.db.LogAction("task.sync_users", "scheduler", task.Name, "Synchronisation des utilisateurs exécutée")
+
 	case "cleanup_resets":
 		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, "Nettoyage jetons exécuté")
 

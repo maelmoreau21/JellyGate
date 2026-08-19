@@ -120,6 +120,21 @@ func NewInvitationHandler(cfg *config.Config, db *database.DB, provisioner *inte
 // SetAuthentikClient définit le client Authentik.
 func (h *InvitationHandler) SetAuthentikClient(auth authentik.Client) { h.authClient = auth }
 
+func (h *InvitationHandler) getEffectiveAuthentikClient() authentik.Client {
+	if h.authClient != nil {
+		return h.authClient
+	}
+	if h.db != nil {
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil && (dbCfg.URL != "" || dbCfg.IssuerURL != "") {
+			return authentik.NewClient(dbCfg)
+		}
+	}
+	if h.cfg != nil && (h.cfg.Authentik.URL != "" || h.cfg.Authentik.IssuerURL != "") {
+		return authentik.NewClient(h.cfg.Authentik)
+	}
+	return nil
+}
+
 // SetMailer remplace le mailer SMTP (rechargement ÃƒÂ  chaud).
 func (h *InvitationHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 
@@ -197,7 +212,8 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 
 	authCfg, _ := h.db.GetAuthentikConfig()
 	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
-	if h.authClient != nil && authentikEnabled {
+	effectiveAuth := h.getEffectiveAuthentikClient()
+	if effectiveAuth != nil && authentikEnabled {
 		authURL := strings.TrimRight(authCfg.URL, "/")
 		if authURL == "" && h.cfg != nil {
 			authURL = strings.TrimRight(h.cfg.Authentik.URL, "/")
@@ -217,10 +233,8 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		if flowSlug == "" && h.cfg != nil {
 			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
 		}
-		if h.authClient != nil {
-			if discovered := h.authClient.GetEnrollmentFlowSlug(r.Context(), flowSlug); discovered != "" {
-				flowSlug = discovered
-			}
+		if discovered := effectiveAuth.GetEnrollmentFlowSlug(r.Context(), flowSlug); discovered != "" {
+			flowSlug = discovered
 		}
 		if flowSlug == "" {
 			flowSlug = "default-enrollment-flow"
@@ -259,9 +273,10 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 					stageExpiry = inv.ExpiresAt.Time
 				}
 				tokenName := fmt.Sprintf("JellyGate - %s", inv.Code)
-				if tokenID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && tokenID != "" {
+				if tokenID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && tokenID != "" {
 					invToken = tokenID
 					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tokenID, inv.ID)
+					slog.Info("Token Authentik régénéré à la volée pour l'invitation", "code", inv.Code, "token_id", tokenID)
 				}
 			}
 			authentikEnrollmentURL := fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authURL, flowSlug, url.QueryEscape(invToken))

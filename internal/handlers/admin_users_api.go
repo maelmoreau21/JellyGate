@@ -815,8 +815,9 @@ func (h *AdminHandler) sendPasswordResetForUser(rec *adminUserRecord, actor stri
 	}
 
 	recoveryURL := ""
-	if h.authClient != nil && rec.AuthentikID.Valid && rec.AuthentikID.String != "" {
-		if link, err := h.authClient.CreateRecoveryLink(context.Background(), rec.ID); err == nil && link != "" {
+	effectiveAuth := h.getEffectiveAuthentikClient()
+	if effectiveAuth != nil && rec.AuthentikID.Valid && rec.AuthentikID.String != "" {
+		if link, err := effectiveAuth.CreateRecoveryLinkByString(context.Background(), rec.AuthentikID.String); err == nil && link != "" {
 			recoveryURL = link
 		}
 	}

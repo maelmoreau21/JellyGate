@@ -651,6 +651,7 @@ func (db *DB) seedDefaultTasks() error {
 		minute   int
 	}{
 		{"Synchro Utilisateurs", "sync_users", 4, 0},
+		{"Synchro & Réconciliation Authentik", "sync_authentik", 5, 0},
 		{"Nettoyage Jetons", "cleanup_resets", 3, 0},
 	}
 

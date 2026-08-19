@@ -202,6 +202,21 @@ func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
 // SetAuthentikClient remplace le client Authentik / SSO (rechargement à chaud).
 func (h *AdminHandler) SetAuthentikClient(auth authentik.Client) { h.authClient = auth }
 
+func (h *AdminHandler) getEffectiveAuthentikClient() authentik.Client {
+	if h.authClient != nil {
+		return h.authClient
+	}
+	if h.db != nil {
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil && (dbCfg.URL != "" || dbCfg.IssuerURL != "") {
+			return authentik.NewClient(dbCfg)
+		}
+	}
+	if h.cfg != nil && (h.cfg.Authentik.URL != "" || h.cfg.Authentik.IssuerURL != "") {
+		return authentik.NewClient(h.cfg.Authentik)
+	}
+	return nil
+}
+
 func (h *AdminHandler) tr(r *http.Request, key, fallback string) string {
 	if h.renderer == nil {
 		return fallback

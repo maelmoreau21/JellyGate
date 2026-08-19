@@ -177,6 +177,12 @@ func main() {
 			if strings.TrimSpace(authentikCfg.EnrollmentFlowSlug) == "" {
 				authentikCfg.EnrollmentFlowSlug = dbAuthCfg.EnrollmentFlowSlug
 			}
+			if strings.TrimSpace(authentikCfg.InvitersGroup) == "" {
+				authentikCfg.InvitersGroup = dbAuthCfg.InvitersGroup
+			}
+			if strings.TrimSpace(authentikCfg.InvitersRecursiveGroup) == "" {
+				authentikCfg.InvitersRecursiveGroup = dbAuthCfg.InvitersRecursiveGroup
+			}
 			if !authentikCfg.Enabled {
 				authentikCfg.Enabled = dbAuthCfg.Enabled
 			}
@@ -193,6 +199,7 @@ func main() {
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
 	schedulerService := scheduler.NewService(db, backupService, mailer, notifier)
+	schedulerService.SetAuthentikClient(authentikClient)
 	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService, jfClient)
 	authSessionValidator := func(sess *session.Payload) bool {
 		return authSessionAllowed(db, sess)
@@ -224,6 +231,7 @@ func main() {
 		inviteHandler.SetAuthentikClient(newAuthClient)
 		adminHandler.SetAuthentikClient(newAuthClient)
 		settingsHandler.SetAuthentikClient(newAuthClient)
+		schedulerService.SetAuthentikClient(newAuthClient)
 		slog.Info("🔄 Clients OIDC & Authentik rechargés", "enabled", c.Enabled, "url", c.URL)
 	}
 	settingsHandler.OnJellyfinReload = func(c config.JellyfinConfig) {

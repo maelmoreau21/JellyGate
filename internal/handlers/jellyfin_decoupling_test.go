@@ -52,6 +52,9 @@ func (m *mockAuthentikDecoupledClient) CreateUser(ctx context.Context, payload a
 func (m *mockAuthentikDecoupledClient) CreateRecoveryLink(ctx context.Context, userPK int64) (string, error) {
 	return "https://auth.example.com/recovery", nil
 }
+func (m *mockAuthentikDecoupledClient) CreateRecoveryLinkByString(ctx context.Context, identifier string) (string, error) {
+	return "https://auth.example.com/recovery", nil
+}
 func (m *mockAuthentikDecoupledClient) AddUserToGroup(ctx context.Context, userPK int64, groupID string) error {
 	return nil
 }

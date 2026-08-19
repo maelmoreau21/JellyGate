@@ -876,6 +876,7 @@
             }
             const taskTypeLabels = {
                 sync_users: i18n.taskTypeSyncUsers || i18n.manualSyncUsers || 'Sync users',
+                sync_authentik: i18n.taskTypeSyncAuthentik || 'Sync Authentik',
                 sync_ldap_users: i18n.taskTypeSyncLdapUsers || i18n.manualSyncLdap || 'Sync LDAP users',
                 cleanup_resets: i18n.taskTypeCleanupResets || i18n.manualCleanupResets || 'Clean reset links',
             };

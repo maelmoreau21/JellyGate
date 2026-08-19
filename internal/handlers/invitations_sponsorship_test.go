@@ -48,6 +48,10 @@ func (m *mockAuthentikClient) CreateRecoveryLink(ctx context.Context, userPK int
 	return "http://localhost:9000/recovery", nil
 }
 
+func (m *mockAuthentikClient) CreateRecoveryLinkByString(ctx context.Context, identifier string) (string, error) {
+	return "http://localhost:9000/recovery", nil
+}
+
 func (m *mockAuthentikClient) AddUserToGroup(ctx context.Context, userPK int64, groupID string) error {
 	return nil
 }

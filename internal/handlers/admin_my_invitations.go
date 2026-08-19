@@ -340,7 +340,8 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	var authentikInvID string
 	authCfg, _ := h.db.GetAuthentikConfig()
 	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
-	if h.authClient != nil && authentikEnabled {
+	effectiveAuth := h.getEffectiveAuthentikClient()
+	if effectiveAuth != nil && authentikEnabled {
 		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
 		if flowSlug == "" && h.cfg != nil {
 			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
@@ -395,11 +396,12 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		}
 
 		tokenName := fmt.Sprintf("JellyGate - %s (%s)", code, sess.Username)
-		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), tokenName, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
-		if authErr == nil {
+		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
+		if authErr == nil && invID != "" {
 			authentikInvID = invID
-		} else {
-			slog.Warn("Création token invitation Authentik échouée (fallback local)", "error", authErr)
+			slog.Info("Jeton invitation Authentik créé avec succès", "code", code, "authentik_invitation_id", invID, "expires", resolvedExpiry)
+		} else if authErr != nil {
+			slog.Warn("Création token invitation Authentik échouée (fallback local)", "code", code, "error", authErr)
 		}
 	}
 
@@ -1099,8 +1101,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	var authentikInvID string
 	authCfg, _ := h.db.GetAuthentikConfig()
 	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	effectiveAuth := h.getEffectiveAuthentikClient()
 
-	if h.authClient != nil && authentikEnabled {
+	if effectiveAuth != nil && authentikEnabled {
 		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
 		if flowSlug == "" && h.cfg != nil {
 			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
@@ -1175,18 +1178,21 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 
 		var stageExpiry time.Time
-		if expiresAtResponse != nil {
+		if t, ok := expiresAt.(time.Time); ok {
+			stageExpiry = t
+		} else if expiresAtResponse != nil {
 			if t, tErr := time.Parse(time.RFC3339, fmt.Sprint(expiresAtResponse)); tErr == nil {
 				stageExpiry = t
 			}
 		}
 
 		tokenName := fmt.Sprintf("JellyGate - %s", code)
-		invID, authErr := h.authClient.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
-		if authErr == nil {
+		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
+		if authErr == nil && invID != "" {
 			authentikInvID = invID
-		} else {
-			slog.Warn("Création token invitation Authentik échouée (fallback local)", "error", authErr)
+			slog.Info("Jeton invitation Authentik créé avec succès", "code", code, "authentik_invitation_id", invID, "expires", stageExpiry)
+		} else if authErr != nil {
+			slog.Warn("Création token invitation Authentik échouée (fallback local)", "code", code, "error", authErr)
 		}
 	}
 
