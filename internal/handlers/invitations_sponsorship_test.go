@@ -672,4 +672,3 @@ func TestInvitePageLookupByAuthentikID(t *testing.T) {
 		t.Fatalf("InvitePage lookup by authentik_invitation_id returned %d, want 200: %s", rec.Code, rec.Body.String())
 	}
 }
-
