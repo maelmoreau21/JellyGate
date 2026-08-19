@@ -129,17 +129,15 @@ func (db *DB) SyncOIDCUser(ctx context.Context, authentikID, username, email str
 	}
 
 	// 4. Inscription nouveau compte JIT
-	insertQuery := `INSERT INTO users (authentik_id, username, email, email_verified, is_active) VALUES (?, ?, ?, 1, 1)`
-	res, err := db.ExecContext(ctx, insertQuery, authentikID, username, email)
+	insertQuery := `INSERT INTO users (authentik_id, username, email, email_verified, is_active) VALUES (?, ?, ?, ?, ?)`
+	_, err = db.ExecContext(ctx, insertQuery, authentikID, username, email, true, true)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OIDC user: %w", err)
 	}
 
-	newID, err := res.LastInsertId()
-	if err != nil || newID <= 0 {
-		user, err = db.GetUserByAuthentikID(ctx, authentikID)
-	} else {
-		user, err = db.GetUserByID(ctx, newID)
+	user, err = db.GetUserByAuthentikID(ctx, authentikID)
+	if err != nil || user == nil {
+		user, err = db.GetUserByUsername(ctx, username)
 	}
 
 	if err == nil && user != nil {

@@ -24,12 +24,13 @@ import (
 )
 
 const (
-	CookieState    = "jellygate_oidc_state"
-	CookieNonce    = "jellygate_oidc_nonce"
-	CookieVerifier = "jellygate_oidc_verifier"
-	CookiePath     = "/"
-	CookieTTL      = 10 * time.Minute
-	ClockSkew      = 60 * time.Second
+	CookieState       = "jellygate_oidc_state"
+	CookieNonce       = "jellygate_oidc_nonce"
+	CookieVerifier    = "jellygate_oidc_verifier"
+	CookieRedirectURI = "jellygate_oidc_redirect"
+	CookiePath        = "/"
+	CookieTTL         = 10 * time.Minute
+	ClockSkew         = 60 * time.Second
 )
 
 // Claims représente les informations extraites de l'ID Token / UserInfo OIDC.
@@ -111,16 +112,16 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 	codeChallenge := calculateS256Challenge(codeVerifier)
 
 	isHTTPS := r.TLS != nil ||
-		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.URL)), "https://") ||
-		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.IssuerURL)), "https://") ||
-		strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.RedirectURL)), "https://") ||
 		strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
 		strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
 		strings.EqualFold(r.Header.Get("Front-End-Https"), "on")
 
+	redirectURI := c.getRedirectURI(r)
+
 	setTempCookie(w, CookieState, state, isHTTPS)
 	setTempCookie(w, CookieNonce, nonce, isHTTPS)
 	setTempCookie(w, CookieVerifier, codeVerifier, isHTTPS)
+	setTempCookie(w, CookieRedirectURI, redirectURI, isHTTPS)
 
 	authEndpoint, err := c.getAuthEndpoint(r.Context())
 	if err != nil {
@@ -130,8 +131,6 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 	if err != nil {
 		return "", fmt.Errorf("invalid authorization endpoint: %w", err)
 	}
-
-	redirectURI := c.getRedirectURI(r)
 
 	q := u.Query()
 	q.Set("client_id", c.cfg.ClientID)
@@ -206,10 +205,15 @@ func (c *oidcClient) HandleCallback(r *http.Request) (*Claims, error) {
 		return nil, fmt.Errorf("failed to resolve token endpoint: %w", err)
 	}
 
+	redirectURI := c.getRedirectURI(r)
+	if redirectCookie, err := r.Cookie(CookieRedirectURI); err == nil && strings.TrimSpace(redirectCookie.Value) != "" {
+		redirectURI = strings.TrimSpace(redirectCookie.Value)
+	}
+
 	data := url.Values{}
 	data.Set("grant_type", "authorization_code")
 	data.Set("code", code)
-	data.Set("redirect_uri", c.getRedirectURI(r))
+	data.Set("redirect_uri", redirectURI)
 	data.Set("client_id", c.cfg.ClientID)
 	if c.cfg.ClientSecret != "" {
 		data.Set("client_secret", c.cfg.ClientSecret)
@@ -309,7 +313,16 @@ func (c *oidcClient) ValidateIDToken(ctx context.Context, rawIDToken string, exp
 		expectedIssuer := strings.TrimRight(c.cfg.IssuerURL, "/")
 		actualIssuer := strings.TrimRight(claims.Issuer, "/")
 		if actualIssuer != expectedIssuer {
-			return nil, fmt.Errorf("invalid token issuer: expected %s, got %s", expectedIssuer, actualIssuer)
+			meta, _ := c.getDiscoveryMetadata(ctx)
+			metaIssuer := ""
+			if meta != nil {
+				metaIssuer = strings.TrimRight(meta.Issuer, "/")
+			}
+			if metaIssuer == "" || metaIssuer != actualIssuer {
+				if !strings.HasPrefix(actualIssuer, expectedIssuer) && !strings.HasPrefix(expectedIssuer, actualIssuer) {
+					return nil, fmt.Errorf("invalid token issuer: expected %s, got %s", expectedIssuer, actualIssuer)
+				}
+			}
 		}
 	}
 
@@ -364,33 +377,47 @@ func (c *oidcClient) ValidateIDToken(ctx context.Context, rawIDToken string, exp
 }
 
 func (c *oidcClient) DetermineUserRole(groups []string) (isAdmin bool, hasAccess bool) {
-	adminGroup := c.cfg.AdminGroup
+	adminGroup := strings.TrimSpace(c.cfg.AdminGroup)
 	if adminGroup == "" {
 		adminGroup = "jellygate-admins"
 	}
-	userGroup := c.cfg.UserGroup
+	userGroup := strings.TrimSpace(c.cfg.UserGroup)
 	if userGroup == "" {
 		userGroup = "jellygate-users"
 	}
-	invitersGroup := c.cfg.InvitersGroup
+	invitersGroup := strings.TrimSpace(c.cfg.InvitersGroup)
 	if invitersGroup == "" {
 		invitersGroup = "jellygate-inviters"
 	}
-	invitersRecGroup := c.cfg.InvitersRecursiveGroup
+	invitersRecGroup := strings.TrimSpace(c.cfg.InvitersRecursiveGroup)
 	if invitersRecGroup == "" {
 		invitersRecGroup = "jellygate-inviters-recursive"
 	}
 
 	for _, g := range groups {
-		if g == adminGroup || g == "jellygate-admins" || g == "authentik Admins" || g == "authentik-admins" || g == "admins" || g == "jellyfin-admins" {
+		gClean := strings.TrimSpace(g)
+		if strings.EqualFold(gClean, adminGroup) ||
+			strings.EqualFold(gClean, "jellygate-admins") ||
+			strings.EqualFold(gClean, "authentik Admins") ||
+			strings.EqualFold(gClean, "authentik-admins") ||
+			strings.EqualFold(gClean, "admins") ||
+			strings.EqualFold(gClean, "admin") ||
+			strings.EqualFold(gClean, "administrateurs") ||
+			strings.EqualFold(gClean, "administrators") ||
+			strings.EqualFold(gClean, "jellyfin-admins") {
 			return true, true
 		}
-		if g == userGroup || g == "jellygate-users" || g == "jellyfin-users" || g == "users" || g == invitersGroup || g == invitersRecGroup {
+		if strings.EqualFold(gClean, userGroup) ||
+			strings.EqualFold(gClean, "jellygate-users") ||
+			strings.EqualFold(gClean, "jellyfin-users") ||
+			strings.EqualFold(gClean, "users") ||
+			strings.EqualFold(gClean, "user") ||
+			strings.EqualFold(gClean, invitersGroup) ||
+			strings.EqualFold(gClean, invitersRecGroup) {
 			hasAccess = true
 		}
 	}
 
-	// SÉCURITÉ : Aucun groupe autorisé présent -> Accès strictement refusé
 	return false, hasAccess
 }
 

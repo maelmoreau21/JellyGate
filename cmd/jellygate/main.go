@@ -147,44 +147,66 @@ func main() {
 	authentikCfg := cfg.Authentik
 	if db != nil {
 		if dbAuthCfg, err := db.GetAuthentikConfig(); err == nil {
-			if strings.TrimSpace(authentikCfg.URL) == "" {
-				authentikCfg.URL = dbAuthCfg.URL
-			}
-			if strings.TrimSpace(authentikCfg.IssuerURL) == "" {
-				authentikCfg.IssuerURL = dbAuthCfg.IssuerURL
-			}
-			if strings.TrimSpace(authentikCfg.ClientID) == "" {
-				authentikCfg.ClientID = dbAuthCfg.ClientID
-			}
-			if strings.TrimSpace(authentikCfg.ClientSecret) == "" {
-				authentikCfg.ClientSecret = dbAuthCfg.ClientSecret
-			}
-			if strings.TrimSpace(authentikCfg.RedirectURL) == "" {
-				authentikCfg.RedirectURL = dbAuthCfg.RedirectURL
-			}
-			if strings.TrimSpace(authentikCfg.APIToken) == "" {
-				authentikCfg.APIToken = dbAuthCfg.APIToken
-			}
-			if strings.TrimSpace(authentikCfg.UserGroup) == "" {
-				authentikCfg.UserGroup = dbAuthCfg.UserGroup
-			}
-			if strings.TrimSpace(authentikCfg.AdminGroup) == "" {
-				authentikCfg.AdminGroup = dbAuthCfg.AdminGroup
-			}
-			if strings.TrimSpace(authentikCfg.JellyfinUserGroup) == "" {
-				authentikCfg.JellyfinUserGroup = dbAuthCfg.JellyfinUserGroup
-			}
-			if strings.TrimSpace(authentikCfg.EnrollmentFlowSlug) == "" {
-				authentikCfg.EnrollmentFlowSlug = dbAuthCfg.EnrollmentFlowSlug
-			}
-			if strings.TrimSpace(authentikCfg.InvitersGroup) == "" {
-				authentikCfg.InvitersGroup = dbAuthCfg.InvitersGroup
-			}
-			if strings.TrimSpace(authentikCfg.InvitersRecursiveGroup) == "" {
-				authentikCfg.InvitersRecursiveGroup = dbAuthCfg.InvitersRecursiveGroup
-			}
-			if !authentikCfg.Enabled {
+			if dbAuthCfg.Enabled || dbAuthCfg.URL != "" || dbAuthCfg.IssuerURL != "" {
+				if strings.TrimSpace(dbAuthCfg.URL) != "" {
+					authentikCfg.URL = dbAuthCfg.URL
+				}
+				if strings.TrimSpace(dbAuthCfg.IssuerURL) != "" {
+					authentikCfg.IssuerURL = dbAuthCfg.IssuerURL
+				}
+				if strings.TrimSpace(dbAuthCfg.ClientID) != "" {
+					authentikCfg.ClientID = dbAuthCfg.ClientID
+				}
+				if strings.TrimSpace(dbAuthCfg.ClientSecret) != "" {
+					authentikCfg.ClientSecret = dbAuthCfg.ClientSecret
+				}
+				if strings.TrimSpace(dbAuthCfg.RedirectURL) != "" {
+					authentikCfg.RedirectURL = dbAuthCfg.RedirectURL
+				}
+				if strings.TrimSpace(dbAuthCfg.APIToken) != "" {
+					authentikCfg.APIToken = dbAuthCfg.APIToken
+				}
+				if strings.TrimSpace(dbAuthCfg.UserGroup) != "" {
+					authentikCfg.UserGroup = dbAuthCfg.UserGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.AdminGroup) != "" {
+					authentikCfg.AdminGroup = dbAuthCfg.AdminGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.JellyfinUserGroup) != "" {
+					authentikCfg.JellyfinUserGroup = dbAuthCfg.JellyfinUserGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.EnrollmentFlowSlug) != "" {
+					authentikCfg.EnrollmentFlowSlug = dbAuthCfg.EnrollmentFlowSlug
+				}
+				if strings.TrimSpace(dbAuthCfg.InvitersGroup) != "" {
+					authentikCfg.InvitersGroup = dbAuthCfg.InvitersGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.InvitersRecursiveGroup) != "" {
+					authentikCfg.InvitersRecursiveGroup = dbAuthCfg.InvitersRecursiveGroup
+				}
 				authentikCfg.Enabled = dbAuthCfg.Enabled
+			}
+			// Surcharge par les variables d'environnement si définies explicitement
+			if strings.TrimSpace(cfg.Authentik.URL) != "" {
+				authentikCfg.URL = strings.TrimSpace(cfg.Authentik.URL)
+			}
+			if strings.TrimSpace(cfg.Authentik.IssuerURL) != "" {
+				authentikCfg.IssuerURL = strings.TrimSpace(cfg.Authentik.IssuerURL)
+			}
+			if strings.TrimSpace(cfg.Authentik.ClientID) != "" {
+				authentikCfg.ClientID = strings.TrimSpace(cfg.Authentik.ClientID)
+			}
+			if strings.TrimSpace(cfg.Authentik.ClientSecret) != "" {
+				authentikCfg.ClientSecret = strings.TrimSpace(cfg.Authentik.ClientSecret)
+			}
+			if strings.TrimSpace(cfg.Authentik.RedirectURL) != "" {
+				authentikCfg.RedirectURL = strings.TrimSpace(cfg.Authentik.RedirectURL)
+			}
+			if strings.TrimSpace(cfg.Authentik.APIToken) != "" {
+				authentikCfg.APIToken = strings.TrimSpace(cfg.Authentik.APIToken)
+			}
+			if cfg.Authentik.Enabled {
+				authentikCfg.Enabled = true
 			}
 		}
 	}

@@ -61,6 +61,36 @@ func (h *AuthHandler) tr(r *http.Request, key, fallback string) string {
 	return value
 }
 
+func (h *AuthHandler) getEffectiveAuthentikClient() authentik.Client {
+	if h.authClient != nil {
+		return h.authClient
+	}
+	if h.db != nil {
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil && (dbCfg.URL != "" || dbCfg.IssuerURL != "") {
+			return authentik.NewClient(dbCfg)
+		}
+	}
+	if h.cfg != nil && (h.cfg.Authentik.URL != "" || h.cfg.Authentik.IssuerURL != "") {
+		return authentik.NewClient(h.cfg.Authentik)
+	}
+	return nil
+}
+
+func (h *AuthHandler) getEffectiveOIDCClient() oidc.Client {
+	if h.oidcClient != nil {
+		return h.oidcClient
+	}
+	if h.db != nil {
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil && (dbCfg.Enabled || dbCfg.URL != "" || dbCfg.IssuerURL != "") {
+			return oidc.NewClient(dbCfg)
+		}
+	}
+	if h.cfg != nil && (h.cfg.Authentik.Enabled || h.cfg.Authentik.URL != "" || h.cfg.Authentik.IssuerURL != "") {
+		return oidc.NewClient(h.cfg.Authentik)
+	}
+	return nil
+}
+
 // LoginPage affiche la page de connexion JellyGate avec le bouton de connexion SSO et l'accès de secours (GET /admin/login ou GET /login).
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	if h.hasValidSession(r) {
@@ -95,13 +125,14 @@ func (h *AuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.oidcClient == nil {
+	oidcCli := h.getEffectiveOIDCClient()
+	if oidcCli == nil {
 		slog.Error("Client OIDC non configuré")
 		http.Error(w, h.tr(r, "auth_oidc_disabled", "Authentification OIDC non configurée"), http.StatusServiceUnavailable)
 		return
 	}
 
-	authURL, err := h.oidcClient.GenerateAuthURL(w, r)
+	authURL, err := oidcCli.GenerateAuthURL(w, r)
 	if err != nil {
 		slog.Error("Erreur lors de la génération de l'URL OIDC", "error", err)
 		http.Error(w, h.tr(r, "auth_oidc_failed", "Impossible d'initier la connexion OIDC"), http.StatusInternalServerError)
@@ -113,13 +144,14 @@ func (h *AuthHandler) LoginRedirect(w http.ResponseWriter, r *http.Request) {
 
 // Callback traite le retour OIDC depuis Authentik (GET /auth/callback).
 func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
-	if h.oidcClient == nil {
+	oidcCli := h.getEffectiveOIDCClient()
+	if oidcCli == nil {
 		slog.Error("Client OIDC indisponible pendant le callback")
 		h.redirectLoginError(w, r, "oidc_unavailable", "")
 		return
 	}
 
-	claims, err := h.oidcClient.HandleCallback(r)
+	claims, err := oidcCli.HandleCallback(r)
 	if err != nil {
 		slog.Warn("Échec du callback OIDC Authentik", "error", err, "remote", r.RemoteAddr)
 		errStr := err.Error()
@@ -137,11 +169,42 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	isAdmin, hasAccess := h.oidcClient.DetermineUserRole(claims.Groups)
-	canInvite, canInviteRecursive := h.oidcClient.DetermineInviterRole(claims.Groups)
+	isAdmin, hasAccess := oidcCli.DetermineUserRole(claims.Groups)
+	canInvite, canInviteRecursive := oidcCli.DetermineInviterRole(claims.Groups)
+
+	// Fallback Authentik API si les groupes ne sont pas présents dans le jeton ID OIDC
+	if !hasAccess || !isAdmin {
+		if authCli := h.getEffectiveAuthentikClient(); authCli != nil {
+			if authUser, err := authCli.GetUserByUsername(r.Context(), claims.PreferredUsername); err == nil && authUser != nil {
+				if len(authUser.Groups) > 0 {
+					claims.Groups = append(claims.Groups, authUser.Groups...)
+					adm, acc := oidcCli.DetermineUserRole(claims.Groups)
+					if adm {
+						isAdmin = true
+					}
+					if acc {
+						hasAccess = true
+					}
+					inv, invRec := oidcCli.DetermineInviterRole(claims.Groups)
+					if inv {
+						canInvite = true
+					}
+					if invRec {
+						canInviteRecursive = true
+					}
+				}
+				if authUser.PK == 1 || strings.EqualFold(claims.PreferredUsername, "akadmin") {
+					isAdmin = true
+					hasAccess = true
+				}
+			}
+		}
+	}
+
 	if isAdmin {
 		canInvite = true
 		canInviteRecursive = true
+		hasAccess = true
 	}
 
 	if !hasAccess {
@@ -207,6 +270,7 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	clearTempCookie(w, oidc.CookieState)
 	clearTempCookie(w, oidc.CookieNonce)
 	clearTempCookie(w, oidc.CookieVerifier)
+	clearTempCookie(w, oidc.CookieRedirectURI)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
