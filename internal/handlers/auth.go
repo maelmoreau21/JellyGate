@@ -61,17 +61,81 @@ func (h *AuthHandler) tr(r *http.Request, key, fallback string) string {
 	return value
 }
 
+func (h *AuthHandler) resolveEffectiveAuthentikConfig() config.AuthentikConfig {
+	cfg := config.AuthentikConfig{
+		Enabled:            false,
+		UserGroup:          "jellygate-users",
+		AdminGroup:         "jellygate-admins",
+		JellyfinUserGroup:  "jellyfin-users",
+		EnrollmentFlowSlug: "default-enrollment-flow",
+	}
+
+	if h.db != nil {
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil {
+			if dbCfg.URL != "" || dbCfg.IssuerURL != "" || dbCfg.ClientID != "" || dbCfg.APIToken != "" || dbCfg.Enabled {
+				cfg = dbCfg
+			}
+		}
+	}
+
+	if h.cfg != nil {
+		env := h.cfg.Authentik
+
+		if strings.TrimSpace(env.URL) != "" {
+			cfg.URL = strings.TrimSpace(env.URL)
+		}
+		if strings.TrimSpace(env.IssuerURL) != "" {
+			cfg.IssuerURL = strings.TrimSpace(env.IssuerURL)
+		}
+		if strings.TrimSpace(env.ClientID) != "" {
+			cfg.ClientID = strings.TrimSpace(env.ClientID)
+		}
+		if strings.TrimSpace(env.ClientSecret) != "" {
+			cfg.ClientSecret = strings.TrimSpace(env.ClientSecret)
+		}
+		if strings.TrimSpace(env.RedirectURL) != "" {
+			cfg.RedirectURL = strings.TrimSpace(env.RedirectURL)
+		}
+		if strings.TrimSpace(env.APIToken) != "" {
+			cfg.APIToken = strings.TrimSpace(env.APIToken)
+		}
+		if strings.TrimSpace(env.UserGroup) != "" {
+			cfg.UserGroup = strings.TrimSpace(env.UserGroup)
+		}
+		if strings.TrimSpace(env.AdminGroup) != "" {
+			cfg.AdminGroup = strings.TrimSpace(env.AdminGroup)
+		}
+		if strings.TrimSpace(env.JellyfinUserGroup) != "" {
+			cfg.JellyfinUserGroup = strings.TrimSpace(env.JellyfinUserGroup)
+		}
+		if strings.TrimSpace(env.InvitersGroup) != "" {
+			cfg.InvitersGroup = strings.TrimSpace(env.InvitersGroup)
+		}
+		if strings.TrimSpace(env.InvitersRecursiveGroup) != "" {
+			cfg.InvitersRecursiveGroup = strings.TrimSpace(env.InvitersRecursiveGroup)
+		}
+		if strings.TrimSpace(env.EnrollmentFlowSlug) != "" {
+			cfg.EnrollmentFlowSlug = strings.TrimSpace(env.EnrollmentFlowSlug)
+		}
+		if env.Enabled {
+			cfg.Enabled = true
+		}
+	}
+
+	if cfg.RedirectURL == "" && h.cfg != nil && h.cfg.BaseURL != "" {
+		cfg.RedirectURL = strings.TrimRight(h.cfg.BaseURL, "/") + "/auth/callback"
+	}
+
+	return cfg
+}
+
 func (h *AuthHandler) getEffectiveAuthentikClient() authentik.Client {
 	if h.authClient != nil {
 		return h.authClient
 	}
-	if h.db != nil {
-		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil && (dbCfg.URL != "" || dbCfg.IssuerURL != "") {
-			return authentik.NewClient(dbCfg)
-		}
-	}
-	if h.cfg != nil && (h.cfg.Authentik.URL != "" || h.cfg.Authentik.IssuerURL != "") {
-		return authentik.NewClient(h.cfg.Authentik)
+	cfg := h.resolveEffectiveAuthentikConfig()
+	if cfg.URL != "" || cfg.IssuerURL != "" {
+		return authentik.NewClient(cfg)
 	}
 	return nil
 }
@@ -80,13 +144,9 @@ func (h *AuthHandler) getEffectiveOIDCClient() oidc.Client {
 	if h.oidcClient != nil {
 		return h.oidcClient
 	}
-	if h.db != nil {
-		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil && (dbCfg.Enabled || dbCfg.URL != "" || dbCfg.IssuerURL != "") {
-			return oidc.NewClient(dbCfg)
-		}
-	}
-	if h.cfg != nil && (h.cfg.Authentik.Enabled || h.cfg.Authentik.URL != "" || h.cfg.Authentik.IssuerURL != "") {
-		return oidc.NewClient(h.cfg.Authentik)
+	cfg := h.resolveEffectiveAuthentikConfig()
+	if cfg.Enabled || cfg.URL != "" || cfg.IssuerURL != "" {
+		return oidc.NewClient(cfg)
 	}
 	return nil
 }

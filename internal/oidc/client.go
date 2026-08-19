@@ -147,24 +147,23 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 }
 
 func (c *oidcClient) getRedirectURI(r *http.Request) string {
-	if c.cfg.RedirectURL != "" && !strings.Contains(c.cfg.RedirectURL, "localhost:8097") {
-		return c.cfg.RedirectURL
+	if strings.TrimSpace(c.cfg.RedirectURL) != "" {
+		return strings.TrimSpace(c.cfg.RedirectURL)
 	}
-	if r != nil && r.Host != "" && !strings.Contains(r.Host, "localhost") && !strings.Contains(r.Host, "127.0.0.1") {
+	if r != nil && r.Host != "" {
 		isHTTPS := r.TLS != nil ||
 			strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
 			strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
-			strings.EqualFold(r.Header.Get("Front-End-Https"), "on") ||
-			strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.URL)), "https://") ||
-			strings.HasPrefix(strings.ToLower(strings.TrimSpace(c.cfg.IssuerURL)), "https://")
+			strings.EqualFold(r.Header.Get("Front-End-Https"), "on")
 		scheme := "http"
 		if isHTTPS {
 			scheme = "https"
 		}
-		return scheme + "://" + r.Host + "/auth/callback"
-	}
-	if c.cfg.RedirectURL != "" {
-		return c.cfg.RedirectURL
+		host := r.Host
+		if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
+			host = strings.TrimSpace(strings.Split(fwdHost, ",")[0])
+		}
+		return scheme + "://" + host + "/auth/callback"
 	}
 	return "http://localhost:8097/auth/callback"
 }
