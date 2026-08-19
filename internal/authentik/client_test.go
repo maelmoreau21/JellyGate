@@ -269,6 +269,35 @@ func TestAuthentikClient(t *testing.T) {
 		}
 	})
 
+	t.Run("ResolveBaseURL", func(t *testing.T) {
+		tests := []struct {
+			input    string
+			expected string
+		}{
+			{"https://auth.example.com/application/o/jellygate/", "https://auth.example.com"},
+			{"https://auth.example.com/application/o/jellygate", "https://auth.example.com"},
+			{"https://auth.example.com/if/flow/default-enrollment-flow/?itoken=123", "https://auth.example.com"},
+			{"https://auth.example.com/api/v3/core/users/", "https://auth.example.com"},
+			{"https://authentik.mydomain.local:9000/", "https://authentik.mydomain.local:9000"},
+			{"http://192.168.1.50:9000/application/o/test", "http://192.168.1.50:9000"},
+			{"https://myhost.com/authentik/application/o/jellygate/", "https://myhost.com/authentik"},
+			{"", ""},
+			{"   ", ""},
+		}
+		for _, tc := range tests {
+			out := ResolveBaseURL(tc.input)
+			if out != tc.expected {
+				t.Errorf("ResolveBaseURL(%q) = %q; expected %q", tc.input, out, tc.expected)
+			}
+		}
+	})
+
+	t.Run("GetBaseURL", func(t *testing.T) {
+		if cli.GetBaseURL() != server.URL {
+			t.Errorf("GetBaseURL() = %q; expected %q", cli.GetBaseURL(), server.URL)
+		}
+	})
+
 	t.Run("CheckHealth", func(t *testing.T) {
 		res := cli.CheckHealth(context.Background(), cfg)
 		if res == nil {

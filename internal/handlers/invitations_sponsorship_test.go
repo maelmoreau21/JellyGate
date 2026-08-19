@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -130,6 +131,10 @@ func (m *mockAuthentikClient) GetEnrollmentFlowSlug(ctx context.Context, preferr
 		return preferred
 	}
 	return "default-enrollment-flow"
+}
+
+func (m *mockAuthentikClient) GetBaseURL() string {
+	return "https://auth.example.com"
 }
 
 func TestSponsorshipAndQuotaWorkflow(t *testing.T) {
@@ -445,3 +450,226 @@ func TestAdminCreateInvitationAuthentikStageToken(t *testing.T) {
 		t.Errorf("Expected stored authentik_invitation_id='stage-pk-123', got %q", storedAuthID)
 	}
 }
+
+func TestNonAdminReferralInviteWithAuthentik(t *testing.T) {
+	db := newAuthTestDB(t)
+	cfg := &config.Config{
+		BaseURL:   "http://localhost:8097",
+		SecretKey: testAuthSecret,
+		Authentik: config.AuthentikConfig{
+			Enabled:            true,
+			URL:                "https://authentik.local/application/o/jellygate/",
+			EnrollmentFlowSlug: "default-enrollment-flow",
+			JellyfinUserGroup:  "jellyfin-users",
+			InvitersGroup:      "jellygate-inviters",
+		},
+	}
+
+	mockAuthentik := &mockAuthentikClient{}
+	renderEngine, _ := newTestRenderEngine(t)
+	adminHandler := NewAdminHandler(cfg, db, nil, mockAuthentik, nil, renderEngine)
+
+	_ = db.SaveJellyfinPolicyPresets([]config.JellyfinPolicyPreset{
+		{ID: "default", Name: "Default Profile", EnableAllFolders: true},
+	})
+	_ = db.SaveInvitationProfileConfig(config.InvitationProfileConfig{
+		PolicyPresetID: "default",
+	})
+	_ = db.SaveAuthentikConfig(cfg.Authentik)
+
+	// Inserer un utilisateur non-administrateur avec droit d'invitation (parrain)
+	res, err := db.Exec(`INSERT INTO users (username, email, can_invite, custom_quota) VALUES ('bob_sponsor', 'bob@example.com', 1, 5)`)
+	if err != nil {
+		t.Fatalf("Insert user failed: %v", err)
+	}
+	bobID, _ := res.LastInsertId()
+
+	reqPayload := map[string]interface{}{
+		"target_preset": "default",
+		"max_uses":      2,
+		"validity_days": 7,
+	}
+	body, _ := json.Marshal(reqPayload)
+
+	req := httptest.NewRequest(http.MethodPost, "/admin/api/my-invitations", bytes.NewReader(body))
+	req = req.WithContext(session.NewContext(req.Context(), &session.Payload{
+		UserID:    fmt.Sprintf("%d", bobID),
+		Username:  "bob_sponsor",
+		IsAdmin:   false,
+		CanInvite: true,
+	}))
+
+	rec := httptest.NewRecorder()
+	adminHandler.CreateMyInvitation(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("CreateMyInvitation returned status %d: %s", rec.Code, rec.Body.String())
+	}
+
+	// Verifier les metadonnees du jeton Stage Authentik genere pour le parrain non-admin
+	if mockAuthentik.lastStageTokenReq.FixedData == nil {
+		t.Fatalf("Expected FixedData to be populated")
+	}
+	if mockAuthentik.lastStageTokenReq.FixedData["source"] != "JellyGate" {
+		t.Errorf("Expected source='JellyGate', got %v", mockAuthentik.lastStageTokenReq.FixedData["source"])
+	}
+	if mockAuthentik.lastStageTokenReq.FixedData["created_by"] != "JellyGate" {
+		t.Errorf("Expected created_by='JellyGate', got %v", mockAuthentik.lastStageTokenReq.FixedData["created_by"])
+	}
+	if mockAuthentik.lastStageTokenReq.FixedData["created_by_app"] != "JellyGate" {
+		t.Errorf("Expected created_by_app='JellyGate', got %v", mockAuthentik.lastStageTokenReq.FixedData["created_by_app"])
+	}
+	if mockAuthentik.lastStageTokenReq.FixedData["sponsor"] != "bob_sponsor" {
+		t.Errorf("Expected sponsor='bob_sponsor', got %v", mockAuthentik.lastStageTokenReq.FixedData["sponsor"])
+	}
+	if !strings.HasPrefix(mockAuthentik.lastStageTokenReq.Name, "jellygate-sponsor-bob_sponsor-") {
+		t.Errorf("Expected token name to start with 'jellygate-sponsor-bob_sponsor-', got %s", mockAuthentik.lastStageTokenReq.Name)
+	}
+}
+
+func TestAuthentikURLSanitizationInInvitePage(t *testing.T) {
+	db := newAuthTestDB(t)
+	cfg := &config.Config{
+		BaseURL:   "http://localhost:8097",
+		SecretKey: testAuthSecret,
+		Authentik: config.AuthentikConfig{
+			Enabled:            true,
+			URL:                "https://authentik.mydomain.local/application/o/jellygate/",
+			EnrollmentFlowSlug: "default-enrollment-flow",
+		},
+	}
+
+	mockAuthentik := &mockAuthentikClient{}
+	renderEngine, _ := newTestRenderEngine(t)
+	invHandler := NewInvitationHandler(cfg, db, nil, nil, nil, renderEngine)
+	invHandler.SetAuthentikClient(mockAuthentik)
+
+	_ = db.SaveAuthentikConfig(cfg.Authentik)
+	_ = db.SaveProductFeaturesConfig(config.ProductFeaturesConfig{
+		AntiAbuse: config.AntiAbuseConfig{Enabled: false, Captcha: false},
+	})
+
+	_, err := db.Exec(`INSERT INTO invitations (code, max_uses, used_count, created_by, authentik_invitation_id, expires_at) VALUES ('JG-URLTEST', 1, 0, 'admin', 'stage-auth-valid-uuid', datetime('now', '+7 days'))`)
+	if err != nil {
+		t.Fatalf("Insert invitation failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/invite/JG-URLTEST", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("code", "JG-URLTEST")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rec := httptest.NewRecorder()
+	invHandler.InvitePage(rec, req)
+
+	if rec.Code != http.StatusTemporaryRedirect {
+		t.Fatalf("InvitePage returned status %d, want %d: %s", rec.Code, http.StatusTemporaryRedirect, rec.Body.String())
+	}
+
+	location := rec.Header().Get("Location")
+	// L'URL DOIT pointer vers https://authentik.mydomain.local/if/flow/default-enrollment-flow/?itoken=stage-auth-valid-uuid
+	// et NE DOIT JAMAIS contenir /application/o/
+	if strings.Contains(location, "/application/o/") {
+		t.Errorf("Redirection URL contains subpath /application/o/: %s", location)
+	}
+	expectedPrefix := "https://authentik.mydomain.local/if/flow/default-enrollment-flow/?itoken=stage-auth-valid-uuid"
+	if location != expectedPrefix {
+		t.Errorf("Expected redirect URL %q, got %q", expectedPrefix, location)
+	}
+}
+
+type mockFailingAuthentikClient struct {
+	mockAuthentikClient
+}
+
+func (m *mockFailingAuthentikClient) CreateInvitationStageToken(ctx context.Context, name string, expiresAt time.Time, fixedData map[string]interface{}, singleUse bool, flow string) (string, error) {
+	return "", fmt.Errorf("authentik api down")
+}
+
+func TestAuthentikStageTokenFailureGracefulFallback(t *testing.T) {
+	db := newAuthTestDB(t)
+	cfg := &config.Config{
+		BaseURL:   "http://localhost:8097",
+		SecretKey: testAuthSecret,
+		Authentik: config.AuthentikConfig{
+			Enabled:            true,
+			URL:                "https://authentik.local",
+			EnrollmentFlowSlug: "default-enrollment-flow",
+		},
+	}
+
+	mockFailing := &mockFailingAuthentikClient{}
+	renderEngine, _ := newTestRenderEngine(t)
+	invHandler := NewInvitationHandler(cfg, db, nil, nil, nil, renderEngine)
+	invHandler.SetAuthentikClient(mockFailing)
+
+	_ = db.SaveAuthentikConfig(cfg.Authentik)
+	_ = db.SaveProductFeaturesConfig(config.ProductFeaturesConfig{
+		AntiAbuse: config.AntiAbuseConfig{Enabled: false, Captcha: false},
+	})
+
+	// Invitation SANS jeton Authentik initial
+	_, err := db.Exec(`INSERT INTO invitations (code, max_uses, used_count, created_by, expires_at) VALUES ('JG-FAILTEST', 1, 0, 'admin', datetime('now', '+7 days'))`)
+	if err != nil {
+		t.Fatalf("Insert invitation failed: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/invite/JG-FAILTEST", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("code", "JG-FAILTEST")
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rec := httptest.NewRecorder()
+	invHandler.InvitePage(rec, req)
+
+	// Ne doit PAS rediriger vers une page 404 Authentik avec un jeton invalide
+	if rec.Code == http.StatusTemporaryRedirect {
+		t.Fatalf("InvitePage redirected when token generation failed! Location: %s", rec.Header().Get("Location"))
+	}
+	if rec.Code != http.StatusOK {
+		t.Fatalf("InvitePage returned %d, want 200 OK fallback", rec.Code)
+	}
+}
+
+func TestInvitePageLookupByAuthentikID(t *testing.T) {
+	db := newAuthTestDB(t)
+	cfg := &config.Config{
+		BaseURL:   "http://localhost:8097",
+		SecretKey: testAuthSecret,
+		Authentik: config.AuthentikConfig{
+			Enabled:            true,
+			URL:                "https://authentik.local",
+			EnrollmentFlowSlug: "default-enrollment-flow",
+		},
+	}
+
+	mockAuthentik := &mockAuthentikClient{}
+	renderEngine, _ := newTestRenderEngine(t)
+	invHandler := NewInvitationHandler(cfg, db, nil, nil, nil, renderEngine)
+	invHandler.SetAuthentikClient(mockAuthentik)
+
+	_ = db.SaveAuthentikConfig(cfg.Authentik)
+	_ = db.SaveProductFeaturesConfig(config.ProductFeaturesConfig{
+		AntiAbuse: config.AntiAbuseConfig{Enabled: false, Captcha: false},
+	})
+
+	const authStageUUID = "98765432-1111-2222-3333-444455556666"
+	_, err := db.Exec(`INSERT INTO invitations (code, max_uses, used_count, created_by, authentik_invitation_id, expires_at) VALUES ('JG-STAGEUUID', 1, 0, 'admin', ?, datetime('now', '+7 days'))`, authStageUUID)
+	if err != nil {
+		t.Fatalf("Insert invitation failed: %v", err)
+	}
+
+	// Accès direct avec l'authentik_invitation_id
+	req := httptest.NewRequest(http.MethodGet, "/invite/"+authStageUUID+"?preview=1", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("code", authStageUUID)
+	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+	rec := httptest.NewRecorder()
+	invHandler.InvitePage(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("InvitePage lookup by authentik_invitation_id returned %d, want 200: %s", rec.Code, rec.Body.String())
+	}
+}
+

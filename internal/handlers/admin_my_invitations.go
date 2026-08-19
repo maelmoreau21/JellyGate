@@ -385,7 +385,9 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		fixedData := map[string]interface{}{
 			"source":                "JellyGate",
 			"created_by":            "JellyGate",
+			"created_by_app":        "JellyGate",
 			"sponsor":               sess.Username,
+			"sponsor_user_id":       sponsorUserID,
 			"code":                  code,
 			"invitation_code":       code,
 			"groups":                targetGroups,
@@ -395,13 +397,13 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 			"account_duration_days": profile.AccountDurationDays,
 		}
 
-		tokenName := fmt.Sprintf("jellygate-%s", code)
+		tokenName := fmt.Sprintf("jellygate-sponsor-%s-%s", sess.Username, code)
 		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
-		if authErr == nil && invID != "" {
-			authentikInvID = invID
-			slog.Info("Jeton invitation Authentik créé avec succès", "code", code, "authentik_invitation_id", invID, "expires", resolvedExpiry)
+		if authErr == nil && strings.TrimSpace(invID) != "" {
+			authentikInvID = strings.TrimSpace(invID)
+			slog.Info("Jeton invitation Authentik créé avec succès pour parrainage", "code", code, "sponsor", sess.Username, "authentik_invitation_id", authentikInvID, "expires", resolvedExpiry)
 		} else if authErr != nil {
-			slog.Warn("Création token invitation Authentik échouée (fallback local)", "code", code, "error", authErr)
+			slog.Warn("Création token invitation Authentik échouée pour parrainage (fallback local)", "code", code, "sponsor", sess.Username, "error", authErr)
 		}
 	}
 
@@ -1186,13 +1188,13 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			}
 		}
 
-		tokenName := fmt.Sprintf("jellygate-%s", code)
+		tokenName := fmt.Sprintf("jellygate-invite-%s", code)
 		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
-		if authErr == nil && invID != "" {
-			authentikInvID = invID
-			slog.Info("Jeton invitation Authentik créé avec succès", "code", code, "authentik_invitation_id", invID, "expires", stageExpiry)
+		if authErr == nil && strings.TrimSpace(invID) != "" {
+			authentikInvID = strings.TrimSpace(invID)
+			slog.Info("Jeton invitation Authentik créé avec succès", "code", code, "creator", sess.Username, "authentik_invitation_id", authentikInvID, "expires", stageExpiry)
 		} else if authErr != nil {
-			slog.Warn("Création token invitation Authentik échouée (fallback local)", "code", code, "error", authErr)
+			slog.Warn("Création token invitation Authentik échouée (fallback local)", "code", code, "creator", sess.Username, "error", authErr)
 		}
 	}
 

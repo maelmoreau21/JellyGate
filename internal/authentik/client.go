@@ -96,12 +96,35 @@ type Client interface {
 	ListInvitationStageTokens(ctx context.Context) ([]InvitationTokenResponse, error)
 	DeleteInvitationStageToken(ctx context.Context, invitationID string) error
 	GetEnrollmentFlowSlug(ctx context.Context, preferred string) string
+	GetBaseURL() string
 }
 
 type client struct {
 	baseURL    string
 	apiToken   string
 	httpClient *http.Client
+}
+
+// ResolveBaseURL extrait l'URL racine (schéma + hôte + sous-chemin éventuel) de l'instance Authentik,
+// en nettoyant les sous-chemins applicatifs comme /application/o/..., /if/flow/..., /api/v3/..., /source/oauth/..., etc.
+func ResolveBaseURL(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if rawURL == "" {
+		return ""
+	}
+	for _, prefix := range []string{"/application/o", "/if/flow", "/api/v3", "/source/oauth", "/flows"} {
+		if idx := strings.Index(rawURL, prefix); idx != -1 {
+			rawURL = rawURL[:idx]
+		}
+	}
+	rawURL = strings.TrimRight(rawURL, "/")
+	if u, err := url.Parse(rawURL); err == nil && u.Scheme != "" && u.Host != "" {
+		if u.Path == "" || u.Path == "/" {
+			return u.Scheme + "://" + u.Host
+		}
+		return u.Scheme + "://" + u.Host + strings.TrimRight(u.Path, "/")
+	}
+	return rawURL
 }
 
 // NewClient crée une instance de client REST Authentik.
@@ -111,16 +134,17 @@ func NewClient(cfg config.AuthentikConfig) Client {
 		rawURL = strings.TrimRight(cfg.IssuerURL, "/")
 	}
 
-	baseURL := rawURL
-	if u, err := url.Parse(rawURL); err == nil && u.Scheme != "" && u.Host != "" {
-		baseURL = u.Scheme + "://" + u.Host
-	}
+	baseURL := ResolveBaseURL(rawURL)
 
 	return &client{
 		baseURL:    baseURL,
 		apiToken:   cfg.APIToken,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+func (c *client) GetBaseURL() string {
+	return c.baseURL
 }
 
 func (c *client) doRequest(ctx context.Context, method, endpoint string, bodyObj interface{}) ([]byte, int, error) {
@@ -678,12 +702,21 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 
 	var res struct {
 		PK string `json:"pk"`
+		ID string `json:"id"`
 	}
 	if err := json.Unmarshal(respBody, &res); err != nil {
 		return "", fmt.Errorf("failed to unmarshal invitation response: %w", err)
 	}
 
-	return res.PK, nil
+	pk := strings.TrimSpace(res.PK)
+	if pk == "" {
+		pk = strings.TrimSpace(res.ID)
+	}
+	if pk == "" {
+		return "", fmt.Errorf("invitation response did not contain a valid PK/ID: %s", string(respBody))
+	}
+
+	return pk, nil
 }
 
 func (c *client) ListInvitationStageTokens(ctx context.Context) ([]InvitationTokenResponse, error) {

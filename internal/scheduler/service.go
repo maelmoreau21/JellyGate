@@ -303,6 +303,7 @@ func (s *Service) ReconcileAuthentik(ctx context.Context) (recreated int, cleane
 				fixedData := map[string]interface{}{
 					"source":                "JellyGate",
 					"created_by":            "JellyGate",
+					"created_by_app":        "JellyGate",
 					"invitation_code":       code,
 					"code":                  code,
 					"sponsor":               createdBy,
@@ -319,7 +320,8 @@ func (s *Service) ReconcileAuthentik(ctx context.Context) (recreated int, cleane
 
 				tokenName := fmt.Sprintf("jellygate-%s", code)
 				newTokPK, tokErr := client.CreateInvitationStageToken(ctx, tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
-				if tokErr == nil && newTokPK != "" {
+				if tokErr == nil && strings.TrimSpace(newTokPK) != "" {
+					newTokPK = strings.TrimSpace(newTokPK)
 					_, _ = s.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, newTokPK, id)
 					_ = s.db.LogAction("invite.reconciled", "scheduler", code, fmt.Sprintf("Jeton Authentik recréé avec succès (PK: %s)", newTokPK))
 					slog.Info("Scheduler: invitation Authentik recréée avec succès", "code", code, "pk", newTokPK)

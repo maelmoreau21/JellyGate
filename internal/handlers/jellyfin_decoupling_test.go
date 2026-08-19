@@ -116,6 +116,9 @@ func (m *mockAuthentikDecoupledClient) GetEnrollmentFlowSlug(ctx context.Context
 	}
 	return "default-enrollment-flow"
 }
+func (m *mockAuthentikDecoupledClient) GetBaseURL() string {
+	return "http://localhost:9000"
+}
 
 func TestJellyGateStartsWithoutJellyfin(t *testing.T) {
 	cfg := &config.Config{

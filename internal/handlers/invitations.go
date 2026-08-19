@@ -214,21 +214,28 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
 	effectiveAuth := h.getEffectiveAuthentikClient()
 	if effectiveAuth != nil && authentikEnabled {
-		authURL := strings.TrimRight(authCfg.URL, "/")
-		if authURL == "" && h.cfg != nil {
-			authURL = strings.TrimRight(h.cfg.Authentik.URL, "/")
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
 		}
-		if authURL == "" && authCfg.IssuerURL != "" {
-			if u, err := url.Parse(authCfg.IssuerURL); err == nil {
-				authURL = u.Scheme + "://" + u.Host
-			}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		if rawAuthURL == "" && h.cfg != nil && h.cfg.Authentik.IssuerURL != "" {
+			rawAuthURL = h.cfg.Authentik.IssuerURL
+		}
+
+		authURL := authentik.ResolveBaseURL(rawAuthURL)
+		if authURL == "" && effectiveAuth.GetBaseURL() != "" {
+			authURL = authentik.ResolveBaseURL(effectiveAuth.GetBaseURL())
 		}
 		if authURL == "" && h.cfg != nil && h.cfg.BaseURL != "" {
-			authURL = strings.TrimRight(h.cfg.BaseURL, "/")
+			authURL = authentik.ResolveBaseURL(h.cfg.BaseURL)
 		}
 		if authURL == "" {
-			authURL = strings.TrimRight(requestBaseURL(r), "/")
+			authURL = authentik.ResolveBaseURL(requestBaseURL(r))
 		}
+
 		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
 		if flowSlug == "" && h.cfg != nil {
 			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
@@ -239,13 +246,13 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		if flowSlug == "" {
 			flowSlug = "default-enrollment-flow"
 		}
+
 		if authURL != "" {
-			invToken := inv.Code
 			var stageToken sql.NullString
-			_ = h.db.QueryRow(`SELECT authentik_invitation_id FROM invitations WHERE code = ?`, inv.Code).Scan(&stageToken)
-			if stageToken.Valid && strings.TrimSpace(stageToken.String) != "" {
-				invToken = strings.TrimSpace(stageToken.String)
-			} else {
+			_ = h.db.QueryRow(`SELECT authentik_invitation_id FROM invitations WHERE code = ? OR authentik_invitation_id = ?`, inv.Code, inv.Code).Scan(&stageToken)
+			invToken := strings.TrimSpace(stageToken.String)
+
+			if invToken == "" {
 				// Créer à la volée le token Stage Authentik si inexistant avec l'ensemble des métadonnées
 				var targetGroups []string
 				jellyfinGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
@@ -260,6 +267,7 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 				fixedData := map[string]interface{}{
 					"source":                "JellyGate",
 					"created_by":            "JellyGate",
+					"created_by_app":        "JellyGate",
 					"invitation_code":       inv.Code,
 					"code":                  inv.Code,
 					"sponsor":               inv.CreatedBy,
@@ -273,20 +281,26 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 					stageExpiry = inv.ExpiresAt.Time
 				}
 				tokenName := fmt.Sprintf("jellygate-%s", inv.Code)
-				if tokenID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && tokenID != "" {
-					invToken = tokenID
-					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tokenID, inv.ID)
-					slog.Info("Token Authentik régénéré à la volée pour l'invitation", "code", inv.Code, "token_id", tokenID)
+				if tokenID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, inv.MaxUses == 1, flowSlug); authErr == nil && strings.TrimSpace(tokenID) != "" {
+					invToken = strings.TrimSpace(tokenID)
+					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, invToken, inv.ID)
+					slog.Info("Token Authentik régénéré à la volée pour l'invitation", "code", inv.Code, "token_id", invToken)
+				} else {
+					slog.Warn("Échec régénération token Authentik pour l'invitation (fallback formulaire JellyGate)", "code", inv.Code, "error", authErr)
 				}
 			}
-			authentikEnrollmentURL := fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authURL, flowSlug, url.QueryEscape(invToken))
-			td.Data["AuthentikEnrollmentURL"] = authentikEnrollmentURL
 
-			// Redirection directe vers le flux d'inscription Authentik (sauf mode prévisualisation explicite)
-			if r.URL.Query().Get("preview") != "1" {
-				_ = h.db.LogAction("invite.redirect_authentik", inv.CreatedBy, inv.Code, fmt.Sprintf("redirected to authentik flow %s from IP %s", flowSlug, r.RemoteAddr))
-				http.Redirect(w, r, authentikEnrollmentURL, http.StatusTemporaryRedirect)
-				return
+			// Ne rediriger et ne proposer le bouton SSO Authentik QUE si un véritable jeton Authentik valide est présent
+			if invToken != "" {
+				authentikEnrollmentURL := fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authURL, flowSlug, url.QueryEscape(invToken))
+				td.Data["AuthentikEnrollmentURL"] = authentikEnrollmentURL
+
+				// Redirection directe vers le flux d'inscription Authentik (sauf mode prévisualisation explicite)
+				if r.URL.Query().Get("preview") != "1" {
+					_ = h.db.LogAction("invite.redirect_authentik", inv.CreatedBy, inv.Code, fmt.Sprintf("redirected to authentik flow %s from IP %s", flowSlug, r.RemoteAddr))
+					http.Redirect(w, r, authentikEnrollmentURL, http.StatusTemporaryRedirect)
+					return
+				}
 			}
 		}
 	}
@@ -783,7 +797,7 @@ func (h *InvitationHandler) getValidInvitation(code string) (*invitation, error)
 
 	row := h.db.QueryRow(
 		`SELECT id, code, label, max_uses, used_count, jellyfin_profile, profile_id, profile_snapshot, is_temporary, account_duration_days, preferred_lang, expires_at, created_by, created_at
-		 FROM invitations WHERE code = ?`, code)
+		 FROM invitations WHERE code = ? OR authentik_invitation_id = ?`, code, code)
 
 	var inv invitation
 	var jellyfinProfile, profileID, profileSnapshot sql.NullString

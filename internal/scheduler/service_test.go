@@ -114,6 +114,9 @@ func (m *mockAuthSchedulerClient) DeleteInvitationStageToken(ctx context.Context
 func (m *mockAuthSchedulerClient) GetEnrollmentFlowSlug(ctx context.Context, preferred string) string {
 	return "default-enrollment-flow"
 }
+func (m *mockAuthSchedulerClient) GetBaseURL() string {
+	return "http://localhost:9000"
+}
 
 func newTestDB(t *testing.T) *database.DB {
 	t.Helper()
