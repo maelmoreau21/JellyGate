@@ -405,46 +405,35 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-                {{/* Links Column */}}
+                {{/* Links Column — Single direct link */}}
                 <div class="md:col-span-8 space-y-2.5">
                     
-                    {{/* Link 1: JellyGate Portal Link */}}
-                    <div class="p-3 rounded-xl bg-white/[0.03] border border-cyan-500/30 space-y-1.5">
+                    <div class="p-3.5 rounded-xl bg-white/[0.03] border border-purple-500/30 space-y-2">
                         <div class="flex items-center justify-between">
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-cyan-300 flex items-center gap-1">
+                            <label class="text-[10px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                                <span>Lien d'invitation</span>
+                                <span id="created-link-label">Lien d'inscription</span>
                             </label>
-                            <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold">Standard</span>
+                            <span class="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold" id="created-link-badge">Authentik</span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <input type="text" id="created-link-url" readonly class="jg-input h-9 w-full bg-black/60 font-mono text-xs text-cyan-200 select-all border-cyan-500/30 rounded-lg" />
-                            <button type="button" id="created-link-copy-btn" class="jg-btn jg-btn-primary h-9 px-3 flex-shrink-0 text-xs font-bold flex items-center gap-1 rounded-lg shadow-md">
+                            <input type="text" id="created-link-url" readonly class="jg-input h-9 w-full bg-black/60 font-mono text-xs text-purple-200 select-all border-purple-500/30 rounded-lg" />
+                            <button type="button" id="created-link-copy-btn" class="jg-btn h-9 px-3.5 bg-purple-600 hover:bg-purple-500 text-white flex-shrink-0 text-xs font-bold flex items-center gap-1.5 rounded-lg shadow-md transition-all">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 <span>Copier</span>
                             </button>
-                        </div>
-                    </div>
-
-                    {{/* Link 2: Authentik Direct Enrollment Link (if enabled) */}}
-                    <div id="created-authentik-card" class="hidden p-3 rounded-xl bg-purple-950/20 border border-purple-500/30 space-y-1.5">
-                        <div class="flex items-center justify-between">
-                            <label class="text-[10px] font-bold uppercase tracking-wider text-purple-300 flex items-center gap-1">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
-                                <span>Lien Direct Authentik</span>
-                            </label>
-                            <span class="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">Flux Direct</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="text" id="created-authentik-url" readonly class="jg-input h-9 w-full bg-black/60 font-mono text-xs text-purple-200 select-all border-purple-500/30 rounded-lg" />
-                            <button type="button" id="created-authentik-copy-btn" class="jg-btn h-9 px-3 bg-purple-600 hover:bg-purple-500 text-white flex-shrink-0 text-xs font-bold flex items-center gap-1 rounded-lg shadow-md transition-all">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                <span>Copier</span>
-                            </button>
-                            <a id="created-authentik-open-btn" href="#" target="_blank" rel="noopener" class="jg-btn jg-btn-ghost h-9 px-2 flex-shrink-0 text-xs text-purple-300 hover:text-white border border-purple-500/30 rounded-lg flex items-center justify-center" title="Tester le lien dans un nouvel onglet">
+                            <a id="created-link-open-btn" href="#" target="_blank" rel="noopener" class="jg-btn jg-btn-ghost h-9 px-2.5 flex-shrink-0 text-xs text-purple-300 hover:text-white border border-purple-500/30 rounded-lg flex items-center justify-center transition-colors" title="Tester le lien dans un nouvel onglet">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                             </a>
                         </div>
+                    </div>
+
+                    {{/* Hidden backward-compat elements for JS */}}
+                    <div class="hidden" aria-hidden="true">
+                        <div id="created-authentik-card"></div>
+                        <input type="text" id="created-authentik-url" />
+                        <button type="button" id="created-authentik-copy-btn"></button>
+                        <a id="created-authentik-open-btn" href="#"></a>
                     </div>
 
                 </div>

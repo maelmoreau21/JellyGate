@@ -479,6 +479,11 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		if flowSlug == "" && h.cfg != nil {
 			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
 		}
+		if effectiveAuth != nil {
+			if discovered := effectiveAuth.GetEnrollmentFlowSlug(r.Context(), flowSlug); discovered != "" {
+				flowSlug = discovered
+			}
+		}
 		if flowSlug == "" {
 			flowSlug = "default-enrollment-flow"
 		}
@@ -1413,6 +1418,11 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
 		if flowSlug == "" && h.cfg != nil {
 			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if effectiveAuth != nil {
+			if discovered := effectiveAuth.GetEnrollmentFlowSlug(r.Context(), flowSlug); discovered != "" {
+				flowSlug = discovered
+			}
 		}
 		if flowSlug == "" {
 			flowSlug = "default-enrollment-flow"

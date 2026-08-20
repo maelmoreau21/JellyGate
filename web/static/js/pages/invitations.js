@@ -425,6 +425,7 @@
             tbody.innerHTML = list.map((invitation) => {
                 const link = invitation.invite_url || `${inviteBaseURL}/invite/${invitation.code}`;
                 const authLink = invitation.authentik_enrollment_url || '';
+                const primaryLink = authLink || link;
                 const expDate = invitation.expires_at ? new Date(invitation.expires_at).toLocaleDateString(uiLocale) : '—';
                 const profile = invitation.jellyfin_profile || {};
                 
@@ -447,7 +448,7 @@
                         <div class="flex items-center gap-2.5">
                             <code class="px-2.5 py-1 bg-black/40 border border-purple-500/30 rounded-lg text-purple-300 font-mono font-bold text-xs tracking-wider select-all shadow-inner">${invitation.code}</code>
                             <div class="flex items-center gap-1">
-                                <button class="jg-btn-icon action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle || 'Copier le lien d\'invitation')}">
+                                <button class="jg-btn-icon action-copy-link" data-link="${encodeURIComponent(primaryLink)}" title="${JG.esc(i18n.copyFullLinkTitle || 'Copier le lien d\'invitation')}">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 </button>
                                 ${authLink ? `
@@ -455,7 +456,7 @@
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
                                 </button>
                                 ` : ''}
-                                <button class="jg-btn-icon jg-btn-icon-accent action-qr-code" data-link="${encodeURIComponent(link)}" title="Afficher le Code QR">
+                                <button class="jg-btn-icon jg-btn-icon-accent action-qr-code" data-link="${encodeURIComponent(primaryLink)}" title="Afficher le Code QR">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                                 </button>
                             </div>
@@ -485,40 +486,42 @@
 
             const fullInviteLink = inviteData.invite_url || inviteData.url || `${inviteBaseURL}/invite/${inviteData.code}`;
             const authLink = inviteData.authentik_enrollment_url || '';
+            const isAuth = !!(authLink && (inviteData.authentik_enabled !== false));
+            const targetLink = isAuth ? authLink : fullInviteLink;
 
-            // 1. JellyGate Link
+            // Single primary link input
             const linkInput = document.getElementById('created-link-url');
-            if (linkInput) linkInput.value = fullInviteLink;
+            if (linkInput) linkInput.value = targetLink;
+
+            const linkLabel = document.getElementById('created-link-label');
+            if (linkLabel) linkLabel.textContent = isAuth ? 'Lien d\'inscription Authentik' : 'Lien d\'invitation';
+
+            const linkBadge = document.getElementById('created-link-badge');
+            if (linkBadge) linkBadge.textContent = isAuth ? 'Authentik' : 'Standard';
 
             const linkCopyBtn = document.getElementById('created-link-copy-btn');
             if (linkCopyBtn) {
-                linkCopyBtn.onclick = () => copyLinkToClipboard(fullInviteLink, linkCopyBtn);
+                linkCopyBtn.onclick = () => copyLinkToClipboard(targetLink, linkCopyBtn);
             }
 
-            // 2. Authentik Direct Link
-            const authCard = document.getElementById('created-authentik-card');
+            const openBtn = document.getElementById('created-link-open-btn');
+            if (openBtn) {
+                openBtn.href = targetLink;
+            }
+
+            // Legacy elements
             const authInput = document.getElementById('created-authentik-url');
+            if (authInput) authInput.value = authLink || targetLink;
             const authCopyBtn = document.getElementById('created-authentik-copy-btn');
+            if (authCopyBtn) authCopyBtn.onclick = () => copyLinkToClipboard(targetLink, authCopyBtn);
             const authOpenBtn = document.getElementById('created-authentik-open-btn');
+            if (authOpenBtn) authOpenBtn.href = targetLink;
 
-            if (authLink) {
-                if (authCard) authCard.classList.remove('hidden');
-                if (authInput) authInput.value = authLink;
-                if (authCopyBtn) {
-                    authCopyBtn.onclick = () => copyLinkToClipboard(authLink, authCopyBtn);
-                }
-                if (authOpenBtn) {
-                    authOpenBtn.href = authLink;
-                }
-            } else {
-                if (authCard) authCard.classList.add('hidden');
-            }
-
-            // 3. QR Code
+            // QR Code for the target link
             const qrImg = document.getElementById('created-qr-img');
             if (qrImg) {
                 if (window.JGQRCode && typeof window.JGQRCode.toDataURL === 'function') {
-                    qrImg.src = window.JGQRCode.toDataURL(fullInviteLink, { size: 280, margin: 2, darkColor: '#09090b', lightColor: '#ffffff' });
+                    qrImg.src = window.JGQRCode.toDataURL(targetLink, { size: 280, margin: 2, darkColor: '#09090b', lightColor: '#ffffff' });
                 } else {
                     qrImg.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="10" y="100">QR Code</text></svg>')}`;
                 }
@@ -528,7 +531,7 @@
             if (qrDownloadBtn) {
                 qrDownloadBtn.onclick = () => {
                     const a = document.createElement('a');
-                    a.href = qrImg ? qrImg.src : fullInviteLink;
+                    a.href = qrImg ? qrImg.src : targetLink;
                     a.download = `jellygate-invitation-${inviteData.code}.png`;
                     document.body.appendChild(a);
                     a.click();

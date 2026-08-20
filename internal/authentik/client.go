@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -518,7 +517,13 @@ func (c *client) GetUserByUsername(ctx context.Context, username string) (*UserD
 	return nil, fmt.Errorf("utilisateur introuvable")
 }
 
-var uuidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+func isNonSourceEnrollmentFlow(slug, designation string) bool {
+	lower := strings.ToLower(slug)
+	if strings.Contains(lower, "source") || strings.Contains(lower, "recovery") || strings.Contains(lower, "invalidation") || strings.Contains(lower, "unenroll") {
+		return false
+	}
+	return designation == "enrollment" || strings.Contains(lower, "enroll") || strings.Contains(lower, "invit") || strings.Contains(lower, "inscri") || strings.Contains(lower, "register")
+}
 
 func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string, string) {
 	flow := strings.TrimSpace(flowOrSlug)
@@ -577,21 +582,35 @@ func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string
 		}
 	}
 
-	// 3. Fallback automatique : rechercher les flux avec designation=enrollment
+	// 3. Fallback automatique : rechercher les flux avec designation=enrollment en ignorant les flux de source OAuth
 	respBody, statusCode, err := c.doRequest(ctx, http.MethodGet, "/api/v3/flows/instances/?designation=enrollment", nil)
 	if err == nil && statusCode == http.StatusOK {
 		var listRes struct {
 			Results []struct {
-				PK   string `json:"pk"`
-				Slug string `json:"slug"`
+				PK          string `json:"pk"`
+				Slug        string `json:"slug"`
+				Designation string `json:"designation"`
 			} `json:"results"`
 		}
-		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 && isUUID(listRes.Results[0].PK) {
-			return listRes.Results[0].PK, listRes.Results[0].Slug
+		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 {
+			// Priorité 1 : flux nommé explicitement default-enrollment-flow ou contenant invitation
+			for _, f := range listRes.Results {
+				if isUUID(f.PK) && isNonSourceEnrollmentFlow(f.Slug, f.Designation) {
+					if f.Slug == "default-enrollment-flow" || strings.Contains(strings.ToLower(f.Slug), "invit") {
+						return f.PK, f.Slug
+					}
+				}
+			}
+			// Priorité 2 : n'importe quel flux d'inscription non-source
+			for _, f := range listRes.Results {
+				if isUUID(f.PK) && isNonSourceEnrollmentFlow(f.Slug, f.Designation) {
+					return f.PK, f.Slug
+				}
+			}
 		}
 	}
 
-	// 4. Fallback général : lister les flux disponibles et chercher un flux d'inscription
+	// 4. Fallback général : lister les flux disponibles et chercher un flux d'inscription non-source
 	respBody, statusCode, err = c.doRequest(ctx, http.MethodGet, "/api/v3/flows/instances/?page_size=200", nil)
 	if err == nil && statusCode == http.StatusOK {
 		var listRes struct {
@@ -603,12 +622,9 @@ func (c *client) resolveFlowInfo(ctx context.Context, flowOrSlug string) (string
 		}
 		if err := json.Unmarshal(respBody, &listRes); err == nil && len(listRes.Results) > 0 {
 			for _, f := range listRes.Results {
-				if isUUID(f.PK) && (f.Designation == "enrollment" || strings.Contains(f.Slug, "enroll") || strings.Contains(f.Slug, "invit") || strings.Contains(f.Slug, "inscri")) {
+				if isUUID(f.PK) && isNonSourceEnrollmentFlow(f.Slug, f.Designation) {
 					return f.PK, f.Slug
 				}
-			}
-			if isUUID(listRes.Results[0].PK) {
-				return listRes.Results[0].PK, listRes.Results[0].Slug
 			}
 		}
 	}
@@ -687,8 +703,8 @@ func (c *client) CreateInvitationStageToken(ctx context.Context, name string, ex
 		payload["fixed_data"] = enriched
 	}
 
-	flowUUID, _ := c.resolveFlowInfo(ctx, flow)
-	if isUUID(flowUUID) {
+	flowUUID, flowSlug := c.resolveFlowInfo(ctx, flow)
+	if isUUID(flowUUID) && !strings.Contains(strings.ToLower(flowSlug), "source") {
 		payload["flow"] = flowUUID
 	}
 
