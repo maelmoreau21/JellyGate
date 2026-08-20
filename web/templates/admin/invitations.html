@@ -3,6 +3,41 @@
 {{ define "title" }}{{ .T "nav_invitations" }} — JellyGate{{ end }}
 
 {{ define "admin_content" }}
+<style>
+.quick-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.28rem 0.65rem;
+    font-size: 0.725rem;
+    font-weight: 700;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    line-height: 1.2;
+    user-select: none;
+    outline: none;
+}
+.quick-pill:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+.quick-pill:active {
+    transform: translateY(0);
+}
+.quick-pill.active {
+    background: rgba(139, 92, 246, 0.3) !important;
+    border-color: rgba(168, 85, 247, 0.8) !important;
+    color: #f3e8ff !important;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.35) !important;
+}
+</style>
+
 <div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
     <div>
         <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_invitations" }}</h1>
@@ -191,7 +226,7 @@
         
         {{/* ── Form View ── */}}
         <div id="invite-modal-form-view" class="flex flex-col">
-            {{/* Header — Compact, no SSO badge */}}
+            {{/* Header — Compact */}}
             <div class="relative flex items-center justify-between gap-3 px-5 py-3.5 border-b border-white/10 bg-gradient-to-r from-purple-950/40 via-slate-900/60 to-black/40">
                 <div class="flex items-center gap-3">
                     <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 p-0.5 shadow-md shadow-purple-500/20 flex-shrink-0 flex items-center justify-center">
@@ -234,9 +269,9 @@
                     <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
                         <div class="flex items-center justify-between">
                             <label class="text-[11px] font-bold uppercase tracking-wider text-cyan-300" for="inv-uses">{{ .T "invitations_max_uses_label" }}</label>
-                            <span class="text-[10px] text-slate-500 font-mono" id="uses-badge-hint">1 max</span>
+                            <span class="text-[10px] text-purple-300 font-mono font-semibold" id="uses-badge-hint">1 max</span>
                         </div>
-                        <div class="flex flex-wrap gap-1" id="quick-uses-pills" data-pill-group="uses">
+                        <div class="flex flex-wrap gap-1.5" id="quick-uses-pills" data-pill-group="uses">
                             <button type="button" class="quick-pill active" data-value="1">1 (Unique)</button>
                             <button type="button" class="quick-pill" data-value="5">5</button>
                             <button type="button" class="quick-pill" data-value="10">10</button>
@@ -252,9 +287,9 @@
                     <div class="p-3 rounded-xl bg-white/[0.02] border border-white/5 space-y-2">
                         <div class="flex items-center justify-between">
                             <label class="text-[11px] font-bold uppercase tracking-wider text-cyan-300" for="inv-expiry-days">{{ .T "automation_invite_link_days_label" }}</label>
-                            <span class="text-[10px] text-slate-500 font-mono" id="expiry-badge-hint">7 jours</span>
+                            <span class="text-[10px] text-cyan-300 font-mono font-semibold" id="expiry-badge-hint">7 jours</span>
                         </div>
-                        <div class="flex flex-wrap gap-1" id="quick-days-pills" data-pill-group="days">
+                        <div class="flex flex-wrap gap-1.5" id="quick-days-pills" data-pill-group="days">
                             <button type="button" class="quick-pill" data-value="1">24h</button>
                             <button type="button" class="quick-pill active" data-value="7">7 jours</button>
                             <button type="button" class="quick-pill" data-value="14">14 jours</button>
@@ -456,33 +491,6 @@
     <span id="advanced-chevron"></span>
 </div>
 
-<style>
-.quick-pill {
-    padding: 0.25rem 0.55rem;
-    font-size: 0.7rem;
-    font-weight: 700;
-    border-radius: 0.5rem;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #94a3b8;
-    transition: all 0.15s ease;
-    cursor: pointer;
-    line-height: 1.2;
-    user-select: none;
-}
-.quick-pill:hover {
-    background: rgba(255, 255, 255, 0.09);
-    color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.18);
-}
-.quick-pill.active {
-    background: rgba(139, 92, 246, 0.25);
-    border-color: rgba(168, 85, 247, 0.6);
-    color: #e9d5ff;
-    box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
-}
-</style>
-
 {{/* ── Delete Confirmation Modal ─────────────────────────────────────── */}}
 <div id="delete-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm"></div>
@@ -611,6 +619,55 @@
             securitySaved: '{{ .T "invitations_security_saved" }}',
         },
     };
+
+    // Immediate inline quick pill handler (bypasses any caching)
+    (function() {
+        function attachPillHandlers() {
+            var usesPills = document.querySelectorAll('#quick-uses-pills .quick-pill');
+            usesPills.forEach(function(pill) {
+                pill.onclick = function(e) {
+                    e.preventDefault();
+                    var val = this.getAttribute('data-value');
+                    var input = document.getElementById('inv-uses');
+                    if (input) {
+                        input.value = val;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    usesPills.forEach(function(p) { p.classList.remove('active'); });
+                    this.classList.add('active');
+                };
+            });
+
+            var daysPills = document.querySelectorAll('#quick-days-pills .quick-pill');
+            daysPills.forEach(function(pill) {
+                pill.onclick = function(e) {
+                    e.preventDefault();
+                    var val = this.getAttribute('data-value');
+                    var input = document.getElementById('inv-expiry-days');
+                    if (input) {
+                        input.value = val;
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    daysPills.forEach(function(p) { p.classList.remove('active'); });
+                    this.classList.add('active');
+                };
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', attachPillHandlers);
+        } else {
+            attachPillHandlers();
+        }
+
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest && e.target.closest('.btn-open-create-modal')) {
+                setTimeout(attachPillHandlers, 50);
+            }
+        });
+    })();
 </script>
 <script src="/static/js/libs/qrcode.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 <script src="/static/js/pages/invitations.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>

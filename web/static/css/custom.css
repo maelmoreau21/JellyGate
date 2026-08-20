@@ -4388,3 +4388,40 @@ html:not(.dark) .hover\:bg-white:hover {
         transform: translateY(0);
     }
 }
+
+/* ── Quick Pills (Invitations & Forms) ─────────────────────────────────────── */
+.quick-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.3rem 0.65rem;
+    font-size: 0.725rem;
+    font-weight: 700;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #94a3b8;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    line-height: 1.2;
+    user-select: none;
+    outline: none;
+}
+
+.quick-pill:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    transform: translateY(-1px);
+}
+
+.quick-pill:active {
+    transform: translateY(0);
+}
+
+.quick-pill.active {
+    background: rgba(139, 92, 246, 0.28) !important;
+    border-color: rgba(168, 85, 247, 0.75) !important;
+    color: #f3e8ff !important;
+    box-shadow: 0 0 12px rgba(139, 92, 246, 0.35) !important;
+}
