@@ -89,7 +89,7 @@
                     forcedUserHelp.textContent = i18n.forcedUsernameLimitHint || 'Disponible uniquement pour les invitations à usage unique (1).';
                     forcedUserHelp.classList.add('text-amber-500');
                 } else {
-                    forcedUserHelp.textContent = i18n.forcedUsernameHelp || 'Optionnel : force le nom d\'utilisateur pré-rempli lors de l\'inscription.';
+                    forcedUserHelp.textContent = i18n.forcedUsernameHelp || 'Optionnel : force le nom d\'utilisateur pré-rempli.';
                     forcedUserHelp.classList.remove('text-amber-500');
                 }
             }
@@ -99,16 +99,13 @@
             const select = document.getElementById('inv-policy-preset');
             const preset = invitationPresets.find((item) => item.id === select?.value);
             
-            // Preset & Libraries
             const presetNameEl = document.getElementById('preview-card-preset');
             const libEl = document.getElementById('preview-card-libraries');
             if (presetNameEl) {
                 presetNameEl.textContent = preset ? (preset.name || preset.id) : (i18n.profileGlobal || 'Profil global JellyGate');
             }
             if (libEl) {
-                if (!preset) {
-                    libEl.textContent = i18n.profileAllLibraries || 'Toutes les bibliothèques';
-                } else if (preset.enable_all_folders) {
+                if (!preset || preset.enable_all_folders) {
                     libEl.textContent = i18n.profileAllLibraries || 'Toutes les bibliothèques';
                 } else {
                     const count = (preset.enabled_folder_ids || []).length;
@@ -116,24 +113,26 @@
                 }
             }
 
-            // Uses
+            // Uses hint & badge
             const usesInput = document.getElementById('inv-uses');
+            const usesHint = document.getElementById('uses-badge-hint');
             const usesEl = document.getElementById('preview-card-uses');
-            if (usesEl && usesInput) {
+            if (usesInput) {
                 const u = parseInt(usesInput.value, 10);
-                if (u === 1) usesEl.textContent = '1 (Usage unique)';
-                else if (u > 1) usesEl.textContent = `${u} utilisations`;
-                else usesEl.textContent = i18n.unlimited || 'Illimité';
+                const txt = u === 1 ? '1 max' : (u > 1 ? `${u} max` : 'Illimité');
+                if (usesHint) usesHint.textContent = txt;
+                if (usesEl) usesEl.textContent = u === 1 ? '1 (Usage unique)' : (u > 1 ? `${u} utilisations` : (i18n.unlimited || 'Illimité'));
             }
 
-            // Expiry
+            // Expiry hint & badge
             const daysInput = document.getElementById('inv-expiry-days');
+            const expiryHint = document.getElementById('expiry-badge-hint');
             const expiryEl = document.getElementById('preview-card-expiry');
-            if (expiryEl && daysInput) {
+            if (daysInput) {
                 const d = parseInt(daysInput.value, 10);
-                if (d === 1) expiryEl.textContent = '24 heures';
-                else if (d > 1) expiryEl.textContent = `${d} jours`;
-                else expiryEl.textContent = 'Permanent (sans limite)';
+                const txt = d === 1 ? '24h' : (d > 1 ? `${d} jours` : 'Permanent');
+                if (expiryHint) expiryHint.textContent = txt;
+                if (expiryEl) expiryEl.textContent = d === 1 ? '24 heures' : (d > 1 ? `${d} jours` : 'Permanent (sans limite)');
             }
 
             // Account type
@@ -145,7 +144,7 @@
                     const dur = durationInput?.value || '30';
                     accountTypeEl.textContent = `Compte temporaire (${dur} jours d'accès)`;
                 } else {
-                    accountTypeEl.textContent = 'Compte utilisateur permanent';
+                    accountTypeEl.textContent = 'Compte permanent';
                 }
             }
         }
@@ -168,10 +167,10 @@
                         tags.push(`<span class="px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-300 font-semibold">${count} bibliothèque(s)</span>`);
                     }
                     if (preset.is_administrator) {
-                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300 font-semibold">Admin Jellyfin</span>`);
+                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300 font-semibold">Admin</span>`);
                     }
                     if (preset.can_invite) {
-                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 font-semibold">Droit de parrainage</span>`);
+                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 font-semibold">Parrain</span>`);
                     }
                     if (preset.is_temporary || preset.disable_after_days > 0) {
                         tags.push(`<span class="px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 font-semibold">Temporaire (${preset.disable_after_days || preset.default_account_duration_days || 30}j)</span>`);
@@ -232,8 +231,6 @@
         function applyInvitationPolicyUI() {
             const usesInput = document.getElementById('inv-uses');
             const linkDaysInput = document.getElementById('inv-expiry-days');
-            const userExpiryEnabled = document.getElementById('inv-user-expiry-enabled');
-            const userExpiryDays = document.getElementById('inv-user-expiry-days');
             const canInviteInput = document.getElementById('inv-new-user-can-invite');
             const canInviteWrap = document.getElementById('inv-can-invite-wrap');
             const ignoreLinkWrap = document.getElementById('inv-ignore-link-limit-wrap');
@@ -284,14 +281,48 @@
         }
 
         function syncPillButtons() {
-            const usesVal = document.getElementById('inv-uses')?.value;
-            document.querySelectorAll('#quick-uses-pills .quick-pill').forEach((pill) => {
+            const usesVal = String(document.getElementById('inv-uses')?.value ?? '');
+            document.querySelectorAll('#quick-uses-pills .quick-pill, [data-pill-group="uses"] .quick-pill').forEach((pill) => {
                 pill.classList.toggle('active', pill.dataset.value === usesVal);
             });
 
-            const daysVal = document.getElementById('inv-expiry-days')?.value;
-            document.querySelectorAll('#quick-days-pills .quick-pill').forEach((pill) => {
+            const daysVal = String(document.getElementById('inv-expiry-days')?.value ?? '');
+            document.querySelectorAll('#quick-days-pills .quick-pill, [data-pill-group="days"] .quick-pill').forEach((pill) => {
                 pill.classList.toggle('active', pill.dataset.value === daysVal);
+            });
+        }
+
+        // Direct event binding for quick pills
+        function setupQuickPills() {
+            document.querySelectorAll('.quick-pill').forEach((pill) => {
+                pill.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const parent = pill.closest('#quick-uses-pills, #quick-days-pills, [data-pill-group]');
+                    if (!parent) return;
+                    
+                    parent.querySelectorAll('.quick-pill').forEach((p) => p.classList.remove('active'));
+                    pill.classList.add('active');
+                    
+                    const val = pill.dataset.value;
+                    const isUses = parent.id === 'quick-uses-pills' || parent.dataset.pillGroup === 'uses';
+                    const isDays = parent.id === 'quick-days-pills' || parent.dataset.pillGroup === 'days';
+                    
+                    if (isUses) {
+                        const usesInput = document.getElementById('inv-uses');
+                        if (usesInput) {
+                            usesInput.value = val;
+                            usesInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            usesInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    } else if (isDays) {
+                        const daysInput = document.getElementById('inv-expiry-days');
+                        if (daysInput) {
+                            daysInput.value = val;
+                            daysInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            daysInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                });
             });
         }
 
@@ -416,11 +447,11 @@
                         <div class="flex items-center gap-2.5">
                             <code class="px-2.5 py-1 bg-black/40 border border-purple-500/30 rounded-lg text-purple-300 font-mono font-bold text-xs tracking-wider select-all shadow-inner">${invitation.code}</code>
                             <div class="flex items-center gap-1">
-                                <button class="jg-btn-icon action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle || 'Copier le lien JellyGate')}">
+                                <button class="jg-btn-icon action-copy-link" data-link="${encodeURIComponent(link)}" title="${JG.esc(i18n.copyFullLinkTitle || 'Copier le lien d\'invitation')}">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                                 </button>
                                 ${authLink ? `
-                                <button class="jg-btn-icon action-copy-authentik text-purple-400 hover:text-purple-300 hover:bg-purple-500/20" data-auth-link="${encodeURIComponent(authLink)}" title="Copier le lien direct Authentik SSO">
+                                <button class="jg-btn-icon action-copy-authentik text-purple-400 hover:text-purple-300 hover:bg-purple-500/20" data-auth-link="${encodeURIComponent(authLink)}" title="Copier le lien direct Authentik">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
                                 </button>
                                 ` : ''}
@@ -522,6 +553,7 @@
 
             applyInvitationPolicyUI();
             applySelectedInvitePreset();
+            syncPillButtons();
         }
 
         async function submitCreate(event) {
@@ -637,40 +669,29 @@
                 return;
             }
 
-            // Quick Pill buttons for Uses & Expiry
+            // Quick Pill buttons delegated fallback
             const pill = e.target.closest('.quick-pill');
             if (pill) {
-                const parent = pill.parentElement;
+                const parent = pill.closest('#quick-uses-pills, #quick-days-pills, [data-pill-group]');
                 if (parent) {
                     parent.querySelectorAll('.quick-pill').forEach((p) => p.classList.remove('active'));
                     pill.classList.add('active');
                     const val = pill.dataset.value;
-                    if (parent.id === 'quick-uses-pills') {
+                    const isUses = parent.id === 'quick-uses-pills' || parent.dataset.pillGroup === 'uses';
+                    const isDays = parent.id === 'quick-days-pills' || parent.dataset.pillGroup === 'days';
+
+                    if (isUses) {
                         const usesInput = document.getElementById('inv-uses');
                         if (usesInput) {
                             usesInput.value = val;
-                            updateForcedUsernameState();
-                            updateLivePreviewCard();
+                            usesInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
-                    } else if (parent.id === 'quick-days-pills') {
+                    } else if (isDays) {
                         const daysInput = document.getElementById('inv-expiry-days');
                         if (daysInput) {
                             daysInput.value = val;
-                            updateLivePreviewCard();
+                            daysInput.dispatchEvent(new Event('input', { bubbles: true }));
                         }
-                    }
-                }
-                return;
-            }
-
-            // Toggle Advanced Options Accordion
-            if (e.target.closest('#btn-toggle-advanced-opts')) {
-                const panel = document.getElementById('advanced-opts-panel');
-                const chevron = document.getElementById('advanced-chevron');
-                if (panel) {
-                    const isHidden = panel.classList.toggle('hidden');
-                    if (chevron) {
-                        chevron.style.transform = isHidden ? '' : 'rotate(180deg)';
                     }
                 }
                 return;
@@ -844,6 +865,7 @@
 
         document.getElementById('inv-policy-preset')?.addEventListener('change', applySelectedInvitePreset);
 
+        setupQuickPills();
         loadInvitations();
         loadSponsorStats();
         loadInviteWizardData();
