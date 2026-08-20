@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
@@ -21,20 +23,23 @@ import (
 
 // InvitationResponse représente une invitation formatée pour l'API JSON.
 type InvitationResponse struct {
-	ID                  int64                  `json:"id"`
-	Code                string                 `json:"code"`
-	Label               string                 `json:"label"`
-	PreferredLang       string                 `json:"preferred_lang"`
-	MaxUses             int                    `json:"max_uses"`
-	UsedCount           int                    `json:"used_count"`
-	JellyfinProfile     map[string]interface{} `json:"jellyfin_profile"`
-	ProfileID           string                 `json:"profile_id"`
-	ProfileSnapshot     map[string]interface{} `json:"profile_snapshot,omitempty"`
-	IsTemporary         bool                   `json:"is_temporary"`
-	AccountDurationDays int                    `json:"account_duration_days"`
-	ExpiresAt           string                 `json:"expires_at,omitempty"`
-	CreatedBy           string                 `json:"created_by"`
-	CreatedAt           string                 `json:"created_at"`
+	ID                     int64                  `json:"id"`
+	Code                   string                 `json:"code"`
+	Label                  string                 `json:"label"`
+	PreferredLang          string                 `json:"preferred_lang"`
+	MaxUses                int                    `json:"max_uses"`
+	UsedCount              int                    `json:"used_count"`
+	JellyfinProfile        map[string]interface{} `json:"jellyfin_profile"`
+	ProfileID              string                 `json:"profile_id"`
+	ProfileSnapshot        map[string]interface{} `json:"profile_snapshot,omitempty"`
+	IsTemporary            bool                   `json:"is_temporary"`
+	AccountDurationDays    int                    `json:"account_duration_days"`
+	ExpiresAt              string                 `json:"expires_at,omitempty"`
+	CreatedBy              string                 `json:"created_by"`
+	CreatedAt              string                 `json:"created_at"`
+	AuthentikInvitationID  string                 `json:"authentik_invitation_id,omitempty"`
+	AuthentikEnrollmentURL string                 `json:"authentik_enrollment_url,omitempty"`
+	InviteURL              string                 `json:"invite_url,omitempty"`
 }
 
 type InvitationSponsorStats struct {
@@ -122,8 +127,36 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	links := resolvePortalLinks(h.cfg, h.db)
+	baseURL := strings.TrimSpace(links.JellyGateURL)
+	if baseURL == "" {
+		baseURL = requestBaseURL(r)
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	var authBaseURL string
+	var flowSlug string
+	if authentikEnabled {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL = authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug = strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+	}
+
 	rows, err := h.db.Query(`
-		SELECT id, code, max_uses, used_count, expires_at, created_at 
+		SELECT id, code, max_uses, used_count, expires_at, created_at, COALESCE(authentik_invitation_id, '')
 		FROM invitations 
 		WHERE created_by = ? 
 		ORDER BY created_at DESC`, sess.Username)
@@ -139,11 +172,17 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 	for rows.Next() {
 		var i InvitationResponse
 		var rawExpiresAt, rawCreatedAt interface{}
-		if err := rows.Scan(&i.ID, &i.Code, &i.MaxUses, &i.UsedCount, &rawExpiresAt, &rawCreatedAt); err != nil {
+		var authInvID sql.NullString
+		if err := rows.Scan(&i.ID, &i.Code, &i.MaxUses, &i.UsedCount, &rawExpiresAt, &rawCreatedAt, &authInvID); err != nil {
 			continue
 		}
 		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedAt = anyToDateString(rawCreatedAt)
+		i.AuthentikInvitationID = strings.TrimSpace(authInvID.String)
+		i.InviteURL = strings.TrimRight(baseURL, "/") + "/invite/" + i.Code
+		if authentikEnabled && i.AuthentikInvitationID != "" && authBaseURL != "" {
+			i.AuthentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(i.AuthentikInvitationID))
+		}
 		isExpired := false
 		if strings.TrimSpace(i.ExpiresAt) != "" {
 			if exp, parseErr := parseAccessExpiry(i.ExpiresAt); parseErr == nil {
@@ -426,15 +465,42 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 
 	_ = h.db.LogAction("invite.created.sponsor", sess.Username, code, fmt.Sprintf(`{"target_preset":"%s","max_uses":%d,"validity_days":%d}`, targetPreset.ID, maxUses, validityDays))
 
+	var authentikEnrollmentURL string
+	if authentikEnabled && authentikInvID != "" {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL := authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+		if authBaseURL != "" {
+			authentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(authentikInvID))
+		}
+	}
+
+	inviteURL := strings.TrimRight(requestBaseURL(r), "/") + "/invite/" + code
+
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_invite_created", "Lien de parrainage créé"), Data: map[string]interface{}{
-		"code":                    code,
-		"max_uses":                maxUses,
-		"expires_at":              expiresAtResponse,
-		"authentik_invitation_id": authentikInvID,
-		"target_preset_id":        targetPreset.ID,
-		"target_preset_name":      targetPreset.Name,
-		"link_validity_days":      validityDays,
-		"invite_url":              strings.TrimRight(requestBaseURL(r), "/") + "/invite/" + code,
+		"code":                     code,
+		"max_uses":                 maxUses,
+		"expires_at":               expiresAtResponse,
+		"authentik_invitation_id":  authentikInvID,
+		"authentik_enrollment_url": authentikEnrollmentURL,
+		"authentik_enabled":        authentikEnabled,
+		"target_preset_id":         targetPreset.ID,
+		"target_preset_name":       targetPreset.Name,
+		"link_validity_days":       validityDays,
+		"invite_url":               inviteURL,
+		"url":                      inviteURL,
 	}})
 }
 
@@ -631,9 +697,37 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	links := resolvePortalLinks(h.cfg, h.db)
+	baseURL := strings.TrimSpace(links.JellyGateURL)
+	if baseURL == "" {
+		baseURL = requestBaseURL(r)
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	var authBaseURL string
+	var flowSlug string
+	if authentikEnabled {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL = authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug = strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+	}
+
 	// 2. Récupérer les données paginées
 	offset := (page - 1) * limit
-	query := fmt.Sprintf(`SELECT id, code, label, preferred_lang, max_uses, used_count, jellyfin_profile, profile_id, profile_snapshot, is_temporary, account_duration_days, expires_at, created_by, created_at FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
+	query := fmt.Sprintf(`SELECT id, code, label, preferred_lang, max_uses, used_count, jellyfin_profile, profile_id, profile_snapshot, is_temporary, account_duration_days, expires_at, created_by, created_at, COALESCE(authentik_invitation_id, '') FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
 
 	queryArgs := append(args, limit, offset)
 	rows, err := h.db.Query(query, queryArgs...)
@@ -650,11 +744,12 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		var label, profile, profileID, profileSnapshot, createdBy, preferredLang sql.NullString
 		var rawExpiresAt interface{}
 		var rawCreatedAt interface{}
+		var authInvID sql.NullString
 
 		err := rows.Scan(
 			&i.ID, &i.Code, &label, &preferredLang, &i.MaxUses, &i.UsedCount,
 			&profile, &profileID, &profileSnapshot, &i.IsTemporary, &i.AccountDurationDays,
-			&rawExpiresAt, &createdBy, &rawCreatedAt,
+			&rawExpiresAt, &createdBy, &rawCreatedAt, &authInvID,
 		)
 		if err != nil {
 			slog.Error("Erreur scan invitation", "error", err)
@@ -667,6 +762,11 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedBy = createdBy.String
 		i.CreatedAt = anyToDateString(rawCreatedAt)
+		i.AuthentikInvitationID = strings.TrimSpace(authInvID.String)
+		i.InviteURL = strings.TrimRight(baseURL, "/") + "/invite/" + i.Code
+		if authentikEnabled && i.AuthentikInvitationID != "" && authBaseURL != "" {
+			i.AuthentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(i.AuthentikInvitationID))
+		}
 
 		if profile.String != "" {
 			var p map[string]interface{}
@@ -935,6 +1035,11 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		preset = resolvedPreset
 	}
 
+	targetPresetName := ""
+	if preset != nil {
+		targetPresetName = preset.Name
+	}
+
 	code, err := generateSecureToken(16)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de generation du jeton"})
@@ -1151,11 +1256,6 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 			targetGroups = append(targetGroups, invGroup)
 		}
 
-		targetPresetName := ""
-		if preset != nil {
-			targetPresetName = preset.Name
-		}
-
 		fixedData := map[string]interface{}{
 			"source":                "JellyGate",
 			"created_by":            "JellyGate",
@@ -1300,12 +1400,44 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	var authentikEnrollmentURL string
+	if authentikEnabled && authentikInvID != "" {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL := authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+		if authBaseURL != "" {
+			authentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(authentikInvID))
+		}
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Message: "Invitation générée avec succès",
 		Data: map[string]interface{}{
-			"code": code,
-			"url":  inviteURL,
+			"code":                     code,
+			"url":                      inviteURL,
+			"invite_url":               inviteURL,
+			"authentik_invitation_id":  authentikInvID,
+			"authentik_enrollment_url": authentikEnrollmentURL,
+			"authentik_enabled":        authentikEnabled,
+			"target_preset_id":         targetPresetID,
+			"target_preset_name":       targetPresetName,
+			"max_uses":                 maxUses,
+			"expires_at":               expiresAtResponse,
+			"is_temporary":             profile.IsTemporary,
+			"account_duration_days":    profile.AccountDurationDays,
 		},
 	})
 }
