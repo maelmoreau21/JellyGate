@@ -76,15 +76,25 @@ func (db *DB) LinkAuthentikID(ctx context.Context, userID int64, authentikID str
 
 // SyncOIDCUser gère le JIT d'un utilisateur authentifié par OIDC.
 func (db *DB) SyncOIDCUser(ctx context.Context, authentikID, username, email string) (*User, error) {
+	return db.SyncOIDCUserWithName(ctx, authentikID, username, "", email)
+}
+
+// SyncOIDCUserWithName gère le JIT d'un utilisateur authentifié par OIDC avec support du nom complet pour le rapprochement.
+func (db *DB) SyncOIDCUserWithName(ctx context.Context, authentikID, username, fullName, email string) (*User, error) {
 	authentikID = strings.TrimSpace(authentikID)
 	username = strings.TrimSpace(username)
+	fullName = strings.TrimSpace(fullName)
 	email = strings.TrimSpace(email)
 
 	if authentikID == "" {
 		return nil, errors.New("authentik_id cannot be empty")
 	}
 	if username == "" {
-		return nil, errors.New("username cannot be empty")
+		if fullName != "" {
+			username = fullName
+		} else {
+			return nil, errors.New("username cannot be empty")
+		}
 	}
 
 	// 1. Recherche par authentik_id
@@ -102,7 +112,7 @@ func (db *DB) SyncOIDCUser(ctx context.Context, authentikID, username, email str
 		return user, nil
 	}
 
-	// 2. Rapprochement par nom d'utilisateur (comptes migrés)
+	// 2. Rapprochement par nom d'utilisateur exact (comptes migrés)
 	user, err = db.GetUserByUsername(ctx, username)
 	if err == nil && user != nil {
 		_ = db.LinkAuthentikID(ctx, user.ID, authentikID)
@@ -116,6 +126,24 @@ func (db *DB) SyncOIDCUser(ctx context.Context, authentikID, username, email str
 		}
 		user.AuthentikID = sql.NullString{String: authentikID, Valid: true}
 		return user, nil
+	}
+
+	// 2b. Rapprochement par nom complet (ex: compte local Jellyfin nommé "Maël Moreau" alors que le login Authentik est "mmoreau")
+	if fullName != "" && !strings.EqualFold(fullName, username) {
+		user, err = db.GetUserByUsername(ctx, fullName)
+		if err == nil && user != nil {
+			_ = db.LinkAuthentikID(ctx, user.ID, authentikID)
+			if email != "" && user.Email != email {
+				query := `UPDATE users SET email = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+				if db.IsSQLite() {
+					query = `UPDATE users SET email = ?, updated_at = datetime('now') WHERE id = ?`
+				}
+				_, _ = db.ExecContext(ctx, query, email, user.ID)
+				user.Email = email
+			}
+			user.AuthentikID = sql.NullString{String: authentikID, Valid: true}
+			return user, nil
+		}
 	}
 
 	// 3. Rapprochement par email

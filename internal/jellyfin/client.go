@@ -719,6 +719,48 @@ func (c *Client) GetUser(userID string) (*User, error) {
 	return &user, nil
 }
 
+// GetUsers récupère la liste de tous les utilisateurs présents dans Jellyfin.
+func (c *Client) GetUsers() ([]User, error) {
+	resp, err := c.doRequest(http.MethodGet, "/Users", nil)
+	if err != nil {
+		return nil, fmt.Errorf("jellyfin.GetUsers: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		return nil, fmt.Errorf("jellyfin.GetUsers: HTTP %d — %s", resp.StatusCode, string(body))
+	}
+
+	var users []User
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, fmt.Errorf("jellyfin.GetUsers: erreur de décodage: %w", err)
+	}
+
+	return users, nil
+}
+
+// GetUserByName recherche un utilisateur Jellyfin par son nom (insensible à la casse).
+func (c *Client) GetUserByName(name string) (*User, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("jellyfin.GetUserByName: nom vide")
+	}
+
+	users, err := c.GetUsers()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range users {
+		if strings.EqualFold(strings.TrimSpace(users[i].Name), name) {
+			return &users[i], nil
+		}
+	}
+
+	return nil, fmt.Errorf("jellyfin.GetUserByName: utilisateur %q introuvable", name)
+}
+
 // GetLibraries récupère la liste des bibliothèques de médias.
 func (c *Client) GetLibraries() ([]Library, error) {
 	resp, err := c.doRequest(http.MethodGet, "/Library/VirtualFolders", nil)

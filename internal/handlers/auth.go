@@ -287,7 +287,7 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	// Synchronisation JIT ou rapprochement de compte existant
 	var user *database.User
 	if h.db != nil {
-		user, err = h.db.SyncOIDCUser(r.Context(), claims.Sub, claims.PreferredUsername, claims.Email)
+		user, err = h.db.SyncOIDCUserWithName(r.Context(), claims.Sub, claims.PreferredUsername, claims.Name, claims.Email)
 		if err != nil {
 			slog.Error("Erreur lors de la synchronisation JIT OIDC", "error", err, "sub", claims.Sub)
 			h.redirectLoginError(w, r, "sync_failed", claims.PreferredUsername)

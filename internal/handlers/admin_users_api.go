@@ -20,7 +20,7 @@ import (
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
-// SyncJellyfinUsers synchronise manuellement les utilisateurs depuis Authentik.
+// SyncJellyfinUsers synchronise manuellement les utilisateurs depuis Authentik et les réconcilie avec Jellyfin.
 func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request) {
 	if h.authClient == nil {
 		writeJSON(w, http.StatusOK, APIResponse{
@@ -40,33 +40,124 @@ func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Récupération optionnelle des utilisateurs Jellyfin pour réconciliation multi-attributs (Name / LDAP)
+	var jfUsers []jellyfin.User
+	if h.jfClient != nil && h.jfClient.IsConfigured() {
+		if list, err := h.jfClient.GetUsers(); err == nil {
+			jfUsers = list
+		} else {
+			slog.Warn("SyncJellyfinUsers: impossible de récupérer la liste des utilisateurs Jellyfin", "error", err)
+		}
+	}
+
 	var addedCount int
+	var updatedCount int
+
 	for _, au := range authUsers {
 		authID := au.ID
 		if authID == "" && au.PK > 0 {
 			authID = fmt.Sprintf("%d", au.PK)
 		}
-		res, err := h.db.Exec(`
-			INSERT OR IGNORE INTO users (authentik_id, username, email, is_active)
-			VALUES (?, ?, ?, ?)
-		`, authID, au.Username, au.Email, au.IsActive)
 
-		if err == nil {
-			if affected, _ := res.RowsAffected(); affected > 0 {
-				addedCount++
+		username := strings.TrimSpace(au.Username)
+		fullName := strings.TrimSpace(au.Name)
+		email := strings.TrimSpace(au.Email)
+
+		// 1. Trouver l'identifiant Jellyfin correspondant dans jfUsers
+		var matchedJfID string
+		for _, ju := range jfUsers {
+			juName := strings.TrimSpace(ju.Name)
+			// Rapprochement par Nom complet (ex: "Maël Moreau" configuré via LDAP Username Attribute = name)
+			if fullName != "" && strings.EqualFold(juName, fullName) {
+				matchedJfID = ju.ID
+				break
+			}
+			// Rapprochement par username court (ex: "mmoreau")
+			if username != "" && strings.EqualFold(juName, username) {
+				matchedJfID = ju.ID
+				break
+			}
+			// Rapprochement par email
+			if email != "" && strings.EqualFold(juName, email) {
+				matchedJfID = ju.ID
+				break
+			}
+		}
+
+		// 2. Vérifier si un enregistrement existe déjà dans la base SQLite de JellyGate
+		var existingUserID int64
+		var currentJfID sql.NullString
+
+		// 2a. Recherche par authentik_id
+		if authID != "" {
+			_ = h.db.QueryRow(`SELECT id, jellyfin_id FROM users WHERE authentik_id = ?`, authID).Scan(&existingUserID, &currentJfID)
+		}
+		// 2b. Recherche par username
+		if existingUserID == 0 && username != "" {
+			_ = h.db.QueryRow(`SELECT id, jellyfin_id FROM users WHERE LOWER(username) = LOWER(?)`, username).Scan(&existingUserID, &currentJfID)
+		}
+		// 2c. Recherche par nom complet (si un compte local Jellyfin s'appelait "Maël Moreau")
+		if existingUserID == 0 && fullName != "" {
+			_ = h.db.QueryRow(`SELECT id, jellyfin_id FROM users WHERE LOWER(username) = LOWER(?)`, fullName).Scan(&existingUserID, &currentJfID)
+		}
+		// 2d. Recherche par email
+		if existingUserID == 0 && email != "" {
+			_ = h.db.QueryRow(`SELECT id, jellyfin_id FROM users WHERE LOWER(email) = LOWER(?)`, email).Scan(&existingUserID, &currentJfID)
+		}
+		// 2e. Recherche par jellyfin_id si trouvé
+		if existingUserID == 0 && matchedJfID != "" {
+			_ = h.db.QueryRow(`SELECT id, jellyfin_id FROM users WHERE jellyfin_id = ?`, matchedJfID).Scan(&existingUserID, &currentJfID)
+		}
+
+		if existingUserID > 0 {
+			// Mise à jour et liaison du compte existant (sans duplication)
+			effectiveJfID := matchedJfID
+			if effectiveJfID == "" && currentJfID.Valid {
+				effectiveJfID = currentJfID.String
+			}
+
+			updateSQL := `UPDATE users SET authentik_id = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+			if h.db.IsSQLite() {
+				updateSQL = `UPDATE users SET authentik_id = ?, is_active = ?, updated_at = datetime('now') WHERE id = ?`
+			}
+			if effectiveJfID != "" {
+				updateSQL = `UPDATE users SET authentik_id = ?, jellyfin_id = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+				if h.db.IsSQLite() {
+					updateSQL = `UPDATE users SET authentik_id = ?, jellyfin_id = ?, is_active = ?, updated_at = datetime('now') WHERE id = ?`
+				}
+				_, err = h.db.Exec(updateSQL, authID, effectiveJfID, au.IsActive, existingUserID)
+			} else {
+				_, err = h.db.Exec(updateSQL, authID, au.IsActive, existingUserID)
+			}
+			if err == nil {
+				updatedCount++
+			}
+		} else {
+			// Insertion d'un nouvel utilisateur
+			var jfVal interface{}
+			if matchedJfID != "" {
+				jfVal = matchedJfID
+			}
+
+			insertSQL := `INSERT INTO users (authentik_id, username, email, jellyfin_id, is_active, email_verified) VALUES (?, ?, ?, ?, ?, ?)`
+			res, err := h.db.Exec(insertSQL, authID, au.Username, au.Email, jfVal, au.IsActive, true)
+			if err == nil {
+				if affected, _ := res.RowsAffected(); affected > 0 {
+					addedCount++
+				}
 			}
 		}
 	}
 
-	slog.Info("Synchronisation manuelle Authentik terminée", "users_added", addedCount)
+	slog.Info("Synchronisation Authentik/Jellyfin terminée", "users_added", addedCount, "users_updated", updatedCount)
 	if err := h.db.LogAction("users.sync", session.FromContext(r.Context()).Username, "all",
-		fmt.Sprintf("Synchronisation manuelle déclenchée: %d nouveaux utilisateurs importés", addedCount)); err != nil {
+		fmt.Sprintf("Synchronisation manuelle déclenchée: %d nouveaux importés, %d mis à jour", addedCount, updatedCount)); err != nil {
 		slog.Warn("Erreur journalisation synchronisation utilisateurs", "error", err)
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: fmt.Sprintf(h.tr(r, "admin_sync_finished", "Synchronisation terminée: %d nouveaux utilisateurs trouvés."), addedCount),
+		Message: fmt.Sprintf(h.tr(r, "admin_sync_finished", "Synchronisation terminée: %d nouveaux utilisateurs trouvés, %d comptes rapprochés."), addedCount, updatedCount),
 	})
 }
 
@@ -222,12 +313,36 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Enrichir avec Jellyfin si disponible
 	if includeJellyfin && h.jfClient != nil && h.jfClient.IsConfigured() && len(users) > 0 {
+		var jfAllUsers []jellyfin.User
+		var jfAllLoaded bool
+
 		for i := range users {
 			if users[i].JellyfinID != "" {
 				if jfUser, err := h.jfClient.GetUser(users[i].JellyfinID); err == nil && jfUser != nil {
 					users[i].JellyfinExists = true
 					users[i].JellyfinDisabled = jfUser.Policy.IsDisabled
 					users[i].JellyfinPrimaryImageTag = jfUser.PrimaryImageTag
+				}
+			} else {
+				// Auto-réconciliation : si jellyfin_id n'est pas encore renseigné, chercher dans la liste globale Jellyfin
+				if !jfAllLoaded {
+					if list, err := h.jfClient.GetUsers(); err == nil {
+						jfAllUsers = list
+					}
+					jfAllLoaded = true
+				}
+				for _, ju := range jfAllUsers {
+					juName := strings.TrimSpace(ju.Name)
+					if (users[i].Username != "" && strings.EqualFold(juName, users[i].Username)) ||
+						(users[i].Email != "" && strings.EqualFold(juName, users[i].Email)) {
+						users[i].JellyfinID = ju.ID
+						users[i].JellyfinExists = true
+						users[i].JellyfinDisabled = ju.Policy.IsDisabled
+						users[i].JellyfinPrimaryImageTag = ju.PrimaryImageTag
+						// Mémoriser le lien dans SQLite pour les requêtes futures
+						_, _ = h.db.Exec(`UPDATE users SET jellyfin_id = ? WHERE id = ? AND (jellyfin_id IS NULL OR jellyfin_id = '')`, ju.ID, users[i].ID)
+						break
+					}
 				}
 			}
 		}
