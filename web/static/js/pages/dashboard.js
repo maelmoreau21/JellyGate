@@ -94,8 +94,9 @@
                     ? `<span class="badge badge-success">${JG.esc(i18n.statusActive || 'Active')}</span>`
                     : `<span class="badge badge-warning">${JG.esc(i18n.statusInactive || 'Inactive')}</span>`;
 
+            const displayName = user.display_name || user.jellyfin_name || user.username || '—';
             tbody.innerHTML += `<tr>
-                <td class="px-6 py-4 font-medium text-jg-text">${JG.esc(user.username)}</td>
+                <td class="px-6 py-4 font-medium text-jg-text">${JG.esc(displayName)}</td>
                 <td class="px-6 py-4">${status}</td>
                 <td class="px-6 py-4 text-jg-text-muted">${JG.esc(user.invited_by || '—')}</td>
                 <td class="px-6 py-4 text-jg-text-muted text-xs">${JG.esc(user.created_at || '—')}</td>

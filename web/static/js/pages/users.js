@@ -245,7 +245,9 @@
                 const isSelected = selectedIds.has(userID);
                 const bgClass = isSelected ? 'is-selected bg-purple-500/15' : 'hover:bg-white/[0.03]';
                 const expiry = user.access_expires_at ? fmtDate(user.access_expires_at) : '\u2014';
-                const displayUsername = user.username || ('#' + user.id);
+                const displayName = user.display_name || user.jellyfin_name || user.username || ('#' + user.id);
+                const hasDifferentUsername = user.username && user.username !== displayName && (user.display_name || user.jellyfin_name);
+                const displayUsername = displayName;
                 const rowSelectLabel = `${columnLabels.select}: ${displayUsername}`;
                 const timelineTitle = `${i18n.timeline || 'Timeline'}: ${displayUsername}`;
                 const editTitle = `${i18n.edit || 'Edit'}: ${displayUsername}`;
@@ -278,9 +280,13 @@
                     ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>'
                     : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>';
 
+                const usernameBadge = hasDifferentUsername
+                    ? `<span class="px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-[10px] font-mono text-purple-300 truncate">@${JG.esc(user.username)}</span>`
+                    : '';
+
                 return '<tr class="group ' + bgClass + ' transition-colors">'
                     + '<td data-label="' + escAttr(columnLabels.select) + '" class="px-5 py-4 w-12 text-center"><input type="checkbox" class="row-check form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer" data-id="' + user.id + '" aria-label="' + escAttr(rowSelectLabel) + '" ' + checked + '></td>'
-                    + '<td data-label="' + escAttr(columnLabels.username) + '" class="px-5 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col min-w-0"><span class="font-bold text-sm text-slate-100 truncate">' + JG.esc(displayUsername) + '</span><span class="text-xs text-slate-400 truncate">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
+                    + '<td data-label="' + escAttr(columnLabels.username) + '" class="px-5 py-4"><div class="flex items-center gap-3">' + avatarHtml + '<div class="flex flex-col min-w-0"><div class="flex items-center gap-2"><span class="font-bold text-sm text-slate-100 truncate">' + JG.esc(displayUsername) + '</span>' + usernameBadge + '</div><span class="text-xs text-slate-400 truncate">' + JG.esc(user.email || '\u2014') + '</span></div></div></td>'
                     + '<td data-label="' + escAttr(columnLabels.status) + '" class="px-5 py-4">' + userStatusBadge(user) + '</td>'
                     + '<td data-label="' + escAttr(columnLabels.jellyfin) + '" class="px-5 py-4">' + jellyfinStatusBadge(user) + '</td>'
                     + '<td data-label="' + escAttr(columnLabels.preset) + '" class="px-5 py-4"><span class="badge badge-accent">' + JG.esc(presetLabel) + '</span>' + presetStatusBadge + '</td>'

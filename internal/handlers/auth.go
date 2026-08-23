@@ -307,10 +307,16 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 	sessionExpiresAt := now.Add(sessionDuration)
 
+	displayName := strings.TrimSpace(claims.Name)
+	if displayName == "" {
+		displayName = strings.TrimSpace(claims.PreferredUsername)
+	}
+
 	sess := session.Payload{
 		UserID:             userIDStr,
 		AuthentikID:        claims.Sub,
 		Username:           claims.PreferredUsername,
+		DisplayName:        displayName,
 		Email:              claims.Email,
 		IsAdmin:            isAdmin,
 		CanInvite:          canInvite,

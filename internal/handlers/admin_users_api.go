@@ -320,6 +320,8 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 			if users[i].JellyfinID != "" {
 				if jfUser, err := h.jfClient.GetUser(users[i].JellyfinID); err == nil && jfUser != nil {
 					users[i].JellyfinExists = true
+					users[i].JellyfinName = jfUser.Name
+					users[i].DisplayName = jfUser.Name
 					users[i].JellyfinDisabled = jfUser.Policy.IsDisabled
 					users[i].JellyfinPrimaryImageTag = jfUser.PrimaryImageTag
 				}
@@ -337,6 +339,8 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 						(users[i].Email != "" && strings.EqualFold(juName, users[i].Email)) {
 						users[i].JellyfinID = ju.ID
 						users[i].JellyfinExists = true
+						users[i].JellyfinName = ju.Name
+						users[i].DisplayName = ju.Name
 						users[i].JellyfinDisabled = ju.Policy.IsDisabled
 						users[i].JellyfinPrimaryImageTag = ju.PrimaryImageTag
 						// Mémoriser le lien dans SQLite pour les requêtes futures
@@ -344,6 +348,15 @@ func (h *AdminHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 				}
+			}
+			if users[i].DisplayName == "" {
+				users[i].DisplayName = users[i].Username
+			}
+		}
+	} else {
+		for i := range users {
+			if users[i].DisplayName == "" {
+				users[i].DisplayName = users[i].Username
 			}
 		}
 	}

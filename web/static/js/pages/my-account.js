@@ -137,9 +137,10 @@
         }
 
         const profile = res.data || {};
-        const username = profile.username || '-';
-        document.getElementById('account-username').textContent = username;
-        document.getElementById('account-initial').textContent = username.charAt(0).toUpperCase();
+        const displayName = profile.display_name || profile.jellyfin_name || profile.username || '-';
+        const username = profile.username || '';
+        document.getElementById('account-username').textContent = displayName;
+        document.getElementById('account-initial').textContent = displayName.charAt(0).toUpperCase();
 
         if (profile.id) {
             const avatarUrl = `/admin/api/users/${profile.id}/avatar?t=${Date.now()}`;
@@ -159,7 +160,15 @@
             }
         }
 
-        document.getElementById('account-role').textContent = profile.is_admin ? (i18n.roleAdmin || 'Admin') : (i18n.roleUser || 'User');
+        const roleEl = document.getElementById('account-role');
+        if (roleEl) {
+            const roleText = profile.is_admin ? (i18n.roleAdmin || 'Admin') : (i18n.roleUser || 'User');
+            if (username && username !== displayName) {
+                roleEl.innerHTML = `${JG.esc(roleText)} <span class="text-slate-400 font-mono font-normal lowercase tracking-normal text-[11px] ml-1">(@${JG.esc(username)})</span>`;
+            } else {
+                roleEl.textContent = roleText;
+            }
+        }
         document.getElementById('account-expiry').textContent = formatDateTime(profile.access_expires_at, profile.created_at);
         document.getElementById('account-email-summary').textContent = profile.pending_email || profile.email || '-';
 

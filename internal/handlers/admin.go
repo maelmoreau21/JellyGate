@@ -64,6 +64,8 @@ type UserResponse struct {
 	UpdatedAt          string `json:"updated_at"`
 
 	// Statuts temps réel depuis Jellyfin (enrichissement)
+	DisplayName             string `json:"display_name,omitempty"`
+	JellyfinName            string `json:"jellyfin_name,omitempty"`
 	JellyfinDisabled        bool   `json:"jellyfin_disabled"`
 	JellyfinExists          bool   `json:"jellyfin_exists"`
 	JellyfinPrimaryImageTag string `json:"jellyfin_primary_image_tag,omitempty"`

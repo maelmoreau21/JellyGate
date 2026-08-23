@@ -25,6 +25,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		id              int64
+		jellyfinID      sql.NullString
 		email           sql.NullString
 		preferredLang   string
 		notifyExpiry    bool
@@ -35,7 +36,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	)
 
 	err := h.db.QueryRow(
-		`SELECT id, email,
+		`SELECT id, jellyfin_id, email,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email,
 		        access_expires_at, created_at
@@ -43,6 +44,7 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		sess.AuthentikID, sess.Username, sess.UserID,
 	).Scan(
 		&id,
+		&jellyfinID,
 		&email,
 		&preferredLang,
 		&notifyExpiry,
@@ -61,10 +63,33 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var jfPrimaryImageTag string
+	var jfName string
+	targetJFID := strings.TrimSpace(jellyfinID.String)
+	if targetJFID == "" {
+		targetJFID = strings.TrimSpace(sess.UserID)
+	}
+
 	if h.jfClient != nil && h.jfClient.IsConfigured() {
-		if jfUser, err := h.jfClient.GetUser(sess.UserID); err == nil && jfUser != nil {
-			jfPrimaryImageTag = jfUser.PrimaryImageTag
+		if targetJFID != "" {
+			if jfUser, err := h.jfClient.GetUser(targetJFID); err == nil && jfUser != nil {
+				jfPrimaryImageTag = jfUser.PrimaryImageTag
+				jfName = jfUser.Name
+			}
 		}
+		if jfName == "" {
+			if jfUser, err := h.jfClient.GetUserByName(sess.Username); err == nil && jfUser != nil {
+				jfPrimaryImageTag = jfUser.PrimaryImageTag
+				jfName = jfUser.Name
+			}
+		}
+	}
+
+	displayName := jfName
+	if displayName == "" && sess.DisplayName != "" {
+		displayName = sess.DisplayName
+	}
+	if displayName == "" {
+		displayName = sess.Username
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -72,6 +97,9 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"id":                         id,
 			"username":                   sess.Username,
+			"display_name":               displayName,
+			"jellyfin_name":              jfName,
+			"jellyfin_id":                jellyfinID.String,
 			"jellyfin_primary_image_tag": jfPrimaryImageTag,
 			"email":                      email.String,
 			"preferred_lang":             preferredLang,

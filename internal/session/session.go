@@ -57,6 +57,7 @@ type Payload struct {
 	UserID             string   `json:"uid"`            // ID local / Jellyfin de l'utilisateur
 	AuthentikID        string   `json:"sid,omitempty"`  // Claim 'sub' (UUID) Authentik
 	Username           string   `json:"usr"`            // Nom d'utilisateur
+	DisplayName        string   `json:"name,omitempty"` // Nom complet / Display Name (ex: "Maël Moreau")
 	Email              string   `json:"eml,omitempty"`  // Email synchronisé
 	IsAdmin            bool     `json:"adm"`            // Est administrateur (piloté par groupe OIDC ou legacy)
 	CanInvite          bool     `json:"inv,omitempty"`  // Droit de créer des invitations (jellygate-inviters)
