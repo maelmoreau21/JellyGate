@@ -356,6 +356,7 @@
   "invitations_error_loading": "Impossibile caricare gli inviti",
   "invitations_expires_on": "Scade il {date}",
   "invitations_forced_username": "Nome utente riservato",
+  "invitations_forced_username_badge": "Nome utente assegnato",
   "invitations_forced_username_help": "Opzionale. Blocca la registrazione su un solo nome utente quando devi preparare un account gia assegnato.",
   "invitations_forced_username_limit_error": "Il nome utente riservato richiede un collegamento monouso (max = 1).",
   "invitations_forced_username_limit_hint": "Il nome utente riservato è disponibile solo per i collegamenti monouso (max = 1).",

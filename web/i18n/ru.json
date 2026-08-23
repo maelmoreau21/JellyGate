@@ -356,6 +356,7 @@
   "invitations_error_loading": "Не удалось загрузить приглашения.",
   "invitations_expires_on": "Срок действия истекает {date}",
   "invitations_forced_username": "Зарезервированное имя пользователя",
+  "invitations_forced_username_badge": "Назначенное имя пользователя",
   "invitations_forced_username_help": "Необязательный. Заблокируйте регистрацию для одного имени пользователя, если вам нужна предварительно назначенная учетная запись.",
   "invitations_forced_username_limit_error": "Для зарезервированного имени пользователя требуется одноразовая ссылка (макс. = 1).",
   "invitations_forced_username_limit_hint": "Зарезервированное имя пользователя доступно только для одноразовых ссылок (макс. = 1).",

@@ -356,6 +356,7 @@
   "invitations_error_loading": "Unable to load invitations",
   "invitations_expires_on": "Expires on {date}",
   "invitations_forced_username": "Reserved username",
+  "invitations_forced_username_badge": "Assigned username",
   "invitations_forced_username_help": "Optional. Lock the signup to a single username when you need a pre-assigned account.",
   "invitations_forced_username_limit_error": "Reserved username requires a single-use link (max = 1).",
   "invitations_forced_username_limit_hint": "Reserved username is only available for single-use links (max = 1).",

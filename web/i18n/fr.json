@@ -356,6 +356,7 @@
   "invitations_error_loading": "Impossible de charger les invitations",
   "invitations_expires_on": "Expire le {date}",
   "invitations_forced_username": "Nom d utilisateur reserve",
+  "invitations_forced_username_badge": "Nom d'utilisateur assigné",
   "invitations_forced_username_help": "Optionnel. Verrouillez l inscription sur un seul identifiant quand vous preparez un compte attribue a l avance.",
   "invitations_forced_username_limit_error": "Le nom reserve necessite un lien a usage unique (max = 1).",
   "invitations_forced_username_limit_hint": "Le nom reserve n est disponible que pour les liens a usage unique (max = 1).",

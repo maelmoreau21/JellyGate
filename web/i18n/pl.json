@@ -356,6 +356,7 @@
   "invitations_error_loading": "Nie mozna zaladowac zaproszen",
   "invitations_expires_on": "Wygasa {date}",
   "invitations_forced_username": "Zarezerwowana nazwa uzytkownika",
+  "invitations_forced_username_badge": "Przypisana nazwa użytkownika",
   "invitations_forced_username_help": "Opcjonalne. Ogranicz rejestracje do jednej nazwy uzytkownika, gdy konto jest juz przypisane.",
   "invitations_forced_username_limit_error": "Zarezerwowana nazwa użytkownika wymaga jednorazowego linku (max = 1).",
   "invitations_forced_username_limit_hint": "Zarezerwowana nazwa użytkownika jest dostępna tylko dla linków jednorazowych (maks. = 1).",

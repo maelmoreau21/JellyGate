@@ -356,6 +356,7 @@
   "invitations_error_loading": "Nao foi possivel carregar os convites",
   "invitations_expires_on": "Expira em {date}",
   "invitations_forced_username": "Nome de usuario reservado",
+  "invitations_forced_username_badge": "Nome de usuário atribuído",
   "invitations_forced_username_help": "Opcional. Restrinja o cadastro a um unico nome de usuario quando a conta ja estiver previamente atribuida.",
   "invitations_forced_username_limit_error": "O nome de usuário reservado requer um link de uso único (máx. = 1).",
   "invitations_forced_username_limit_hint": "O nome de usuário reservado está disponível apenas para links de uso único (máx. = 1).",

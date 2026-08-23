@@ -356,6 +356,7 @@
   "invitations_error_loading": "Einladungen konnten nicht geladen werden",
   "invitations_expires_on": "Laeuft ab am {date}",
   "invitations_forced_username": "Reservierter Benutzername",
+  "invitations_forced_username_badge": "Zugewiesener Benutzername",
   "invitations_forced_username_help": "Optional. Sperren Sie die Registrierung auf genau einen Benutzernamen, wenn das Konto vorab feststeht.",
   "invitations_forced_username_limit_error": "Für den reservierten Benutzernamen ist ein einmaliger Link erforderlich (max. = 1).",
   "invitations_forced_username_limit_hint": "Der reservierte Benutzername ist nur für Links zur einmaligen Verwendung verfügbar (max. = 1).",

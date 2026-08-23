@@ -356,6 +356,7 @@
   "invitations_error_loading": "Kan uitnodigingen niet laden",
   "invitations_expires_on": "Verloopt op {date}",
   "invitations_forced_username": "Gereserveerde gebruikersnaam",
+  "invitations_forced_username_badge": "Toegewezen gebruikersnaam",
   "invitations_forced_username_help": "Optioneel. Vergrendel de registratie op een enkele gebruikersnaam wanneer een account al vooraf is toegewezen.",
   "invitations_forced_username_limit_error": "Voor de gereserveerde gebruikersnaam is een link voor eenmalig gebruik vereist (max = 1).",
   "invitations_forced_username_limit_hint": "Gereserveerde gebruikersnaam is alleen beschikbaar voor links voor eenmalig gebruik (max = 1).",

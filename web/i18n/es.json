@@ -356,6 +356,7 @@
   "invitations_error_loading": "No se pudieron cargar las invitaciones",
   "invitations_expires_on": "Caduca el {date}",
   "invitations_forced_username": "Nombre de usuario reservado",
+  "invitations_forced_username_badge": "Nombre de usuario asignado",
   "invitations_forced_username_help": "Opcional. Limite el registro a un solo nombre de usuario cuando la cuenta ya este asignada.",
   "invitations_forced_username_limit_error": "El nombre de usuario reservado requiere un enlace de un solo uso (máx. = 1).",
   "invitations_forced_username_limit_hint": "El nombre de usuario reservado solo está disponible para enlaces de un solo uso (máx. = 1).",

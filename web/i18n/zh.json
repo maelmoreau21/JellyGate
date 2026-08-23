@@ -356,6 +356,7 @@
   "invitations_error_loading": "无法加载邀请",
   "invitations_expires_on": "到期于 {date}",
   "invitations_forced_username": "保留用户名",
+  "invitations_forced_username_badge": "已分配的用户名",
   "invitations_forced_username_help": "选修的。当您需要预先分配的帐户时，将注册锁定为单个用户名。",
   "invitations_forced_username_limit_error": "预留用户名需要单次使用链接（max = 1）。",
   "invitations_forced_username_limit_hint": "预留用户名仅适用于单次使用链接（max = 1）。",
