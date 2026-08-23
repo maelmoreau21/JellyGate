@@ -213,6 +213,10 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 		td.Data["SubmittedUsername"] = strings.TrimSpace(profile.ForcedUsername)
 		td.Data["ForcedUsername"] = strings.TrimSpace(profile.ForcedUsername)
 	}
+	if strings.TrimSpace(profile.ForcedName) != "" {
+		td.Data["SubmittedName"] = strings.TrimSpace(profile.ForcedName)
+		td.Data["ForcedName"] = strings.TrimSpace(profile.ForcedName)
+	}
 
 	authCfg, _ := h.db.GetAuthentikConfig()
 	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
@@ -282,6 +286,9 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 				}
 				if strings.TrimSpace(profile.ForcedUsername) != "" {
 					fixedData["username"] = strings.TrimSpace(profile.ForcedUsername)
+				}
+				if strings.TrimSpace(profile.ForcedName) != "" {
+					fixedData["name"] = strings.TrimSpace(profile.ForcedName)
 				}
 				var stageExpiry time.Time
 				if inv.ExpiresAt.Valid {
@@ -451,9 +458,14 @@ func (h *InvitationHandler) InviteSubmit(w http.ResponseWriter, r *http.Request)
 			targetGroups = append(targetGroups, invGroup)
 		}
 
+		authName := form.Username
+		if strings.TrimSpace(profile.ForcedName) != "" {
+			authName = strings.TrimSpace(profile.ForcedName)
+		}
+
 		authResp, authErr := h.authClient.CreateUser(r.Context(), authentik.UserCreatePayload{
 			Username: form.Username,
-			Name:     form.Username,
+			Name:     authName,
 			Email:    form.Email,
 			IsActive: true,
 			Groups:   targetGroups,

@@ -272,6 +272,7 @@ type InviteProfile struct {
 	AccessSchedules   []AccessSchedule `json:"access_schedules"`
 
 	// JFA-Go Features
+	ForcedName          string `json:"forced_name"`      // Si rempli, impose le nom d'affichage (Display Name / Name)
 	ForcedUsername      string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
 	TemplateUserID      string `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
 	CanInvite           bool   `json:"can_invite"`

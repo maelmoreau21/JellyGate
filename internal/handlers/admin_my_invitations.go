@@ -75,6 +75,7 @@ type CreateInvitationRequest struct {
 	EnableDownloads        bool     `json:"enable_downloads"`
 	PolicyPresetID         string   `json:"policy_preset_id"`
 	GroupName              string   `json:"group_name"`
+	ForcedName             string   `json:"forced_name"`
 	ForcedUsername         string   `json:"forced_username"`
 	TemplateUserID         string   `json:"template_user_id"`
 	UsernameMinLen         *int     `json:"username_min_length"`
@@ -1081,6 +1082,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	profile := inviteProfileFromPolicyPreset(preset)
 	if sess.IsAdmin {
 		profile.GroupName = strings.TrimSpace(req.GroupName)
+		profile.ForcedName = strings.TrimSpace(req.ForcedName)
 		profile.ForcedUsername = strings.TrimSpace(req.ForcedUsername)
 		profile.TemplateUserID = strings.TrimSpace(req.TemplateUserID)
 		if req.UsernameMinLen != nil {
@@ -1117,7 +1119,12 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		profile.EnableDownload = true
 	}
 
-	profile.CanInvite = req.NewUserCanInvite
+	// Le droit de parrainage est strictement déterminé par le profil / groupe sélectionné
+	if preset != nil {
+		profile.CanInvite = preset.CanInvite || preset.CanCreateInvitations
+	} else {
+		profile.CanInvite = false
+	}
 	profile.RequireEmail = inviteCfg.RequireEmail
 
 	profile.IsTemporary = req.IsTemporary
@@ -1275,6 +1282,9 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 		if strings.TrimSpace(req.ForcedUsername) != "" {
 			fixedData["username"] = strings.TrimSpace(req.ForcedUsername)
+		}
+		if strings.TrimSpace(req.ForcedName) != "" {
+			fixedData["name"] = strings.TrimSpace(req.ForcedName)
 		}
 		sendToEmailCandidate := strings.TrimSpace(req.SendToEmail)
 		if sendToEmailCandidate == "" {

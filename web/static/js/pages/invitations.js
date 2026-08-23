@@ -68,29 +68,36 @@
 
         function updateForcedUsernameState() {
             const maxUsesInput = document.getElementById('inv-uses');
+            const forcedNameInput = document.getElementById('inv-forced-name');
             const forcedUserInput = document.getElementById('inv-forced-user');
-            const forcedUserWrap = document.getElementById('inv-forced-user-wrap');
+            const forcedIdentityWrap = document.getElementById('inv-forced-identity-wrap') || document.getElementById('inv-forced-user-wrap');
             const forcedUserHelp = document.getElementById('inv-forced-user-help');
-            if (!maxUsesInput || !forcedUserInput) return;
+            if (!maxUsesInput) return;
             
             const maxUses = parseInt(maxUsesInput.value, 10);
             const isAllowed = maxUses === 1;
             
-            forcedUserInput.disabled = !isAllowed;
-            if (!isAllowed) forcedUserInput.value = '';
+            if (forcedNameInput) {
+                forcedNameInput.disabled = !isAllowed;
+                if (!isAllowed) forcedNameInput.value = '';
+            }
+            if (forcedUserInput) {
+                forcedUserInput.disabled = !isAllowed;
+                if (!isAllowed) forcedUserInput.value = '';
+            }
             
-            if (forcedUserWrap) {
-                forcedUserWrap.classList.toggle('opacity-40', !isAllowed);
-                forcedUserWrap.classList.toggle('pointer-events-none', !isAllowed);
+            if (forcedIdentityWrap) {
+                forcedIdentityWrap.classList.toggle('opacity-40', !isAllowed);
+                forcedIdentityWrap.classList.toggle('pointer-events-none', !isAllowed);
             }
             
             if (forcedUserHelp) {
                 if (!isAllowed) {
                     forcedUserHelp.textContent = i18n.forcedUsernameLimitHint || 'Disponible uniquement pour les invitations à usage unique (1).';
-                    forcedUserHelp.classList.add('text-amber-500');
+                    forcedUserHelp.classList.add('text-amber-400');
                 } else {
-                    forcedUserHelp.textContent = i18n.forcedUsernameHelp || 'Optionnel : force le nom d\'utilisateur pré-rempli.';
-                    forcedUserHelp.classList.remove('text-amber-500');
+                    forcedUserHelp.textContent = i18n.forcedUsernameHelp || 'Optionnel : force le nom d\'affichage et le nom d\'utilisateur pré-remplis.';
+                    forcedUserHelp.classList.remove('text-amber-400');
                 }
             }
         }
@@ -570,7 +577,7 @@
             const expiryDaysInput = document.getElementById('inv-expiry-days');
             const userExpiryEnabledInput = document.getElementById('inv-user-expiry-enabled');
             const userExpiryDaysInput = document.getElementById('inv-user-expiry-days');
-            const canInviteInput = document.getElementById('inv-new-user-can-invite');
+            const forcedNameInput = document.getElementById('inv-forced-name');
             const forcedUserInput = document.getElementById('inv-forced-user');
             const emailInput = document.getElementById('inv-email');
             const preferredLangInput = document.getElementById('inv-preferred-lang');
@@ -585,9 +592,9 @@
             let expiresInDays = parseInt(expiryDaysInput?.value || '0', 10) || 0;
             const userExpiryEnabled = !!userExpiryEnabledInput?.checked;
             let userExpiryDays = parseInt(userExpiryDaysInput?.value || '0', 10) || 0;
-            const grantInvite = !!canInviteInput?.checked;
             const isTemporary = !!temporaryInput?.checked;
             const accountDurationDays = parseInt(accountDurationInput?.value || '0', 10) || 0;
+            const forcedName = (forcedNameInput?.value || '').trim();
             const forcedUsername = (forcedUserInput?.value || '').trim();
             const ignorePresetLinkExpiry = !!(ignoreLinkInput && !ignoreLinkInput.disabled && ignoreLinkInput.checked);
             const ignorePresetUserExpiry = !!(ignoreUserInput && !ignoreUserInput.disabled && ignoreUserInput.checked);
@@ -628,7 +635,7 @@
                 is_temporary: isTemporary,
                 account_duration_days: isTemporary ? accountDurationDays : 0,
                 ignore_preset_user_expiry: ignorePresetUserExpiry,
-                new_user_can_invite: grantInvite,
+                forced_name: forcedName,
                 forced_username: forcedUsername,
                 send_to_email: (emailInput?.value || '').trim(),
                 preferred_lang: preferredLang,
