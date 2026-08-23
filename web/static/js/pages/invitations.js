@@ -157,23 +157,23 @@
             
             if (tagsContainer) {
                 if (!preset) {
-                    tagsContainer.innerHTML = `<span class="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[10px] text-slate-300">Profil par défaut</span>`;
+                    tagsContainer.innerHTML = `<span class="px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-300 font-medium">Profil par défaut</span>`;
                 } else {
                     const tags = [];
                     if (preset.enable_all_folders) {
-                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-[10px] text-emerald-400 font-semibold">Toutes bibliothèques</span>`);
+                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-semibold">Toutes bibliothèques</span>`);
                     } else {
                         const count = (preset.enabled_folder_ids || []).length;
-                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20 text-[10px] text-cyan-300 font-semibold">${count} bibliothèque(s)</span>`);
+                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-300 font-semibold">${count} bibliothèque(s)</span>`);
                     }
                     if (preset.is_administrator) {
-                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-300 font-semibold">Admin</span>`);
+                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-semibold">Admin</span>`);
                     }
                     if (preset.can_invite) {
-                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-purple-500/10 border border-purple-500/20 text-[10px] text-purple-300 font-semibold">Parrain</span>`);
+                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300 font-semibold">Parrain</span>`);
                     }
                     if (preset.is_temporary || preset.disable_after_days > 0) {
-                        tags.push(`<span class="px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/20 text-[10px] text-rose-300 font-semibold">Temporaire (${preset.disable_after_days || preset.default_account_duration_days || 30}j)</span>`);
+                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 font-semibold">Temporaire (${preset.disable_after_days || preset.default_account_duration_days || 30}j)</span>`);
                     }
                     tagsContainer.innerHTML = tags.join(' ');
                 }

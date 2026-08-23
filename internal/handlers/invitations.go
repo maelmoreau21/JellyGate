@@ -209,6 +209,10 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 	td.Data["UsernameMinLength"] = minLen
 	td.Data["UsernameMaxLength"] = maxLen
 	td.Data["RequireEmail"] = profile.RequireEmail
+	if strings.TrimSpace(profile.ForcedUsername) != "" {
+		td.Data["SubmittedUsername"] = strings.TrimSpace(profile.ForcedUsername)
+		td.Data["ForcedUsername"] = strings.TrimSpace(profile.ForcedUsername)
+	}
 
 	authCfg, _ := h.db.GetAuthentikConfig()
 	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
@@ -275,6 +279,9 @@ func (h *InvitationHandler) InvitePage(w http.ResponseWriter, r *http.Request) {
 					"preset_id":             profile.PresetID,
 					"is_temporary":          profile.IsTemporary,
 					"account_duration_days": profile.AccountDurationDays,
+				}
+				if strings.TrimSpace(profile.ForcedUsername) != "" {
+					fixedData["username"] = strings.TrimSpace(profile.ForcedUsername)
 				}
 				var stageExpiry time.Time
 				if inv.ExpiresAt.Valid {
@@ -721,6 +728,13 @@ func (h *InvitationHandler) validateInviteUsername(r *http.Request, username str
 	if profile != nil {
 		usernamePolicy = *profile
 	}
+
+	if forced := strings.TrimSpace(usernamePolicy.ForcedUsername); forced != "" {
+		if !strings.EqualFold(strings.TrimSpace(username), forced) {
+			return fmt.Errorf("le nom d'utilisateur est verrouillé à « %s » pour cette invitation", forced)
+		}
+	}
+
 	minLength, maxLength := resolveInviteUsernamePolicy(usernamePolicy)
 
 	if username == "" {
