@@ -124,11 +124,25 @@
             const usesInput = document.getElementById('inv-uses');
             const usesHint = document.getElementById('uses-badge-hint');
             const usesEl = document.getElementById('preview-card-uses');
+            const statusBadge = document.getElementById('preview-badge-status');
             if (usesInput) {
                 const u = parseInt(usesInput.value, 10);
                 const txt = u === 1 ? '1 max' : (u > 1 ? `${u} max` : 'Illimité');
                 if (usesHint) usesHint.textContent = txt;
                 if (usesEl) usesEl.textContent = u === 1 ? '1 (Usage unique)' : (u > 1 ? `${u} utilisations` : (i18n.unlimited || 'Illimité'));
+                
+                if (statusBadge) {
+                    if (u === 1) {
+                        statusBadge.textContent = 'Usage unique';
+                        statusBadge.className = 'text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30';
+                    } else if (u === 0) {
+                        statusBadge.textContent = 'Illimité';
+                        statusBadge.className = 'text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+                    } else {
+                        statusBadge.textContent = `${u} usages`;
+                        statusBadge.className = 'text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+                    }
+                }
             }
 
             // Expiry hint & badge
@@ -510,19 +524,6 @@
             if (linkCopyBtn) {
                 linkCopyBtn.onclick = () => copyLinkToClipboard(targetLink, linkCopyBtn);
             }
-
-            const openBtn = document.getElementById('created-link-open-btn');
-            if (openBtn) {
-                openBtn.href = targetLink;
-            }
-
-            // Legacy elements
-            const authInput = document.getElementById('created-authentik-url');
-            if (authInput) authInput.value = authLink || targetLink;
-            const authCopyBtn = document.getElementById('created-authentik-copy-btn');
-            if (authCopyBtn) authCopyBtn.onclick = () => copyLinkToClipboard(targetLink, authCopyBtn);
-            const authOpenBtn = document.getElementById('created-authentik-open-btn');
-            if (authOpenBtn) authOpenBtn.href = targetLink;
 
             // QR Code for the target link
             const qrImg = document.getElementById('created-qr-img');

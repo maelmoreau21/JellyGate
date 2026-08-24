@@ -8,8 +8,8 @@ on:
   workflow_dispatch:
 
 env:
-  # Default gate follows the current non-regression baseline. Lower it toward 0 as locales are cleaned up.
-  MAX_SAME_AS_BASE: ${{ vars.I18N_MAX_SAME_AS_BASE || '195' }}
+  # Default gate follows the current non-regression baseline (45 max same-as-base in fr).
+  MAX_SAME_AS_BASE: ${{ vars.I18N_MAX_SAME_AS_BASE || '50' }}
 
 jobs:
   i18n-checks:

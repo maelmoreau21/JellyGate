@@ -16,3 +16,6 @@ data/
 *.db-wal
 *.db-shm
 web/i18n/suspect_keys_*.json
+scratch/
+data-test/
+

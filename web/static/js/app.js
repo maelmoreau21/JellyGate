@@ -48,16 +48,20 @@ JG.api = async function (url, opts = {}) {
         const resp = await fetch(url, config);
 
         if (resp.status === 401 || resp.status === 403) {
-            window.location.href = '/admin/login';
-            return { success: false, message: 'Session expirée' };
+            if (window.location.pathname.startsWith('/admin') && !window.location.pathname.startsWith('/admin/login')) {
+                window.location.href = '/admin/login';
+            }
+            return { success: false, message: 'Session expirée', status: resp.status };
         }
 
         const contentType = (resp.headers.get('content-type') || '').toLowerCase();
         const finalURL = (resp.url || '').toLowerCase();
 
         if (resp.redirected && finalURL.includes('/admin/login')) {
-            window.location.href = '/admin/login';
-            return { success: false, message: 'Session expirée' };
+            if (window.location.pathname.startsWith('/admin') && !window.location.pathname.startsWith('/admin/login')) {
+                window.location.href = '/admin/login';
+            }
+            return { success: false, message: 'Session expirée', status: resp.status };
         }
 
         if (!contentType.includes('application/json')) {
