@@ -75,7 +75,7 @@ func TestGetJellyfinPolicyPresetsMergesDefaultsWithoutOverwriting(t *testing.T) 
 	if got := byID["admin"]; got.Name != "Admin custom" || got.IsAdministrator {
 		t.Fatalf("existing admin preset overwritten: %+v", got)
 	}
-	for _, id := range []string{"family", "temporary_guest", "sponsor", "standard", "limited"} {
+	for _, id := range []string{"standard", "inviter_simple", "inviter_chain"} {
 		if _, ok := byID[id]; !ok {
 			t.Fatalf("default preset %q missing from merged presets", id)
 		}

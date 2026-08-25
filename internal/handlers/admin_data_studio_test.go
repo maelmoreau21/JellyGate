@@ -43,7 +43,7 @@ func decodeAPIData(t *testing.T, rec *httptest.ResponseRecorder) map[string]inte
 
 func TestPreviewInvitationDoesNotCreateInvitation(t *testing.T) {
 	handler, db := newTestAdminDataStudioHandler(t)
-	body := []byte(`{"max_uses":1,"expires_in_days":7,"policy_preset_id":"family","email_message":"Bienvenue"}`)
+	body := []byte(`{"max_uses":1,"expires_in_days":7,"policy_preset_id":"standard","email_message":"Bienvenue"}`)
 
 	rec := httptest.NewRecorder()
 	handler.PreviewInvitation(rec, newAdminRequest(http.MethodPost, "/admin/api/invitations/preview", body))

@@ -1,333 +1,446 @@
 {{ template "admin_shell.html" . }}
 
-{{ define "title" }}{{ .T "settings_email_templates_title" }} - JellyGate{{ end }}
+{{ define "title" }}{{ .T "settings_email_templates_title" }} — JellyGate{{ end }}
 
 {{ define "admin_content" }}
-<div class="jg-page-header">
-    <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "settings_email_templates_title" }}</h1>
-    <p class="text-jg-text-muted mt-2">{{ .T "settings_email_templates_desc" }}</p>
+<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+    <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "settings_email_templates_title" }}</h1>
+        <p class="text-jg-text-muted mt-2">{{ .T "settings_email_templates_desc" }}</p>
+    </div>
+    <div class="flex items-center gap-3 flex-wrap">
+        <button type="button" id="email-variable-open-btn" class="jg-btn jg-btn-ghost flex items-center gap-2 border border-white/10 text-xs font-bold rounded-xl hover:border-purple-500/40 transition-all">
+            <span class="font-mono text-purple-400 font-bold">{...}</span>
+            <span>{{ .T "settings_email_variables_open" }}</span>
+        </button>
+        <button type="submit" form="form-email-templates" class="jg-btn jg-btn-primary flex items-center gap-2 shadow-lg shadow-purple-600/25 px-6 font-bold uppercase tracking-wider text-xs rounded-xl">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+            <span>{{ .T "settings_save_templates" }}</span>
+        </button>
+    </div>
 </div>
 
-<div class="email-templates-page">
-    <div id="panel-email-templates" class="settings-panel settings-panel-email">
-      <div class="glass-card p-4 md:p-5">
-        <div class="mb-3 pb-2 border-b border-black/5 dark:border-white/10">
-          <h2 class="text-lg font-semibold text-white">{{ .T "settings_email_templates_title" }}</h2>
+<div class="space-y-6 email-templates-page">
+    <div id="panel-email-templates" class="settings-panel settings-panel-email space-y-6">
 
+        {{/* ── Barre d'outils Langue & Export ───────────────────────────────── */}}
+        <div class="jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl">
+            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                
+                {{/* Sélecteur de langue & Multilingue */}}
+                <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <label class="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 cursor-pointer hover:bg-black/40 transition-colors">
+                        <input type="checkbox" id="email-template-multilingual-enabled" class="form-checkbox w-4 h-4 rounded text-purple-600 bg-black/50 border-white/20">
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">{{ .T "settings_email_multilingual_label" }}</div>
+                            <div class="text-[10px] text-slate-400">{{ .T "settings_email_multilingual_desc" }}</div>
+                        </div>
+                    </label>
+
+                    <div id="email-template-language-controls" class="flex items-center gap-2">
+                        <label class="text-xs font-bold text-slate-300 whitespace-nowrap" id="email-template-language-label" for="email-template-lang-select">{{ .T "settings_email_language_label" }} :</label>
+                        <select id="email-template-lang-select" class="jg-input jg-select-premium h-10 bg-black/30 border-white/10 text-xs rounded-xl min-w-[160px]"></select>
+                    </div>
+
+                    <div id="email-template-multilingual-off-note" class="email-template-multilingual-note hidden text-xs text-amber-400 font-medium">
+                        {{ .T "settings_email_multilingual_off_notice" }}
+                    </div>
+                </div>
+
+                {{/* Outils Export / Import */}}
+                <div class="flex items-center gap-2 flex-wrap border-t lg:border-t-0 pt-3 lg:pt-0 border-white/5">
+                    <button type="button" id="email-template-export-lang" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-semibold border border-white/10 rounded-lg flex items-center gap-1.5 hover:text-white" title='{{ .T "settings_email_export_lang" }}'>
+                        <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <span>{{ .T "settings_email_export_lang" }}</span>
+                    </button>
+                    <button type="button" id="email-template-export-all" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-semibold border border-white/10 rounded-lg flex items-center gap-1.5 hover:text-white" title='{{ .T "settings_email_export_all" }}'>
+                        <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+                        <span>{{ .T "settings_email_export_all" }}</span>
+                    </button>
+                    <button type="button" id="email-template-import-btn" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-semibold border border-white/10 rounded-lg flex items-center gap-1.5 hover:text-white" title='{{ .T "settings_email_import" }}'>
+                        <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                        <span>{{ .T "settings_email_import" }}</span>
+                    </button>
+                    <input type="file" id="email-template-import-file" class="hidden" accept=".zip,application/zip,application/x-zip-compressed">
+                </div>
+
+            </div>
+
+            {{/* Champ actif pour variables */}}
+            <div class="mt-4 pt-4 border-t border-white/5 flex items-center justify-between text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-500 font-bold uppercase tracking-wider text-[10px]">{{ .T "settings_email_active_field_label" }} :</span>
+                    <span id="email-variable-target" class="text-purple-300 font-semibold font-mono">{{ .T "settings_email_active_field_none" }}</span>
+                </div>
+                <span class="text-[11px] text-slate-500 hidden sm:inline">{{ .T "settings_email_variable_instructions" }}</span>
+            </div>
         </div>
 
-        <div class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
-          <div class="email-template-toolbar-grid flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <label class="email-template-multilingual-toggle w-full lg:max-w-xs">
-              <input type="checkbox" id="email-template-multilingual-enabled" class="form-checkbox">
-              <span>
-                <span class="email-template-multilingual-title">{{ .T "settings_email_multilingual_label" }}</span>
-                <span class="email-template-multilingual-desc">{{ .T "settings_email_multilingual_desc" }}</span>
-              </span>
-            </label>
-            <div id="email-template-language-controls" class="email-template-language-picker w-full lg:max-w-sm">
-              <label class="jg-label" id="email-template-language-label" for="email-template-lang-select">{{ .T "settings_email_language_label" }}</label>
-              <div class="email-template-select-shell">
-                <select id="email-template-lang-select" class="jg-input jg-select-premium email-template-lang-select bg-black/20 hover:bg-black/40 text-sm h-12"></select>
-              </div>
-              <p class="text-xs text-slate-400 mt-3">{{ .T "settings_email_language_desc" }}</p>
-            </div>
-            <div id="email-template-multilingual-off-note" class="email-template-multilingual-note hidden w-full lg:max-w-sm">{{ .T "settings_email_multilingual_off_notice" }}</div>
-            <div class="flex flex-col gap-2 w-full lg:max-w-sm">
-              <div class="text-[10px] font-black uppercase tracking-[0.24em] text-jg-text-muted/70">{{ .T "settings_email_files_title" }}</div>
-              <p class="text-xs text-jg-text-muted">{{ .T "settings_email_files_desc" }}</p>
-              <div class="flex flex-wrap gap-2">
-                <button type="button" id="email-template-export-lang" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_export_lang" }}</button>
-                <button type="button" id="email-template-export-all" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_export_all" }}</button>
-                <button type="button" id="email-template-import-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_import" }}</button>
-                <input type="file" id="email-template-import-file" class="hidden" accept=".zip,application/zip,application/x-zip-compressed">
-              </div>
-            </div>
-            <div class="flex-1 rounded-xl border border-black/5 dark:border-white/10 bg-black/20 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div class="text-[10px] font-black uppercase tracking-[0.24em] text-jg-text-muted/70 mb-1">{{ .T "settings_email_active_field_label" }}</div>
-                <div id="email-variable-target" class="text-sm font-semibold text-white">{{ .T "settings_email_active_field_none" }}</div>
-                <p class="text-xs text-slate-400 mt-2">{{ .T "settings_email_variable_instructions" }}</p>
-              </div>
-              <button type="button" id="email-variable-open-btn" class="jg-btn jg-btn-sm jg-btn-ghost whitespace-nowrap">{{ .T "settings_email_variables_open" }}</button>
-            </div>
-          </div>
-        </div>
+        {{/* ── Enveloppe Globale (Header, Footer, Logo) ─────────────────────── */}}
+        <details class="jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" /></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-white">{{ .T "settings_email_base_title" }}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">{{ .T "settings_email_base_shared_desc" }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">{{ .T "settings_email_base_shared_tag" }}</span>
+                    <svg class="w-4 h-4 text-slate-400 transform group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                </div>
+            </summary>
 
-        <details class="rounded-xl bg-white/5 border border-black/5 dark:border-white/10 p-4 mb-6">
-          <summary class="flex cursor-pointer list-none items-center justify-between gap-3">
-            <div>
-              <h3 class="text-sm font-semibold text-white">{{ .T "settings_email_base_title" }}</h3>
-              <p class="text-xs text-slate-400 mt-2">{{ .T "settings_email_base_shared_desc" }}</p>
-            </div>
-            <span class="text-[10px] font-black uppercase tracking-[0.22em] text-jg-text-muted/70">{{ .T "settings_email_base_shared_tag" }}</span>
-          </summary>
+            <div class="mt-5 pt-5 border-t border-white/5 space-y-4">
+                <div>
+                    <label class="text-xs font-bold text-slate-300 block mb-1.5" for="tpl-email-logo-url">{{ .T "settings_email_logo_label" }}</label>
+                    <input type="text" id="tpl-email-logo-url" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl" placeholder="https://example.com/logo.png">
+                    <p class="text-[11px] text-slate-500 mt-1">{{ .T "settings_email_logo_desc" }}</p>
+                </div>
 
-          <div class="mt-4 p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-            <label class="jg-label" for="tpl-email-logo-url">{{ .T "settings_email_logo_label" }}</label>
-            <input type="text" id="tpl-email-logo-url" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder="https://example.com/logo.png">
-            <p class="text-xs text-slate-400 mt-2">{{ .T "settings_email_logo_desc" }}</p>
-          </div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-300 block mb-1.5" for="tpl-base-header">{{ .T "settings_email_base_header" }}</label>
+                        <textarea id="tpl-base-header" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="8"></textarea>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-300 block mb-1.5" for="tpl-base-footer">{{ .T "settings_email_base_footer" }}</label>
+                        <textarea id="tpl-base-footer" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="8"></textarea>
+                    </div>
+                </div>
 
-          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-            <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-              <label class="jg-label" for="tpl-base-header">{{ .T "settings_email_base_header" }}</label>
-              <textarea id="tpl-base-header" class="jg-input font-mono text-sm bg-black/20 hover:bg-black/40" rows="10"></textarea>
+                <div class="flex items-center justify-between gap-3 pt-2">
+                    <div class="flex items-center gap-2">
+                        <button type="button" id="tpl-base-restore-btn" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-semibold border border-white/10 rounded-lg">{{ .T "settings_email_base_restore" }}</button>
+                        <button type="button" id="tpl-base-preview-btn" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-semibold border border-white/10 rounded-lg">{{ .T "settings_email_base_preview" }}</button>
+                    </div>
+                </div>
+
+                <div class="mt-4 rounded-xl border border-white/10 bg-black/30 p-4">
+                    <div class="text-xs font-bold text-slate-200 mb-1">{{ .T "settings_email_base_live_preview_title" }}</div>
+                    <p class="text-[11px] text-slate-500 mb-3">{{ .T "settings_email_base_live_preview_desc" }}</p>
+                    <iframe id="tpl-base-live-preview-frame" sandbox="" referrerpolicy="no-referrer" class="w-full rounded-xl border border-white/10 bg-white" style="min-height:360px"></iframe>
+                </div>
             </div>
-            <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-              <label class="jg-label" for="tpl-base-footer">{{ .T "settings_email_base_footer" }}</label>
-              <textarea id="tpl-base-footer" class="jg-input font-mono text-sm bg-black/20 hover:bg-black/40" rows="10"></textarea>
-            </div>
-          </div>
-          <div class="mt-4 flex items-center justify-between gap-3 flex-wrap">
-            <div class="flex items-center gap-2 flex-wrap">
-              <button type="button" id="tpl-base-restore-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_restore" }}</button>
-              <button type="button" id="tpl-base-preview-btn" class="jg-btn jg-btn-sm jg-btn-ghost">{{ .T "settings_email_base_preview" }}</button>
-            </div>
-          </div>
-          <div class="mt-4 rounded-xl border border-black/5 dark:border-white/10 bg-white/5 p-4">
-            <h4 class="text-sm font-semibold text-white mb-2">{{ .T "settings_email_base_live_preview_title" }}</h4>
-            <p class="text-xs text-slate-400 mb-3">{{ .T "settings_email_base_live_preview_desc" }}</p>
-            <iframe id="tpl-base-live-preview-frame" sandbox="" referrerpolicy="no-referrer" class="w-full rounded-lg border border-black/5 dark:border-white/10 bg-white" style="min-height:420px"></iframe>
-          </div>
         </details>
 
-        <div class="rounded-xl bg-sky-500/10 border border-sky-500/20 p-4 mb-6">
-          <h3 class="text-sm font-semibold text-sky-100 mb-2">{{ .T "settings_email_body_mode_title" }}</h3>
-          <p class="text-xs text-sky-50/80">{{ .T "settings_email_body_mode_desc" }}</p>
-        </div>
+        {{/* ── Formulaire des modèles d'emails ──────────────────────────────── */}}
+        <form id="form-email-templates" class="space-y-6">
+            
+            {{/* SECTION 1 : Inscription & Accueil */}}
+            <div class="space-y-4">
+                <div class="flex items-center gap-2 px-1">
+                    <div class="w-2 h-2 rounded-full bg-cyan-400"></div>
+                    <h2 class="text-xs font-black uppercase tracking-widest text-cyan-300">{{ .T "settings_email_section_onboarding" }}</h2>
+                </div>
 
-        <form id="form-email-templates">
-          <div class="email-template-list">
-            <div class="mb-2">
-              <div class="text-[10px] font-black uppercase tracking-[0.28em] text-jg-accent-cyan/80 mb-2">{{ .T "settings_email_section_onboarding" }}</div>
+                {{/* 1. Confirmation */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" open data-email-template-key="confirmation" data-email-preview-field="tpl-confirmation" data-email-toggle-id="tpl-enable-confirmation-email" data-email-template-title='{{ .T "settings_email_tpl_confirmation" }}' data-email-template-desc='{{ .T "settings_email_tpl_confirmation_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_confirmation" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-confirmation-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-confirmation-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-confirmation">{{ .T "settings_email_tpl_confirmation" }}</label>
+                            <textarea id="tpl-confirmation" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
+
+                {{/* 2. Invitation */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="invitation" data-email-preview-field="tpl-invitation" data-email-template-title='{{ .T "settings_email_tpl_invitation" }}' data-email-template-desc='{{ .T "settings_email_tpl_invitation_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_invitation" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-invitation-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-invitation-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-invitation">{{ .T "settings_email_tpl_invitation" }}</label>
+                            <textarea id="tpl-invitation" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
+
+                {{/* 3. Welcome */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="welcome" data-email-preview-field="tpl-welcome" data-email-toggle-id="tpl-enable-welcome-email" data-email-template-title='{{ .T "settings_email_tpl_welcome" }}' data-email-template-desc='{{ .T "settings_email_tpl_welcome_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_welcome" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-welcome-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-welcome-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-welcome">{{ .T "settings_email_tpl_welcome" }}</label>
+                            <textarea id="tpl-welcome" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
+
+                {{/* 4. Expiration du lien d'invitation */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="invite_expiry" data-email-preview-field="tpl-invite-expiry" data-email-toggle-id="tpl-enable-invite-expiry-email" data-email-template-title='{{ .T "settings_email_tpl_invite_expiry" }}' data-email-template-desc='{{ .T "settings_email_tpl_invite_expiry_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_invite_expiry" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-invite-expiry-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-invite-expiry-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-invite-expiry">{{ .T "settings_email_tpl_invite_expiry" }}</label>
+                            <textarea id="tpl-invite-expiry" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
             </div>
 
-            <details class="email-template-item" open data-email-template-key="confirmation" data-email-preview-field="tpl-confirmation" data-email-toggle-id="tpl-enable-confirmation-email" data-email-template-title='{{ .T "settings_email_tpl_confirmation" }}' data-email-template-desc='{{ .T "settings_email_tpl_confirmation_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_confirmation" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-confirmation-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-confirmation-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
+            {{/* SECTION 2 : Cycle de Vie Utilisateur */}}
+            <div class="space-y-4 pt-4">
+                <div class="flex items-center gap-2 px-1">
+                    <div class="w-2 h-2 rounded-full bg-purple-400"></div>
+                    <h2 class="text-xs font-black uppercase tracking-widest text-purple-300">{{ .T "settings_email_section_lifecycle" }}</h2>
                 </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-confirmation">{{ .T "settings_email_tpl_confirmation" }}</label>
-                  <textarea id="tpl-confirmation" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
 
-            <details class="email-template-item" data-email-template-key="expiry_reminder" data-email-preview-field="tpl-expiry-reminder" data-email-toggle-id="tpl-enable-expiry-reminder-email" data-email-template-title='{{ .T "settings_email_tpl_expiry_reminder" }}' data-email-template-desc='{{ .T "settings_email_tpl_expiry_reminder_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_expiry_reminder" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="email-template-meta">
-                  <div>
-                    <label class="jg-label" for="tpl-expiry-reminder-days">{{ .T "settings_email_reminder_days" }}</label>
-                    <input type="number" id="tpl-expiry-reminder-days" class="jg-input max-w-xs" min="1" max="365" value="3">
-                  </div>
-                  <p class="email-template-meta-note">{{ .T "settings_email_reminder_schedule_desc" }}</p>
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-expiry-reminder-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-expiry-reminder-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-expiry-reminder">{{ .T "settings_email_tpl_expiry_reminder" }}</label>
-                  <textarea id="tpl-expiry-reminder" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
+                {{/* 5. Création de compte */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="user_creation" data-email-preview-field="tpl-user-creation" data-email-toggle-id="tpl-enable-user-creation-email" data-email-template-title='{{ .T "settings_email_tpl_user_creation" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_creation_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_user_creation" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-creation-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-user-creation-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-creation">{{ .T "settings_email_tpl_user_creation" }}</label>
+                            <textarea id="tpl-user-creation" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
 
-            <details class="email-template-item" data-email-template-key="invitation" data-email-preview-field="tpl-invitation" data-email-template-title='{{ .T "settings_email_tpl_invitation" }}' data-email-template-desc='{{ .T "settings_email_tpl_invitation_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_invitation" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-invitation-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-invitation-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-invitation">{{ .T "settings_email_tpl_invitation" }}</label>
-                  <textarea id="tpl-invitation" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
+                {{/* 6. Rappel d'expiration */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="expiry_reminder" data-email-preview-field="tpl-expiry-reminder" data-email-toggle-id="tpl-enable-expiry-reminder-email" data-email-template-title='{{ .T "settings_email_tpl_expiry_reminder" }}' data-email-template-desc='{{ .T "settings_email_tpl_expiry_reminder_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_expiry_reminder" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div class="p-3.5 rounded-xl bg-black/20 border border-white/5 flex items-center gap-3">
+                            <label class="text-xs font-bold text-slate-300 whitespace-nowrap" for="tpl-expiry-reminder-days">{{ .T "settings_email_reminder_days" }} :</label>
+                            <input type="number" id="tpl-expiry-reminder-days" class="jg-input h-9 w-24 bg-black/30 border-white/10 text-xs rounded-lg" min="1" max="365" value="3">
+                            <span class="text-xs text-slate-400">jours avant expiration</span>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-expiry-reminder-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-expiry-reminder-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-expiry-reminder">{{ .T "settings_email_tpl_expiry_reminder" }}</label>
+                            <textarea id="tpl-expiry-reminder" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
 
-            <details class="email-template-item" data-email-template-key="invite_expiry" data-email-preview-field="tpl-invite-expiry" data-email-toggle-id="tpl-enable-invite-expiry-email" data-email-template-title='{{ .T "settings_email_tpl_invite_expiry" }}' data-email-template-desc='{{ .T "settings_email_tpl_invite_expiry_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_invite_expiry" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-invite-expiry-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-invite-expiry-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-invite-expiry">{{ .T "settings_email_tpl_invite_expiry" }}</label>
-                  <textarea id="tpl-invite-expiry" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
+                {{/* 7. Compte Désactivé */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="user_disabled" data-email-preview-field="tpl-user-disabled" data-email-toggle-id="tpl-enable-user-disabled-email" data-email-template-title='{{ .T "settings_email_tpl_user_disabled" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_disabled_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_user_disabled" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-disabled-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-user-disabled-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-disabled">{{ .T "settings_email_tpl_user_disabled" }}</label>
+                            <textarea id="tpl-user-disabled" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
 
-            <details class="email-template-item" data-email-template-key="welcome" data-email-preview-field="tpl-welcome" data-email-toggle-id="tpl-enable-welcome-email" data-email-template-title='{{ .T "settings_email_tpl_welcome" }}' data-email-template-desc='{{ .T "settings_email_tpl_welcome_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_welcome" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-welcome-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-welcome-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-welcome">{{ .T "settings_email_tpl_welcome" }}</label>
-                  <textarea id="tpl-welcome" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
+                {{/* 8. Compte Réactivé */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="user_enabled" data-email-preview-field="tpl-user-enabled" data-email-toggle-id="tpl-enable-user-enabled-email" data-email-template-title='{{ .T "settings_email_tpl_user_enabled" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_enabled_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_user_enabled" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-enabled-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-user-enabled-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-enabled">{{ .T "settings_email_tpl_user_enabled" }}</label>
+                            <textarea id="tpl-user-enabled" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
 
-            <div class="mb-2 mt-2">
-              <div class="text-[10px] font-black uppercase tracking-[0.28em] text-jg-accent-cyan/80 mb-2">{{ .T "settings_email_section_lifecycle" }}</div>
+                {{/* 9. Compte Expiré */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="user_expired" data-email-preview-field="tpl-user-expired" data-email-toggle-id="tpl-enable-user-expired-email" data-email-template-title='{{ .T "settings_email_tpl_user_expired" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_expired_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_user_expired" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-expired-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-user-expired-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-expired">{{ .T "settings_email_tpl_user_expired" }}</label>
+                            <textarea id="tpl-user-expired" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
+
+                {{/* 10. Date d'expiration Ajustée */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="expiry_adjusted" data-email-preview-field="tpl-expiry-adjusted" data-email-toggle-id="tpl-enable-expiry-adjusted-email" data-email-template-title='{{ .T "settings_email_tpl_expiry_adjusted" }}' data-email-template-desc='{{ .T "settings_email_tpl_expiry_adjusted_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_expiry_adjusted" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-expiry-adjusted-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-expiry-adjusted-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-expiry-adjusted">{{ .T "settings_email_tpl_expiry_adjusted" }}</label>
+                            <textarea id="tpl-expiry-adjusted" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
+
+                {{/* 11. Suppression de compte */}}
+                <details class="email-template-item jg-card p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl group" data-email-template-key="user_deletion" data-email-preview-field="tpl-user-deletion" data-email-toggle-id="tpl-enable-user-deletion-email" data-email-template-title='{{ .T "settings_email_tpl_user_deletion" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_deletion_desc" }}'>
+                    <summary class="email-template-summary flex cursor-pointer list-none items-center justify-between gap-3 select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </div>
+                            <span class="email-template-summary-title font-bold text-sm text-white">{{ .T "settings_email_tpl_user_deletion" }}</span>
+                        </div>
+                    </summary>
+                    <div class="email-template-panel mt-4 pt-4 border-t border-white/5 space-y-4">
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-deletion-subject">{{ .T "users_bulk_email_subject" }}</label>
+                            <input type="text" id="tpl-user-deletion-subject" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-300 block mb-1" for="tpl-user-deletion">{{ .T "settings_email_tpl_user_deletion" }}</label>
+                            <textarea id="tpl-user-deletion" class="jg-input font-mono text-xs bg-black/30 border-white/10 rounded-xl p-3 w-full" rows="6"></textarea>
+                        </div>
+                    </div>
+                </details>
             </div>
 
-            <details class="email-template-item" data-email-template-key="user_creation" data-email-preview-field="tpl-user-creation" data-email-toggle-id="tpl-enable-user-creation-email" data-email-template-title='{{ .T "settings_email_tpl_user_creation" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_creation_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_user_creation" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-user-creation-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-user-creation-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-user-creation">{{ .T "settings_email_tpl_user_creation" }}</label>
-                  <textarea id="tpl-user-creation" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
-
-            <details class="email-template-item" data-email-template-key="user_deletion" data-email-preview-field="tpl-user-deletion" data-email-toggle-id="tpl-enable-user-deletion-email" data-email-template-title='{{ .T "settings_email_tpl_user_deletion" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_deletion_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_user_deletion" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-user-deletion-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-user-deletion-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-user-deletion">{{ .T "settings_email_tpl_user_deletion" }}</label>
-                  <textarea id="tpl-user-deletion" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
-
-            <details class="email-template-item" data-email-template-key="user_disabled" data-email-preview-field="tpl-user-disabled" data-email-toggle-id="tpl-enable-user-disabled-email" data-email-template-title='{{ .T "settings_email_tpl_user_disabled" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_disabled_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_user_disabled" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-user-disabled-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-user-disabled-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-user-disabled">{{ .T "settings_email_tpl_user_disabled" }}</label>
-                  <textarea id="tpl-user-disabled" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
-
-            <details class="email-template-item" data-email-template-key="user_enabled" data-email-preview-field="tpl-user-enabled" data-email-toggle-id="tpl-enable-user-enabled-email" data-email-template-title='{{ .T "settings_email_tpl_user_enabled" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_enabled_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_user_enabled" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-user-enabled-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-user-enabled-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-user-enabled">{{ .T "settings_email_tpl_user_enabled" }}</label>
-                  <textarea id="tpl-user-enabled" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
-
-            <details class="email-template-item" data-email-template-key="user_expired" data-email-preview-field="tpl-user-expired" data-email-toggle-id="tpl-enable-user-expired-email" data-email-template-title='{{ .T "settings_email_tpl_user_expired" }}' data-email-template-desc='{{ .T "settings_email_tpl_user_expired_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_user_expired" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-user-expired-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-user-expired-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-user-expired">{{ .T "settings_email_tpl_user_expired" }}</label>
-                  <textarea id="tpl-user-expired" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
-
-            <details class="email-template-item" data-email-template-key="expiry_adjusted" data-email-preview-field="tpl-expiry-adjusted" data-email-toggle-id="tpl-enable-expiry-adjusted-email" data-email-template-title='{{ .T "settings_email_tpl_expiry_adjusted" }}' data-email-template-desc='{{ .T "settings_email_tpl_expiry_adjusted_desc" }}'>
-              <summary class="email-template-summary">
-                <span class="email-template-summary-title">{{ .T "settings_email_tpl_expiry_adjusted" }}</span>
-              </summary>
-              <div class="email-template-panel">
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10 mb-4">
-                  <label class="jg-label" for="tpl-expiry-adjusted-subject">{{ .T "users_bulk_email_subject" }}</label>
-                  <input type="text" id="tpl-expiry-adjusted-subject" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11">
-                </div>
-                <div class="p-4 rounded-xl bg-white/5 border border-black/5 dark:border-white/10">
-                  <label class="jg-label" for="tpl-expiry-adjusted">{{ .T "settings_email_tpl_expiry_adjusted" }}</label>
-                  <textarea id="tpl-expiry-adjusted" class="jg-input bg-black/20 hover:bg-black/40" rows="7"></textarea>
-                </div>
-              </div>
-            </details>
-
-          </div>
-
-          <div class="mt-6 flex justify-end">
-               <button type="submit" class="jg-btn jg-btn-primary px-6 py-2.5">{{ .T "settings_save_templates" }}</button>
-          </div>
+            {{/* Bouton flottant / pied de formulaire */}}
+            <div class="pt-4 flex items-center justify-end">
+                <button type="submit" class="jg-btn jg-btn-primary h-12 px-8 font-bold uppercase tracking-wider text-xs flex items-center gap-2 shadow-xl shadow-purple-600/30 rounded-xl">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <span>{{ .T "settings_save_templates" }}</span>
+                </button>
+            </div>
         </form>
 
-        <div id="email-preview-modal" class="modal-overlay" style="display:none">
-          <div class="glass-card modal-content modal-content-lg relative">
-            <button type="button" id="email-preview-close" class="absolute top-4 right-4 text-slate-500 dark:text-slate-400 hover:text-white" aria-label='{{ .T "settings_email_preview_close_aria" }}'>
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h3 class="text-lg font-semibold text-white mb-1">{{ .T "settings_email_preview_title" }}</h3>
-
-            <iframe id="email-preview-frame" sandbox="" referrerpolicy="no-referrer" class="w-full rounded-lg border border-black/5 dark:border-white/10 bg-white" style="min-height:420px"></iframe>
-          </div>
+        {{/* ── Modal Aperçu Email ───────────────────────────────────────────── */}}
+        <div id="email-preview-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" id="email-preview-backdrop" data-modal-close="email-preview-modal"></div>
+            <div class="jg-card w-full max-w-4xl relative z-10 rounded-2xl border border-white/15 bg-slate-950 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                    <h3 class="text-lg font-bold text-white">{{ .T "settings_email_preview_title" }}</h3>
+                    <button type="button" id="email-preview-close" data-modal-close="email-preview-modal" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors" aria-label='{{ .T "settings_email_preview_close_aria" }}'>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <iframe id="email-preview-frame" sandbox="" referrerpolicy="no-referrer" class="w-full rounded-xl border border-white/10 bg-white" style="min-height:480px"></iframe>
+            </div>
         </div>
 
-        <div id="email-variable-modal" class="modal-overlay" style="display:none">
-          <div class="glass-card modal-content modal-content-lg relative">
-            <button type="button" id="email-variable-close" class="absolute top-4 right-4 text-slate-500 dark:text-slate-400 hover:text-white" aria-label='{{ .T "settings_email_variables_close_aria" }}'>
-              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <h3 class="text-lg font-semibold text-white mb-1">{{ .T "settings_email_variables_title" }}</h3>
-            <p class="text-xs text-slate-400 mb-4">{{ .T "settings_email_variables_modal_desc" }}</p>
-            <label class="jg-label" for="email-variable-search">{{ .T "settings_email_variable_search_label" }}</label>
-            <input type="search" id="email-variable-search" class="jg-input bg-black/20 hover:bg-black/40 text-sm h-11" placeholder='{{ .T "settings_email_variable_search_placeholder" }}'>
-            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" id="email-variable-list"></div>
-          </div>
+        {{/* ── Modal Variables Dynamiques ─────────────────────────────────── */}}
+        <div id="email-variable-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" id="email-variable-backdrop" data-modal-close="email-variable-modal"></div>
+            <div class="jg-card w-full max-w-3xl relative z-10 rounded-2xl border border-white/15 bg-slate-950 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+                <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-white">{{ .T "settings_email_variables_title" }}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">{{ .T "settings_email_variables_modal_desc" }}</p>
+                    </div>
+                    <button type="button" id="email-variable-close" data-modal-close="email-variable-modal" class="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors" aria-label='{{ .T "settings_email_variables_close_aria" }}'>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <input type="search" id="email-variable-search" class="jg-input h-10 w-full bg-black/30 border-white/10 text-xs rounded-xl" placeholder='{{ .T "settings_email_variable_search_placeholder" }}'>
+                </div>
+
+                <div class="max-h-[380px] overflow-y-auto custom-modal-scroll pr-1">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5" id="email-variable-list"></div>
+                </div>
+            </div>
         </div>
-      </div>
+
     </div>
-
-    {{/* """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""" */}}
 </div>
 {{ end }}
 
@@ -335,7 +448,6 @@
 <script nonce="{{ .ScriptNonce }}">
   window.JGPageSettings = {
     i18n: {
-
       default_none: '{{ .T "settings_default_none" }}',
       preset_fallback: '{{ .T "settings_preset_fallback" }}',
       backup_pg_plan_unavailable: '{{ .T "settings_backup_pg_plan_unavailable" }}',
@@ -375,7 +487,6 @@
       backup_delete_confirm_prefix: '{{ .T "settings_backup_delete_confirm_prefix" }}',
       backup_deleted: '{{ .T "settings_backup_deleted" }}',
       backup_delete_error: '{{ .T "settings_backup_delete_error" }}',
-
       settings_email_language_label: '{{ .T "settings_email_language_label" }}',
       settings_email_language_server_label: '{{ .T "settings_email_language_server_label" }}',
       settings_email_import_success: '{{ .T "settings_email_import_success" }}',
