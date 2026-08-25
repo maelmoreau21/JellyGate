@@ -58,22 +58,33 @@
             return ok;
         }
 
+        function syncPresetButtons(containerId, currentValue) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const buttons = container.querySelectorAll('.preset-btn');
+            buttons.forEach((btn) => {
+                const val = parseInt(btn.getAttribute('data-val'), 10);
+                const isActive = val === currentValue;
+                if (isActive) {
+                    btn.className = 'preset-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-purple-600/30 text-purple-200 border border-purple-500/40 hover:bg-purple-600/50 transition-all active:scale-95';
+                } else {
+                    btn.className = 'preset-btn px-2.5 py-1 text-xs font-semibold rounded-lg bg-white/5 text-slate-300 border border-white/10 hover:bg-white/10 hover:text-white transition-all active:scale-95';
+                }
+            });
+        }
+
         function getEffectiveMaxUses() {
-            const usesSelect = document.getElementById('inv-uses-select');
             const customInput = document.getElementById('inv-uses');
-            if (usesSelect && usesSelect.value !== 'custom') {
-                return parseInt(usesSelect.value, 10);
-            }
-            return customInput ? parseInt(customInput.value || '1', 10) : 1;
+            if (!customInput) return 1;
+            const val = parseInt(customInput.value, 10);
+            return isNaN(val) ? 1 : Math.max(0, val);
         }
 
         function getEffectiveExpiryDays() {
-            const expirySelect = document.getElementById('inv-expiry-select');
             const customInput = document.getElementById('inv-expiry-days');
-            if (expirySelect && expirySelect.value !== 'custom') {
-                return parseInt(expirySelect.value, 10);
-            }
-            return customInput ? parseInt(customInput.value || '7', 10) : 7;
+            if (!customInput) return 7;
+            const val = parseInt(customInput.value, 10);
+            return isNaN(val) ? 7 : Math.max(0, val);
         }
 
         function updateForcedUsernameState() {
@@ -425,18 +436,16 @@
 
             document.getElementById('create-form')?.reset();
             
-            const usesSelect = document.getElementById('inv-uses-select');
             const usesInput = document.getElementById('inv-uses');
-            if (usesSelect) {
-                usesSelect.value = '1';
-                if (usesInput) usesInput.classList.add('hidden');
+            if (usesInput) {
+                usesInput.value = '1';
+                syncPresetButtons('inv-uses-presets', 1);
             }
 
-            const expirySelect = document.getElementById('inv-expiry-select');
             const expiryInput = document.getElementById('inv-expiry-days');
-            if (expirySelect) {
-                expirySelect.value = '7';
-                if (expiryInput) expiryInput.classList.add('hidden');
+            if (expiryInput) {
+                expiryInput.value = '7';
+                syncPresetButtons('inv-expiry-presets', 7);
             }
 
             const tempConfig = document.getElementById('temp-account-config');
@@ -586,36 +595,52 @@
             }
         });
 
-        // Form selects toggles
-        const usesSelect = document.getElementById('inv-uses-select');
-        if (usesSelect) {
-            usesSelect.addEventListener('change', () => {
-                const customInput = document.getElementById('inv-uses');
-                if (customInput) {
-                    customInput.classList.toggle('hidden', usesSelect.value !== 'custom');
-                    if (usesSelect.value !== 'custom') {
-                        customInput.value = usesSelect.value;
+        // Form preset buttons and input handlers
+        const usesPresetsContainer = document.getElementById('inv-uses-presets');
+        if (usesPresetsContainer) {
+            usesPresetsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.preset-btn');
+                if (btn) {
+                    const val = btn.getAttribute('data-val');
+                    const input = document.getElementById('inv-uses');
+                    if (input) {
+                        input.value = val;
+                        syncPresetButtons('inv-uses-presets', parseInt(val, 10));
+                        updateForcedUsernameState();
                     }
                 }
-                updateForcedUsernameState();
             });
         }
 
         const customUsesInput = document.getElementById('inv-uses');
         if (customUsesInput) {
-            customUsesInput.addEventListener('input', updateForcedUsernameState);
+            customUsesInput.addEventListener('input', () => {
+                const val = parseInt(customUsesInput.value, 10);
+                syncPresetButtons('inv-uses-presets', isNaN(val) ? -1 : val);
+                updateForcedUsernameState();
+            });
         }
 
-        const expirySelect = document.getElementById('inv-expiry-select');
-        if (expirySelect) {
-            expirySelect.addEventListener('change', () => {
-                const customInput = document.getElementById('inv-expiry-days');
-                if (customInput) {
-                    customInput.classList.toggle('hidden', expirySelect.value !== 'custom');
-                    if (expirySelect.value !== 'custom') {
-                        customInput.value = expirySelect.value;
+        const expiryPresetsContainer = document.getElementById('inv-expiry-presets');
+        if (expiryPresetsContainer) {
+            expiryPresetsContainer.addEventListener('click', (e) => {
+                const btn = e.target.closest('.preset-btn');
+                if (btn) {
+                    const val = btn.getAttribute('data-val');
+                    const input = document.getElementById('inv-expiry-days');
+                    if (input) {
+                        input.value = val;
+                        syncPresetButtons('inv-expiry-presets', parseInt(val, 10));
                     }
                 }
+            });
+        }
+
+        const customExpiryInput = document.getElementById('inv-expiry-days');
+        if (customExpiryInput) {
+            customExpiryInput.addEventListener('input', () => {
+                const val = parseInt(customExpiryInput.value, 10);
+                syncPresetButtons('inv-expiry-presets', isNaN(val) ? -1 : val);
             });
         }
 
