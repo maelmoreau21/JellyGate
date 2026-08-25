@@ -3,207 +3,150 @@
 {{ define "title" }}{{ .T "nav_invitations" }} — JellyGate{{ end }}
 
 {{ define "admin_content" }}
-<style>
-.quick-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 2.6rem;
-    padding: 0.5rem 1rem;
-    font-size: 0.85rem;
-    font-weight: 700;
-    border-radius: 0.85rem;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #94a3b8;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-    line-height: 1.2;
-    user-select: none;
-    outline: none;
-    -webkit-tap-highlight-color: transparent;
-}
-.quick-pill:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.25);
-    color: #ffffff;
-    transform: translateY(-1px);
-}
-.quick-pill:active {
-    transform: scale(0.97);
-}
-.quick-pill.active {
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(99, 102, 241, 0.3)) !important;
-    border-color: rgba(168, 85, 247, 0.85) !important;
-    color: #f3e8ff !important;
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4) !important;
-}
-.custom-modal-scroll::-webkit-scrollbar {
-    width: 6px;
-}
-.custom-modal-scroll::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-}
-.custom-modal-scroll::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 9999px;
-}
-.custom-modal-scroll::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-</style>
-
-<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-    <div>
-        <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_invitations" }}</h1>
-        <p class="text-jg-text-muted mt-2">Créez, gérez et synchronisez les liens d'inscription et de parrainage.</p>
+<div class="space-y-6">
+    {{/* ── En-tête de page ───────────────────────────────────────────────── */}}
+    <div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+            <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_invitations" }}</h1>
+            <p class="text-jg-text-muted mt-2">Créez, gérez et synchronisez les liens d'inscription et de parrainage.</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-sync-authentik" type="button" class="jg-btn jg-btn-ghost flex items-center gap-2 border border-white/10 hover:border-purple-500/40 text-xs font-bold rounded-xl transition-all" title='{{ .T "invitations_sync_authentik_title" }}'>
+                <svg id="sync-authentik-icon" class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                <span>{{ .T "invitations_sync_authentik" }}</span>
+            </button>
+            <button class="jg-btn jg-btn-primary btn-open-create-modal flex items-center gap-2 shadow-lg shadow-purple-600/25">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                <span>{{ .T "invitations_new_invitation" }}</span>
+            </button>
+        </div>
     </div>
-    <div class="flex items-center gap-3">
-        <button id="btn-sync-authentik" type="button" class="jg-btn jg-btn-ghost flex items-center gap-2 border border-white/10 hover:border-purple-500/40 text-xs font-bold rounded-xl transition-all" title='{{ .T "invitations_sync_authentik_title" }}'>
-            <svg id="sync-authentik-icon" class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            <span>{{ .T "invitations_sync_authentik" }}</span>
-        </button>
-        <button class="jg-btn jg-btn-primary btn-open-create-modal flex items-center gap-2 shadow-lg shadow-purple-600/25">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-            <span>{{ .T "invitations_new_invitation" }}</span>
-        </button>
-    </div>
-</div>
 
-{{/* ── Hero Metrics Ribbon (Streamlined, non-cluttered) ── */}}
-<div class="jg-card p-4 sm:p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl mb-6">
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-white/5">
-        <div class="px-3 py-1 flex items-center gap-3.5">
-            <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0">
+    {{/* ── Métriques de synthèse (Cartes épurées) ───────────────────────── */}}
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="jg-card p-4.5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
             </div>
             <div>
-                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_created" }}</div>
-                <div class="text-xl font-black text-slate-100" id="sponsor-total-links">0</div>
+                <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_created" }}</div>
+                <div class="text-2xl font-black text-slate-100" id="sponsor-total-links">0</div>
             </div>
         </div>
-        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
-            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+        <div class="jg-card p-4.5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div>
-                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_active" }}</div>
-                <div class="text-xl font-black text-emerald-400" id="sponsor-active-links">0</div>
+                <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_active" }}</div>
+                <div class="text-2xl font-black text-emerald-400" id="sponsor-active-links">0</div>
             </div>
         </div>
-        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
-            <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+        <div class="jg-card p-4.5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
             <div>
-                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_closed" }}</div>
-                <div class="text-xl font-black text-rose-400" id="sponsor-closed-links">0</div>
+                <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_closed" }}</div>
+                <div class="text-2xl font-black text-rose-400" id="sponsor-closed-links">0</div>
             </div>
         </div>
-        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
-            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+        <div class="jg-card p-4.5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl flex items-center gap-4">
+            <div class="w-11 h-11 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
             </div>
             <div>
-                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_conversions" }}</div>
-                <div class="text-xl font-black text-cyan-400" id="sponsor-conversions">0</div>
-            </div>
-        </div>
-        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
-            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center flex-shrink-0">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-            </div>
-            <div>
-                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_conversion_rate" }}</div>
-                <div class="text-xl font-black text-amber-400" id="sponsor-conversion-rate">0%</div>
+                <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_conversions" }}</div>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-black text-cyan-400" id="sponsor-conversions">0</span>
+                    <span class="text-xs font-semibold text-slate-400" id="sponsor-conversion-rate">(0%)</span>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-{{ if .IsAdmin }}
-<div class="mb-6">
-    <div class="flex items-center justify-between">
+    {{/* ── Panneau de sécurité (Optionnel pour admin) ────────────────────── */}}
+    {{ if .IsAdmin }}
+    <div>
         <button type="button" id="btn-toggle-security-panel" class="text-xs font-semibold text-slate-400 hover:text-purple-300 flex items-center gap-1.5 transition-colors py-1">
             <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             <span>{{ .T "invitations_security_title" }}</span>
             <svg id="security-chevron" class="w-3.5 h-3.5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
         </button>
+
+        <section id="invite-security-panel" class="hidden mt-3 jg-card p-5 border border-white/10 bg-slate-900/40 rounded-2xl animate-in fade-in duration-200">
+            <form id="invite-security-form" class="space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-white/5">
+                    <p class="text-xs text-jg-text-muted">{{ .T "invitations_security_desc" }}</p>
+                    <button type="submit" class="jg-btn jg-btn-primary jg-btn-sm font-bold text-xs uppercase tracking-wider flex-shrink-0">
+                        {{ .T "btn_save" }}
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition-colors">
+                        <input id="invite-security-enabled" type="checkbox" class="form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer">
+                        <span class="text-xs font-bold text-slate-300">{{ .T "invitations_security_enabled" }}</span>
+                    </label>
+                    <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition-colors">
+                        <input id="invite-security-captcha" type="checkbox" class="form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer">
+                        <span class="text-xs font-bold text-slate-300">{{ .T "invitations_security_captcha" }}</span>
+                    </label>
+                    <label>
+                        <span class="jg-label text-xs">{{ .T "invitations_security_max_failures" }}</span>
+                        <input id="invite-security-max-failures" type="number" min="1" max="50" class="jg-input h-10 bg-black/20 text-xs">
+                    </label>
+                    <label>
+                        <span class="jg-label text-xs">{{ .T "invitations_security_window_minutes" }}</span>
+                        <input id="invite-security-window" type="number" min="1" max="240" class="jg-input h-10 bg-black/20 text-xs">
+                    </label>
+                    <label>
+                        <span class="jg-label text-xs">{{ .T "invitations_security_block_minutes" }}</span>
+                        <input id="invite-security-block" type="number" min="1" max="1440" class="jg-input h-10 bg-black/20 text-xs">
+                    </label>
+                </div>
+            </form>
+        </section>
     </div>
+    {{ end }}
 
-    <section id="invite-security-panel" class="hidden mt-3 jg-card p-5 border border-white/5 bg-slate-900/40 rounded-2xl animate-in fade-in duration-200">
-        <form id="invite-security-form" class="space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-white/5">
-                <p class="text-xs text-jg-text-muted">{{ .T "invitations_security_desc" }}</p>
-                <button type="submit" class="jg-btn jg-btn-primary jg-btn-sm font-bold text-xs uppercase tracking-wider flex-shrink-0">
-                    {{ .T "btn_save" }}
-                </button>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition-colors">
-                    <input id="invite-security-enabled" type="checkbox" class="form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer">
-                    <span class="text-xs font-bold text-slate-300">{{ .T "invitations_security_enabled" }}</span>
-                </label>
-                <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition-colors">
-                    <input id="invite-security-captcha" type="checkbox" class="form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer">
-                    <span class="text-xs font-bold text-slate-300">{{ .T "invitations_security_captcha" }}</span>
-                </label>
-                <label>
-                    <span class="jg-label text-xs">{{ .T "invitations_security_max_failures" }}</span>
-                    <input id="invite-security-max-failures" type="number" min="1" max="50" class="jg-input h-10 bg-black/20 text-xs">
-                </label>
-                <label>
-                    <span class="jg-label text-xs">{{ .T "invitations_security_window_minutes" }}</span>
-                    <input id="invite-security-window" type="number" min="1" max="240" class="jg-input h-10 bg-black/20 text-xs">
-                </label>
-                <label>
-                    <span class="jg-label text-xs">{{ .T "invitations_security_block_minutes" }}</span>
-                    <input id="invite-security-block" type="number" min="1" max="1440" class="jg-input h-10 bg-black/20 text-xs">
-                </label>
-            </div>
-        </form>
-    </section>
-</div>
-{{ end }}
-
-<div class="space-y-6">
-    {{/* ── Active Invitations Table ───────────────────────────────────── */}}
-    <div class="jg-card p-0 overflow-hidden shadow-2xl relative border border-white/5">
-        <div class="px-6 py-4 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/[0.01]">
+    {{/* ── Tableau des invitations ───────────────────────────────────────── */}}
+    <div class="jg-card p-0 overflow-hidden shadow-2xl relative border border-white/10 rounded-2xl bg-slate-900/40 backdrop-blur-md">
+        <div class="px-6 py-4 border-b border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <h2 class="font-bold text-lg text-slate-100">Invitations actives</h2>
+                <h2 class="font-bold text-lg text-slate-100">Invitations enregistrées</h2>
             </div>
             <div class="flex items-center gap-3">
                 <div class="relative">
-                    <input type="text" id="search-invites" class="jg-input h-10 pl-10 w-full md:w-64 bg-black/20 text-xs" placeholder="{{ .T "search" }}">
+                    <input type="text" id="search-invites" class="jg-input h-10 pl-10 w-full md:w-64 bg-black/30 border-white/10 text-xs rounded-xl" placeholder='{{ .T "search" }}'>
                     <svg class="w-4 h-4 absolute left-3 top-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                 </div>
-                <select id="filter-status" class="jg-input jg-select-premium h-10 bg-black/20 text-xs">
+                <select id="filter-status" class="jg-input jg-select-premium h-10 bg-black/30 border-white/10 text-xs rounded-xl">
                     <option value="all">{{ .T "all" }}</option>
                     <option value="active">{{ .T "status_active" }}</option>
                     <option value="expired">{{ .T "status_expired" }}</option>
                 </select>
             </div>
         </div>
+
         <div class="jg-table-container overflow-x-auto w-full">
             <table class="jg-table w-full text-sm text-left align-middle">
                 <thead>
-                    <tr>
-                        <th class="w-1/4 min-w-[200px]">{{ .T "invitations_col_link_code" }}</th>
-                        <th class="w-36">{{ .T "invitations_uses" }}</th>
-                        <th class="w-36">{{ .T "invitations_col_link_expiry" }}</th>
-                        <th class="w-1/3 min-w-[200px]">{{ .T "invitations_col_profile_expiry" }}</th>
-                        <th class="w-32">{{ .T "invitations_sponsor" }}</th>
-                        <th class="w-24 text-right">{{ .T "col_actions" }}</th>
+                    <tr class="border-b border-white/10 bg-white/[0.02]">
+                        <th class="w-1/4 min-w-[220px] py-3.5 px-6 font-bold text-xs uppercase tracking-wider text-slate-400">{{ .T "invitations_col_link_code" }}</th>
+                        <th class="w-36 py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-slate-400">{{ .T "invitations_uses" }}</th>
+                        <th class="w-36 py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-slate-400">{{ .T "invitations_col_link_expiry" }}</th>
+                        <th class="w-1/3 min-w-[200px] py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-slate-400">{{ .T "invitations_col_profile_expiry" }}</th>
+                        <th class="w-32 py-3.5 px-4 font-bold text-xs uppercase tracking-wider text-slate-400">{{ .T "invitations_sponsor" }}</th>
+                        <th class="w-24 text-right py-3.5 px-6 font-bold text-xs uppercase tracking-wider text-slate-400">{{ .T "col_actions" }}</th>
                     </tr>
                 </thead>
                 <tbody id="invites-tbody" class="divide-y divide-white/5">
                     <tr>
                         <td colspan="6" class="text-center py-20">
                             <div class="flex flex-col items-center gap-3">
-                                <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
-                                <span class="text-jg-text-muted animate-pulse">{{ .T "loading" }}...</span>
+                                <span class="spinner w-8 h-8 border-2 border-purple-500 border-t-transparent animate-spin rounded-full"></span>
+                                <span class="text-xs text-slate-400 animate-pulse">{{ .T "loading" }}...</span>
                             </div>
                         </td>
                     </tr>
@@ -212,10 +155,10 @@
         </div>
 
         {{/* ── Pagination ── */}}
-        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-white/[0.02] border-t border-jg-border">
-            <div class="flex items-center gap-3 text-xs text-jg-text-muted">
-                <span class="font-bold uppercase tracking-widest opacity-50">{{ .T "pagination_show" }}</span>
-                <select id="items-per-page" class="jg-input jg-select-premium h-9 min-w-24 bg-jg-bg-secondary border border-jg-border rounded-lg px-2 py-1 text-jg-text focus:outline-none focus:ring-1 focus:ring-jg-accent transition-all">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:px-6 bg-white/[0.01] border-t border-white/10">
+            <div class="flex items-center gap-3 text-xs text-slate-400">
+                <span class="font-bold uppercase tracking-wider opacity-60">{{ .T "pagination_show" }}</span>
+                <select id="items-per-page" class="jg-input jg-select-premium h-9 bg-black/30 border border-white/10 rounded-lg px-2 text-xs">
                     <option value="10">10</option>
                     <option value="25" selected>25</option>
                     <option value="50">50</option>
@@ -223,365 +166,223 @@
                 </select>
             </div>
             <div class="flex items-center gap-2" id="pagination-controls">
-                <button id="prev-page" class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                <button id="prev-page" class="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                 </button>
                 <div class="flex items-center gap-1" id="page-numbers">
-                    <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-jg-accent text-always-white font-bold text-xs">1</span>
+                    <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-purple-600 text-white font-bold text-xs">1</span>
                 </div>
-                <button id="next-page" class="p-2 rounded-lg bg-jg-bg-secondary border border-jg-border text-jg-text-muted hover:text-jg-text disabled:opacity-30 disabled:cursor-not-allowed transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                <button id="next-page" class="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </button>
             </div>
-            <div class="text-xs text-jg-text-muted font-bold uppercase tracking-widest opacity-50" id="pagination-info">
+            <div class="text-xs text-slate-400 font-bold uppercase tracking-wider opacity-60" id="pagination-info">
                 Page 1 / 1
             </div>
         </div>
     </div>
 </div>
 
-{{/* ── Create Modal (Expansive Desktop & Full-Screen Mobile) ── */}}
-<div id="create-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-4 lg:p-6 overflow-hidden">
-    <div class="fixed inset-0 bg-black/85 backdrop-blur-2xl" data-modal-close="create-modal"></div>
+{{/* ── Modal de Création d'Invitation (Refonte Complète & Épurée) ───────── */}}
+<div id="create-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-md" data-modal-close="create-modal"></div>
     
-    <div class="jg-card jg-glass w-full h-[100dvh] md:h-auto md:max-h-[92vh] md:w-[94vw] lg:w-[92vw] xl:max-w-6xl 2xl:max-w-7xl relative z-10 flex flex-col shadow-2xl rounded-none md:rounded-3xl border-0 md:border border-white/15 bg-slate-950/98 md:bg-slate-950/95 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+    <div class="jg-card w-full max-w-2xl relative z-10 shadow-2xl rounded-2xl border border-white/15 bg-slate-950 p-0 overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         
-        {{/* ── Form View ── */}}
-        <div id="invite-modal-form-view" class="flex flex-col h-full md:h-auto min-h-0 flex-1">
-            {{/* Sticky Header */}}
-            <div class="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-8 py-3.5 sm:py-4.5 border-b border-white/10 bg-slate-950/95 md:bg-slate-900/90 backdrop-blur-xl shrink-0">
-                <div class="flex items-center gap-3 sm:gap-4">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 p-0.5 shadow-xl shadow-purple-500/25 flex-shrink-0 flex items-center justify-center">
-                        <div class="w-full h-full bg-slate-950/85 rounded-[14px] flex items-center justify-center text-purple-300">
-                            <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
-                        </div>
+        {{/* Vue Formulaire */}}
+        <div id="invite-modal-form-view">
+            {{/* En-tête du Modal */}}
+            <div class="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-slate-900/60">
+                <div class="flex items-center gap-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                     </div>
                     <div>
-                        <h2 class="text-lg sm:text-2xl font-black tracking-tight text-white leading-tight">{{ .T "invitations_new_invitation" }}</h2>
-                        <p class="text-xs sm:text-sm text-slate-400">Générez un lien d'inscription instantané ou entièrement personnalisé</p>
+                        <h2 class="text-lg font-bold text-white leading-snug">{{ .T "invitations_new_invitation" }}</h2>
+                        <p class="text-xs text-slate-400">Générez un lien d'inscription pour inviter un nouvel utilisateur.</p>
                     </div>
                 </div>
-                <button type="button" data-modal-close="create-modal" class="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white/5 hover:bg-white/10 active:scale-95 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-white/10" title="Fermer">
+                <button type="button" data-modal-close="create-modal" class="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition-all border border-white/10" title="Fermer">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
             </div>
 
-            {{/* Scrollable Body - 2 Columns on Desktop */}}
-            <form id="create-form" class="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:p-8 custom-modal-scroll min-h-0">
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    
-                    {{/* ── Left Column (7 cols): Main Form Settings ── */}}
-                    <div class="lg:col-span-7 xl:col-span-7 space-y-5">
-                        
-                        {{/* 1. Utilisations & Validité du lien (Carte Principale) */}}
-                        <div class="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-indigo-500/30 transition-all space-y-4 shadow-lg shadow-black/20">
-                            <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-                                <div class="flex items-center gap-2">
-                                    <div class="w-7 h-7 rounded-lg bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    </div>
-                                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-300">Règles & Validité du lien</span>
-                                </div>
-                            </div>
+            {{/* Corps du Formulaire */}}
+            <form id="create-form" class="p-6 space-y-5">
+                {{/* 1. Profil Jellyfin */}}
+                <div class="space-y-2">
+                    <label class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between" for="inv-policy-preset">
+                        <span>{{ .T "invitations_section_profile_access" }}</span>
+                        <span id="inv-preset-badge" class="text-[10px] text-purple-300 font-bold px-2 py-0.5 rounded bg-purple-500/15 border border-purple-500/30">Politique globale</span>
+                    </label>
+                    <select id="inv-policy-preset" class="jg-input jg-select-premium h-11 w-full bg-black/40 text-sm font-semibold border-white/15 rounded-xl">
+                        <option value="">Politique globale JellyGate</option>
+                    </select>
+                    <p id="inv-profile-summary" class="text-xs text-slate-400 leading-relaxed"></p>
+                </div>
 
-                            {{/* Utilisations */}}
-                            <div class="space-y-2.5">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5" for="inv-uses">
-                                        <span>{{ .T "invitations_max_uses_label" }}</span>
-                                    </label>
-                                    <span class="text-xs text-cyan-300 font-mono font-bold px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/20" id="uses-badge-hint">1 max</span>
-                                </div>
-                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="quick-uses-pills" data-pill-group="uses">
-                                    <button type="button" class="quick-pill active" data-value="1">1 (Unique)</button>
-                                    <button type="button" class="quick-pill" data-value="5">5 utilisations</button>
-                                    <button type="button" class="quick-pill" data-value="10">10 utilisations</button>
-                                    <button type="button" class="quick-pill" data-value="0">Illimité (∞)</button>
-                                </div>
-                                <div class="pt-1">
-                                    <input type="number" id="inv-uses" class="jg-input h-10 w-full bg-black/50 text-sm font-mono rounded-xl border-white/10" min="0" value="1" placeholder="Nombre personnalisé">
-                                </div>
-                                <div id="inv-uses-help" class="text-xs text-slate-500"></div>
-                            </div>
+                {{/* 2. Nombre d'utilisations & Durée de validité du lien */}}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {{/* Utilisations */}}
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-300" for="inv-uses">
+                            {{ .T "invitations_max_uses_label" }}
+                        </label>
+                        <select id="inv-uses-select" class="jg-input jg-select-premium h-11 w-full bg-black/40 text-sm rounded-xl border-white/15">
+                            <option value="1" selected>1 utilisation (Usage unique)</option>
+                            <option value="5">5 utilisations</option>
+                            <option value="10">10 utilisations</option>
+                            <option value="0">Illimité (∞)</option>
+                            <option value="custom">Personnalisé...</option>
+                        </select>
+                        <input type="number" id="inv-uses" class="jg-input h-10 w-full bg-black/40 text-sm font-mono rounded-xl border-white/15 hidden" min="0" value="1" placeholder="Nombre d'utilisations">
+                        <p id="inv-uses-help" class="text-xs text-slate-500"></p>
+                    </div>
 
-                            {{/* Durée de validité du lien */}}
-                            <div class="space-y-2.5 pt-2 border-t border-white/5">
-                                <div class="flex items-center justify-between">
-                                    <label class="text-xs font-semibold text-slate-300 flex items-center gap-1.5" for="inv-expiry-days">
-                                        <span>{{ .T "automation_invite_link_days_label" }}</span>
-                                    </label>
-                                    <span class="text-xs text-indigo-300 font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20" id="expiry-badge-hint">7 jours</span>
-                                </div>
-                                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2" id="quick-days-pills" data-pill-group="days">
-                                    <button type="button" class="quick-pill" data-value="1">24h</button>
-                                    <button type="button" class="quick-pill active" data-value="7">7 jours</button>
-                                    <button type="button" class="quick-pill" data-value="14">14 jours</button>
-                                    <button type="button" class="quick-pill" data-value="30">30 jours</button>
-                                    <button type="button" class="quick-pill" data-value="0">Permanent (∞)</button>
-                                </div>
-                                <div class="pt-1">
-                                    <input type="number" id="inv-expiry-days" class="jg-input h-10 w-full bg-black/50 text-sm font-mono rounded-xl border-white/10" min="0" value="7" placeholder="Nombre de jours de validité">
-                                </div>
-                                <div id="inv-link-expiry-help" class="text-xs text-slate-500"></div>
-                                <label id="inv-ignore-link-limit-wrap" class="hidden items-center gap-2 text-xs text-amber-300 cursor-pointer pt-1">
-                                    <input type="checkbox" id="inv-ignore-link-limit" class="form-checkbox w-4 h-4 rounded border-white/20 bg-black/50 accent-indigo-500">
-                                    <span>{{ .T "invitations_ignore_link_limit" }}</span>
-                                </label>
+                    {{/* Durée de validité du lien */}}
+                    <div class="space-y-2">
+                        <label class="text-xs font-bold uppercase tracking-wider text-slate-300" for="inv-expiry-days">
+                            {{ .T "automation_invite_link_days_label" }}
+                        </label>
+                        <select id="inv-expiry-select" class="jg-input jg-select-premium h-11 w-full bg-black/40 text-sm rounded-xl border-white/15">
+                            <option value="1">24 heures (1 jour)</option>
+                            <option value="7" selected>7 jours</option>
+                            <option value="14">14 jours</option>
+                            <option value="30">30 jours</option>
+                            <option value="0">Permanent (Sans limite)</option>
+                            <option value="custom">Personnalisé...</option>
+                        </select>
+                        <input type="number" id="inv-expiry-days" class="jg-input h-10 w-full bg-black/40 text-sm font-mono rounded-xl border-white/15 hidden" min="0" value="7" placeholder="Nombre de jours">
+                        <p id="inv-link-expiry-help" class="text-xs text-slate-500"></p>
+                    </div>
+                </div>
+
+                {{/* 3. Options Avancées (Compte temporaire, Identité imposée, Email) */}}
+                <div class="pt-2 border-t border-white/10 space-y-4">
+                    <div class="text-xs font-bold uppercase tracking-wider text-purple-300">Options supplémentaires</div>
+
+                    {{/* Compte temporaire */}}
+                    <div class="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+                        <label class="flex items-center justify-between cursor-pointer" for="inv-is-temporary">
+                            <div class="flex items-center gap-2.5">
+                                <input type="checkbox" id="inv-is-temporary" class="form-checkbox w-4 h-4 rounded border-white/20 bg-black/40 text-amber-500 focus:ring-amber-500/40 cursor-pointer">
+                                <span class="text-xs font-bold text-slate-200">Compte temporaire</span>
+                            </div>
+                            <span class="text-[11px] text-slate-400">Désactivation automatique après un délai</span>
+                        </label>
+                        <div id="temp-account-config" class="hidden pl-6 pt-1 flex items-center gap-3">
+                            <label class="text-xs text-slate-300 font-medium" for="inv-account-duration-days">Durée d'accès :</label>
+                            <div class="relative w-36">
+                                <input type="number" id="inv-account-duration-days" class="jg-input h-9 w-full bg-black/40 text-xs font-mono rounded-lg pr-12 border-white/10" min="1" value="30">
+                                <span class="absolute right-3 top-2 text-[11px] text-slate-400">jours</span>
                             </div>
                         </div>
+                    </div>
 
-                        {{/* 2. Profil Jellyfin & Droits d'accès */}}
-                        <div class="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-purple-500/30 transition-all space-y-3 shadow-lg shadow-black/20">
-                            <div class="flex items-center justify-between flex-wrap gap-2">
-                                <label class="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2" for="inv-policy-preset">
-                                    <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                                    <span>{{ .T "invitations_section_profile_access" }}</span>
-                                </label>
-                                <div id="inv-preset-tags" class="flex flex-wrap gap-1.5"></div>
+                    {{/* Identité réservée (Usage unique) */}}
+                    <div id="inv-forced-identity-wrap" class="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-slate-200">Identité imposée</span>
+                            <span class="text-[10px] text-purple-300 font-semibold px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">Usage unique</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1" for="inv-forced-name">{{ .T "invitations_forced_name" }}</label>
+                                <input type="text" id="inv-forced-name" class="jg-input h-9 w-full bg-black/40 text-xs rounded-lg border-white/10" placeholder="ex: Maël Moreau">
                             </div>
-                            <select id="inv-policy-preset" class="jg-input jg-select-premium h-11 w-full bg-black/50 hover:bg-black/70 text-sm font-semibold border-white/15 rounded-xl transition-colors">
-                                <option value="">Politique globale JellyGate</option>
+                            <div>
+                                <label class="text-[11px] text-slate-400 block mb-1" for="inv-forced-user">{{ .T "invitations_forced_username" }}</label>
+                                <input type="text" id="inv-forced-user" class="jg-input h-9 w-full bg-black/40 text-xs font-mono rounded-lg border-white/10" placeholder="ex: mmoreau">
+                            </div>
+                        </div>
+                        <p id="inv-forced-user-help" class="text-[11px] text-slate-500"></p>
+                    </div>
+
+                    {{/* Envoi par Email (Optionnel) */}}
+                    <div class="p-3.5 rounded-xl bg-white/[0.02] border border-white/10 space-y-3">
+                        <span class="text-xs font-bold text-slate-200 block">{{ .T "invitations_section_smtp_notification" }} <span class="text-slate-500 font-normal lowercase">(optionnel)</span></span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input type="email" id="inv-email" class="jg-input h-9 w-full bg-black/40 text-xs rounded-lg border-white/10" placeholder="destinataire@exemple.com">
+                            {{ if .Data.InviteAllowLanguage }}
+                            <select id="inv-preferred-lang" class="jg-input jg-select-premium h-9 w-full bg-black/40 text-xs rounded-lg border-white/10">
+                                <option value="">{{ .T "invitations_preferred_lang_default" }}</option>
+                                <option value="fr">Français</option>
+                                <option value="en">English</option>
+                                <option value="de">Deutsch</option>
+                                <option value="es">Español</option>
+                                <option value="it">Italiano</option>
+                                <option value="nl">Nederlands</option>
+                                <option value="pl">Polski</option>
+                                <option value="pt-br">Português (Brasil)</option>
+                                <option value="ru">Русский</option>
+                                <option value="zh">中文 (简体)</option>
                             </select>
-                            <div id="inv-profile-summary" class="text-xs text-slate-400 leading-relaxed bg-black/20 p-2.5 rounded-xl border border-white/5"></div>
+                            {{ end }}
                         </div>
-
-                        {{/* 3. Paramètres du compte : Compte temporaire & Identité imposée */}}
-                        <div class="space-y-4">
-                            {{/* Compte temporaire */}}
-                            <div class="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-amber-500/30 transition-all space-y-3 shadow-lg shadow-black/20">
-                                <label class="flex items-center justify-between gap-3 cursor-pointer select-none" for="inv-is-temporary">
-                                    <div class="flex items-center gap-3">
-                                        <div class="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        </div>
-                                        <div>
-                                            <span class="text-sm font-bold text-slate-100 block">Compte temporaire</span>
-                                            <span class="text-xs text-slate-400">Désactivation automatique du compte après une durée déterminée</span>
-                                        </div>
-                                    </div>
-                                    <input type="checkbox" id="inv-is-temporary" class="form-checkbox w-5 h-5 rounded-lg border-white/20 bg-black/50 text-amber-500 focus:ring-amber-500/40 cursor-pointer">
-                                </label>
-                                
-                                <div id="temp-account-config" class="hidden pl-2 sm:pl-4 space-y-2 border-l-2 border-amber-500/40 pt-1">
-                                    <div class="flex items-center gap-3">
-                                        <label class="text-xs text-slate-300 font-medium flex-shrink-0" for="inv-account-duration-days">Durée d'accès :</label>
-                                        <div class="relative flex-1">
-                                            <input type="number" id="inv-account-duration-days" class="jg-input h-10 w-full bg-black/50 text-sm font-mono rounded-xl pr-14 border-white/10" min="1" value="30">
-                                            <span class="absolute right-3 top-2.5 text-xs text-slate-400 font-medium">jours</span>
-                                        </div>
-                                    </div>
-                                    <div id="inv-temp-help" class="text-xs text-amber-300/90"></div>
-                                </div>
-                                
-                                <div class="hidden" aria-hidden="true">
-                                    <input type="checkbox" id="inv-user-expiry-enabled">
-                                    <input type="number" id="inv-user-expiry-days" value="30">
-                                    <input type="checkbox" id="inv-ignore-user-expiry-limit">
-                                </div>
-                            </div>
-
-                            {{/* Identité imposée (Nom complet + Username) */}}
-                            <div id="inv-forced-identity-wrap" class="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-purple-500/30 shadow-lg shadow-purple-500/5 space-y-4">
-                                <div class="flex items-center justify-between border-b border-white/5 pb-2.5">
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-8 h-8 rounded-xl bg-purple-500/15 text-purple-300 flex items-center justify-center flex-shrink-0">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                                        </div>
-                                        <div>
-                                            <span class="text-sm font-bold text-slate-100 block">Identité imposée</span>
-                                            <span class="text-xs text-slate-400">Verrouille le nom réel et l'identifiant pour ce lien</span>
-                                        </div>
-                                    </div>
-                                    <span class="text-[10px] text-purple-300 font-bold px-2.5 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 uppercase tracking-wider">Usage unique</span>
-                                </div>
-
-                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                    {{/* Nom d'affichage */}}
-                                    <div>
-                                        <label class="text-xs font-semibold text-slate-300 block mb-1.5" for="inv-forced-name">
-                                            {{ .T "invitations_forced_name" }}
-                                        </label>
-                                        <input type="text" id="inv-forced-name" class="jg-input h-10 w-full bg-black/50 text-sm rounded-xl border-white/15" placeholder="ex: Maël Moreau">
-                                        <p class="text-[10px] text-slate-400 mt-1">Nom complet affiché dans Jellyfin & Authentik</p>
-                                    </div>
-
-                                    {{/* Nom d'utilisateur */}}
-                                    <div>
-                                        <label class="text-xs font-semibold text-slate-300 block mb-1.5" for="inv-forced-user">
-                                            {{ .T "invitations_forced_username" }}
-                                        </label>
-                                        <input type="text" id="inv-forced-user" class="jg-input h-10 w-full bg-black/50 text-sm font-mono rounded-xl border-white/15" placeholder="ex: mmoreau">
-                                        <p class="text-[10px] text-slate-400 mt-1">Identifiant technique court de connexion</p>
-                                    </div>
-                                </div>
-                                
-                                <div id="inv-forced-user-help" class="text-xs text-slate-500"></div>
-                            </div>
-                        </div>
-
-                        {{/* 4. Envoi Email & Message (Optionnel) */}}
-                        <div class="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-rose-500/30 transition-all space-y-3 shadow-lg shadow-black/20">
-                            <div class="text-xs font-bold uppercase tracking-wider text-rose-300 flex items-center gap-2 border-b border-white/5 pb-2.5">
-                                <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                                <span>{{ .T "invitations_section_smtp_notification" }} <span class="text-slate-500 font-normal lowercase">(optionnel)</span></span>
-                            </div>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <input type="email" id="inv-email" class="jg-input h-10 w-full bg-black/50 text-sm rounded-xl border-white/10" placeholder="destinataire@exemple.com">
-                                </div>
-                                {{ if .Data.InviteAllowLanguage }}
-                                <div>
-                                    <select id="inv-preferred-lang" class="jg-input jg-select-premium h-10 w-full bg-black/50 text-sm rounded-xl border-white/10">
-                                        <option value="">{{ .T "invitations_preferred_lang_default" }}</option>
-                                        <option value="fr">Français</option>
-                                        <option value="en">English</option>
-                                        <option value="de">Deutsch</option>
-                                        <option value="es">Español</option>
-                                        <option value="it">Italiano</option>
-                                        <option value="nl">Nederlands</option>
-                                        <option value="pl">Polski</option>
-                                        <option value="pt-br">Português (Brasil)</option>
-                                        <option value="ru">Русский</option>
-                                        <option value="zh">中文 (简体)</option>
-                                    </select>
-                                </div>
-                                {{ end }}
-                            </div>
-                            <textarea id="inv-email-message" class="jg-input min-h-[56px] py-2 px-3 w-full bg-black/50 text-sm rounded-xl resize-none border-white/10" placeholder='{{ .T "invitations_email_message_placeholder" }}'></textarea>
-                        </div>
-
+                        <textarea id="inv-email-message" class="jg-input min-h-[50px] py-2 px-3 w-full bg-black/40 text-xs rounded-lg resize-none border-white/10" placeholder='{{ .T "invitations_email_message_placeholder" }}'></textarea>
                     </div>
+                </div>
 
-                    {{/* ── Right Column (5 cols): Live VIP Preview Card & Summary ── */}}
-                    <div class="lg:col-span-5 xl:col-span-5 space-y-5 lg:sticky lg:top-0">
-                        
-                        {{/* Carte d'Aperçu en Direct */}}
-                        <div class="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-purple-950/40 via-slate-900/60 to-black/80 border border-purple-500/30 shadow-2xl relative overflow-hidden backdrop-blur-xl">
-                            <div class="absolute -right-8 -top-8 w-32 h-32 bg-purple-600/15 rounded-full blur-2xl pointer-events-none"></div>
-                            <div class="absolute -left-8 -bottom-8 w-32 h-32 bg-cyan-600/15 rounded-full blur-2xl pointer-events-none"></div>
-                            
-                            <div class="relative z-10 space-y-4">
-                                <div class="flex items-center justify-between border-b border-white/10 pb-3">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                                        <span class="text-xs font-black uppercase tracking-widest text-slate-200">Aperçu en direct</span>
-                                    </div>
-                                    <span id="preview-badge-status" class="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">Prêt</span>
-                                </div>
-
-                                <div class="space-y-3 py-1">
-                                    <div>
-                                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Profil Jellyfin</div>
-                                        <div id="preview-card-preset" class="text-base font-bold text-white mt-0.5">Profil global JellyGate</div>
-                                        <div id="preview-card-libraries" class="text-xs text-purple-300 mt-0.5">Toutes les bibliothèques</div>
-                                    </div>
-
-                                    <div class="grid grid-cols-2 gap-3 pt-2 border-t border-white/5">
-                                        <div>
-                                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Utilisations</div>
-                                            <div id="preview-card-uses" class="text-sm font-bold text-cyan-300 mt-0.5">1 (Usage unique)</div>
-                                        </div>
-                                        <div>
-                                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Validité lien</div>
-                                            <div id="preview-card-expiry" class="text-sm font-bold text-indigo-300 mt-0.5">7 jours</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="pt-2 border-t border-white/5">
-                                        <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Type de compte</div>
-                                        <div id="preview-card-account-type" class="text-sm font-bold text-amber-300 mt-0.5">Compte permanent</div>
-                                    </div>
-                                </div>
-
-                                <div class="pt-3 border-t border-white/10">
-                                    <button type="submit" form="create-form" class="w-full h-12 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 active:scale-[0.98] text-white font-bold uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-xl shadow-purple-600/30 transition-all">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                                        <span>Générer l'invitation</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        {{/* Notice Info Authentik & Sécurité */}}
-                        <div class="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2 text-xs text-slate-400">
-                            <div class="flex items-center gap-2 text-slate-300 font-semibold">
-                                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                <span>Informations pratiques</span>
-                            </div>
-                            <p class="leading-relaxed">
-                                Le lien généré crée automatiquement le jeton d'étape Authentik et configure l'accès Jellyfin dès que l'invité finalise son inscription.
-                            </p>
-                        </div>
-
-                    </div>
-
+                {{/* Pied du Modal / Actions */}}
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                    <button type="button" class="jg-btn jg-btn-ghost h-11 px-5 text-xs font-semibold rounded-xl" data-modal-close="create-modal">{{ .T "cancel" }}</button>
+                    <button type="submit" class="jg-btn jg-btn-primary h-11 px-6 font-bold uppercase tracking-wider text-xs flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 rounded-xl" id="create-btn">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                        <span>{{ .T "invitations_create_link" }}</span>
+                    </button>
                 </div>
             </form>
-
-            {{/* Sticky Footer */}}
-            <div class="sticky bottom-0 z-30 flex items-center justify-between gap-3 px-4 sm:px-8 py-3.5 sm:py-4 border-t border-white/10 bg-slate-950/98 md:bg-slate-900/90 backdrop-blur-xl shrink-0">
-                <button type="button" class="jg-btn jg-btn-ghost h-11 px-5 text-sm font-semibold rounded-xl" data-modal-close="create-modal">{{ .T "cancel" }}</button>
-                <button type="submit" form="create-form" class="jg-btn jg-btn-primary h-11 sm:h-12 px-6 sm:px-10 font-bold uppercase tracking-wider text-sm flex items-center justify-center gap-2 shadow-xl shadow-purple-500/30 rounded-xl transition-all active:scale-[0.98] flex-1 sm:flex-initial" id="create-btn">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                    <span>{{ .T "invitations_create_link" }}</span>
-                </button>
-            </div>
         </div>
 
-        {{/* ── Success Result View ── */}}
-        <div id="invite-modal-success-view" class="hidden flex-1 overflow-y-auto p-5 sm:p-8 space-y-6 animate-in fade-in zoom-in duration-300 custom-modal-scroll">
-            <div class="text-center space-y-2">
-                <div class="w-16 h-16 rounded-3xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-cyan-400 p-0.5 shadow-2xl shadow-emerald-500/25 mx-auto flex items-center justify-center mb-3">
-                    <div class="w-full h-full bg-slate-950/85 rounded-[22px] flex items-center justify-center text-emerald-400">
-                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
-                    </div>
+        {{/* Vue Succès */}}
+        <div id="invite-modal-success-view" class="hidden p-6 space-y-6 animate-in fade-in zoom-in-95 duration-200">
+            <div class="text-center space-y-2 pt-2">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 mx-auto flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" /></svg>
                 </div>
-                <h3 class="text-xl sm:text-2xl font-black text-white tracking-tight">Invitation créée avec succès !</h3>
-                <p class="text-sm text-slate-400 max-w-md mx-auto">Votre lien d'inscription est généré et prêt à être transmis à votre invité.</p>
+                <h3 class="text-xl font-bold text-white">Invitation créée avec succès !</h3>
+                <p class="text-xs text-slate-400">Le lien d'inscription est prêt à être partagé avec votre invité.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
-                {{/* Links Column — Full width direct link */}}
-                <div class="md:col-span-7 flex flex-col justify-between p-5 rounded-2xl bg-white/[0.03] border border-purple-500/30 space-y-4 shadow-xl">
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <label class="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center gap-2">
-                                <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                                <span id="created-link-label">Lien d'inscription</span>
-                            </label>
-                            <span class="text-xs px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30" id="created-link-badge">Authentik</span>
-                        </div>
-                        <input type="text" id="created-link-url" readonly class="jg-input h-12 w-full bg-black/70 font-mono text-xs sm:text-sm text-purple-200 select-all border-purple-500/40 rounded-xl" />
+            <div class="space-y-4">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label class="text-xs font-bold uppercase tracking-wider text-purple-300" id="created-link-label">Lien d'inscription</label>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30" id="created-link-badge">Authentik</span>
                     </div>
-
-                    <div class="pt-2">
-                        <button type="button" id="created-link-copy-btn" class="jg-btn h-12 w-full px-5 bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-sm font-bold flex items-center justify-center gap-2 rounded-xl shadow-lg shadow-purple-600/30 transition-all">
+                    <div class="flex gap-2">
+                        <input type="text" id="created-link-url" readonly class="jg-input h-11 flex-1 bg-black/60 font-mono text-xs text-purple-200 select-all border-purple-500/40 rounded-xl" />
+                        <button type="button" id="created-link-copy-btn" class="jg-btn jg-btn-primary h-11 px-5 font-bold text-xs flex items-center gap-2 rounded-xl shadow-lg">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            <span>Copier le lien</span>
+                            <span>Copier</span>
                         </button>
                     </div>
                 </div>
 
-                {{/* QR Code Column */}}
-                <div class="md:col-span-5 p-5 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col items-center justify-center text-center space-y-3 shadow-xl">
-                    <div class="bg-white p-3.5 rounded-2xl inline-block border-2 border-indigo-500/20 shadow-xl">
-                        <img id="created-qr-img" src="" alt="QR Code" class="w-36 h-36 mx-auto" />
+                {{/* QR Code */}}
+                <div class="p-4 rounded-xl bg-white/[0.02] border border-white/10 flex items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white p-2 rounded-xl inline-block border border-white/20 shadow-md">
+                            <img id="created-qr-img" src="" alt="QR Code" class="w-20 h-20" />
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-slate-200">QR Code d'inscription</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">Scannable directement depuis un mobile</div>
+                        </div>
                     </div>
-                    <button type="button" id="created-qr-download-btn" class="jg-btn jg-btn-ghost h-10 px-4 w-full text-xs font-semibold text-slate-300 hover:text-white border border-white/10 hover:bg-white/5 flex items-center justify-center gap-2 rounded-xl transition-all">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                        <span>Télécharger le QR Code</span>
+                    <button type="button" id="created-qr-download-btn" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-semibold border border-white/10 rounded-lg flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        <span>Télécharger</span>
                     </button>
                 </div>
             </div>
 
-            {{/* Success Footer Actions */}}
             <div class="flex items-center justify-between gap-3 pt-4 border-t border-white/10">
-                <button type="button" id="btn-create-another" class="jg-btn jg-btn-ghost h-12 px-5 text-sm font-bold flex items-center justify-center gap-2 rounded-xl text-purple-300 hover:text-purple-200">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-                    <span>Créer une autre invitation</span>
+                <button type="button" id="btn-create-another" class="jg-btn jg-btn-ghost h-11 px-4 text-xs font-bold text-purple-300 hover:text-purple-200 rounded-xl">
+                    + Créer une autre invitation
                 </button>
-                <button type="button" id="btn-finish-modal" class="jg-btn jg-btn-primary h-12 px-8 text-sm font-bold uppercase tracking-wider rounded-xl shadow-lg shadow-purple-500/25">
-                    <span>Terminer</span>
+                <button type="button" id="btn-finish-modal" class="jg-btn jg-btn-primary h-11 px-6 text-xs font-bold uppercase tracking-wider rounded-xl shadow-lg">
+                    Terminer
                 </button>
             </div>
         </div>
@@ -589,50 +390,44 @@
     </div>
 </div>
 
-{{/* ── Delete Confirmation Modal ─────────────────────────────────────── */}}
+{{/* ── Modal de Confirmation de Suppression ───────────────────────────── */}}
 <div id="delete-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
-    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm"></div>
-    <div class="jg-card jg-glass w-full max-w-md relative z-10 text-center animate-in fade-in zoom-in duration-200">
-        <div class="w-20 h-20 rounded-full bg-rose-500/20 text-rose-500 flex items-center justify-center mx-auto mb-6">
-            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+    <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" data-modal-close="delete-modal"></div>
+    <div class="jg-card w-full max-w-md relative z-10 text-center rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div class="w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </div>
-        <h3 class="text-2xl font-bold mb-3">{{ .T "invitations_delete_title" }}</h3>
-        <p id="delete-modal-text" class="text-jg-text-muted mb-8 leading-relaxed"></p>
+        <h3 class="text-lg font-bold text-white mb-2">{{ .T "invitations_delete_title" }}</h3>
+        <p id="delete-modal-text" class="text-xs text-slate-400 mb-6 leading-relaxed"></p>
 
-        <div class="flex flex-col gap-3">
-            <button class="jg-btn jg-btn-danger h-12 font-bold uppercase tracking-widest" id="delete-confirm-btn">{{ .T "invitations_delete" }}</button>
-            <button class="jg-btn jg-btn-ghost h-12" data-modal-close="delete-modal">{{ .T "cancel" }}</button>
+        <div class="flex items-center justify-center gap-3">
+            <button class="jg-btn jg-btn-ghost h-11 px-5 text-xs font-semibold rounded-xl" data-modal-close="delete-modal">{{ .T "cancel" }}</button>
+            <button class="jg-btn jg-btn-danger h-11 px-6 text-xs font-bold uppercase tracking-wider rounded-xl" id="delete-confirm-btn">{{ .T "invitations_delete" }}</button>
         </div>
     </div>
 </div>
-{{/* ── QR Code Modal ─────────────────────────────────────────────────── */}}
+
+{{/* ── Modal QR Code Unique ────────────────────────────────────────────── */}}
 <div id="qr-modal" class="modal-overlay hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
     <div class="fixed inset-0 bg-black/80 backdrop-blur-sm" data-modal-close="qr-modal"></div>
-    <div class="jg-card jg-glass w-full max-w-sm relative z-10 text-center animate-in fade-in zoom-in duration-200 border border-white/15 p-6 rounded-3xl shadow-2xl">
-        <button data-modal-close="qr-modal" class="absolute right-4 top-4 p-2 rounded-xl hover:bg-white/10 text-jg-text-muted hover:text-rose-400 transition-colors" title="Fermer">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+    <div class="jg-card w-full max-w-sm relative z-10 text-center rounded-2xl border border-white/10 bg-slate-950 p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <button data-modal-close="qr-modal" class="absolute right-4 top-4 p-2 rounded-lg text-slate-400 hover:text-white" title="Fermer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
-        <div class="w-12 h-12 rounded-2xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mx-auto mb-3 shadow-lg">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+        <h3 class="text-base font-bold text-white mb-1">{{ .T "invitations_qr_title" }}</h3>
+        <p class="text-xs text-slate-400 mb-4">Scannez pour rejoindre ou partagez le lien</p>
+        <div class="bg-white p-3 rounded-xl mx-auto inline-block border border-white/20 shadow-lg">
+            <img id="qr-code-img" src="" alt="QR Code" class="w-40 h-40 mx-auto" />
         </div>
-        <h3 class="text-lg font-bold text-jg-text">
-            {{ .T "invitations_qr_title" }}
-        </h3>
-        <p class="text-xs text-jg-text-muted mt-1 mb-4">Scannez pour rejoindre ou partagez le lien directement</p>
-        <div class="bg-white p-4 rounded-2xl mx-auto inline-block border-2 border-indigo-500/20 shadow-xl">
-            <img id="qr-code-img" src="" alt="QR Code" class="w-48 h-48 mx-auto" />
-        </div>
-        <div id="qr-link-preview" class="text-[11px] font-mono text-indigo-300 bg-indigo-950/40 border border-indigo-500/20 rounded-xl px-3 py-2 mt-4 truncate select-all">
+        <div id="qr-link-preview" class="text-[11px] font-mono text-purple-300 bg-purple-950/40 border border-purple-500/20 rounded-lg px-3 py-2 mt-4 truncate select-all">
             --
         </div>
-        <div class="mt-4 flex flex-col gap-2">
-            <button id="qr-copy-btn" class="jg-btn jg-btn-primary h-11 px-6 w-full font-bold uppercase tracking-wider text-xs flex items-center justify-center gap-2 rounded-xl shadow-lg">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                <span>{{ .T "invitations_copy_link" }}</span>
+        <div class="mt-4 flex gap-2">
+            <button id="qr-copy-btn" class="jg-btn jg-btn-primary h-10 flex-1 text-xs font-bold rounded-xl">
+                {{ .T "invitations_copy_link" }}
             </button>
-            <button id="qr-download-btn" class="jg-btn jg-btn-ghost h-10 px-4 w-full text-xs font-semibold text-slate-300 hover:text-white border border-white/10 hover:bg-white/5 flex items-center justify-center gap-2 rounded-xl">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                <span>Télécharger l'image</span>
+            <button id="qr-download-btn" class="jg-btn jg-btn-ghost h-10 px-3 text-xs font-semibold border border-white/10 rounded-xl">
+                Télécharger
             </button>
         </div>
     </div>
@@ -667,46 +462,20 @@
         i18n: {
             linkCopied: '{{ .T "invitations_link_copied" }}',
             copyUnavailable: '{{ .T "invitations_copy_unavailable" }}',
-            baseLinks: '{{ .T "invitations_policy_base_links" }}',
-            maxUsesPerLink: '{{ .T "invitations_policy_max_uses" }}',
-            maxTtl: '{{ .T "invitations_policy_max_ttl" }}',
-            quotaDay: '{{ .T "invitations_policy_quota_day" }}',
-            quotaMonth: '{{ .T "invitations_policy_quota_month" }}',
-            grantLocked: '{{ .T "invitations_policy_grant_locked" }}',
-            expiryLocked: '{{ .T "invitations_policy_expiry_locked" }}',
             usesHelpLimited: '{{ .T "invitations_uses_help_limited" }}',
             usesHelpDefault: '{{ .T "invitations_uses_help_default" }}',
             linkHelpLimited: '{{ .T "invitations_link_help_limited" }}',
             linkHelpDefault: '{{ .T "invitations_link_help_default" }}',
-            inviteEnabledHelp: '{{ .T "invitations_invite_option_enabled_help" }}',
-            invitePolicyLimited: '{{ .T "invitations_invite_option_policy_limited" }}',
             loadError: '{{ .T "invitations_error_loading" }}',
             statsLoadError: '{{ .T "invitations_stats_error" }}',
-            statsUpdatedAt: '{{ .T "invitations_stats_updated_at" }}',
-            noSponsorData: '{{ .T "invitations_sponsor_no_data" }}',
-            unknownSponsor: '{{ .T "invitations_unknown_sponsor" }}',
             noActiveInvitations: '{{ .T "invitations_none_active" }}',
-            expiresOn: '{{ .T "invitations_expires_on" }}',
-            disableAfterDays: '{{ .T "invitations_disable_after_days" }}',
             unlimited: '{{ .T "invitations_unlimited" }}',
-            deleteAfterDays: '{{ .T "invitations_delete_after_days" }}',
-            noDeletePlanned: '{{ .T "invitations_no_planned_delete" }}',
-            roleCanInvite: '{{ .T "invitations_role_can_invite" }}',
-            roleStandard: '{{ .T "invitations_role_standard" }}',
-            defaultPolicy: '{{ .T "invitations_default_policy" }}',
-            groupPrefix: '{{ .T "invitations_group_prefix" }}',
-            groupDefault: '{{ .T "invitations_group_default" }}',
-            badgeExpired: '{{ .T "invitations_badge_expired" }}',
-            badgeActive: '{{ .T "invitations_badge_active" }}',
-            copyFullLinkTitle: '{{ .T "invitations_copy_full_link" }}',
-            emailManual: '{{ .T "invitations_email_manual" }}',
             deleted: '{{ .T "invitations_deleted" }}',
             createLink: '{{ .T "invitations_create_link" }}',
             invalidMaxUses: '{{ .T "invitations_invalid_max_uses" }}',
             invalidUserExpiry: '{{ .T "invitations_invalid_user_expiry" }}',
             forcedUsernameHelp: '{{ .T "invitations_forced_username_help" }}',
             forcedUsernameLimitHint: '{{ .T "invitations_forced_username_limit_hint" }}',
-            userExpiryFuture: '{{ .T "invitations_user_expiry_future" }}',
             created: '{{ .T "invitations_created" }}',
             unknownError: '{{ .T "invitations_unknown_error" }}',
             profileGlobal: '{{ .T "invitations_profile_global" }}',
@@ -717,55 +486,6 @@
             securitySaved: '{{ .T "invitations_security_saved" }}',
         },
     };
-
-    // Immediate inline quick pill handler (bypasses any caching)
-    (function() {
-        function attachPillHandlers() {
-            var usesPills = document.querySelectorAll('#quick-uses-pills .quick-pill');
-            usesPills.forEach(function(pill) {
-                pill.onclick = function(e) {
-                    e.preventDefault();
-                    var val = this.getAttribute('data-value');
-                    var input = document.getElementById('inv-uses');
-                    if (input) {
-                        input.value = val;
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                    usesPills.forEach(function(p) { p.classList.remove('active'); });
-                    this.classList.add('active');
-                };
-            });
-
-            var daysPills = document.querySelectorAll('#quick-days-pills .quick-pill');
-            daysPills.forEach(function(pill) {
-                pill.onclick = function(e) {
-                    e.preventDefault();
-                    var val = this.getAttribute('data-value');
-                    var input = document.getElementById('inv-expiry-days');
-                    if (input) {
-                        input.value = val;
-                        input.dispatchEvent(new Event('input', { bubbles: true }));
-                        input.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-                    daysPills.forEach(function(p) { p.classList.remove('active'); });
-                    this.classList.add('active');
-                };
-            });
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', attachPillHandlers);
-        } else {
-            attachPillHandlers();
-        }
-
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.closest && e.target.closest('.btn-open-create-modal')) {
-                setTimeout(attachPillHandlers, 50);
-            }
-        });
-    })();
 </script>
 <script src="/static/js/libs/qrcode.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>
 <script src="/static/js/pages/invitations.js?v={{ .AppVersion }}" nonce="{{ .ScriptNonce }}"></script>

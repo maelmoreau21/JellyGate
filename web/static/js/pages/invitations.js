@@ -10,10 +10,6 @@
     const inviterMaxUses = Number(config.inviterMaxUses || 0);
     const limitLinkValidityDays = Number(config.limitLinkValidityDays || 0) || Math.max(0, Math.ceil(Number(config.inviterMaxLinkHours || 0) / 24));
     const inviterMaxLinkHours = Number(config.inviterMaxLinkHours || 0);
-    const inviterQuotaDay = Number(config.inviterQuotaDay || 0);
-    const inviterQuotaMonth = Number(config.inviterQuotaMonth || 0);
-    const limitUserExpiryDays = Number(config.limitUserExpiryDays || 0);
-    const defaultDisableAfterDays = Number(config.defaultDisableAfterDays || 0);
     const targetPresetID = String(config.targetPresetID || '').trim();
     const allowedTargetPresetIDs = String(config.allowedTargetPresetIDs || '').split(',').map((v) => v.trim()).filter(Boolean);
     const canCreateTemporaryInvitations = !!config.canCreateTemporaryInvitations;
@@ -45,10 +41,6 @@
             return String(template || '').replace(/\{(\w+)\}/g, (_, key) => (vars && key in vars ? String(vars[key]) : ''));
         }
 
-        function createBtnLabel() {
-            return `<svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>${JG.esc(i18n.createLink || 'Créer le lien')}`;
-        }
-
         async function copyLinkToClipboard(link, btnEl) {
             const ok = await JG.copyText(link);
             if (ok) {
@@ -66,15 +58,31 @@
             return ok;
         }
 
+        function getEffectiveMaxUses() {
+            const usesSelect = document.getElementById('inv-uses-select');
+            const customInput = document.getElementById('inv-uses');
+            if (usesSelect && usesSelect.value !== 'custom') {
+                return parseInt(usesSelect.value, 10);
+            }
+            return customInput ? parseInt(customInput.value || '1', 10) : 1;
+        }
+
+        function getEffectiveExpiryDays() {
+            const expirySelect = document.getElementById('inv-expiry-select');
+            const customInput = document.getElementById('inv-expiry-days');
+            if (expirySelect && expirySelect.value !== 'custom') {
+                return parseInt(expirySelect.value, 10);
+            }
+            return customInput ? parseInt(customInput.value || '7', 10) : 7;
+        }
+
         function updateForcedUsernameState() {
-            const maxUsesInput = document.getElementById('inv-uses');
+            const maxUses = getEffectiveMaxUses();
             const forcedNameInput = document.getElementById('inv-forced-name');
             const forcedUserInput = document.getElementById('inv-forced-user');
-            const forcedIdentityWrap = document.getElementById('inv-forced-identity-wrap') || document.getElementById('inv-forced-user-wrap');
+            const forcedIdentityWrap = document.getElementById('inv-forced-identity-wrap');
             const forcedUserHelp = document.getElementById('inv-forced-user-help');
-            if (!maxUsesInput) return;
             
-            const maxUses = parseInt(maxUsesInput.value, 10);
             const isAllowed = maxUses === 1;
             
             if (forcedNameInput) {
@@ -96,76 +104,8 @@
                     forcedUserHelp.textContent = i18n.forcedUsernameLimitHint || 'Disponible uniquement pour les invitations à usage unique (1).';
                     forcedUserHelp.classList.add('text-amber-400');
                 } else {
-                    forcedUserHelp.textContent = i18n.forcedUsernameHelp || 'Optionnel : force le nom d\'affichage et le nom d\'utilisateur pré-remplis.';
+                    forcedUserHelp.textContent = i18n.forcedUsernameHelp || 'Optionnel : nom d\'affichage et identifiant pré-remplis pour cet invité.';
                     forcedUserHelp.classList.remove('text-amber-400');
-                }
-            }
-        }
-
-        function updateLivePreviewCard() {
-            const select = document.getElementById('inv-policy-preset');
-            const preset = invitationPresets.find((item) => item.id === select?.value);
-            
-            const presetNameEl = document.getElementById('preview-card-preset');
-            const libEl = document.getElementById('preview-card-libraries');
-            if (presetNameEl) {
-                presetNameEl.textContent = preset ? (preset.name || preset.id) : (i18n.profileGlobal || 'Profil global JellyGate');
-            }
-            if (libEl) {
-                if (!preset || preset.enable_all_folders) {
-                    libEl.textContent = i18n.profileAllLibraries || 'Toutes les bibliothèques';
-                } else {
-                    const count = (preset.enabled_folder_ids || []).length;
-                    libEl.textContent = `${count} bibliothèque(s) accessible(s)`;
-                }
-            }
-
-            // Uses hint & badge
-            const usesInput = document.getElementById('inv-uses');
-            const usesHint = document.getElementById('uses-badge-hint');
-            const usesEl = document.getElementById('preview-card-uses');
-            const statusBadge = document.getElementById('preview-badge-status');
-            if (usesInput) {
-                const u = parseInt(usesInput.value, 10);
-                const txt = u === 1 ? '1 max' : (u > 1 ? `${u} max` : 'Illimité');
-                if (usesHint) usesHint.textContent = txt;
-                if (usesEl) usesEl.textContent = u === 1 ? '1 (Usage unique)' : (u > 1 ? `${u} utilisations` : (i18n.unlimited || 'Illimité'));
-                
-                if (statusBadge) {
-                    if (u === 1) {
-                        statusBadge.textContent = 'Usage unique';
-                        statusBadge.className = 'text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30';
-                    } else if (u === 0) {
-                        statusBadge.textContent = 'Illimité';
-                        statusBadge.className = 'text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
-                    } else {
-                        statusBadge.textContent = `${u} usages`;
-                        statusBadge.className = 'text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
-                    }
-                }
-            }
-
-            // Expiry hint & badge
-            const daysInput = document.getElementById('inv-expiry-days');
-            const expiryHint = document.getElementById('expiry-badge-hint');
-            const expiryEl = document.getElementById('preview-card-expiry');
-            if (daysInput) {
-                const d = parseInt(daysInput.value, 10);
-                const txt = d === 1 ? '24h' : (d > 1 ? `${d} jours` : 'Permanent');
-                if (expiryHint) expiryHint.textContent = txt;
-                if (expiryEl) expiryEl.textContent = d === 1 ? '24 heures' : (d > 1 ? `${d} jours` : 'Permanent (sans limite)');
-            }
-
-            // Account type
-            const tempInput = document.getElementById('inv-is-temporary');
-            const durationInput = document.getElementById('inv-account-duration-days');
-            const accountTypeEl = document.getElementById('preview-card-account-type');
-            if (accountTypeEl) {
-                if (tempInput && tempInput.checked) {
-                    const dur = durationInput?.value || '30';
-                    accountTypeEl.textContent = `Compte temporaire (${dur} jours d'accès)`;
-                } else {
-                    accountTypeEl.textContent = 'Compte permanent';
                 }
             }
         }
@@ -173,330 +113,260 @@
         function applySelectedInvitePreset() {
             const select = document.getElementById('inv-policy-preset');
             const summary = document.getElementById('inv-profile-summary');
-            const tagsContainer = document.getElementById('inv-preset-tags');
+            const badge = document.getElementById('inv-preset-badge');
             const preset = invitationPresets.find((item) => item.id === select?.value);
             
-            if (tagsContainer) {
-                if (!preset) {
-                    tagsContainer.innerHTML = `<span class="px-2.5 py-0.5 rounded-lg bg-white/5 border border-white/10 text-xs text-slate-300 font-medium">Profil par défaut</span>`;
-                } else {
-                    const tags = [];
-                    if (preset.enable_all_folders) {
-                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400 font-semibold">Toutes bibliothèques</span>`);
-                    } else {
-                        const count = (preset.enabled_folder_ids || []).length;
-                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-xs text-cyan-300 font-semibold">${count} bibliothèque(s)</span>`);
-                    }
-                    if (preset.is_administrator) {
-                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 font-semibold">Admin</span>`);
-                    }
-                    if (preset.can_invite) {
-                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs text-purple-300 font-semibold">Parrain</span>`);
-                    }
-                    if (preset.is_temporary || preset.disable_after_days > 0) {
-                        tags.push(`<span class="px-2.5 py-0.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 font-semibold">Temporaire (${preset.disable_after_days || preset.default_account_duration_days || 30}j)</span>`);
-                    }
-                    tagsContainer.innerHTML = tags.join(' ');
-                }
+            if (badge) {
+                badge.textContent = preset ? (preset.name || preset.id) : 'Politique globale';
             }
 
             if (summary) {
                 if (!preset) {
-                    summary.textContent = 'Applique les règles générales et bibliothèques configurées dans JellyGate.';
+                    summary.textContent = 'Accès standard configuré par défaut sur JellyGate.';
                 } else {
-                    summary.textContent = preset.description || `Configuration issue du modèle « ${preset.name || preset.id} ».`;
+                    const libText = preset.enable_all_folders
+                        ? (i18n.profileAllLibraries || 'Toutes les bibliothèques accessibles')
+                        : `${(preset.enabled_folder_ids || []).length} bibliothèque(s) autorisée(s)`;
+                    summary.textContent = `${preset.name || preset.id} : ${libText}.`;
                 }
-            }
-
-            updateTemporaryInvitationState(preset);
-            updateLivePreviewCard();
-        }
-
-        function updateTemporaryInvitationState(preset) {
-            const tempInput = document.getElementById('inv-is-temporary');
-            const durationInput = document.getElementById('inv-account-duration-days');
-            const tempConfigBox = document.getElementById('temp-account-config');
-            const help = document.getElementById('inv-temp-help');
-            if (!tempInput || !durationInput) return;
-
-            const profileIsTemporary = !!preset?.is_temporary;
-            const allowedBySponsor = isAdmin || canCreateTemporaryInvitations;
-            const selectedID = String(document.getElementById('inv-policy-preset')?.value || targetPresetID || '').trim();
-            const allowedProfile = isAdmin || !selectedID || allowedTemporaryPresetIDs.includes(selectedID);
-            const defaultDays = Number(preset?.default_account_duration_days || preset?.disable_after_days || defaultTemporaryDurationDays || 30);
-            const maxDays = Number(preset?.max_account_duration_days || maxTemporaryDurationDays || 0);
-
-            if (profileIsTemporary) tempInput.checked = true;
-            tempInput.disabled = profileIsTemporary || !allowedBySponsor || !allowedProfile;
-            durationInput.disabled = !tempInput.checked || tempInput.disabled;
-            
-            if (tempConfigBox) {
-                tempConfigBox.classList.toggle('hidden', !tempInput.checked);
-            }
-
-            if (tempInput.checked && (!durationInput.value || durationInput.value === '30')) {
-                durationInput.value = String(defaultDays || 30);
-            }
-            if (maxDays > 0 && Number(durationInput.value || 0) > maxDays) {
-                durationInput.value = String(maxDays);
-            }
-            if (help) {
-                const parts = [];
-                if (!allowedBySponsor) parts.push('Votre profil ne permet pas les invitations temporaires.');
-                if (allowedBySponsor && !allowedProfile) parts.push('Ce profil cible n\'est pas autorisé comme temporaire.');
-                if (maxDays > 0) parts.push(`Maximum ${maxDays} jour(s).`);
-                help.textContent = parts.join(' ');
             }
         }
 
         function applyInvitationPolicyUI() {
-            const usesInput = document.getElementById('inv-uses');
-            const linkDaysInput = document.getElementById('inv-expiry-days');
-            const canInviteInput = document.getElementById('inv-new-user-can-invite');
-            const canInviteWrap = document.getElementById('inv-can-invite-wrap');
-            const ignoreLinkWrap = document.getElementById('inv-ignore-link-limit-wrap');
-            const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
-            const usesHelp = document.getElementById('inv-uses-help');
-            const linkHelp = document.getElementById('inv-link-expiry-help');
-            const canInviteHelp = document.getElementById('inv-can-invite-help');
+            const select = document.getElementById('inv-policy-preset');
+            if (!select) return;
 
-            if (!isAdmin) {
-                if (usesInput && inviterMaxUses > 0) {
-                    usesInput.max = String(inviterMaxUses);
-                    if (Number(usesInput.value || 0) > inviterMaxUses || Number(usesInput.value || 0) <= 0) {
-                        usesInput.value = String(inviterMaxUses);
-                    }
-                    if (usesHelp) usesHelp.textContent = fmt(i18n.usesHelpLimited, { n: inviterMaxUses });
-                }
-                if (linkDaysInput && limitLinkValidityDays > 0) {
-                    if (Number(linkDaysInput.value || 0) <= 0 || Number(linkDaysInput.value || 0) > limitLinkValidityDays) {
-                        linkDaysInput.value = String(limitLinkValidityDays);
-                    }
-                    if (linkHelp) linkHelp.textContent = fmt(i18n.linkHelpLimited, { n: inviterMaxLinkHours || (limitLinkValidityDays * 24) });
-                }
-                if (ignoreLinkWrap) ignoreLinkWrap.classList.add('hidden');
-                if (ignoreLinkInput) {
-                    ignoreLinkInput.checked = false;
-                    ignoreLinkInput.disabled = true;
-                }
-                if (canInviteInput) {
-                    canInviteInput.disabled = !allowInviterGrant;
-                    if (!allowInviterGrant) canInviteInput.checked = false;
-                }
-                if (canInviteWrap && !allowInviterGrant) {
-                    canInviteWrap.classList.add('opacity-40', 'pointer-events-none');
-                }
-                if (canInviteHelp && !allowInviterGrant) {
-                    canInviteHelp.textContent = i18n.invitePolicyLimited || 'Droit de parrainage non accordé sur votre profil.';
-                }
-            } else {
-                if (ignoreLinkWrap) ignoreLinkWrap.classList.remove('hidden');
-                if (ignoreLinkInput) ignoreLinkInput.disabled = false;
-                if (canInviteInput) canInviteInput.disabled = false;
-                if (canInviteWrap) canInviteWrap.classList.remove('opacity-40', 'pointer-events-none');
+            let allowed = invitationPresets;
+            if (!isAdmin && allowedTargetPresetIDs.length > 0) {
+                allowed = allowed.filter((item) => allowedTargetPresetIDs.includes(item.id));
             }
 
-            syncPillButtons();
-            updateForcedUsernameState();
-            updateLivePreviewCard();
-        }
-
-        function syncPillButtons() {
-            const usesVal = String(document.getElementById('inv-uses')?.value ?? '');
-            document.querySelectorAll('#quick-uses-pills .quick-pill, [data-pill-group="uses"] .quick-pill').forEach((pill) => {
-                pill.classList.toggle('active', pill.dataset.value === usesVal);
+            const current = select.value;
+            select.innerHTML = '<option value="">Politique globale JellyGate</option>';
+            allowed.forEach((p) => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = p.name || p.id;
+                if (targetPresetID && p.id === targetPresetID) opt.selected = true;
+                select.appendChild(opt);
             });
 
-            const daysVal = String(document.getElementById('inv-expiry-days')?.value ?? '');
-            document.querySelectorAll('#quick-days-pills .quick-pill, [data-pill-group="days"] .quick-pill').forEach((pill) => {
-                pill.classList.toggle('active', pill.dataset.value === daysVal);
-            });
-        }
-
-        // Direct event binding for quick pills
-        function setupQuickPills() {
-            document.querySelectorAll('.quick-pill').forEach((pill) => {
-                pill.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const parent = pill.closest('#quick-uses-pills, #quick-days-pills, [data-pill-group]');
-                    if (!parent) return;
-                    
-                    parent.querySelectorAll('.quick-pill').forEach((p) => p.classList.remove('active'));
-                    pill.classList.add('active');
-                    
-                    const val = pill.dataset.value;
-                    const isUses = parent.id === 'quick-uses-pills' || parent.dataset.pillGroup === 'uses';
-                    const isDays = parent.id === 'quick-days-pills' || parent.dataset.pillGroup === 'days';
-                    
-                    if (isUses) {
-                        const usesInput = document.getElementById('inv-uses');
-                        if (usesInput) {
-                            usesInput.value = val;
-                            usesInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            usesInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    } else if (isDays) {
-                        const daysInput = document.getElementById('inv-expiry-days');
-                        if (daysInput) {
-                            daysInput.value = val;
-                            daysInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            daysInput.dispatchEvent(new Event('change', { bubbles: true }));
-                        }
-                    }
-                });
-            });
+            if (current && allowed.some((p) => p.id === current)) {
+                select.value = current;
+            }
         }
 
         async function loadInviteWizardData() {
-            const presetsRes = await JG.api('/admin/api/automation/presets');
-            invitationPresets = Array.isArray(presetsRes?.data) ? presetsRes.data : [];
-
-            const select = document.getElementById('inv-policy-preset');
-            if (select) {
-                let visiblePresets = invitationPresets;
-                if (!isAdmin) {
-                    const allowed = new Set(allowedTargetPresetIDs.length ? allowedTargetPresetIDs : [targetPresetID].filter(Boolean));
-                    visiblePresets = invitationPresets.filter((preset) => allowed.has(preset.id));
-                    if (!visiblePresets.length) {
-                        visiblePresets = Array.from(allowed).map((id) => ({ id, name: id }));
-                    }
+            try {
+                const res = await JG.api('/admin/api/automation/presets');
+                if (res && res.success && Array.isArray(res.data)) {
+                    invitationPresets = res.data;
+                    applyInvitationPolicyUI();
+                    applySelectedInvitePreset();
                 }
-                select.innerHTML = (isAdmin ? `<option value="">${JG.esc(i18n.profileGlobal || 'Politique globale JellyGate')}</option>` : '') + visiblePresets.map((preset) => {
-                    const adminSuffix = preset.is_administrator ? ' · admin' : '';
-                    return `<option value="${JG.esc(preset.id || '')}">${JG.esc((preset.name || preset.id || 'Profil') + adminSuffix)}</option>`;
-                }).join('');
-                if (!isAdmin && targetPresetID) select.value = targetPresetID;
+            } catch (err) {
+                console.warn('[Invitations] Presets non chargés:', err);
             }
-            applySelectedInvitePreset();
         }
 
         async function loadInvitations() {
-            const search = encodeURIComponent(document.getElementById('search-invites')?.value || '');
-            const status = encodeURIComponent(document.getElementById('filter-status')?.value || 'all');
-            const res = await JG.api(`/admin/api/invitations?page=${currentPage}&limit=${itemsPerPage}&search=${search}&status=${status}`);
-            if (res.success && res.data) {
-                const invitations = res.data.invitations || [];
-                const meta = res.data.meta || {};
-                
-                totalPages = meta.total_pages || 1;
-                currentPage = meta.page || 1;
-                
-                renderInvitations(invitations);
-                renderPagination(meta);
-            } else {
-                JG.toast(i18n.loadError || 'Erreur de chargement des invitations', 'error');
+            const tbody = document.getElementById('invites-tbody');
+            if (!tbody) return;
+
+            const searchInput = document.getElementById('search-invites');
+            const filterStatus = document.getElementById('filter-status');
+            const search = (searchInput?.value || '').trim();
+            const status = filterStatus?.value || 'all';
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center py-16">
+                        <div class="flex flex-col items-center gap-3">
+                            <span class="spinner w-8 h-8 border-2 border-purple-500 border-t-transparent animate-spin rounded-full"></span>
+                            <span class="text-xs text-slate-400 animate-pulse">${JG.esc(i18n.loading || 'Chargement...')}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+
+            try {
+                const params = new URLSearchParams({
+                    page: String(currentPage),
+                    limit: String(itemsPerPage),
+                    search: search,
+                    status: status,
+                });
+
+                const res = await JG.api(`/admin/api/invitations?${params.toString()}`);
+                if (!res.success) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-rose-400 text-xs">${JG.esc(res.message || i18n.loadError || 'Erreur')}</td></tr>`;
+                    return;
+                }
+
+                const items = Array.isArray(res.data) ? res.data : [];
+                if (items.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="6" class="text-center py-16 text-slate-400">
+                                <div class="flex flex-col items-center gap-2">
+                                    <svg class="w-10 h-10 text-slate-600 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+                                    <span class="text-sm font-semibold">${JG.esc(i18n.noActiveInvitations || 'Aucune invitation trouvée')}</span>
+                                    <span class="text-xs text-slate-500">Créez votre premier lien d'invitation avec le bouton ci-dessus.</span>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    updatePagination(0, 1, 1);
+                    return;
+                }
+
+                const pg = res.pagination || {};
+                totalPages = pg.pages || 1;
+                updatePagination(pg.total || items.length, pg.page || 1, totalPages);
+
+                tbody.innerHTML = items.map((inv) => renderInvitationRow(inv)).join('');
+            } catch (err) {
+                console.error('[Invitations] Load error:', err);
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-rose-400 text-xs">${JG.esc(i18n.loadError || 'Erreur')}</td></tr>`;
             }
         }
 
-        function renderPagination(meta) {
-            const info = document.getElementById('pagination-info');
-            if (info) {
-                info.textContent = `Page ${meta.page} / ${meta.total_pages}`;
+        function renderInvitationRow(inv) {
+            const code = String(inv.code || '');
+            const directLink = inv.invite_url || `${inviteBaseURL}/invite/${code}`;
+            const authLink = inv.authentik_enrollment_url || '';
+            const isAuth = !!(authLink && (inv.authentik_enabled !== false));
+            const activeLink = isAuth ? authLink : directLink;
+
+            // Uses badge
+            const maxUses = Number(inv.max_uses || 0);
+            const usedCount = Number(inv.used_count || 0);
+            let usesHtml = '';
+            if (maxUses === 0) {
+                usesHtml = `<span class="px-2.5 py-1 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 text-xs font-bold font-mono">${usedCount} / ∞</span>`;
+            } else {
+                const pct = Math.min(100, Math.round((usedCount / maxUses) * 100));
+                const colorCls = pct >= 100 ? 'bg-rose-500 text-rose-200' : 'bg-purple-500 text-purple-200';
+                usesHtml = `
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-xs font-mono font-bold">
+                            <span class="${usedCount >= maxUses ? 'text-rose-400' : 'text-slate-200'}">${usedCount}/${maxUses}</span>
+                            <span class="text-[10px] text-slate-500">${pct}%</span>
+                        </div>
+                        <div class="w-24 h-1.5 rounded-full bg-black/40 overflow-hidden">
+                            <div class="h-full rounded-full ${colorCls}" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
             }
 
-            const prevBtn = document.getElementById('prev-page');
-            const nextBtn = document.getElementById('next-page');
-            if (prevBtn) prevBtn.disabled = meta.page <= 1;
-            if (nextBtn) nextBtn.disabled = meta.page >= meta.total_pages;
-
-            const pageNumbers = document.getElementById('page-numbers');
-            if (pageNumbers) {
-                let html = '';
-                const start = Math.max(1, meta.page - 2);
-                const end = Math.min(meta.total_pages, meta.page + 2);
-                
-                for (let i = start; i <= end; i++) {
-                    const activeClass = i === meta.page ? 'bg-jg-accent text-always-white shadow-lg shadow-jg-accent/20' : 'bg-jg-bg-secondary text-jg-text-muted hover:text-jg-text border border-jg-border';
-                    html += `<button class="w-8 h-8 flex items-center justify-center rounded-lg font-bold text-xs transition-all page-btn ${activeClass}" data-page="${i}">${i}</button>`;
+            // Expiry status
+            let expiryHtml = '';
+            if (inv.expires_at) {
+                const expDate = new Date(inv.expires_at);
+                const isPast = expDate < new Date();
+                const formatted = JG.formatDate ? JG.formatDate(inv.expires_at) : expDate.toLocaleDateString();
+                if (isPast) {
+                    expiryHtml = `<span class="text-xs text-rose-400 font-bold flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Expiré</span>`;
+                } else {
+                    expiryHtml = `<span class="text-xs text-slate-300 font-medium">${formatted}</span>`;
                 }
-                pageNumbers.innerHTML = html;
+            } else {
+                expiryHtml = `<span class="text-xs text-emerald-400 font-bold">Permanent</span>`;
             }
+
+            // Profile & temporary
+            let profileHtml = `<div class="text-xs font-bold text-slate-200 truncate">${JG.esc(inv.profile_id || 'Politique globale')}</div>`;
+            if (inv.is_temporary && inv.account_duration_days > 0) {
+                profileHtml += `<div class="text-[11px] text-amber-400 font-semibold mt-0.5">Compte temp. (${inv.account_duration_days}j)</div>`;
+            }
+
+            // Sponsor
+            const sponsorName = inv.created_by || '(système)';
+
+            return `
+                <tr class="hover:bg-white/[0.02] transition-colors group">
+                    <td class="py-3.5 px-6">
+                        <div class="flex items-center gap-2.5">
+                            <button type="button" class="action-copy-link p-1.5 rounded-lg bg-white/5 hover:bg-purple-600/30 text-purple-300 transition-all active:scale-95" data-link="${encodeURIComponent(activeLink)}" title="Copier le lien direct">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </button>
+                            <span class="font-mono text-xs font-bold text-purple-200 select-all">${JG.esc(code)}</span>
+                            ${isAuth ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">Authentik</span>' : ''}
+                        </div>
+                    </td>
+                    <td class="py-3.5 px-4">${usesHtml}</td>
+                    <td class="py-3.5 px-4">${expiryHtml}</td>
+                    <td class="py-3.5 px-4">${profileHtml}</td>
+                    <td class="py-3.5 px-4">
+                        <span class="text-xs text-slate-300 font-semibold">${JG.esc(sponsorName)}</span>
+                    </td>
+                    <td class="py-3.5 px-6 text-right">
+                        <div class="flex items-center justify-end gap-1.5">
+                            <button type="button" class="action-qr-code p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors" data-link="${encodeURIComponent(activeLink)}" title="Afficher le QR Code">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                            </button>
+                            <button type="button" class="action-delete-invite p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors" data-id="${inv.id}" data-code="${JG.esc(code)}" title="Supprimer l'invitation">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
         }
 
         async function loadSponsorStats() {
-            const res = await JG.api('/admin/api/invitations/stats');
-            if (!res || !res.success || !res.data) return;
+            try {
+                const res = await JG.api('/admin/api/invitations/stats');
+                if (res.success && res.data) {
+                    const st = res.data;
+                    const elTotal = document.getElementById('sponsor-total-links');
+                    const elActive = document.getElementById('sponsor-active-links');
+                    const elClosed = document.getElementById('sponsor-closed-links');
+                    const elConversions = document.getElementById('sponsor-conversions');
+                    const elRate = document.getElementById('sponsor-conversion-rate');
 
-            const data = res.data;
-            const stats = data.stats || data;
-            
-            const fields = {
-                'sponsor-total-links': stats.total_links,
-                'sponsor-active-links': stats.active_links,
-                'sponsor-closed-links': stats.closed_links,
-                'sponsor-conversions': stats.conversions,
-                'sponsor-conversion-rate': (stats.conversion_rate || 0).toFixed(1) + '%'
-            };
-
-            for (const [id, val] of Object.entries(fields)) {
-                const el = document.getElementById(id);
-                if (el) el.textContent = String(val);
+                    if (elTotal) elTotal.textContent = String(st.total_links || 0);
+                    if (elActive) elActive.textContent = String(st.active_links || 0);
+                    if (elClosed) elClosed.textContent = String(st.closed_links || 0);
+                    if (elConversions) elConversions.textContent = String(st.conversions || 0);
+                    if (elRate) elRate.textContent = `(${Number(st.conversion_rate || 0).toFixed(1)}%)`;
+                }
+            } catch (err) {
+                console.warn('[Invitations] Stats error:', err);
             }
         }
 
-        function renderInvitations(list) {
-            const tbody = document.getElementById('invites-tbody');
-            if (!tbody) return;
-            
-            if (list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-jg-text-muted py-12 font-medium">${JG.esc(i18n.noActiveInvitations || 'Aucune invitation trouvée')}</td></tr>`;
-                return;
+        function updatePagination(total, page, pages) {
+            currentPage = page;
+            totalPages = pages;
+
+            const prevBtn = document.getElementById('prev-page');
+            const nextBtn = document.getElementById('next-page');
+            const info = document.getElementById('pagination-info');
+            const numbersContainer = document.getElementById('page-numbers');
+
+            if (prevBtn) prevBtn.disabled = currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+            if (info) info.textContent = `Page ${currentPage} / ${totalPages} (${total} total)`;
+
+            if (numbersContainer) {
+                numbersContainer.innerHTML = '';
+                for (let i = 1; i <= totalPages; i++) {
+                    if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+                        const btn = document.createElement('button');
+                        btn.className = `w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                            i === currentPage ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                        }`;
+                        btn.textContent = String(i);
+                        btn.onclick = () => {
+                            currentPage = i;
+                            loadInvitations();
+                        };
+                        numbersContainer.appendChild(btn);
+                    }
+                }
             }
-
-            tbody.innerHTML = list.map((invitation) => {
-                const link = invitation.invite_url || `${inviteBaseURL}/invite/${invitation.code}`;
-                const authLink = invitation.authentik_enrollment_url || '';
-                const primaryLink = authLink || link;
-                const expDate = invitation.expires_at ? new Date(invitation.expires_at).toLocaleDateString(uiLocale) : '—';
-                const profile = invitation.jellyfin_profile || {};
-                
-                const expiryLabel = profile.user_expires_at 
-                    ? fmt(i18n.expiresOn, { date: new Date(profile.user_expires_at).toLocaleString(uiLocale) })
-                    : (profile.user_expiry_days > 0 ? fmt(i18n.disableAfterDays, { n: profile.user_expiry_days }) : (i18n.unlimited || 'Illimité'));
-                
-                const deleteLabel = profile.delete_after_days > 0 ? fmt(i18n.deleteAfterDays, { n: profile.delete_after_days }) : (i18n.noDeletePlanned || 'Permanent');
-                const roleLabel = profile.can_invite ? (i18n.roleCanInvite || 'Parrain') : (i18n.roleStandard || 'Standard');
-                const groupLabel = profile.group_name ? fmt(i18n.groupPrefix, { group: profile.group_name }) : (i18n.groupDefault || 'Défaut');
-                const inviteLang = normalizeLangTag(invitation.preferred_lang || '') || defaultLang;
-                
-                const isOver = (invitation.max_uses > 0 && invitation.used_count >= invitation.max_uses) || (invitation.expires_at && new Date(invitation.expires_at) < new Date());
-                const badge = isOver 
-                    ? `<span class="badge badge-danger">${JG.esc(i18n.badgeExpired || 'Expiré')}</span>` 
-                    : `<span class="badge badge-success">${JG.esc(i18n.badgeActive || 'Actif')}</span>`;
-
-                return `<tr class="${isOver ? 'opacity-40' : 'hover:bg-white/[0.02] transition-colors'}">
-                    <td class="px-5 py-4">
-                        <div class="flex items-center gap-2.5">
-                            <code class="px-2.5 py-1 bg-black/40 border border-purple-500/30 rounded-lg text-purple-300 font-mono font-bold text-xs tracking-wider select-all shadow-inner">${invitation.code}</code>
-                            <div class="flex items-center gap-1">
-                                <button class="jg-btn-icon action-copy-link" data-link="${encodeURIComponent(primaryLink)}" title="${JG.esc(i18n.copyFullLinkTitle || 'Copier le lien d\'invitation')}">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                </button>
-                                ${authLink ? `
-                                <button class="jg-btn-icon action-copy-authentik text-purple-400 hover:text-purple-300 hover:bg-purple-500/20" data-auth-link="${encodeURIComponent(authLink)}" title="Copier le lien direct Authentik">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
-                                </button>
-                                ` : ''}
-                                <button class="jg-btn-icon jg-btn-icon-accent action-qr-code" data-link="${encodeURIComponent(primaryLink)}" title="Afficher le Code QR">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm14 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-                                </button>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-5 py-4"><div class="flex items-center gap-2"><span class="font-bold text-slate-100 text-sm">${invitation.used_count} / ${invitation.max_uses > 0 ? invitation.max_uses : '∞'}</span> ${badge}</div></td>
-                    <td class="px-5 py-4"><span class="badge badge-muted">${expDate}</span></td>
-                    <td class="px-5 py-4">
-                        <div class="font-bold text-slate-100 text-xs">${JG.esc(expiryLabel)} · <span class="text-purple-400">${JG.esc(roleLabel)}</span></div>
-                        <div class="text-[10px] text-slate-400 uppercase tracking-wider mt-1">${JG.esc(deleteLabel)} | ${JG.esc(groupLabel)} | LANG: ${JG.esc(String(inviteLang).toUpperCase())}</div>
-                    </td>
-                    <td class="px-5 py-4"><span class="badge badge-accent">${JG.esc(invitation.created_by || 'System')}</span></td>
-                    <td class="px-5 py-4 text-right">
-                        <button class="jg-btn-icon jg-btn-icon-danger action-delete-invite" data-id="${invitation.id}" title="${JG.esc(i18n.deleted || 'Supprimer')}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </td>
-                </tr>`;
-            }).join('');
         }
 
         function showInvitationSuccessView(inviteData) {
@@ -510,7 +380,6 @@
             const isAuth = !!(authLink && (inviteData.authentik_enabled !== false));
             const targetLink = isAuth ? authLink : fullInviteLink;
 
-            // Single primary link input
             const linkInput = document.getElementById('created-link-url');
             if (linkInput) linkInput.value = targetLink;
 
@@ -525,7 +394,7 @@
                 linkCopyBtn.onclick = () => copyLinkToClipboard(targetLink, linkCopyBtn);
             }
 
-            // QR Code for the target link
+            // QR Code
             const qrImg = document.getElementById('created-qr-img');
             if (qrImg) {
                 if (window.JGQRCode && typeof window.JGQRCode.toDataURL === 'function') {
@@ -556,15 +425,26 @@
 
             document.getElementById('create-form')?.reset();
             
-            // Set defaults: 1 use, 7 days
+            const usesSelect = document.getElementById('inv-uses-select');
             const usesInput = document.getElementById('inv-uses');
-            const daysInput = document.getElementById('inv-expiry-days');
-            if (usesInput) usesInput.value = '1';
-            if (daysInput) daysInput.value = '7';
+            if (usesSelect) {
+                usesSelect.value = '1';
+                if (usesInput) usesInput.classList.add('hidden');
+            }
+
+            const expirySelect = document.getElementById('inv-expiry-select');
+            const expiryInput = document.getElementById('inv-expiry-days');
+            if (expirySelect) {
+                expirySelect.value = '7';
+                if (expiryInput) expiryInput.classList.add('hidden');
+            }
+
+            const tempConfig = document.getElementById('temp-account-config');
+            if (tempConfig) tempConfig.classList.add('hidden');
 
             applyInvitationPolicyUI();
             applySelectedInvitePreset();
-            syncPillButtons();
+            updateForcedUsernameState();
         }
 
         async function submitCreate(event) {
@@ -574,86 +454,53 @@
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner w-4 h-4 border-2 border-white border-t-transparent animate-spin rounded-full inline-block"></span>';
 
-            const maxUsesInput = document.getElementById('inv-uses');
-            const expiryDaysInput = document.getElementById('inv-expiry-days');
-            const userExpiryEnabledInput = document.getElementById('inv-user-expiry-enabled');
-            const userExpiryDaysInput = document.getElementById('inv-user-expiry-days');
-            const forcedNameInput = document.getElementById('inv-forced-name');
-            const forcedUserInput = document.getElementById('inv-forced-user');
-            const emailInput = document.getElementById('inv-email');
-            const preferredLangInput = document.getElementById('inv-preferred-lang');
-            const ignoreLinkInput = document.getElementById('inv-ignore-link-limit');
-            const ignoreUserInput = document.getElementById('inv-ignore-user-expiry-limit');
-            const policyPresetInput = document.getElementById('inv-policy-preset');
-            const emailMessageInput = document.getElementById('inv-email-message');
-            const temporaryInput = document.getElementById('inv-is-temporary');
-            const accountDurationInput = document.getElementById('inv-account-duration-days');
-
-            const maxUses = parseInt(maxUsesInput?.value || '0', 10) || 0;
-            let expiresInDays = parseInt(expiryDaysInput?.value || '0', 10) || 0;
-            const userExpiryEnabled = !!userExpiryEnabledInput?.checked;
-            let userExpiryDays = parseInt(userExpiryDaysInput?.value || '0', 10) || 0;
-            const isTemporary = !!temporaryInput?.checked;
-            const accountDurationDays = parseInt(accountDurationInput?.value || '0', 10) || 0;
-            const forcedName = (forcedNameInput?.value || '').trim();
-            const forcedUsername = (forcedUserInput?.value || '').trim();
-            const ignorePresetLinkExpiry = !!(ignoreLinkInput && !ignoreLinkInput.disabled && ignoreLinkInput.checked);
-            const ignorePresetUserExpiry = !!(ignoreUserInput && !ignoreUserInput.disabled && ignoreUserInput.checked);
-            const preferredLang = normalizeLangTag(preferredLangInput?.value || '');
+            const maxUses = getEffectiveMaxUses();
+            const expiresInDays = getEffectiveExpiryDays();
+            const isTemporary = !!document.getElementById('inv-is-temporary')?.checked;
+            const accountDurationDays = parseInt(document.getElementById('inv-account-duration-days')?.value || '30', 10) || 30;
+            const forcedName = (document.getElementById('inv-forced-name')?.value || '').trim();
+            const forcedUsername = (document.getElementById('inv-forced-user')?.value || '').trim();
+            const email = (document.getElementById('inv-email')?.value || '').trim();
+            const preferredLang = normalizeLangTag(document.getElementById('inv-preferred-lang')?.value || '');
+            const policyPresetID = (document.getElementById('inv-policy-preset')?.value || '').trim();
+            const emailMessage = (document.getElementById('inv-email-message')?.value || '').trim();
 
             if (!isAdmin && inviterMaxUses > 0 && (maxUses <= 0 || maxUses > inviterMaxUses)) {
                 btn.disabled = false;
-                btn.innerHTML = createBtnLabel();
+                btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg><span>' + JG.esc(i18n.createLink || 'Créer le lien') + '</span>';
                 JG.toast(fmt(i18n.invalidMaxUses, { n: inviterMaxUses }), 'error');
-                return;
-            }
-
-            if (!ignorePresetLinkExpiry && limitLinkValidityDays > 0) {
-                if (expiresInDays <= 0) {
-                    expiresInDays = limitLinkValidityDays;
-                }
-                if (!isAdmin && expiresInDays > limitLinkValidityDays) {
-                    btn.disabled = false;
-                    btn.innerHTML = createBtnLabel();
-                    JG.toast(fmt(i18n.maxTtl, { n: inviterMaxLinkHours || (limitLinkValidityDays * 24) }), 'error');
-                    return;
-                }
-            }
-
-            if (userExpiryEnabled && userExpiryDays <= 0) {
-                btn.disabled = false;
-                btn.innerHTML = createBtnLabel();
-                JG.toast(i18n.invalidUserExpiry || 'Durée d\'expiration invalide', 'error');
                 return;
             }
 
             const data = {
                 max_uses: maxUses,
                 expires_in_days: expiresInDays,
-                ignore_preset_link_expiry: ignorePresetLinkExpiry,
-                apply_user_expiry: userExpiryEnabled,
-                user_expiry_days: userExpiryEnabled ? userExpiryDays : 0,
                 is_temporary: isTemporary,
                 account_duration_days: isTemporary ? accountDurationDays : 0,
-                ignore_preset_user_expiry: ignorePresetUserExpiry,
                 forced_name: forcedName,
                 forced_username: forcedUsername,
-                send_to_email: (emailInput?.value || '').trim(),
+                send_to_email: email,
                 preferred_lang: preferredLang,
-                policy_preset_id: (policyPresetInput?.value || '').trim(),
-                email_message: (emailMessageInput?.value || '').trim(),
+                policy_preset_id: policyPresetID,
+                email_message: emailMessage,
             };
 
-            const res = await JG.api('/admin/api/invitations', { method: 'POST', body: JSON.stringify(data) });
-            btn.disabled = false;
-            btn.innerHTML = createBtnLabel();
+            try {
+                const res = await JG.api('/admin/api/invitations', { method: 'POST', body: JSON.stringify(data) });
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg><span>' + JG.esc(i18n.createLink || 'Créer le lien') + '</span>';
 
-            if (res.success && res.data) {
-                showInvitationSuccessView(res.data);
-                loadInvitations();
-                loadSponsorStats();
-            } else {
-                JG.toast(res.message || i18n.unknownError || 'Erreur lors de la création', 'error');
+                if (res.success && res.data) {
+                    showInvitationSuccessView(res.data);
+                    loadInvitations();
+                    loadSponsorStats();
+                } else {
+                    JG.toast(res.message || i18n.unknownError || 'Erreur lors de la création', 'error');
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg><span>' + JG.esc(i18n.createLink || 'Créer le lien') + '</span>';
+                JG.toast('Erreur de communication avec le serveur', 'error');
             }
         }
 
@@ -669,7 +516,7 @@
             }
         }
 
-        // --- Event Listeners ---
+        // --- Event Listeners Delegation ---
         document.body.addEventListener('click', (e) => {
             const closeTrigger = e.target.closest('[data-modal-close]');
             if (closeTrigger) {
@@ -680,49 +527,19 @@
                 return;
             }
 
-            // Quick Pill buttons delegated fallback
-            const pill = e.target.closest('.quick-pill');
-            if (pill) {
-                const parent = pill.closest('#quick-uses-pills, #quick-days-pills, [data-pill-group]');
-                if (parent) {
-                    parent.querySelectorAll('.quick-pill').forEach((p) => p.classList.remove('active'));
-                    pill.classList.add('active');
-                    const val = pill.dataset.value;
-                    const isUses = parent.id === 'quick-uses-pills' || parent.dataset.pillGroup === 'uses';
-                    const isDays = parent.id === 'quick-days-pills' || parent.dataset.pillGroup === 'days';
-
-                    if (isUses) {
-                        const usesInput = document.getElementById('inv-uses');
-                        if (usesInput) {
-                            usesInput.value = val;
-                            usesInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    } else if (isDays) {
-                        const daysInput = document.getElementById('inv-expiry-days');
-                        if (daysInput) {
-                            daysInput.value = val;
-                            daysInput.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    }
-                }
+            const openCreateBtn = e.target.closest('.btn-open-create-modal');
+            if (openCreateBtn) {
+                resetCreateModalState();
+                JG.openModal('create-modal');
                 return;
             }
 
-            // Copy JellyGate link
             const copyBtn = e.target.closest('.action-copy-link');
             if (copyBtn) {
                 copyLinkToClipboard(decodeURIComponent(copyBtn.getAttribute('data-link')), copyBtn);
                 return;
             }
 
-            // Copy Authentik direct enrollment link
-            const authCopyBtn = e.target.closest('.action-copy-authentik');
-            if (authCopyBtn) {
-                copyLinkToClipboard(decodeURIComponent(authCopyBtn.getAttribute('data-auth-link')), authCopyBtn);
-                return;
-            }
-
-            // QR Code modal trigger from table
             const qrBtn = e.target.closest('.action-qr-code');
             if (qrBtn) {
                 const link = decodeURIComponent(qrBtn.getAttribute('data-link'));
@@ -748,7 +565,7 @@
                     qrDownloadBtn.onclick = () => {
                         const a = document.createElement('a');
                         a.href = img ? img.src : link;
-                        a.download = 'jellygate-invitation-qr.png';
+                        a.download = `jellygate-qr.png`;
                         document.body.appendChild(a);
                         a.click();
                         document.body.removeChild(a);
@@ -758,68 +575,74 @@
                 return;
             }
 
-            // Create another invitation in success view
-            if (e.target.closest('#btn-create-another')) {
-                resetCreateModalState();
-                return;
-            }
-
-            // Finish modal in success view
-            if (e.target.closest('#btn-finish-modal')) {
-                JG.closeModal('create-modal');
-                resetCreateModalState();
-                return;
-            }
-
-            // Delete modal trigger
-            const deleteBtn = e.target.closest('.action-delete-invite');
-            if (deleteBtn) {
-                pendingDeleteInvitationID = parseInt(deleteBtn.getAttribute('data-id'), 10);
+            const delBtn = e.target.closest('.action-delete-invite');
+            if (delBtn) {
+                pendingDeleteInvitationID = Number(delBtn.getAttribute('data-id'));
+                const code = delBtn.getAttribute('data-code') || '';
+                const txt = document.getElementById('delete-modal-text');
+                if (txt) txt.textContent = `Voulez-vous vraiment supprimer l'invitation ${code} ? Les liens existants ne fonctionneront plus.`;
                 JG.openModal('delete-modal');
-                return;
-            }
-
-            if (e.target.id === 'delete-confirm-btn') {
-                submitDelete();
-                return;
-            }
-
-            // Open Create Modal
-            if (e.target.closest('.btn-open-create-modal')) {
-                resetCreateModalState();
-                JG.openModal('create-modal');
-                return;
-            }
-
-            const pageBtn = e.target.closest('.page-btn');
-            if (pageBtn) {
-                currentPage = parseInt(pageBtn.getAttribute('data-page'), 10);
-                loadInvitations();
-                return;
-            }
-
-            if (e.target.closest('#prev-page') && currentPage > 1) {
-                currentPage--;
-                loadInvitations();
-                return;
-            }
-
-            if (e.target.closest('#next-page') && currentPage < totalPages) {
-                currentPage++;
-                loadInvitations();
                 return;
             }
         });
 
-        const itemsPerPageSelect = document.getElementById('items-per-page');
-        if (itemsPerPageSelect) {
-            itemsPerPageSelect.addEventListener('change', () => {
-                itemsPerPage = parseInt(itemsPerPageSelect.value, 10);
-                currentPage = 1;
-                loadInvitations();
+        // Form selects toggles
+        const usesSelect = document.getElementById('inv-uses-select');
+        if (usesSelect) {
+            usesSelect.addEventListener('change', () => {
+                const customInput = document.getElementById('inv-uses');
+                if (customInput) {
+                    customInput.classList.toggle('hidden', usesSelect.value !== 'custom');
+                    if (usesSelect.value !== 'custom') {
+                        customInput.value = usesSelect.value;
+                    }
+                }
+                updateForcedUsernameState();
             });
         }
 
+        const customUsesInput = document.getElementById('inv-uses');
+        if (customUsesInput) {
+            customUsesInput.addEventListener('input', updateForcedUsernameState);
+        }
+
+        const expirySelect = document.getElementById('inv-expiry-select');
+        if (expirySelect) {
+            expirySelect.addEventListener('change', () => {
+                const customInput = document.getElementById('inv-expiry-days');
+                if (customInput) {
+                    customInput.classList.toggle('hidden', expirySelect.value !== 'custom');
+                    if (expirySelect.value !== 'custom') {
+                        customInput.value = expirySelect.value;
+                    }
+                }
+            });
+        }
+
+        const tempCheckbox = document.getElementById('inv-is-temporary');
+        if (tempCheckbox) {
+            tempCheckbox.addEventListener('change', () => {
+                const tempConfig = document.getElementById('temp-account-config');
+                if (tempConfig) tempConfig.classList.toggle('hidden', !tempCheckbox.checked);
+            });
+        }
+
+        document.getElementById('inv-policy-preset')?.addEventListener('change', applySelectedInvitePreset);
+
+        const createForm = document.getElementById('create-form');
+        if (createForm) createForm.addEventListener('submit', submitCreate);
+
+        document.getElementById('delete-confirm-btn')?.addEventListener('click', submitDelete);
+
+        document.getElementById('btn-create-another')?.addEventListener('click', () => {
+            resetCreateModalState();
+        });
+
+        document.getElementById('btn-finish-modal')?.addEventListener('click', () => {
+            JG.closeModal('create-modal');
+        });
+
+        // Search & Filter
         const searchInput = document.getElementById('search-invites');
         if (searchInput) {
             let searchTimeout;
@@ -840,40 +663,30 @@
             });
         }
 
-        const createForm = document.getElementById('create-form');
-        if (createForm) createForm.addEventListener('submit', submitCreate);
-
-        const usesInput = document.getElementById('inv-uses');
-        if (usesInput) {
-            usesInput.addEventListener('input', () => {
-                syncPillButtons();
-                updateForcedUsernameState();
-                updateLivePreviewCard();
+        const itemsPerPageSelect = document.getElementById('items-per-page');
+        if (itemsPerPageSelect) {
+            itemsPerPageSelect.addEventListener('change', () => {
+                itemsPerPage = parseInt(itemsPerPageSelect.value, 10) || 25;
+                currentPage = 1;
+                loadInvitations();
             });
         }
 
-        const daysInput = document.getElementById('inv-expiry-days');
-        if (daysInput) {
-            daysInput.addEventListener('input', () => {
-                syncPillButtons();
-                updateLivePreviewCard();
-            });
-        }
+        document.getElementById('prev-page')?.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                loadInvitations();
+            }
+        });
 
-        const tempEnabled = document.getElementById('inv-is-temporary');
-        if (tempEnabled) {
-            tempEnabled.addEventListener('change', () => {
-                const preset = invitationPresets.find((item) => item.id === document.getElementById('inv-policy-preset')?.value);
-                updateTemporaryInvitationState(preset);
-                updateLivePreviewCard();
-            });
-        }
+        document.getElementById('next-page')?.addEventListener('click', () => {
+            if (currentPage < totalPages) {
+                currentPage++;
+                loadInvitations();
+            }
+        });
 
-        const durationInput = document.getElementById('inv-account-duration-days');
-        if (durationInput) {
-            durationInput.addEventListener('input', updateLivePreviewCard);
-        }
-
+        // Authentik Sync Button
         const syncAuthBtn = document.getElementById('btn-sync-authentik');
         if (syncAuthBtn) {
             syncAuthBtn.addEventListener('click', async () => {
@@ -899,7 +712,66 @@
             });
         }
 
-        setupQuickPills();
+        // Security Panel Toggle & Form
+        const toggleSecBtn = document.getElementById('btn-toggle-security-panel');
+        if (toggleSecBtn) {
+            toggleSecBtn.addEventListener('click', () => {
+                const panel = document.getElementById('invite-security-panel');
+                const chevron = document.getElementById('security-chevron');
+                if (panel) {
+                    const isHidden = panel.classList.toggle('hidden');
+                    if (chevron) chevron.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            });
+        }
+
+        const secForm = document.getElementById('invite-security-form');
+        if (secForm) {
+            // Load current security settings
+            (async () => {
+                try {
+                    const res = await JG.api('/admin/api/invitations/security');
+                    if (res && res.success && res.data) {
+                        const sec = res.data;
+                        const elEn = document.getElementById('invite-security-enabled');
+                        const elCap = document.getElementById('invite-security-captcha');
+                        const elMax = document.getElementById('invite-security-max-failures');
+                        const elWin = document.getElementById('invite-security-window');
+                        const elBlk = document.getElementById('invite-security-block');
+                        if (elEn) elEn.checked = !!sec.enabled;
+                        if (elCap) elCap.checked = !!sec.require_captcha_on_fail;
+                        if (elMax) elMax.value = sec.max_failures_window || 5;
+                        if (elWin) elWin.value = sec.window_minutes || 15;
+                        if (elBlk) elBlk.value = sec.block_duration_minutes || 60;
+                    }
+                } catch (err) {
+                    console.warn('[Invitations] Security load error:', err);
+                }
+            })();
+
+            secForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const payload = {
+                    enabled: !!document.getElementById('invite-security-enabled')?.checked,
+                    require_captcha_on_fail: !!document.getElementById('invite-security-captcha')?.checked,
+                    max_failures_window: parseInt(document.getElementById('invite-security-max-failures')?.value || '5', 10) || 5,
+                    window_minutes: parseInt(document.getElementById('invite-security-window')?.value || '15', 10) || 15,
+                    block_duration_minutes: parseInt(document.getElementById('invite-security-block')?.value || '60', 10) || 60,
+                };
+                try {
+                    const res = await JG.api('/admin/api/invitations/security', { method: 'POST', body: JSON.stringify(payload) });
+                    if (res && res.success) {
+                        JG.toast(i18n.securitySaved || 'Sécurité des invitations enregistrée', 'success');
+                    } else {
+                        JG.toast(res.message || i18n.securitySaveFailed || 'Erreur lors de la sauvegarde', 'error');
+                    }
+                } catch (err) {
+                    JG.toast('Erreur de communication avec le serveur', 'error');
+                }
+            });
+        }
+
+        // Initial loading
         loadInvitations();
         loadSponsorStats();
         loadInviteWizardData();
