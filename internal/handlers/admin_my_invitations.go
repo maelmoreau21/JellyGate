@@ -1804,4 +1804,3 @@ func (h *AdminHandler) SyncAuthentikInvitations(w http.ResponseWriter, r *http.R
 		"message":       fmt.Sprintf("Synchronisation Authentik terminée : %d vérifiées, %d recréées, %d nettoyées", totalChecked, recreated, cleaned),
 	})
 }
-
