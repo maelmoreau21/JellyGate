@@ -442,6 +442,8 @@
   "invitations_stats_loading": "Chargement des statistiques des parrains...",
   "invitations_stats_updated_at": "Mise a jour {at}",
   "invitations_subheading": "Creez des liens d invitation, suivez l activite des parrains et gardez des regles d arrivee coherentes.",
+  "invitations_sync_authentik": "Synchroniser Authentik",
+  "invitations_sync_authentik_title": "Synchroniser l'état des liens avec Authentik",
   "invitations_temporary_duration_label": "Duree du compte temporaire",
   "invitations_temporary_label": "Invitation temporaire",
   "invitations_title": "Gestion des invitations",

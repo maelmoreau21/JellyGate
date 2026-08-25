@@ -442,6 +442,8 @@
   "invitations_stats_loading": "Sponsorstatistieken laden...",
   "invitations_stats_updated_at": "Bijgewerkt {at}",
   "invitations_subheading": "Maak uitnodigingslinks, volg sponsoractiviteit en houd onboardingregels consistent.",
+  "invitations_sync_authentik": "Authentik synchroniseren",
+  "invitations_sync_authentik_title": "Status van uitnodigingslinks synchroniseren met Authentik",
   "invitations_temporary_duration_label": "Tijdelijke accountduur",
   "invitations_temporary_label": "Tijdelijke uitnodiging",
   "invitations_title": "Uitnodigingenbeheer",

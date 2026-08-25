@@ -1633,3 +1633,175 @@ func presetInviteLinkValidityDays(preset *config.JellyfinPolicyPreset) int {
 	}
 	return 0
 }
+
+// SyncAuthentikInvitations reconciles invitations between JellyGate and Authentik.
+func (h *AdminHandler) SyncAuthentikInvitations(w http.ResponseWriter, r *http.Request) {
+	client := h.getEffectiveAuthentikClient()
+	if client == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Authentik n'est pas configuré",
+		})
+		return
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+	if flowSlug == "" {
+		flowSlug = "default-enrollment-flow"
+	}
+
+	// 1. Lister les invitations Authentik actuelles
+	tokens, err := client.ListInvitationStageTokens(r.Context())
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   fmt.Sprintf("Impossible de lister les tokens Authentik: %v", err),
+		})
+		return
+	}
+
+	tokenByPK := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	tokenByCode := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	for _, tok := range tokens {
+		if tok.PK != "" {
+			tokenByPK[tok.PK] = tok
+		}
+		if tok.FixedData != nil {
+			if c, ok := tok.FixedData["code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			} else if c, ok := tok.FixedData["invitation_code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			}
+		}
+	}
+
+	rows, err := h.db.Query(`
+		SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, authentik_invitation_id, profile_id, is_temporary, account_duration_days
+		FROM invitations
+	`)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+	defer rows.Close()
+
+	now := time.Now()
+	recreated := 0
+	cleaned := 0
+	totalChecked := 0
+
+	for rows.Next() {
+		totalChecked++
+		var id int64
+		var code, label, jfProfile, createdBy, profileID string
+		var maxUses, usedCount, accountDurationDays int
+		var expiresAt sql.NullTime
+		var authentikID sql.NullString
+		var isTemporary bool
+
+		if err := rows.Scan(&id, &code, &label, &maxUses, &usedCount, &jfProfile, &expiresAt, &createdBy, &authentikID, &profileID, &isTemporary, &accountDurationDays); err != nil {
+			continue
+		}
+
+		code = strings.TrimSpace(code)
+		if code == "" {
+			continue
+		}
+
+		isExpired := expiresAt.Valid && expiresAt.Time.Before(now)
+		isExhausted := maxUses > 0 && usedCount >= maxUses
+		isActive := !isExpired && !isExhausted
+
+		curAuthID := strings.TrimSpace(authentikID.String)
+
+		if isActive {
+			tokenExists := false
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					tokenExists = true
+				}
+			}
+			if !tokenExists {
+				if tok, ok := tokenByCode[code]; ok && tok.PK != "" {
+					tokenExists = true
+					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tok.PK, id)
+				}
+			}
+
+			// Si le token n'existe pas dans Authentik, le recréer automatiquement
+			if !tokenExists {
+				var targetGroups []string
+				jfGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+				if jfGroup == "" {
+					jfGroup = "jellyfin-users"
+				}
+				targetGroups = append(targetGroups, jfGroup)
+
+				fixedData := map[string]interface{}{
+					"source":                "JellyGate",
+					"created_by":            "JellyGate",
+					"created_by_app":        "JellyGate",
+					"invitation_code":       code,
+					"code":                  code,
+					"sponsor":               createdBy,
+					"groups":                targetGroups,
+					"preset_id":             profileID,
+					"is_temporary":          isTemporary,
+					"account_duration_days": accountDurationDays,
+				}
+
+				var stageExpiry time.Time
+				if expiresAt.Valid {
+					stageExpiry = expiresAt.Time
+				}
+
+				tokenName := fmt.Sprintf("jellygate-%s", code)
+				newTokPK, tokErr := client.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
+				if tokErr == nil && strings.TrimSpace(newTokPK) != "" {
+					newTokPK = strings.TrimSpace(newTokPK)
+					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, newTokPK, id)
+					_ = h.db.LogAction("invite.reconciled", "admin", code, fmt.Sprintf("Jeton Authentik recréé avec succès (PK: %s)", newTokPK))
+					recreated++
+				} else {
+					slog.Warn("Admin: échec recréation token Authentik", "code", code, "error", tokErr)
+				}
+			}
+		} else {
+			// L'invitation est expirée ou épuisée : nettoyer dans Authentik
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					if delErr := client.DeleteInvitationStageToken(r.Context(), curAuthID); delErr == nil {
+						_ = h.db.LogAction("invite.authentik_cleanup", "admin", code, fmt.Sprintf("Jeton Authentik expiré supprimé (PK: %s)", curAuthID))
+						cleaned++
+					}
+				}
+			}
+		}
+	}
+
+	actor := "admin"
+	if sess := session.FromContext(r.Context()); sess != nil && sess.Username != "" {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("invite.sync_authentik", actor, "invitations", fmt.Sprintf("Synchronisation Authentik manuelle : %d vérifiées, %d recréées, %d nettoyées", totalChecked, recreated, cleaned))
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":       true,
+		"total_checked": totalChecked,
+		"recreated":     recreated,
+		"cleaned":       cleaned,
+		"message":       fmt.Sprintf("Synchronisation Authentik terminée : %d vérifiées, %d recréées, %d nettoyées", totalChecked, recreated, cleaned),
+	})
+}
+

@@ -442,6 +442,8 @@
   "invitations_stats_loading": "Loading sponsor statistics...",
   "invitations_stats_updated_at": "Updated {at}",
   "invitations_subheading": "Create invitation links, monitor sponsor activity, and keep onboarding rules consistent.",
+  "invitations_sync_authentik": "Sync Authentik",
+  "invitations_sync_authentik_title": "Synchronize invitation links status with Authentik",
   "invitations_temporary_duration_label": "Temporary account duration",
   "invitations_temporary_label": "Temporary invitation",
   "invitations_title": "Invitations Management",

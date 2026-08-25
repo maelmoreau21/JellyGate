@@ -442,6 +442,8 @@
   "invitations_stats_loading": "Cargando estadisticas de patrocinadores...",
   "invitations_stats_updated_at": "Actualizado {at}",
   "invitations_subheading": "Cree enlaces de invitacion, supervise la actividad de patrocinio y mantenga reglas de acceso coherentes.",
+  "invitations_sync_authentik": "Sincronizar Authentik",
+  "invitations_sync_authentik_title": "Sincronizar el estado de los enlaces con Authentik",
   "invitations_temporary_duration_label": "Duración temporal de la cuenta",
   "invitations_temporary_label": "invitación temporal",
   "invitations_title": "Gestión de invitaciones",

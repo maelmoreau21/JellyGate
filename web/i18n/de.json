@@ -442,6 +442,8 @@
   "invitations_stats_loading": "Sponsor-Statistiken werden geladen...",
   "invitations_stats_updated_at": "Aktualisiert {at}",
   "invitations_subheading": "Erstellen Sie Einladungslinks, verfolgen Sie Sponsor-Aktivitaet und halten Sie Onboarding-Regeln konsistent.",
+  "invitations_sync_authentik": "Authentik synchronisieren",
+  "invitations_sync_authentik_title": "Status der Einladungslinks mit Authentik synchronisieren",
   "invitations_temporary_duration_label": "Temporäre Kontodauer",
   "invitations_temporary_label": "Temporäre Einladung",
   "invitations_title": "Einladungsmanagement",

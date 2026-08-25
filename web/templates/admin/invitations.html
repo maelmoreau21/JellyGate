@@ -53,63 +53,70 @@
 }
 </style>
 
-<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6">
+<div class="jg-page-header flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
     <div>
         <h1 class="text-3xl font-extrabold tracking-tight text-jg-text">{{ .T "nav_invitations" }}</h1>
-        <p class="text-jg-text-muted mt-2">Créez et gérez des liens d'invitation pour automatiser les inscriptions.</p>
+        <p class="text-jg-text-muted mt-2">Créez, gérez et synchronisez les liens d'inscription et de parrainage.</p>
     </div>
     <div class="flex items-center gap-3">
-        <button class="jg-btn jg-btn-primary btn-open-create-modal">
-            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
-            {{ .T "invitations_new_invitation" }}
+        <button id="btn-sync-authentik" type="button" class="jg-btn jg-btn-ghost flex items-center gap-2 border border-white/10 hover:border-purple-500/40 text-xs font-bold rounded-xl transition-all" title='{{ .T "invitations_sync_authentik_title" }}'>
+            <svg id="sync-authentik-icon" class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            <span>{{ .T "invitations_sync_authentik" }}</span>
+        </button>
+        <button class="jg-btn jg-btn-primary btn-open-create-modal flex items-center gap-2 shadow-lg shadow-purple-600/25">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            <span>{{ .T "invitations_new_invitation" }}</span>
         </button>
     </div>
 </div>
 
-<div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+{{/* ── Hero Metrics Ribbon (Streamlined, non-cluttered) ── */}}
+<div class="jg-card p-4 sm:p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl mb-6">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-white/5">
+        <div class="px-3 py-1 flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_created" }}</div>
+                <div class="text-xl font-black text-slate-100" id="sponsor-total-links">0</div>
+            </div>
         </div>
-        <div>
-            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_created" }}</div>
-            <div class="text-xl font-black text-slate-100" id="sponsor-total-links">0</div>
+        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_active" }}</div>
+                <div class="text-xl font-black text-emerald-400" id="sponsor-active-links">0</div>
+            </div>
         </div>
-    </div>
-    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
+            <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_closed" }}</div>
+                <div class="text-xl font-black text-rose-400" id="sponsor-closed-links">0</div>
+            </div>
         </div>
-        <div>
-            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_active" }}</div>
-            <div class="text-xl font-black text-emerald-400" id="sponsor-active-links">0</div>
+        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_conversions" }}</div>
+                <div class="text-xl font-black text-cyan-400" id="sponsor-conversions">0</div>
+            </div>
         </div>
-    </div>
-    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-        </div>
-        <div>
-            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_links_closed" }}</div>
-            <div class="text-xl font-black text-rose-400" id="sponsor-closed-links">0</div>
-        </div>
-    </div>
-    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-        </div>
-        <div>
-            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_conversions" }}</div>
-            <div class="text-xl font-black text-cyan-400" id="sponsor-conversions">0</div>
-        </div>
-    </div>
-    <div class="jg-card p-4 border border-white/5 bg-white/[0.02] flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-        </div>
-        <div>
-            <div class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_conversion_rate" }}</div>
-            <div class="text-xl font-black text-amber-400" id="sponsor-conversion-rate">0%</div>
+        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "invitations_conversion_rate" }}</div>
+                <div class="text-xl font-black text-amber-400" id="sponsor-conversion-rate">0%</div>
+            </div>
         </div>
     </div>
 </div>
@@ -117,14 +124,14 @@
 {{ if .IsAdmin }}
 <div class="mb-6">
     <div class="flex items-center justify-between">
-        <button type="button" id="btn-toggle-security-panel" class="text-xs font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1.5 transition-colors py-1">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+        <button type="button" id="btn-toggle-security-panel" class="text-xs font-semibold text-slate-400 hover:text-purple-300 flex items-center gap-1.5 transition-colors py-1">
+            <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             <span>{{ .T "invitations_security_title" }}</span>
             <svg id="security-chevron" class="w-3.5 h-3.5 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
         </button>
     </div>
 
-    <section id="invite-security-panel" class="hidden mt-3 jg-card p-5 border border-white/10 bg-white/[0.02] rounded-2xl animate-in fade-in duration-200">
+    <section id="invite-security-panel" class="hidden mt-3 jg-card p-5 border border-white/5 bg-slate-900/40 rounded-2xl animate-in fade-in duration-200">
         <form id="invite-security-form" class="space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-white/5">
                 <p class="text-xs text-jg-text-muted">{{ .T "invitations_security_desc" }}</p>
@@ -134,11 +141,11 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer">
+                <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition-colors">
                     <input id="invite-security-enabled" type="checkbox" class="form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer">
                     <span class="text-xs font-bold text-slate-300">{{ .T "invitations_security_enabled" }}</span>
                 </label>
-                <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer">
+                <label class="flex items-center gap-3 rounded-xl border border-white/5 bg-black/20 p-3 cursor-pointer hover:bg-black/30 transition-colors">
                     <input id="invite-security-captcha" type="checkbox" class="form-checkbox rounded border-white/20 bg-black/40 text-jg-accent focus:ring-jg-accent/50 cursor-pointer">
                     <span class="text-xs font-bold text-slate-300">{{ .T "invitations_security_captcha" }}</span>
                 </label>

@@ -442,6 +442,8 @@
   "invitations_stats_loading": "Загрузка статистики спонсора...",
   "invitations_stats_updated_at": "Обновлено {at}",
   "invitations_subheading": "Создавайте ссылки для приглашений, отслеживайте активность спонсоров и соблюдайте единообразие правил регистрации.",
+  "invitations_sync_authentik": "Синхронизировать Authentik",
+  "invitations_sync_authentik_title": "Синхронизировать статус ссылок приглашений с Authentik",
   "invitations_temporary_duration_label": "Срок действия временного аккаунта",
   "invitations_temporary_label": "Временное приглашение",
   "invitations_title": "Управление приглашениями",

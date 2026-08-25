@@ -874,7 +874,30 @@
             durationInput.addEventListener('input', updateLivePreviewCard);
         }
 
-        document.getElementById('inv-policy-preset')?.addEventListener('change', applySelectedInvitePreset);
+        const syncAuthBtn = document.getElementById('btn-sync-authentik');
+        if (syncAuthBtn) {
+            syncAuthBtn.addEventListener('click', async () => {
+                const icon = document.getElementById('sync-authentik-icon');
+                if (icon) icon.classList.add('animate-spin');
+                syncAuthBtn.disabled = true;
+                try {
+                    const res = await JG.api('/admin/api/invitations/sync-authentik', { method: 'POST' });
+                    if (res && res.success) {
+                        JG.toast(res.message || 'Synchronisation Authentik réussie !', 'success');
+                        loadInvitations();
+                        loadSponsorStats();
+                    } else {
+                        JG.toast((res && (res.error || res.message)) || 'Erreur de synchronisation Authentik', 'error');
+                    }
+                } catch (err) {
+                    console.error('[SyncAuthentik]', err);
+                    JG.toast('Erreur de communication avec le serveur', 'error');
+                } finally {
+                    if (icon) icon.classList.remove('animate-spin');
+                    syncAuthBtn.disabled = false;
+                }
+            });
+        }
 
         setupQuickPills();
         loadInvitations();

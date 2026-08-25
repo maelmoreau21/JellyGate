@@ -635,15 +635,6 @@ func (db *DB) disableDefaultBackupAutomationTaskOnce() error {
 }
 
 func (db *DB) seedDefaultTasks() error {
-	var count int
-	err := db.QueryRow(`SELECT COUNT(*) FROM scheduled_tasks`).Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-
 	tasks := []struct {
 		name     string
 		taskType string
@@ -657,17 +648,20 @@ func (db *DB) seedDefaultTasks() error {
 
 	now := time.Now().Format("2006-01-02 15:04:05")
 	for _, t := range tasks {
-		_, err := db.Exec(
-			`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, 'system', ?, ?)`,
-			t.name, t.taskType, true, t.hour, t.minute, now, now,
-		)
-		if err != nil {
-			slog.Error("Erreur lors de l'insertion d'une tache par defaut", "name", t.name, "error", err)
+		var exists int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM scheduled_tasks WHERE task_type = ?`, t.taskType).Scan(&exists)
+		if exists == 0 {
+			_, err := db.Exec(
+				`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, 'system', ?, ?)`,
+				t.name, t.taskType, true, t.hour, t.minute, now, now,
+			)
+			if err != nil {
+				slog.Error("Erreur lors de l'insertion d'une tache par defaut", "name", t.name, "error", err)
+			}
 		}
 	}
 
-	slog.Info("Taches par defaut inserees avec succes")
 	return nil
 }
 

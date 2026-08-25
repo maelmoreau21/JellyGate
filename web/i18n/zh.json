@@ -442,6 +442,8 @@
   "invitations_stats_loading": "正在加载赞助商统计数据...",
   "invitations_stats_updated_at": "更新于 {at}",
   "invitations_subheading": "创建邀请链接、监控赞助商活动并保持入职规则一致。",
+  "invitations_sync_authentik": "同步 Authentik",
+  "invitations_sync_authentik_title": "与 Authentik 同步邀请链接状态",
   "invitations_temporary_duration_label": "临时账户期限",
   "invitations_temporary_label": "临时邀请",
   "invitations_title": "邀请管理",

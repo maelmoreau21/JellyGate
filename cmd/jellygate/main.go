@@ -531,6 +531,7 @@ func main() {
 				r.Use(jgmw.RequireCSRF())
 				r.Get("/", adminHandler.ListInvitations)
 				r.Get("/stats", adminHandler.InvitationStats)
+				r.Post("/sync-authentik", adminHandler.SyncAuthentikInvitations)
 				r.Get("/security", adminHandler.InvitationSecurityConfig)
 				r.Post("/security", adminHandler.SaveInvitationSecurityConfig)
 				r.Post("/preview", adminHandler.PreviewInvitation)

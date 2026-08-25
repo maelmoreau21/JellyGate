@@ -48,22 +48,44 @@
     </div>
 </div>
 
-<div class="jg-stat-grid mb-12" id="stats-grid">
-    <div class="jg-card jg-stat-card border-b-2 border-b-cyan-500">
-        <div class="jg-stat-value text-cyan-400" id="stat-users">—</div>
-        <div class="jg-stat-label">{{ .T "stat_total_users" }}</div>
-    </div>
-    <div class="jg-card jg-stat-card border-b-2 border-b-emerald-500">
-        <div class="jg-stat-value text-emerald-400" id="stat-active">—</div>
-        <div class="jg-stat-label">{{ .T "stat_active_users" }}</div>
-    </div>
-    <div class="jg-card jg-stat-card border-b-2 border-b-amber-500">
-        <div class="jg-stat-value text-amber-400" id="stat-invitations">—</div>
-        <div class="jg-stat-label">{{ .T "stat_invitations" }}</div>
-    </div>
-    <div class="jg-card jg-stat-card border-b-2 border-b-rose-500">
-        <div class="jg-stat-value text-rose-400" id="stat-banned">—</div>
-        <div class="jg-stat-label">{{ .T "stat_banned_users" }}</div>
+<div class="jg-card p-4 sm:p-5 border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl shadow-xl mb-10">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 divide-y sm:divide-y-0 sm:divide-x divide-white/5" id="stats-grid">
+        <div class="px-3 py-1 flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "stat_total_users" }}</div>
+                <div class="text-xl font-black text-cyan-400" id="stat-users">—</div>
+            </div>
+        </div>
+        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "stat_active_users" }}</div>
+                <div class="text-xl font-black text-emerald-400" id="stat-active">—</div>
+            </div>
+        </div>
+        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "stat_invitations" }}</div>
+                <div class="text-xl font-black text-amber-400" id="stat-invitations">—</div>
+            </div>
+        </div>
+        <div class="px-3 py-1 flex items-center gap-3.5 pt-3 sm:pt-1">
+            <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg>
+            </div>
+            <div>
+                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{{ .T "stat_banned_users" }}</div>
+                <div class="text-xl font-black text-rose-400" id="stat-banned">—</div>
+            </div>
+        </div>
     </div>
 </div>
 

@@ -442,6 +442,8 @@
   "invitations_stats_loading": "Caricamento delle statistiche sponsor...",
   "invitations_stats_updated_at": "Aggiornato {at}",
   "invitations_subheading": "Crea link di invito, monitora l attivita degli sponsor e mantieni coerenti le regole di onboarding.",
+  "invitations_sync_authentik": "Sincronizza Authentik",
+  "invitations_sync_authentik_title": "Sincronizza lo stato dei link con Authentik",
   "invitations_temporary_duration_label": "Durata dell'account temporaneo",
   "invitations_temporary_label": "Invito temporaneo",
   "invitations_title": "Gestione degli inviti",
