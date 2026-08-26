@@ -366,7 +366,7 @@ func TestOIDCLogout(t *testing.T) {
 		t.Fatalf("Expected 303 redirect, got %d", rec.Code)
 	}
 
-	expectedLogin := "/admin/login"
+	expectedLogin := "/admin/login?manual=1"
 	if rec.Header().Get("Location") != expectedLogin {
 		t.Errorf("Expected logout redirect to %s, got %s", expectedLogin, rec.Header().Get("Location"))
 	}
@@ -383,4 +383,43 @@ func TestOIDCLogout(t *testing.T) {
 func newTestRenderEngine(t *testing.T) (*render.Engine, error) {
 	t.Helper()
 	return render.NewEngine("../../web/templates", "../../web/i18n")
+}
+
+func TestLoginPageAutoRedirectsWhenOIDCEnabled(t *testing.T) {
+	cfg := &config.Config{
+		Authentik: config.AuthentikConfig{
+			Enabled: true,
+			URL:     "https://auth.example.com",
+		},
+		LocalAdmin: config.LocalAdminConfig{
+			Enabled: true,
+		},
+	}
+	mockClient := &mockOIDCClient{}
+	handler := NewAuthHandler(cfg, nil, mockClient, nil, nil)
+
+	// 1. Default visit -> should auto redirect to /auth/login
+	req1 := httptest.NewRequest(http.MethodGet, "/admin/login", nil)
+	rec1 := httptest.NewRecorder()
+	handler.LoginPage(rec1, req1)
+
+	if rec1.Code != http.StatusSeeOther {
+		t.Fatalf("Expected 303 redirect, got %d", rec1.Code)
+	}
+	if loc := rec1.Header().Get("Location"); loc != "/auth/login" {
+		t.Fatalf("Expected auto redirect to /auth/login, got %s", loc)
+	}
+
+	// 2. Manual visit -> should render login template if renderer present, or not redirect to /auth/login
+	re, err := newTestRenderEngine(t)
+	if err == nil {
+		handlerWithRender := NewAuthHandler(cfg, nil, mockClient, nil, re)
+		req2 := httptest.NewRequest(http.MethodGet, "/admin/login?manual=1", nil)
+		rec2 := httptest.NewRecorder()
+		handlerWithRender.LoginPage(rec2, req2)
+
+		if rec2.Code != http.StatusOK {
+			t.Fatalf("Expected 200 OK for manual login, got %d", rec2.Code)
+		}
+	}
 }

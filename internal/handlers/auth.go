@@ -158,9 +158,20 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Redirection transparente vers le SSO OIDC si configuré et sans demande manuelle ou erreur
+	errParam := r.URL.Query().Get("error")
+	manualParam := r.URL.Query().Get("manual")
+	if errParam == "" && manualParam != "1" && manualParam != "true" {
+		oidcCli := h.getEffectiveOIDCClient()
+		if oidcCli != nil {
+			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+			return
+		}
+	}
+
 	if h.renderer != nil {
 		td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
-		td.Error = r.URL.Query().Get("error")
+		td.Error = errParam
 		td.Data["SubmittedUsername"] = strings.TrimSpace(r.URL.Query().Get("username"))
 		links := resolvePortalLinks(h.cfg, h.db)
 		td.Data["JellyfinURL"] = links.JellyfinURL
@@ -604,5 +615,5 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	slog.Info("Deconnexion utilisateur", "remote", r.RemoteAddr)
 	h.logAction("admin.logout", "", "", fmt.Sprintf("IP: %s", r.RemoteAddr))
 
-	http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+	http.Redirect(w, r, "/admin/login?manual=1", http.StatusSeeOther)
 }
