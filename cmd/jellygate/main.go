@@ -186,29 +186,29 @@ func main() {
 				}
 				authentikCfg.Enabled = dbAuthCfg.Enabled
 			}
-			// Surcharge par les variables d'environnement si définies explicitement
-			if strings.TrimSpace(cfg.Authentik.URL) != "" {
-				authentikCfg.URL = strings.TrimSpace(cfg.Authentik.URL)
-			}
-			if strings.TrimSpace(cfg.Authentik.IssuerURL) != "" {
-				authentikCfg.IssuerURL = strings.TrimSpace(cfg.Authentik.IssuerURL)
-			}
-			if strings.TrimSpace(cfg.Authentik.ClientID) != "" {
-				authentikCfg.ClientID = strings.TrimSpace(cfg.Authentik.ClientID)
-			}
-			if strings.TrimSpace(cfg.Authentik.ClientSecret) != "" {
-				authentikCfg.ClientSecret = strings.TrimSpace(cfg.Authentik.ClientSecret)
-			}
-			if strings.TrimSpace(cfg.Authentik.RedirectURL) != "" {
-				authentikCfg.RedirectURL = strings.TrimSpace(cfg.Authentik.RedirectURL)
-			}
-			if strings.TrimSpace(cfg.Authentik.APIToken) != "" {
-				authentikCfg.APIToken = strings.TrimSpace(cfg.Authentik.APIToken)
-			}
-			if cfg.Authentik.Enabled {
-				authentikCfg.Enabled = true
-			}
 		}
+	}
+	// Surcharge par les variables d'environnement si définies explicitement
+	if strings.TrimSpace(cfg.Authentik.URL) != "" {
+		authentikCfg.URL = strings.TrimSpace(cfg.Authentik.URL)
+	}
+	if strings.TrimSpace(cfg.Authentik.IssuerURL) != "" {
+		authentikCfg.IssuerURL = strings.TrimSpace(cfg.Authentik.IssuerURL)
+	}
+	if strings.TrimSpace(cfg.Authentik.ClientID) != "" {
+		authentikCfg.ClientID = strings.TrimSpace(cfg.Authentik.ClientID)
+	}
+	if strings.TrimSpace(cfg.Authentik.ClientSecret) != "" {
+		authentikCfg.ClientSecret = strings.TrimSpace(cfg.Authentik.ClientSecret)
+	}
+	if strings.TrimSpace(cfg.Authentik.RedirectURL) != "" {
+		authentikCfg.RedirectURL = strings.TrimSpace(cfg.Authentik.RedirectURL)
+	}
+	if strings.TrimSpace(cfg.Authentik.APIToken) != "" {
+		authentikCfg.APIToken = strings.TrimSpace(cfg.Authentik.APIToken)
+	}
+	if cfg.Authentik.Enabled {
+		authentikCfg.Enabled = true
 	}
 	oidcClient := oidc.NewClient(authentikCfg)
 	authentikClient := authentik.NewClient(authentikCfg)

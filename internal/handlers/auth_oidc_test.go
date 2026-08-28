@@ -90,6 +90,10 @@ func (m *mockOIDCClient) GetEndSessionURL(ctx context.Context) string {
 	return "https://auth.example.com/application/o/jellygate/end-session/"
 }
 
+func (m *mockOIDCClient) IsConfigured() bool {
+	return true
+}
+
 func TestOIDCLoginRedirect(t *testing.T) {
 	cfg := &config.Config{
 		SecretKey: strings.Repeat("s", 32),
@@ -410,16 +414,38 @@ func TestLoginPageAutoRedirectsWhenOIDCEnabled(t *testing.T) {
 		t.Fatalf("Expected auto redirect to /auth/login, got %s", loc)
 	}
 
-	// 2. Manual visit -> should render login template if renderer present, or not redirect to /auth/login
+	// 2. Direct visit to /login -> should also auto redirect to /auth/login
+	reqDirect := httptest.NewRequest(http.MethodGet, "/login", nil)
+	recDirect := httptest.NewRecorder()
+	handler.LoginPage(recDirect, reqDirect)
+
+	if recDirect.Code != http.StatusSeeOther {
+		t.Fatalf("Expected 303 redirect for /login, got %d", recDirect.Code)
+	}
+	if loc := recDirect.Header().Get("Location"); loc != "/auth/login" {
+		t.Fatalf("Expected auto redirect to /auth/login from /login, got %s", loc)
+	}
+
 	re, err := newTestRenderEngine(t)
 	if err == nil {
 		handlerWithRender := NewAuthHandler(cfg, nil, mockClient, nil, re)
+
+		// 3. Manual visit -> should render login template (no auto redirect loop)
 		req2 := httptest.NewRequest(http.MethodGet, "/admin/login?manual=1", nil)
 		rec2 := httptest.NewRecorder()
 		handlerWithRender.LoginPage(rec2, req2)
 
 		if rec2.Code != http.StatusOK {
 			t.Fatalf("Expected 200 OK for manual login, got %d", rec2.Code)
+		}
+
+		// 4. Error visit (e.g. after failed OIDC attempt) -> should render login template with error
+		req3 := httptest.NewRequest(http.MethodGet, "/admin/login?error=bad_state", nil)
+		rec3 := httptest.NewRecorder()
+		handlerWithRender.LoginPage(rec3, req3)
+
+		if rec3.Code != http.StatusOK {
+			t.Fatalf("Expected 200 OK for error login page, got %d", rec3.Code)
 		}
 	}
 }

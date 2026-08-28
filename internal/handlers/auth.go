@@ -141,14 +141,25 @@ func (h *AuthHandler) getEffectiveAuthentikClient() authentik.Client {
 }
 
 func (h *AuthHandler) getEffectiveOIDCClient() oidc.Client {
-	if h.oidcClient != nil {
+	if h.oidcClient != nil && h.oidcClient.IsConfigured() {
 		return h.oidcClient
 	}
 	cfg := h.resolveEffectiveAuthentikConfig()
 	if cfg.Enabled || cfg.URL != "" || cfg.IssuerURL != "" {
 		return oidc.NewClient(cfg)
 	}
+	if h.oidcClient != nil {
+		return h.oidcClient
+	}
 	return nil
+}
+
+func (h *AuthHandler) isOIDCConfigured() bool {
+	cli := h.getEffectiveOIDCClient()
+	if cli == nil {
+		return false
+	}
+	return cli.IsConfigured()
 }
 
 // LoginPage affiche la page de connexion JellyGate avec le bouton de connexion SSO et l'accès de secours (GET /admin/login ou GET /login).
@@ -162,8 +173,7 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 	errParam := r.URL.Query().Get("error")
 	manualParam := r.URL.Query().Get("manual")
 	if errParam == "" && manualParam != "1" && manualParam != "true" {
-		oidcCli := h.getEffectiveOIDCClient()
-		if oidcCli != nil {
+		if h.isOIDCConfigured() {
 			http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
 			return
 		}
@@ -177,7 +187,7 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		td.Data["JellyfinURL"] = links.JellyfinURL
 		td.Data["JellyseerrURL"] = links.JellyseerrURL
 		td.Data["JellyTrackURL"] = links.JellyTrackURL
-		td.Data["OIDCEnabled"] = true
+		td.Data["OIDCEnabled"] = h.isOIDCConfigured()
 		td.Data["OIDCLoginURL"] = "/auth/login"
 		td.Data["LocalAdminEnabled"] = h.cfg != nil && h.cfg.LocalAdmin.Enabled
 		td.Section = "login"
@@ -186,7 +196,11 @@ func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+	if h.isOIDCConfigured() {
+		http.Redirect(w, r, "/auth/login", http.StatusSeeOther)
+		return
+	}
+	http.Redirect(w, r, "/local", http.StatusSeeOther)
 }
 
 // LoginRedirect redirige l'utilisateur vers Authentik pour le SSO OIDC (GET /auth/login).

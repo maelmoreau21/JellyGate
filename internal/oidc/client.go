@@ -56,6 +56,7 @@ type Client interface {
 	DetermineUserRole(groups []string) (isAdmin bool, hasAccess bool)
 	DetermineInviterRole(groups []string) (canInvite bool, canInviteRecursive bool)
 	GetEndSessionURL(ctx context.Context) string
+	IsConfigured() bool
 }
 
 // JSONWebKey représente une clé JWKS.
@@ -93,6 +94,33 @@ func NewClient(cfg config.AuthentikConfig) Client {
 	}
 }
 
+// IsConfigured indique si le client OIDC dispose d'une configuration minimale valide (URL/Issuer ou activé).
+func (c *oidcClient) IsConfigured() bool {
+	if c == nil {
+		return false
+	}
+	return c.cfg.Enabled || strings.TrimSpace(c.cfg.URL) != "" || strings.TrimSpace(c.cfg.IssuerURL) != ""
+}
+
+func (c *oidcClient) isHTTPS(r *http.Request) bool {
+	if r != nil {
+		if r.TLS != nil {
+			return true
+		}
+		if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
+			strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
+			strings.EqualFold(r.Header.Get("Front-End-Https"), "on") {
+			return true
+		}
+	}
+	if strings.HasPrefix(strings.ToLower(c.cfg.RedirectURL), "https://") ||
+		strings.HasPrefix(strings.ToLower(c.cfg.URL), "https://") ||
+		strings.HasPrefix(strings.ToLower(c.cfg.IssuerURL), "https://") {
+		return true
+	}
+	return false
+}
+
 func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (string, error) {
 	state, err := generateRandomString(32)
 	if err != nil {
@@ -111,10 +139,7 @@ func (c *oidcClient) GenerateAuthURL(w http.ResponseWriter, r *http.Request) (st
 
 	codeChallenge := calculateS256Challenge(codeVerifier)
 
-	isHTTPS := r.TLS != nil ||
-		strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
-		strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
-		strings.EqualFold(r.Header.Get("Front-End-Https"), "on")
+	isHTTPS := c.isHTTPS(r)
 
 	redirectURI := c.getRedirectURI(r)
 
@@ -151,10 +176,7 @@ func (c *oidcClient) getRedirectURI(r *http.Request) string {
 		return strings.TrimSpace(c.cfg.RedirectURL)
 	}
 	if r != nil && r.Host != "" {
-		isHTTPS := r.TLS != nil ||
-			strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
-			strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
-			strings.EqualFold(r.Header.Get("Front-End-Https"), "on")
+		isHTTPS := c.isHTTPS(r)
 		scheme := "http"
 		if isHTTPS {
 			scheme = "https"
