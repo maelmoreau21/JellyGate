@@ -3,6 +3,8 @@ package handlers
 
 import (
 	"crypto/subtle"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -318,8 +320,26 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 			h.redirectLoginError(w, r, "sync_failed", claims.PreferredUsername)
 			return
 		}
-		if user != nil && canInvite {
-			_, _ = h.db.Exec(`UPDATE users SET can_invite = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, user.ID)
+		if user != nil {
+			if user.IsBanned || !user.IsActive {
+				slog.Warn("Accès OIDC refusé : compte banni ou désactivé", "username", claims.PreferredUsername, "sub", claims.Sub)
+				h.logAction("auth.oidc.banned", claims.PreferredUsername, claims.Sub, fmt.Sprintf("IP: %s - Compte banni ou inactif", r.RemoteAddr))
+				logSecurityEvent(h.db, r, "oidc_login", "auth.oidc.banned", "warning", claims.PreferredUsername, claims.Sub, "Compte banni ou désactivé", nil)
+
+				w.WriteHeader(http.StatusForbidden)
+				if h.renderer != nil {
+					td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
+					td.Error = h.tr(r, "auth_account_banned", "Ce compte a été suspendu ou désactivé.")
+					td.Section = "login"
+					_ = h.renderer.Render(w, "admin/login.html", td)
+				} else {
+					_, _ = w.Write([]byte("Ce compte a été suspendu ou désactivé."))
+				}
+				return
+			}
+			if canInvite {
+				_, _ = h.db.Exec(`UPDATE users SET can_invite = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, user.ID)
+			}
 		}
 	}
 
@@ -432,7 +452,28 @@ func (h *AuthHandler) sessionAccepted(sess *session.Payload) bool {
 		slog.Warn("Impossible de lire la politique de session", "error", err)
 		return true
 	}
-	return cfg.AcceptsIssuedAt(sess.Iat)
+	if !cfg.AcceptsIssuedAt(sess.Iat) {
+		return false
+	}
+
+	if sess.AuthentikID == "local_admin" {
+		return true
+	}
+
+	var isActive, isBanned bool
+	err = h.db.QueryRow(
+		`SELECT is_active, is_banned FROM users WHERE authentik_id = ? OR username = ? LIMIT 1`,
+		sess.AuthentikID, sess.Username,
+	).Scan(&isActive, &isBanned)
+	if err == nil {
+		if isBanned || !isActive {
+			return false
+		}
+	} else if errors.Is(err, sql.ErrNoRows) && !sess.IsAdmin {
+		return false
+	}
+
+	return true
 }
 
 func (h *AuthHandler) rememberSessionDuration() time.Duration {
@@ -521,8 +562,8 @@ func (h *AuthHandler) LocalLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	expectedPass := strings.TrimSpace(h.cfg.LocalAdmin.Password)
 
-	userValid := submittedUser == "" || subtle.ConstantTimeCompare([]byte(submittedUser), []byte(expectedUser)) == 1
-	passValid := subtle.ConstantTimeCompare([]byte(submittedPass), []byte(expectedPass)) == 1
+	userValid := submittedUser != "" && subtle.ConstantTimeCompare([]byte(submittedUser), []byte(expectedUser)) == 1
+	passValid := submittedPass != "" && subtle.ConstantTimeCompare([]byte(submittedPass), []byte(expectedPass)) == 1
 
 	if !userValid || !passValid {
 		slog.Warn("Échec de la connexion locale de secours (identifiants invalides)", "ip", r.RemoteAddr, "user", submittedUser)

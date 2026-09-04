@@ -36,6 +36,7 @@
 
                 {{ if .Data.LocalAdminEnabled }}
                 <form method="POST" action="/local" class="space-y-4">
+                    <input type="hidden" name="_csrf" value="{{ index .Data "CSRFToken" }}">
                     <div>
                         <label for="username" class="block text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Nom d'utilisateur</label>
                         <input type="text" id="username" name="username" value="{{ if .Data.SubmittedUsername }}{{ .Data.SubmittedUsername }}{{ else if .Data.DefaultUsername }}{{ .Data.DefaultUsername }}{{ else }}admin{{ end }}" required class="jg-input w-full rounded-xl text-sm" autofocus>

@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -328,18 +329,19 @@ func main() {
 
 	// Routes d'authentification OIDC & locale de secours (publiques)
 	r.Route("/auth", func(r chi.Router) {
+		r.Use(jgmw.EnsureCSRFCookie(cfg.BaseURL))
 		r.Get("/login", authHandler.LoginRedirect)
 		r.Get("/callback", authHandler.Callback)
 		r.Get("/local", authHandler.LocalLoginPage)
-		r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/local", authHandler.LocalLoginSubmit)
+		r.With(jgmw.RateLimitByIP(6, 5*time.Minute), jgmw.RequireCSRF()).Post("/local", authHandler.LocalLoginSubmit)
 		r.Get("/logout", authHandler.Logout)
 		r.Post("/logout", authHandler.Logout)
 	})
 
 	// Accès direct /login, /local pour la connexion d'urgence et /logout
-	r.Get("/login", authHandler.LoginPage)
-	r.Get("/local", authHandler.LocalLoginPage)
-	r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/local", authHandler.LocalLoginSubmit)
+	r.With(jgmw.EnsureCSRFCookie(cfg.BaseURL)).Get("/login", authHandler.LoginPage)
+	r.With(jgmw.EnsureCSRFCookie(cfg.BaseURL)).Get("/local", authHandler.LocalLoginPage)
+	r.With(jgmw.EnsureCSRFCookie(cfg.BaseURL), jgmw.RateLimitByIP(6, 5*time.Minute), jgmw.RequireCSRF()).Post("/local", authHandler.LocalLoginSubmit)
 	r.Get("/logout", authHandler.Logout)
 	r.Post("/logout", authHandler.Logout)
 
@@ -349,7 +351,7 @@ func main() {
 		// Routes publiques (login/logout) — pas de middleware auth
 		r.Get("/login", authHandler.LoginPage)
 		r.Get("/login/local", authHandler.LocalLoginPage)
-		r.With(jgmw.RateLimitByIP(6, 5*time.Minute)).Post("/login/local", authHandler.LocalLoginSubmit)
+		r.With(jgmw.RateLimitByIP(6, 5*time.Minute), jgmw.RequireCSRF()).Post("/login/local", authHandler.LocalLoginSubmit)
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute), jgmw.RequireCSRF()).Post("/login", authHandler.LoginSubmit)
 		r.Get("/logout", authHandler.Logout)
 		r.Post("/logout", authHandler.Logout)
@@ -426,6 +428,7 @@ func main() {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)
 					r.Post("/", adminHandler.CreateUser)
+					r.Post("/sync", adminHandler.SyncJellyfinUsers)
 					r.Get("/dashboard/stats", adminHandler.DashboardStats)
 					r.Get("/invitations", adminHandler.ListInvitations)
 					r.Get("/{id}/avatar", adminHandler.UserAvatar)
@@ -631,7 +634,8 @@ func handleJellyfinHealthCheck(jfClient *jellyfin.Client) http.HandlerFunc {
 	}
 }
 
-// authSessionAllowed applique la politique de revocation globale stockee en base.
+// authSessionAllowed applique la politique de revocation globale stockee en base
+// ainsi que l'invalidation immediate des sessions d'utilisateurs desactives ou bannis.
 func authSessionAllowed(db *database.DB, sess *session.Payload) bool {
 	if sess == nil {
 		return false
@@ -644,7 +648,28 @@ func authSessionAllowed(db *database.DB, sess *session.Payload) bool {
 		slog.Warn("Impossible de lire la politique de session", "error", err)
 		return true
 	}
-	return cfg.AcceptsIssuedAt(sess.Iat)
+	if !cfg.AcceptsIssuedAt(sess.Iat) {
+		return false
+	}
+
+	if sess.AuthentikID == "local_admin" {
+		return true
+	}
+
+	var isActive, isBanned bool
+	err = db.QueryRow(
+		`SELECT is_active, is_banned FROM users WHERE authentik_id = ? OR username = ? LIMIT 1`,
+		sess.AuthentikID, sess.Username,
+	).Scan(&isActive, &isBanned)
+	if err == nil {
+		if isBanned || !isActive {
+			return false
+		}
+	} else if errors.Is(err, sql.ErrNoRows) && !sess.IsAdmin {
+		return false
+	}
+
+	return true
 }
 
 // adminLandingPath conserve l'ouverture de l'app sur le dashboard quand une

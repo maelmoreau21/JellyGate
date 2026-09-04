@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -1465,6 +1466,10 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 // DeleteInvitation supprime brutalement l'invitation SQLite
 func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	invID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID invalide"})
@@ -1472,29 +1477,30 @@ func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) 
 	}
 
 	var authInvID sql.NullString
-	_ = h.db.QueryRow(`SELECT authentik_invitation_id FROM invitations WHERE id = ?`, invID).Scan(&authInvID)
+	var createdBy string
+	err = h.db.QueryRow(`SELECT authentik_invitation_id, created_by FROM invitations WHERE id = ?`, invID).Scan(&authInvID, &createdBy)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Invitation introuvable"})
+			return
+		}
+		slog.Error("Erreur lecture invitation pour suppression", "id", invID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur DB"})
+		return
+	}
+
+	if !sess.IsAdmin && createdBy != sess.Username {
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de supprimer ce lien"})
+		return
+	}
+
 	if authInvID.Valid && authInvID.String != "" && h.authClient != nil {
 		if errDel := h.authClient.DeleteInvitationStageToken(r.Context(), authInvID.String); errDel != nil {
 			slog.Warn("Suppression du token invitation Authentik échouée", "token_id", authInvID.String, "error", errDel)
 		}
 	}
 
-	var errDB error
-	if sess.IsAdmin {
-		_, errDB = h.db.Exec(`DELETE FROM invitations WHERE id = ?`, invID)
-	} else {
-		// Security: Le standard user ne supprime que ses propres liens
-		result, errDBQuery := h.db.Exec(`DELETE FROM invitations WHERE id = ? AND created_by = ?`, invID, sess.Username)
-		errDB = errDBQuery
-		if errDB == nil {
-			rowsAffected, _ := result.RowsAffected()
-			if rowsAffected == 0 {
-				writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de supprimer ce lien"})
-				return
-			}
-		}
-	}
-
+	_, errDB := h.db.Exec(`DELETE FROM invitations WHERE id = ?`, invID)
 	if errDB != nil {
 		slog.Error("Erreur suppression invitation", "id", invID, "error", errDB)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur DB"})
@@ -1636,6 +1642,15 @@ func presetInviteLinkValidityDays(preset *config.JellyfinPolicyPreset) int {
 
 // SyncAuthentikInvitations reconciles invitations between JellyGate and Authentik.
 func (h *AdminHandler) SyncAuthentikInvitations(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	if sess == nil || !sess.IsAdmin {
+		writeJSON(w, http.StatusForbidden, APIResponse{
+			Success: false,
+			Message: h.tr(r, "admin_forbidden", "Accès interdit (Administrateurs uniquement)"),
+		})
+		return
+	}
+
 	client := h.getEffectiveAuthentikClient()
 	if client == nil {
 		w.Header().Set("Content-Type", "application/json")

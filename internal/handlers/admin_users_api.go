@@ -1323,6 +1323,11 @@ func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if sess != nil && strings.EqualFold(rec.Username, sess.Username) {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Vous ne pouvez pas bannir votre propre compte administrateur"})
+		return
+	}
+
 	_, err = h.db.Exec(`UPDATE users SET is_active = FALSE, is_banned = TRUE, updated_at = datetime('now') WHERE id = ?`, userID)
 	if err != nil {
 		slog.Error("Erreur bannissement utilisateur", "id", userID, "error", err)
@@ -1778,6 +1783,14 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newActive := !rec.IsActive
+	if sess != nil && strings.EqualFold(rec.Username, sess.Username) && !newActive {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Vous ne pouvez pas désactiver votre propre compte administrateur",
+		})
+		return
+	}
+
 	partialErrors, err := h.setUserActiveState(rec, newActive, sess.Username)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
@@ -1891,6 +1904,14 @@ func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
 			Success: false,
 			Message: "Erreur de lecture de la base de données",
+		})
+		return
+	}
+
+	if sess != nil && strings.EqualFold(rec.Username, sess.Username) {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Vous ne pouvez pas supprimer votre propre compte administrateur",
 		})
 		return
 	}

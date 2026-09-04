@@ -272,13 +272,17 @@ func (db *DB) GetAuthentikConfig() (config.AuthentikConfig, error) {
 	return cfg, nil
 }
 
-// SaveAuthentikConfig sauvegarde la configuration Authentik dans la base.
+// SaveAuthentikConfig sauvegarde la configuration Authentik dans la base (chiffrée au repos).
 func (db *DB) SaveAuthentikConfig(cfg config.AuthentikConfig) error {
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("SaveAuthentikConfig marshal: %w", err)
 	}
-	return db.SetSetting(SettingAuthentikConfig, string(data))
+	enc, err := db.encrypt(string(data))
+	if err != nil {
+		return fmt.Errorf("SaveAuthentikConfig encrypt: %w", err)
+	}
+	return db.SetSetting(SettingAuthentikConfig, enc)
 }
 
 // IsAuthentikEnabled indique si l'intégration Authentik est activée.
@@ -314,7 +318,7 @@ func (db *DB) GetJellyfinConfig() (config.JellyfinConfig, error) {
 	return cfg, nil
 }
 
-// SaveJellyfinConfig sauvegarde la configuration du serveur Jellyfin dans la base.
+// SaveJellyfinConfig sauvegarde la configuration du serveur Jellyfin dans la base (chiffrée au repos).
 func (db *DB) SaveJellyfinConfig(cfg config.JellyfinConfig) error {
 	cfg.URL = strings.TrimSpace(cfg.URL)
 	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
@@ -323,7 +327,11 @@ func (db *DB) SaveJellyfinConfig(cfg config.JellyfinConfig) error {
 	if err != nil {
 		return fmt.Errorf("SaveJellyfinConfig marshal: %w", err)
 	}
-	return db.SetSetting(SettingJellyfinConfig, string(data))
+	enc, err := db.encrypt(string(data))
+	if err != nil {
+		return fmt.Errorf("SaveJellyfinConfig encrypt: %w", err)
+	}
+	return db.SetSetting(SettingJellyfinConfig, enc)
 }
 
 // ── SMTP Config ─────────────────────────────────────────────────────────────

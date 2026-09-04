@@ -665,6 +665,13 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	defaultLang := h.db.GetDefaultLang()
 
 	authentikCfg := h.resolveEffectiveAuthentikConfig()
+	maskedAuthentik := authentikCfg
+	if maskedAuthentik.ClientSecret != "" {
+		maskedAuthentik.ClientSecret = maskedSecretValue
+	}
+	if maskedAuthentik.APIToken != "" {
+		maskedAuthentik.APIToken = maskedSecretValue
+	}
 
 	smtpCfg, err := h.db.GetSMTPConfig()
 	if err != nil {
@@ -742,7 +749,7 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			PortalLinks:                       portalLinks,
 			InvitationProfile:                 inviteProfileCfg,
 			AuthSession:                       authSessionCfg,
-			Authentik:                         authentikCfg,
+			Authentik:                         maskedAuthentik,
 			AuthentikEnvManaged:               h.isAuthentikEnvManaged(),
 			Jellyfin:                          maskedJellyfin,
 			JellyfinEnvManaged:                h.isJellyfinEnvManaged(),
