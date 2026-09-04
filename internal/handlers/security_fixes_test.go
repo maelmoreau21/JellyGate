@@ -456,4 +456,3 @@ func TestDeleteInvitationIDORPrevention(t *testing.T) {
 		t.Fatalf("Invitation should be deleted, got count = %d", count)
 	}
 }
-
