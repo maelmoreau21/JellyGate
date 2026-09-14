@@ -183,8 +183,10 @@ gate.example.com {
 2. **Conteneur Docker en lecture seule :**
    Le `docker-compose.yml` de JellyGate est déjà configuré avec :
    - `read_only: true`
-   - `security_opt: [no-new-privileges:true]`
-   - `cap_drop: [ALL]`
+   - `security_opt:`
+     - `no-new-privileges:true`
+   - `cap_drop:`
+     - `ALL`
    - `user: "1000:1000"` (non-root)
 3. **Journaux d'audit et logs système :**
    - Les fichiers de logs (`/data/logs/jellygate-*.log`) sont créés en mode `0600`.
