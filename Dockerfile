@@ -40,8 +40,9 @@ RUN CGO_ENABLED=0 \
 # ── Step 2: Minimal final image ─────────────────────────────────────────────
 FROM postgres:18-alpine
 
-# TLS certificates + utility tools + Postgres server cleanup to minimize image size
-RUN apk add --no-cache ca-certificates tzdata wget \
+# TLS certificates + utility tools + security upgrades + Postgres server cleanup to minimize image size
+RUN apk update && apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates tzdata wget \
     && rm -rf /usr/local/bin/postgres \
               /usr/local/bin/initdb \
               /usr/local/bin/pg_ctl \

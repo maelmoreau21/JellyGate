@@ -378,10 +378,10 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	clearTempCookie(w, oidc.CookieState)
-	clearTempCookie(w, oidc.CookieNonce)
-	clearTempCookie(w, oidc.CookieVerifier)
-	clearTempCookie(w, oidc.CookieRedirectURI)
+	h.clearTempCookie(w, r, oidc.CookieState)
+	h.clearTempCookie(w, r, oidc.CookieNonce)
+	h.clearTempCookie(w, r, oidc.CookieVerifier)
+	h.clearTempCookie(w, r, oidc.CookieRedirectURI)
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
@@ -418,13 +418,19 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/admin/", http.StatusSeeOther)
 }
 
-func clearTempCookie(w http.ResponseWriter, name string) {
+func (h *AuthHandler) clearTempCookie(w http.ResponseWriter, r *http.Request, name string) {
+	baseURL := ""
+	if h != nil && h.cfg != nil {
+		baseURL = h.cfg.BaseURL
+	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
 		Path:     oidc.CookiePath,
 		MaxAge:   -1,
 		HttpOnly: true,
+		Secure:   jgmw.RequestIsHTTPS(r, baseURL),
+		SameSite: http.SameSiteLaxMode,
 	})
 }
 
@@ -663,9 +669,10 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteStrictMode,
 	})
 
-	clearTempCookie(w, oidc.CookieState)
-	clearTempCookie(w, oidc.CookieNonce)
-	clearTempCookie(w, oidc.CookieVerifier)
+	h.clearTempCookie(w, r, oidc.CookieState)
+	h.clearTempCookie(w, r, oidc.CookieNonce)
+	h.clearTempCookie(w, r, oidc.CookieVerifier)
+	h.clearTempCookie(w, r, oidc.CookieRedirectURI)
 
 	slog.Info("Deconnexion utilisateur", "remote", r.RemoteAddr)
 	h.logAction("admin.logout", "", "", fmt.Sprintf("IP: %s", r.RemoteAddr))

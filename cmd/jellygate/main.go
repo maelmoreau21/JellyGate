@@ -269,8 +269,9 @@ func main() {
 	r := chi.NewRouter()
 
 	// Middlewares globaux
-	r.Use(jgmw.SecurityHeaders(cfg.BaseURL)) // Headers de securite HTTP
-	r.Use(chimw.RequestID)                   // ID unique par requête
+	r.Use(jgmw.SecurityHeaders(cfg.BaseURL))            // Headers de securite HTTP
+	r.Use(jgmw.LimitRequestBody(10 * 1024 * 1024))      // Protection DoS: limite le corps des requêtes à 10 Mo
+	r.Use(chimw.RequestID)                              // ID unique par requête
 	if cfg.TrustProxyHeaders {
 		r.Use(jgmw.TrustedProxyRealIP(cfg.TrustedProxies))
 	}

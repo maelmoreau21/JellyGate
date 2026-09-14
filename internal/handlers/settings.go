@@ -990,6 +990,32 @@ func (h *SettingsHandler) SaveJellyfin(w http.ResponseWriter, r *http.Request) {
 	}
 	input.URL = strings.TrimRight(input.URL, "/")
 
+	if input.URL != "" {
+		parsed, err := url.ParseRequestURI(input.URL)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "Format de l'URL Jellyfin invalide",
+			})
+			return
+		}
+		scheme := strings.ToLower(parsed.Scheme)
+		if scheme != "http" && scheme != "https" {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "L'URL Jellyfin doit obligatoirement utiliser le protocole http ou https",
+			})
+			return
+		}
+		if strings.TrimSpace(parsed.Host) == "" {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "L'URL Jellyfin doit contenir un nom d'hôte ou une adresse IP valide",
+			})
+			return
+		}
+	}
+
 	if err := h.db.SaveJellyfinConfig(input); err != nil {
 		slog.Error("Erreur sauvegarde config Jellyfin", "error", err)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{
@@ -1054,6 +1080,15 @@ func (h *SettingsHandler) TestJellyfin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
 			Success: false,
 			Message: "URL Jellyfin non configurée",
+		})
+		return
+	}
+
+	parsed, err := url.ParseRequestURI(testCfg.URL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || strings.TrimSpace(parsed.Host) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "URL Jellyfin invalide (schéma http ou https avec hôte requis)",
 		})
 		return
 	}

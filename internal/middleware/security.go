@@ -45,6 +45,7 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-XSS-Protection", "0")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("X-Permitted-Cross-Domain-Policies", "none")
 			w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
@@ -216,4 +217,18 @@ func StaticFileFilter() func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// LimitRequestBody borne la taille maximale du corps de la requête HTTP
+// pour empêcher les attaques par saturation de mémoire (DoS / OOM).
+func LimitRequestBody(maxBytes int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil && maxBytes > 0 {
+				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 
