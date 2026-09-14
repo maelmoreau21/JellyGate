@@ -272,7 +272,7 @@ func main() {
 	r.Use(jgmw.SecurityHeaders(cfg.BaseURL)) // Headers de securite HTTP
 	r.Use(chimw.RequestID)                   // ID unique par requête
 	if cfg.TrustProxyHeaders {
-		r.Use(chimw.RealIP)
+		r.Use(jgmw.TrustedProxyRealIP(cfg.TrustedProxies))
 	}
 	r.Use(chimw.Logger)                    // Log de chaque requête
 	r.Use(jgmw.LogPanics())                // Dev: log panics with stack trace
@@ -309,8 +309,8 @@ func main() {
 		http.ServeFile(w, r, "web/static/service-worker.js")
 	})
 
-	// Fichiers statiques
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+	// Fichiers statiques protégés contre toute fuite d'informations sensibles
+	r.With(jgmw.StaticFileFilter()).Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
 	// Routes d'invitation (publiques)
 	r.Route("/invite", func(r chi.Router) {

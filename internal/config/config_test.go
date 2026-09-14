@@ -249,3 +249,82 @@ func TestOIDCAndAuthentikConfigLoading(t *testing.T) {
 		}
 	})
 }
+
+func TestSecurityValidations_SecretKey(t *testing.T) {
+	t.Run("rejects placeholder secret from .env.example", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "change_this_to_a_secure_random_32_character_string")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error when using example placeholder secret, got nil")
+		}
+	})
+
+	t.Run("rejects low entropy repeating secret", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error when using repeating character secret, got nil")
+		}
+	})
+
+	t.Run("accepts strong random secret", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "a8b9c0d1e2f3a4b5c6d7e8f90123456789abcdef0123456789abcdef01234567")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(cfg.SecretKey) < 32 {
+			t.Errorf("unexpected secret length: %d", len(cfg.SecretKey))
+		}
+	})
+}
+
+func TestSecurityValidations_LocalAdmin(t *testing.T) {
+	t.Run("rejects short password under 12 characters", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "shortpass")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error for local admin password under 12 characters, got nil")
+		}
+	})
+
+	t.Run("rejects example placeholder password", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "change_this_to_a_secure_local_password")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error for example placeholder password, got nil")
+		}
+	})
+}
+
+func TestSecurityValidations_TrustedProxies(t *testing.T) {
+	t.Run("uses default private and loopback CIDRs when not specified", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_TRUSTED_PROXIES", "")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(cfg.TrustedProxies) == 0 {
+			t.Fatal("expected non-empty default trusted proxies")
+		}
+	})
+
+	t.Run("parses custom comma-separated CIDRs", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_TRUSTED_PROXIES", "10.100.0.0/16, 192.168.1.50/32")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(cfg.TrustedProxies) != 2 {
+			t.Fatalf("expected 2 trusted proxies, got %d", len(cfg.TrustedProxies))
+		}
+		if cfg.TrustedProxies[0] != "10.100.0.0/16" || cfg.TrustedProxies[1] != "192.168.1.50/32" {
+			t.Errorf("unexpected trusted proxies: %v", cfg.TrustedProxies)
+		}
+	})
+}
+

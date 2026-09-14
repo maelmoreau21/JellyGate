@@ -74,7 +74,8 @@ type Config struct {
 	TLSKey            string // Chemin vers la clé privée TLS
 	DefaultLang       string // Langue par défaut de l'interface (défaut: fr)
 	EnableDebugRoutes bool   // Active les routes /admin/debug (dev uniquement)
-	TrustProxyHeaders bool   // Autorise X-Forwarded-For/X-Real-IP via reverse proxy de confiance
+	TrustProxyHeaders bool     // Autorise X-Forwarded-For/X-Real-IP via reverse proxy de confiance
+	TrustedProxies    []string // Sous-réseaux CIDR ou adresses IP autorisés comme proxys de confiance
 
 	// Base de donnees (sqlite ou postgres)
 	Database DatabaseConfig
@@ -1438,6 +1439,7 @@ func Load() (*Config, error) {
 		DefaultLang:       NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
 		EnableDebugRoutes: getEnvBool("JELLYGATE_ENABLE_DEBUG_ROUTES", false),
 		TrustProxyHeaders: getEnvBool("JELLYGATE_TRUST_PROXY_HEADERS", true),
+		TrustedProxies:    parseTrustedProxies(getEnv("JELLYGATE_TRUSTED_PROXIES", "")),
 
 		Database: DatabaseConfig{
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", ""))),
@@ -1529,6 +1531,17 @@ func (c *Config) validate() error {
 		errs = append(errs, "JELLYGATE_SECRET est requis")
 	} else if len(c.SecretKey) < 32 {
 		errs = append(errs, "JELLYGATE_SECRET doit faire au minimum 32 caractères")
+	} else if isKnownInsecureSecret(c.SecretKey) {
+		errs = append(errs, "JELLYGATE_SECRET utilise une valeur d'exemple ou triviale non sécurisée (générez une clé aléatoire avec 'openssl rand -hex 32')")
+	}
+
+	// Local Emergency Admin
+	if c.LocalAdmin.Enabled {
+		if len(c.LocalAdmin.Password) < 12 {
+			errs = append(errs, "JELLYGATE_LOCAL_ADMIN_PASSWORD doit faire au minimum 12 caractères pour sécuriser le compte administrateur de secours")
+		} else if isKnownInsecurePassword(c.LocalAdmin.Password) {
+			errs = append(errs, "JELLYGATE_LOCAL_ADMIN_PASSWORD utilise un mot de passe d'exemple non sécurisé")
+		}
 	}
 	if err := validateHTTPURL(c.BaseURL); err != nil {
 		errs = append(errs, "JELLYGATE_BASE_URL doit etre une URL http/https valide: "+err.Error())
@@ -1638,3 +1651,87 @@ func getEnvBool(key string, defaultVal bool) bool {
 		return defaultVal
 	}
 }
+
+// DefaultTrustedProxies retourne les sous-réseaux privés et boucles locales autorisés par défaut.
+func DefaultTrustedProxies() []string {
+	return []string{
+		"127.0.0.1/32",
+		"::1/128",
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"fc00::/7",
+	}
+}
+
+func parseTrustedProxies(raw string) []string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return DefaultTrustedProxies()
+	}
+	var res []string
+	for _, part := range strings.Split(trimmed, ",") {
+		clean := strings.TrimSpace(part)
+		if clean != "" {
+			res = append(res, clean)
+		}
+	}
+	if len(res) == 0 {
+		return DefaultTrustedProxies()
+	}
+	return res
+}
+
+func isKnownInsecureSecret(s string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(s))
+	insecureDefaults := []string{
+		"change_this_to_a_secure_random_32_character_string",
+		"secret_key_please_change_me_to_random_32_characters",
+		"0123456789abcdef0123456789abcdef",
+		"abcdefghijklmnopqrstuvwxyz012345",
+		"your_strong_secret_key_here_at_least_32_chars",
+		"changeme_changeme_changeme_changeme",
+	}
+	for _, def := range insecureDefaults {
+		if normalized == def {
+			return true
+		}
+	}
+
+	// Rejeter les répétitions du même caractère (ex: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	allSame := true
+	for i := 1; i < len(normalized); i++ {
+		if normalized[i] != normalized[0] {
+			allSame = false
+			break
+		}
+	}
+	if allSame {
+		return true
+	}
+
+	// Exiger au moins 6 caractères distincts pour une clé secrète de 32+ caractères
+	distinct := make(map[rune]struct{})
+	for _, r := range normalized {
+		distinct[r] = struct{}{}
+	}
+	return len(distinct) < 6
+}
+
+func isKnownInsecurePassword(p string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(p))
+	insecurePasswords := []string{
+		"change_this_to_a_secure_local_password",
+		"administrator",
+		"password12345",
+		"adminadminadmin",
+		"123456789012",
+	}
+	for _, def := range insecurePasswords {
+		if normalized == def {
+			return true
+		}
+	}
+	return false
+}
+
