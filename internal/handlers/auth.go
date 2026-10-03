@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
 	"database/sql"
 	"errors"
@@ -383,6 +384,7 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	h.clearTempCookie(w, r, oidc.CookieVerifier)
 	h.clearTempCookie(w, r, oidc.CookieRedirectURI)
 
+	// #nosec G124 -- dynamic secure flag respects detected HTTPS / TLS state.
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
 		Value:    cookieValue,
@@ -395,6 +397,7 @@ func (h *AuthHandler) Callback(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if preferredLang := h.resolvePreferredLang(claims.Sub, claims.PreferredUsername); preferredLang != "" {
+		// #nosec G124 -- lang cookie is intentionally readable by frontend client script.
 		http.SetCookie(w, &http.Cookie{
 			Name:     "lang",
 			Value:    preferredLang,
@@ -423,6 +426,7 @@ func (h *AuthHandler) clearTempCookie(w http.ResponseWriter, r *http.Request, na
 	if h != nil && h.cfg != nil {
 		baseURL = h.cfg.BaseURL
 	}
+	// #nosec G124 -- clearing uses the same Secure policy as the session cookie.
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    "",
@@ -568,8 +572,13 @@ func (h *AuthHandler) LocalLoginSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	expectedPass := strings.TrimSpace(h.cfg.LocalAdmin.Password)
 
-	userValid := submittedUser != "" && subtle.ConstantTimeCompare([]byte(submittedUser), []byte(expectedUser)) == 1
-	passValid := submittedPass != "" && subtle.ConstantTimeCompare([]byte(submittedPass), []byte(expectedPass)) == 1
+	subUserHash := sha256.Sum256([]byte(submittedUser))
+	expUserHash := sha256.Sum256([]byte(expectedUser))
+	userValid := submittedUser != "" && subtle.ConstantTimeCompare(subUserHash[:], expUserHash[:]) == 1
+
+	subPassHash := sha256.Sum256([]byte(submittedPass))
+	expPassHash := sha256.Sum256([]byte(expectedPass))
+	passValid := submittedPass != "" && subtle.ConstantTimeCompare(subPassHash[:], expPassHash[:]) == 1
 
 	if !userValid || !passValid {
 		slog.Warn("Échec de la connexion locale de secours (identifiants invalides)", "ip", r.RemoteAddr, "user", submittedUser)
@@ -612,6 +621,7 @@ func (h *AuthHandler) LocalLoginSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// #nosec G124 -- dynamic secure flag respects detected HTTPS / TLS state.
 	http.SetCookie(w, &http.Cookie{
 		Name:     session.CookieName,
 		Value:    cookieValue,

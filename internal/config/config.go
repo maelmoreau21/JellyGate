@@ -66,14 +66,14 @@ func IsSupportedLanguage(lang string) bool {
 // Ne contient que les paramètres essentiels au démarrage de l'application.
 type Config struct {
 	// Application
-	Port              int    // Port d'écoute HTTP (défaut: 8097)
-	BaseURL           string // URL de base publique
-	DataDir           string // Répertoire des données (SQLite, etc.)
-	SecretKey         string // Clé secrète pour sessions/tokens (min 32 chars)
-	TLSCert           string // Chemin vers le certificat TLS
-	TLSKey            string // Chemin vers la clé privée TLS
-	DefaultLang       string // Langue par défaut de l'interface (défaut: fr)
-	EnableDebugRoutes bool   // Active les routes /admin/debug (dev uniquement)
+	Port              int      // Port d'écoute HTTP (défaut: 8097)
+	BaseURL           string   // URL de base publique
+	DataDir           string   // Répertoire des données (SQLite, etc.)
+	SecretKey         string   // Clé secrète pour sessions/tokens (min 32 chars)
+	TLSCert           string   // Chemin vers le certificat TLS
+	TLSKey            string   // Chemin vers la clé privée TLS
+	DefaultLang       string   // Langue par défaut de l'interface (défaut: fr)
+	EnableDebugRoutes bool     // Active les routes /admin/debug (dev uniquement)
 	TrustProxyHeaders bool     // Autorise X-Forwarded-For/X-Real-IP via reverse proxy de confiance
 	TrustedProxies    []string // Sous-réseaux CIDR ou adresses IP autorisés comme proxys de confiance
 
@@ -1734,4 +1734,3 @@ func isKnownInsecurePassword(p string) bool {
 	}
 	return false
 }
-

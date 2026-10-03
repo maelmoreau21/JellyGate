@@ -150,7 +150,11 @@ func (h *AdminHandler) SyncJellyfinUsers(w http.ResponseWriter, r *http.Request)
 	}
 
 	slog.Info("Synchronisation Authentik/Jellyfin terminée", "users_added", addedCount, "users_updated", updatedCount)
-	if err := h.db.LogAction("users.sync", session.FromContext(r.Context()).Username, "all",
+	actor := "system"
+	if sess := session.FromContext(r.Context()); sess != nil && sess.Username != "" {
+		actor = sess.Username
+	}
+	if err := h.db.LogAction("users.sync", actor, "all",
 		fmt.Sprintf("Synchronisation manuelle déclenchée: %d nouveaux importés, %d mis à jour", addedCount, updatedCount)); err != nil {
 		slog.Warn("Erreur journalisation synchronisation utilisateurs", "error", err)
 	}
@@ -418,8 +422,13 @@ func (h *AdminHandler) UserAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 3. Servir l'image avec cache
-	w.Header().Set("Content-Type", contentType)
+	// 3. Servir l'image avec cache et validation stricte du type MIME
+	safeContentType := strings.ToLower(strings.TrimSpace(contentType))
+	if !isAllowedAvatarContentType(safeContentType) {
+		safeContentType = "image/jpeg"
+	}
+	w.Header().Set("Content-Type", safeContentType)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Cache-Control", "public, max-age=86400") // 24h
 	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
 	w.WriteHeader(http.StatusOK)
@@ -1311,6 +1320,10 @@ func (h *AdminHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 // BanUser banni définitvement un utilisateur (désactivation + flag banni).
 func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID utilisateur invalide"})
@@ -1343,6 +1356,10 @@ func (h *AdminHandler) BanUser(w http.ResponseWriter, r *http.Request) {
 // ExtendAccess ajoute une durée d'accès par défaut (30 jours) à l'utilisateur.
 func (h *AdminHandler) ExtendAccess(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID utilisateur invalide"})
@@ -1389,6 +1406,10 @@ func (h *AdminHandler) ExtendAccess(w http.ResponseWriter, r *http.Request) {
 // SendUserPasswordReset crée et envoie un lien de réinitialisation à l'utilisateur ciblé.
 func (h *AdminHandler) SendUserPasswordReset(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID utilisateur invalide"})
@@ -1416,6 +1437,10 @@ func (h *AdminHandler) SendUserPasswordReset(w http.ResponseWriter, r *http.Requ
 // BulkUsersAction applique une action de masse sur les utilisateurs sélectionnés.
 func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 
 	var req BulkUsersActionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1756,6 +1781,13 @@ func (h *AdminHandler) BulkUsersAction(w http.ResponseWriter, r *http.Request) {
 // et dans Jellyfin, puis met à jour le statut SQLite.
 func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{
+			Success: false,
+			Message: "Non authentifié",
+		})
+		return
+	}
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{
@@ -1838,6 +1870,10 @@ func (h *AdminHandler) ToggleUser(w http.ResponseWriter, r *http.Request) {
 // ToggleUserInvite active ou désactive le droit de créer des invitations pour un utilisateur.
 func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID utilisateur invalide"})
@@ -1882,6 +1918,13 @@ func (h *AdminHandler) ToggleUserInvite(w http.ResponseWriter, r *http.Request) 
 // Les erreurs partielles ne bloquent pas le nettoyage en base.
 func (h *AdminHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{
+			Success: false,
+			Message: "Non authentifié",
+		})
+		return
+	}
 	userID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{

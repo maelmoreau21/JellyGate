@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	netmail "net/mail"
+	"strconv"
 	"strings"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
@@ -18,6 +19,10 @@ import (
 // GetMyAccount retourne les infos de l'utilisateur connecté.
 func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	if err := h.ensureUserRowForSession(sess); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_profile_load_failed", "Impossible de préparer le profil utilisateur")})
 		return
@@ -35,13 +40,18 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		createdAt       sql.NullString
 	)
 
+	var parsedUserID int64
+	if uid, err := strconv.ParseInt(sess.UserID, 10, 64); err == nil {
+		parsedUserID = uid
+	}
+
 	err := h.db.QueryRow(
 		`SELECT id, jellyfin_id, email,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email,
 		        access_expires_at, created_at
-		 FROM users WHERE authentik_id = ? OR username = ? OR id = ?`,
-		sess.AuthentikID, sess.Username, sess.UserID,
+		 FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR (id = ? AND ? > 0)`,
+		sess.AuthentikID, sess.Username, parsedUserID, parsedUserID,
 	).Scan(
 		&id,
 		&jellyfinID,
@@ -117,6 +127,10 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 // UpdateMyAccount met à jour les préférences et l'email de l'utilisateur connecté.
 func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	if err := h.ensureUserRowForSession(sess); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_profile_load_failed", "Impossible de préparer le profil utilisateur")})
 		return
@@ -136,12 +150,18 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		notifyEvents  bool
 		optInEmail    bool
 	)
+
+	var parsedUserID int64
+	if uid, err := strconv.ParseInt(sess.UserID, 10, 64); err == nil {
+		parsedUserID = uid
+	}
+
 	err := h.db.QueryRow(
 		`SELECT id, email,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
 		        opt_in_email
-		 FROM users WHERE authentik_id = ? OR username = ? OR id = ?`,
-		sess.AuthentikID, sess.Username, sess.UserID,
+		 FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR (id = ? AND ? > 0)`,
+		sess.AuthentikID, sess.Username, parsedUserID, parsedUserID,
 	).Scan(
 		&userID,
 		&currentEmail,
@@ -265,6 +285,10 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 // UpdateMyAccountAvatar change la photo de profil Jellyfin de l'utilisateur connecté.
 func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	if h.jfClient == nil || !h.jfClient.IsConfigured() {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin non configuré")})
 		return

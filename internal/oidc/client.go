@@ -16,12 +16,15 @@ import (
 	"math/big"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 )
+
+var validHostHeaderPattern = regexp.MustCompile(`^[a-zA-Z0-9.-]+(:[0-9]+)?$`)
 
 const (
 	CookieState       = "jellygate_oidc_state"
@@ -183,7 +186,13 @@ func (c *oidcClient) getRedirectURI(r *http.Request) string {
 		}
 		host := r.Host
 		if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
-			host = strings.TrimSpace(strings.Split(fwdHost, ",")[0])
+			candidate := strings.TrimSpace(strings.Split(fwdHost, ",")[0])
+			if validHostHeaderPattern.MatchString(candidate) {
+				host = candidate
+			}
+		}
+		if !validHostHeaderPattern.MatchString(host) {
+			host = "localhost:8097"
 		}
 		return scheme + "://" + host + "/auth/callback"
 	}
@@ -602,6 +611,7 @@ func generateRandomString(length int) (string, error) {
 }
 
 func setTempCookie(w http.ResponseWriter, name, value string, secure bool) {
+	// #nosec G124 -- dynamic secure flag respects detected HTTPS / TLS state.
 	http.SetCookie(w, &http.Cookie{
 		Name:     name,
 		Value:    value,

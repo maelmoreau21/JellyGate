@@ -74,6 +74,10 @@ type Payload struct {
 //
 // Format du cookie : base64(payload).base64(hmac)
 func Sign(payload Payload, secretKey string) (string, error) {
+	if strings.TrimSpace(secretKey) == "" {
+		return "", fmt.Errorf("clé secrète de session manquante")
+	}
+
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("erreur de sérialisation du payload: %w", err)
@@ -91,6 +95,10 @@ func Sign(payload Payload, secretKey string) (string, error) {
 // Verify vérifie la signature du cookie et retourne le payload décodé.
 // Retourne une erreur si la signature est invalide ou la session expirée.
 func Verify(cookieValue, secretKey string) (*Payload, error) {
+	if strings.TrimSpace(secretKey) == "" {
+		return nil, fmt.Errorf("clé secrète de session manquante")
+	}
+
 	parts := strings.SplitN(cookieValue, ".", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("format de cookie invalide")
@@ -119,8 +127,12 @@ func Verify(cookieValue, secretKey string) (*Payload, error) {
 		return nil, fmt.Errorf("erreur de décodage JSON: %w", err)
 	}
 
-	if time.Now().Unix() > payload.Exp {
+	now := time.Now().Unix()
+	if now > payload.Exp {
 		return nil, fmt.Errorf("session expirée")
+	}
+	if payload.Iat > now+300 {
+		return nil, fmt.Errorf("session émise dans le futur")
 	}
 
 	return &payload, nil

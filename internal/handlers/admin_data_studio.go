@@ -354,6 +354,10 @@ func (h *AdminHandler) pendingSMTPErrors(since string) []map[string]interface{} 
 
 func (h *AdminHandler) PreviewInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	var req CreateInvitationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})

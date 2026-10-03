@@ -141,7 +141,7 @@ func (m *Mailer) SendMail(to, subject, templateName string, data interface{}) er
 		return fmt.Errorf("mail.SendMail: adresse destinataire invalide %q: %w", to, err)
 	}
 
-	msg.Subject(subject)
+	msg.Subject(cleanEmailHeader(subject))
 	msg.SetMessageID()
 	msg.SetDate()
 	msg.SetBodyString(gomail.TypeTextHTML, htmlBody)
@@ -202,7 +202,7 @@ func (m *Mailer) SendTemplateString(to, subject, tplString string, data interfac
 		return fmt.Errorf("mail.SendTemplateString: adresse destinataire invalide %q: %w", to, err)
 	}
 
-	msg.Subject(subject)
+	msg.Subject(cleanEmailHeader(subject))
 	msg.SetMessageID()
 	msg.SetDate()
 	msg.SetBodyString(gomail.TypeTextHTML, htmlBody)
@@ -243,7 +243,7 @@ func (m *Mailer) SendRawHTML(to, subject, htmlBody string) error {
 		return fmt.Errorf("mail.SendRawHTML: adresse destinataire invalide: %w", err)
 	}
 
-	msg.Subject(subject)
+	msg.Subject(cleanEmailHeader(subject))
 	msg.SetMessageID()
 	msg.SetDate()
 	msg.SetBodyString(gomail.TypeTextHTML, htmlBody)
@@ -361,4 +361,10 @@ func stripHTMLTags(src string) string {
 	s = regexp.MustCompile(`\n\s*\n+`).ReplaceAllString(s, "\n\n")
 
 	return strings.TrimSpace(s)
+}
+
+func cleanEmailHeader(v string) string {
+	cleaned := strings.ReplaceAll(v, "\r", " ")
+	cleaned = strings.ReplaceAll(cleaned, "\n", " ")
+	return strings.TrimSpace(cleaned)
 }

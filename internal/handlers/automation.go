@@ -43,6 +43,10 @@ func (h *AutomationHandler) tr(r *http.Request, key, fallback string) string {
 
 func (h *AutomationHandler) AutomationPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true

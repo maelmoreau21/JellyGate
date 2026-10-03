@@ -327,4 +327,3 @@ func TestSecurityValidations_TrustedProxies(t *testing.T) {
 		}
 	})
 }
-

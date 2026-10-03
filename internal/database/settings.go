@@ -274,7 +274,7 @@ func (db *DB) GetAuthentikConfig() (config.AuthentikConfig, error) {
 
 // SaveAuthentikConfig sauvegarde la configuration Authentik dans la base (chiffrée au repos).
 func (db *DB) SaveAuthentikConfig(cfg config.AuthentikConfig) error {
-	data, err := json.Marshal(cfg)
+	data, err := json.Marshal(cfg) // #nosec G117 -- Authentik credentials are encrypted before being persisted.
 	if err != nil {
 		return fmt.Errorf("SaveAuthentikConfig marshal: %w", err)
 	}

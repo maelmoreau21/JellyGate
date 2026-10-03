@@ -246,6 +246,10 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 // CreateMyInvitation génère une invitation automatique (parrainage) basée sur le preset de l'utilisateur.
 func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	now := time.Now()
 
 	inviteCfg, err := h.db.GetInvitationProfileConfig()
@@ -811,13 +815,16 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 // InvitationStats retourne des statistiques de parrainage par createur d'invitations.
 func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	cleanupClosedInvitationsIfEnabled(h.db)
 
 	scope := "all"
 	filterByCreator := ""
 	if !sess.IsAdmin {
-		var canInvite bool
-		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		canInvite := h.resolveCanInviteForSession(sess)
 		if !canInvite {
 			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation d'acceder aux statistiques de parrainage"})
 			return
@@ -953,6 +960,10 @@ func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
 // CreateInvitation crée un nouveau lien d'invitation avec un jeton robuste et logiques complexes (JFA-GO).
 func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 
 	var req CreateInvitationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
