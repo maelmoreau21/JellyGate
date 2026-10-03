@@ -820,16 +820,16 @@ func (h *AdminHandler) applyPresetToUser(rec *adminUserRecord, presetID string) 
 	}
 
 	status := "pending"
-	appliedAtExpr := "NULL"
+	var appliedAt any
 	if strings.TrimSpace(rec.JellyfinID) != "" {
 		status = "applied"
-		appliedAtExpr = "CURRENT_TIMESTAMP"
+		appliedAt = time.Now().Format("2006-01-02 15:04:05")
 	}
 
-	// Persister le choix du preset dans SQLite.
-	_, err = h.db.Exec(fmt.Sprintf(`UPDATE users
-		SET preset_id = ?, profile_apply_status = ?, profile_apply_error = '', profile_applied_at = %s
-		WHERE id = ?`, appliedAtExpr), preset.ID, status, rec.ID)
+	// Persister le choix du preset dans la base.
+	_, err = h.db.Exec(`UPDATE users
+		SET preset_id = ?, profile_apply_status = ?, profile_apply_error = '', profile_applied_at = ?
+		WHERE id = ?`, preset.ID, status, appliedAt, rec.ID)
 	if err != nil {
 		return fmt.Errorf("maj preset_id sqlite: %w", err)
 	}

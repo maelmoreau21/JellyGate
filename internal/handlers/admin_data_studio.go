@@ -20,6 +20,10 @@ import (
 
 func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -40,6 +44,10 @@ func (h *AdminHandler) AuthentikPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -60,6 +68,10 @@ func (h *AdminHandler) AuthentikPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -76,6 +88,10 @@ func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) PendingActionsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL

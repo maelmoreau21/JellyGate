@@ -699,6 +699,10 @@ func (h *AdminHandler) runExpirationCheck() {
 // DashboardPage affiche la page principale du tableau de bord.
 func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -766,6 +770,10 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 // MyAccountPage affiche la page "Mon compte" pour l'utilisateur connecté.
 func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -889,6 +897,10 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 
 func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -905,6 +917,10 @@ func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -921,6 +937,10 @@ func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) EmailTemplatesPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -938,6 +958,10 @@ func (h *AdminHandler) EmailTemplatesPage(w http.ResponseWriter, r *http.Request
 // InvitationsPage affiche la page de gestion des invitations.
 func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -1020,6 +1044,10 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
