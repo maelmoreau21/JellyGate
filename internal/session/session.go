@@ -54,11 +54,17 @@ const (
 // Le cookie est signé (HMAC-SHA256) mais pas chiffré — ne jamais y mettre
 // de données sensibles (mots de passe, tokens Jellyfin).
 type Payload struct {
-	UserID   string `json:"uid"` // ID Jellyfin de l'utilisateur
-	Username string `json:"usr"` // Nom d'utilisateur
-	IsAdmin  bool   `json:"adm"` // Est administrateur Jellyfin
-	Exp      int64  `json:"exp"` // Timestamp d'expiration (Unix)
-	Iat      int64  `json:"iat"` // Timestamp de creation (Unix)
+	UserID             string   `json:"uid"`            // ID local / Jellyfin de l'utilisateur
+	AuthentikID        string   `json:"sid,omitempty"`  // Claim 'sub' (UUID) Authentik
+	Username           string   `json:"usr"`            // Nom d'utilisateur
+	DisplayName        string   `json:"name,omitempty"` // Nom complet / Display Name (ex: "Maël Moreau")
+	Email              string   `json:"eml,omitempty"`  // Email synchronisé
+	IsAdmin            bool     `json:"adm"`            // Est administrateur (piloté par groupe OIDC ou legacy)
+	CanInvite          bool     `json:"inv,omitempty"`  // Droit de créer des invitations (jellygate-inviters)
+	CanInviteRecursive bool     `json:"invr,omitempty"` // Droit récursif d'inviter (jellygate-inviters-recursive)
+	Groups             []string `json:"grp,omitempty"`  // Groupes OIDC / Authentik
+	Exp                int64    `json:"exp"`            // Timestamp d'expiration (Unix)
+	Iat                int64    `json:"iat"`            // Timestamp de création (Unix)
 }
 
 // ── Signature et vérification ───────────────────────────────────────────────
@@ -68,6 +74,10 @@ type Payload struct {
 //
 // Format du cookie : base64(payload).base64(hmac)
 func Sign(payload Payload, secretKey string) (string, error) {
+	if strings.TrimSpace(secretKey) == "" {
+		return "", fmt.Errorf("clé secrète de session manquante")
+	}
+
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("erreur de sérialisation du payload: %w", err)
@@ -85,6 +95,10 @@ func Sign(payload Payload, secretKey string) (string, error) {
 // Verify vérifie la signature du cookie et retourne le payload décodé.
 // Retourne une erreur si la signature est invalide ou la session expirée.
 func Verify(cookieValue, secretKey string) (*Payload, error) {
+	if strings.TrimSpace(secretKey) == "" {
+		return nil, fmt.Errorf("clé secrète de session manquante")
+	}
+
 	parts := strings.SplitN(cookieValue, ".", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("format de cookie invalide")
@@ -113,8 +127,12 @@ func Verify(cookieValue, secretKey string) (*Payload, error) {
 		return nil, fmt.Errorf("erreur de décodage JSON: %w", err)
 	}
 
-	if time.Now().Unix() > payload.Exp {
+	now := time.Now().Unix()
+	if now > payload.Exp {
 		return nil, fmt.Errorf("session expirée")
+	}
+	if payload.Iat > now+300 {
+		return nil, fmt.Errorf("session émise dans le futur")
 	}
 
 	return &payload, nil

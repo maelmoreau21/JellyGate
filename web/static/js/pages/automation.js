@@ -295,8 +295,8 @@
         document.getElementById('btn-group-map-add')?.addEventListener('click', () => {
              groupMappings.push({
                  group_name: '',
-                 source: 'ldap',
-                 ldap_group_dn: '',
+                 source: 'authentik',
+                 authentik_group_name: '',
                  policy_preset_id: presets.length ? presets[0].id : ''
              });
              renderMappings();
@@ -309,14 +309,14 @@
                 if (idx >= groupMappings.length) return;
                 const nameInput = row.querySelector('input[data-field="group_name"]');
                 const sourceSelect = row.querySelector('select[data-field="source"]');
-                const ldapInput = row.querySelector('input[data-field="ldap_group_dn"]');
+                const authInput = row.querySelector('input[data-field="authentik_group_name"]') || row.querySelector('input[data-field="ldap_group_dn"]');
                 const presetSelect = row.querySelector('select[data-field="policy_preset_id"]');
                 
                 if (nameInput && sourceSelect && presetSelect) {
                     data.push({
                         group_name: nameInput.value.trim(),
                         source: sourceSelect.value,
-                        ldap_group_dn: ldapInput ? ldapInput.value.trim() : '',
+                        authentik_group_name: authInput ? authInput.value.trim() : '',
                         policy_preset_id: presetSelect.value
                     });
                 } else {
@@ -876,6 +876,7 @@
             }
             const taskTypeLabels = {
                 sync_users: i18n.taskTypeSyncUsers || i18n.manualSyncUsers || 'Sync users',
+                sync_authentik: i18n.taskTypeSyncAuthentik || 'Sync Authentik',
                 sync_ldap_users: i18n.taskTypeSyncLdapUsers || i18n.manualSyncLdap || 'Sync LDAP users',
                 cleanup_resets: i18n.taskTypeCleanupResets || i18n.manualCleanupResets || 'Clean reset links',
             };
@@ -1132,9 +1133,6 @@
 
         document.getElementById('btn-task-quick-sync-users')?.addEventListener('click', async () => {
             await runQuickTask('sync_users', i18n.manualSyncUsers);
-        });
-        document.getElementById('btn-task-quick-sync-ldap')?.addEventListener('click', async () => {
-            await runQuickTask('sync_ldap_users', i18n.manualSyncLdap);
         });
         document.getElementById('btn-task-quick-cleanup')?.addEventListener('click', async () => {
             await runQuickTask('cleanup_resets', i18n.manualCleanupResets);

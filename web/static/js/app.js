@@ -48,16 +48,20 @@ JG.api = async function (url, opts = {}) {
         const resp = await fetch(url, config);
 
         if (resp.status === 401 || resp.status === 403) {
-            window.location.href = '/admin/login';
-            return { success: false, message: 'Session expirée' };
+            if (window.location.pathname.startsWith('/admin') && !window.location.pathname.startsWith('/admin/login')) {
+                window.location.href = '/admin/login';
+            }
+            return { success: false, message: 'Session expirée', status: resp.status };
         }
 
         const contentType = (resp.headers.get('content-type') || '').toLowerCase();
         const finalURL = (resp.url || '').toLowerCase();
 
         if (resp.redirected && finalURL.includes('/admin/login')) {
-            window.location.href = '/admin/login';
-            return { success: false, message: 'Session expirée' };
+            if (window.location.pathname.startsWith('/admin') && !window.location.pathname.startsWith('/admin/login')) {
+                window.location.href = '/admin/login';
+            }
+            return { success: false, message: 'Session expirée', status: resp.status };
         }
 
         if (!contentType.includes('application/json')) {
@@ -483,6 +487,10 @@ JG.initPasswordToggles = function () {
     const passwordInputs = document.querySelectorAll('input[type="password"]');
     passwordInputs.forEach(input => {
         if (input.dataset.hasPasswordToggle) return;
+        if (input.parentNode && (input.parentNode.classList.contains('jg-password-wrapper') || input.parentNode.querySelector('.jg-password-toggle') || input.parentNode.querySelector('[data-toggle-secret]') || input.parentNode.querySelector('#toggle-password-btn'))) {
+            input.dataset.hasPasswordToggle = 'true';
+            return;
+        }
         input.dataset.hasPasswordToggle = 'true';
 
         // Create a wrapper div specifically for the input to ensure the toggle button

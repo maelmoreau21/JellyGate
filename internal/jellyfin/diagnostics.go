@@ -1,6 +1,7 @@
 package jellyfin
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -9,9 +10,16 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
+
+var sensitiveHTTPDetailPattern = regexp.MustCompile(`(?i)(access[_-]?token|token|password|pw)(["']?\s*[:=]\s*["']?)[^"',\s}]+`)
+
+func sanitizeHTTPDetail(detail string) string {
+	return sensitiveHTTPDetailPattern.ReplaceAllString(detail, `${1}${2}[REDACTED]`)
+}
 
 // AuthAttemptSummary captures the last Jellyfin authentication attempt without secrets.
 type AuthAttemptSummary struct {
@@ -209,7 +217,35 @@ func diagnosticError(err error, detail string) string {
 	return ""
 }
 
-func readHTTPDetail(body io.Reader) string {
-	raw, _ := io.ReadAll(io.LimitReader(body, 4096))
-	return strings.TrimSpace(string(raw))
+func (c *Client) doRequestWithToken(ctx context.Context, method, path string, body []byte, token string) (*http.Response, error) {
+	if c == nil || c.baseURL == "" {
+		return nil, ErrNotConfigured
+	}
+	var reqBody io.Reader
+	if body != nil {
+		reqBody = bytes.NewReader(body)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("erreur de création de la requête %s %s: %w", method, path, err)
+	}
+
+	if token != "" {
+		req.Header.Set("Authorization", AuthorizationHeader(token))
+	}
+	req.Header.Set("Accept", "application/json")
+	if body != nil {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	client := c.httpClient
+	if client == nil {
+		client = http.DefaultClient
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("erreur de connexion à Jellyfin %s %s: %w", method, path, err)
+	}
+	return resp, nil
 }

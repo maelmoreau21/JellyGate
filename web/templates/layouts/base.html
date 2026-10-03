@@ -22,6 +22,9 @@
     <style>
         /* Hide the global floating switcher on the login page to avoid duplicates */
         body.login-page #lang-switcher { display: none !important; }
+        /* Hide default browser password reveal buttons to prevent duplicate eye icons */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear { display: none !important; }
     </style>
 
     {{/* Tailwind CSS compilé localement */}}

@@ -64,7 +64,11 @@ func (h *BackupHandler) CreateBackup(w http.ResponseWriter, r *http.Request) {
 	if cfg, cfgErr := h.db.GetBackupConfig(); cfgErr == nil {
 		_ = h.service.ApplyRetention(cfg.RetentionCount)
 	}
-	_ = h.db.LogAction("backup.manual.created", sess.Username, info.Name, "")
+	actor := "system"
+	if sess != nil && sess.Username != "" {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("backup.manual.created", actor, info.Name, "")
 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "backup_created", "Sauvegarde crÃ©Ã©e"), Data: info})
 }
@@ -126,7 +130,11 @@ func (h *BackupHandler) ImportBackup(w http.ResponseWriter, r *http.Request) {
 		_ = h.service.ApplyRetention(cfg.RetentionCount)
 	}
 
-	_ = h.db.LogAction("backup.imported", sess.Username, info.Name, "")
+	actor := "system"
+	if sess != nil && sess.Username != "" {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("backup.imported", actor, info.Name, "")
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "backup_imported", "Sauvegarde importÃ©e"), Data: info})
 }
 
@@ -144,7 +152,11 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		_ = h.db.LogAction("backup.restore.applied", sess.Username, name, time.Now().Format(time.RFC3339))
+		actor := "system"
+		if sess != nil && sess.Username != "" {
+			actor = sess.Username
+		}
+		_ = h.db.LogAction("backup.restore.applied", actor, name, time.Now().Format(time.RFC3339))
 		writeJSON(w, http.StatusOK, APIResponse{
 			Success: true,
 			Message: h.tr(r, "backup_restore_applied", "Restauration PostgreSQL appliquÃ©e."),
@@ -165,7 +177,11 @@ func (h *BackupHandler) RestoreBackup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = h.db.LogAction("backup.restore.prepared", sess.Username, name, time.Now().Format(time.RFC3339))
+	actor := "system"
+	if sess != nil && sess.Username != "" {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("backup.restore.prepared", actor, name, time.Now().Format(time.RFC3339))
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Message: h.tr(r, "backup_restore_prepared", "Restauration prÃ©parÃ©e. RedÃ©marre JellyGate pour appliquer la sauvegarde."),
@@ -183,6 +199,10 @@ func (h *BackupHandler) DeleteBackup(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
 		return
 	}
-	_ = h.db.LogAction("backup.deleted", sess.Username, name, "")
+	actor := "system"
+	if sess != nil && sess.Username != "" {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("backup.deleted", actor, name, "")
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "backup_deleted", "Sauvegarde supprimÃ©e")})
 }

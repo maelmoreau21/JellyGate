@@ -257,9 +257,6 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 			port = 5432
 		}
 
-		_ = os.Setenv("PGPASSWORD", cfg.Password)
-		defer os.Unsetenv("PGPASSWORD")
-
 		cmd := execCommand( // #nosec G204 -- arguments are passed without a shell and come from database configuration.
 			"pg_dump",
 			"-h", cfg.Host,
@@ -269,6 +266,7 @@ func (s *Service) CreateBackup(reason string) (BackupInfo, error) {
 			"-F", "c",
 			"-f", dumpPath,
 		)
+		cmd.Env = append(os.Environ(), "PGPASSWORD="+cfg.Password)
 		cmdOutput, err := cmd.CombinedOutput()
 		if err != nil {
 			return info, fmt.Errorf("dump postgresql echoue: %w. En mode Docker, 'pg_dump' est inclus dans l'image JellyGate (reconstruisez l'image si la version majeure PostgreSQL ne correspond pas). Hors Docker, verifiez que 'pg_dump' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))
@@ -421,9 +419,6 @@ func (s *Service) RestorePostgresBackup(name string) error {
 		port = 5432
 	}
 
-	_ = os.Setenv("PGPASSWORD", cfg.Password)
-	defer os.Unsetenv("PGPASSWORD")
-
 	cmd := execCommand( // #nosec G204 -- arguments are passed without a shell and come from database configuration.
 		"pg_restore",
 		"-h", cfg.Host,
@@ -437,6 +432,7 @@ func (s *Service) RestorePostgresBackup(name string) error {
 		"--exit-on-error",
 		dumpPath,
 	)
+	cmd.Env = append(os.Environ(), "PGPASSWORD="+cfg.Password)
 	cmdOutput, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("restauration postgresql echouee: %w. En mode Docker, 'pg_restore' est inclus dans l'image JellyGate (reconstruisez l'image si la version majeure PostgreSQL ne correspond pas). Hors Docker, verifiez que 'pg_restore' est installe et present dans votre PATH. (output: %s)", err, string(cmdOutput))

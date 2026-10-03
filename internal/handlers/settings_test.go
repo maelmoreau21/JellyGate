@@ -13,7 +13,6 @@ import (
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
 	"github.com/maelmoreau21/JellyGate/internal/session"
 )
 
@@ -28,7 +27,18 @@ func newTestSettingsHandler(t *testing.T) (*SettingsHandler, *database.DB) {
 		_ = db.Close()
 	})
 
-	return NewSettingsHandler(db, nil, nil), db
+	cfg := &config.Config{
+		Authentik: config.AuthentikConfig{
+			Enabled:           true,
+			URL:               "https://auth.example.com",
+			IssuerURL:         "https://auth.example.com/application/o/jellygate/",
+			ClientID:          "test-client-id",
+			UserGroup:         "custom-users",
+			AdminGroup:        "custom-admins",
+			JellyfinUserGroup: "custom-jellyfin",
+		},
+	}
+	return NewSettingsHandler(cfg, db, nil, nil, nil), db
 }
 
 func newAdminRequest(method, target string, body []byte) *http.Request {
@@ -113,75 +123,72 @@ func TestSettingsHandlerSaveAndRevokeAuthSession(t *testing.T) {
 	}
 }
 
-func TestSettingsHandlerTestJellyfinLDAPAuthUsesSharedAuthFlow(t *testing.T) {
-	handler, _ := newTestSettingsHandler(t)
-	requests := map[string]int{}
+func TestSettingsHandlerSaveAuthentik(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests[r.Method+" "+r.URL.Path]++
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/Users/AuthenticateByName":
-			if strings.Contains(r.Header.Get("Authorization"), "Token=") {
-				t.Fatalf("authenticate request should not include a token: %q", r.Header.Get("Authorization"))
-			}
-			var payload struct {
-				Username string `json:"Username"`
-				Pw       string `json:"Pw"`
-			}
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				t.Fatalf("decode auth payload: %v", err)
-			}
-			if payload.Username != "ldap-user" || payload.Pw != "secret" {
-				t.Fatalf("auth payload = %+v, want ldap-user/secret", payload)
-			}
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"User": map[string]string{
-					"Id":   "jf-user",
-					"Name": "ldap-user",
-				},
-				"AccessToken": "session-token",
-			})
-		case r.Method == http.MethodGet && r.URL.Path == "/Users/jf-user":
-			if !strings.Contains(r.Header.Get("Authorization"), `Token="session-token"`) {
-				t.Fatalf("policy refresh Authorization = %q, want session token", r.Header.Get("Authorization"))
-			}
-			_ = json.NewEncoder(w).Encode(jellyfin.User{
-				ID:   "jf-user",
-				Name: "ldap-user",
-			})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.String())
-		}
-	}))
-	defer server.Close()
-
-	handler.jfClient = jellyfin.New(config.JellyfinConfig{URL: server.URL, APIKey: "admin-api-key"})
-	body, err := json.Marshal(jellyfinLDAPAuthTestInput{Username: "ldap-user", Password: "secret"})
+	body, err := json.Marshal(config.AuthentikConfig{
+		Enabled:            true,
+		URL:                "https://auth.example.com",
+		IssuerURL:          "https://auth.example.com/application/o/jellygate/",
+		ClientID:           "jellygate",
+		ClientSecret:       "secret123",
+		RedirectURL:        "https://jellygate.example.com/auth/callback",
+		APIToken:           "ak-token-12345",
+		UserGroup:          "jellygate-users",
+		AdminGroup:         "jellygate-admins",
+		JellyfinUserGroup:  "jellyfin-users",
+		EnrollmentFlowSlug: "default-enrollment-flow",
+	})
 	if err != nil {
 		t.Fatalf("json.Marshal() error = %v", err)
 	}
 
 	rec := httptest.NewRecorder()
-	handler.TestJellyfinLDAPAuth(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/ldap/test-jellyfin-auth", body))
+	handler.SaveAuthentik(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/authentik", body))
 	if rec.Code != http.StatusOK {
-		t.Fatalf("TestJellyfinLDAPAuth status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+		t.Fatalf("SaveAuthentik status = %d, want %d, body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+
+	saved, err := db.GetAuthentikConfig()
+	if err != nil {
+		t.Fatalf("GetAuthentikConfig() error = %v", err)
+	}
+	if !saved.Enabled || saved.URL != "https://auth.example.com" || saved.UserGroup != "jellygate-users" {
+		t.Fatalf("saved Authentik config mismatch: %+v", saved)
+	}
+}
+
+func TestSettingsHandlerGetAllWithEnvDefaults(t *testing.T) {
+	handler, _ := newTestSettingsHandler(t)
+
+	rec := httptest.NewRecorder()
+	handler.GetAll(rec, newAdminRequest(http.MethodGet, "/admin/api/settings", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GetAll status = %d, want %d", rec.Code, http.StatusOK)
 	}
 
 	var resp struct {
-		Success bool                   `json:"success"`
-		Data    map[string]interface{} `json:"data"`
+		Success bool             `json:"success"`
+		Data    settingsResponse `json:"data"`
 	}
-	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode response: %v", err)
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
 	}
-	if !resp.Success {
-		t.Fatalf("response success = false")
+
+	if !resp.Data.Authentik.Enabled {
+		t.Fatalf("expected Authentik.Enabled=true from env defaults, got false")
 	}
-	if resp.Data["jellyfin_user_id"] != "jf-user" || resp.Data["jellyfin_name"] != "ldap-user" {
-		t.Fatalf("response data = %#v, want Jellyfin user details", resp.Data)
+	if resp.Data.Authentik.URL != "https://auth.example.com" {
+		t.Fatalf("expected Authentik.URL=https://auth.example.com, got %q", resp.Data.Authentik.URL)
 	}
-	if requests[http.MethodPost+" /Users/AuthenticateByName"] != 1 || requests[http.MethodGet+" /Users/jf-user"] != 1 {
-		t.Fatalf("unexpected request counts: %#v", requests)
+	if resp.Data.Authentik.UserGroup != "custom-users" {
+		t.Fatalf("expected Authentik.UserGroup=custom-users, got %q", resp.Data.Authentik.UserGroup)
+	}
+	if resp.Data.Authentik.AdminGroup != "custom-admins" {
+		t.Fatalf("expected Authentik.AdminGroup=custom-admins, got %q", resp.Data.Authentik.AdminGroup)
+	}
+	if resp.Data.Authentik.JellyfinUserGroup != "custom-jellyfin" {
+		t.Fatalf("expected Authentik.JellyfinUserGroup=custom-jellyfin, got %q", resp.Data.Authentik.JellyfinUserGroup)
 	}
 }
 
@@ -585,4 +592,137 @@ func readZipEntryForTest(t *testing.T, raw []byte, name string) string {
 	}
 	t.Fatalf("zip entry %s not found", name)
 	return ""
+}
+
+func TestSettingsHandlerReloadAuthentikFromEnv(t *testing.T) {
+	handler, _ := newTestSettingsHandler(t)
+
+	rec := httptest.NewRecorder()
+	handler.ReloadAuthentikFromEnv(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/authentik/reload-env", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("ReloadAuthentikFromEnv status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Success bool                   `json:"success"`
+		Data    config.AuthentikConfig `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !resp.Success {
+		t.Fatalf("ReloadAuthentikFromEnv success = false")
+	}
+	if resp.Data.URL != "https://auth.example.com" {
+		t.Errorf("expected URL https://auth.example.com, got %s", resp.Data.URL)
+	}
+	if resp.Data.UserGroup != "custom-users" {
+		t.Errorf("expected UserGroup custom-users, got %s", resp.Data.UserGroup)
+	}
+}
+
+func TestSettingsHandlerTestAuthentikUser(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	// Inserer un utilisateur local de test
+	_, err := db.Exec(`INSERT INTO users (username, email, can_invite, is_active, created_at) VALUES ('testadmin', 'testadmin@example.com', 1, 1, datetime('now'))`)
+	if err != nil {
+		t.Fatalf("insert user error = %v", err)
+	}
+
+	payload := []byte(`{"username":"testadmin"}`)
+	rec := httptest.NewRecorder()
+	handler.TestAuthentikUser(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/authentik/test-user", payload))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("TestAuthentikUser status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Success bool           `json:"success"`
+		Data    testUserResult `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if !resp.Success || !resp.Data.Found {
+		t.Fatalf("expected user to be found: %+v", resp)
+	}
+	if !resp.Data.IsJellyGateAdmin {
+		t.Errorf("expected is_jellygate_admin to be true")
+	}
+	if !resp.Data.IsJellyGateUser {
+		t.Errorf("expected is_jellygate_user to be true")
+	}
+}
+
+func TestSettingsHandlerSaveJellyfin(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	var reloadedConfig config.JellyfinConfig
+	handler.OnJellyfinReload = func(c config.JellyfinConfig) {
+		reloadedConfig = c
+	}
+
+	payload := []byte(`{"url":"http://192.168.1.50:8096","api_key":"test_jf_key_123"}`)
+	rec := httptest.NewRecorder()
+	handler.SaveJellyfin(rec, newAdminRequest(http.MethodPost, "/admin/api/settings/jellyfin", payload))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("SaveJellyfin status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	saved, err := db.GetJellyfinConfig()
+	if err != nil {
+		t.Fatalf("GetJellyfinConfig error: %v", err)
+	}
+	if saved.URL != "http://192.168.1.50:8096" {
+		t.Errorf("expected URL http://192.168.1.50:8096, got %s", saved.URL)
+	}
+	if saved.APIKey != "test_jf_key_123" {
+		t.Errorf("expected APIKey test_jf_key_123, got %s", saved.APIKey)
+	}
+	if reloadedConfig.URL != "http://192.168.1.50:8096" {
+		t.Errorf("expected callback reloaded URL http://192.168.1.50:8096, got %s", reloadedConfig.URL)
+	}
+}
+
+func TestSettingsHandlerJellyfinEnvPrecedence(t *testing.T) {
+	handler, db := newTestSettingsHandler(t)
+
+	// Save one config in DB
+	_ = db.SaveJellyfinConfig(config.JellyfinConfig{
+		URL:    "http://from-db:8096",
+		APIKey: "db_api_key",
+	})
+
+	// Handler has app config with Env overrides
+	handler.cfg.Jellyfin = config.JellyfinConfig{
+		URL:    "http://from-env:8096",
+		APIKey: "env_api_key",
+	}
+
+	rec := httptest.NewRecorder()
+	handler.GetAll(rec, newAdminRequest(http.MethodGet, "/admin/api/settings", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GetAll status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	var resp struct {
+		Success bool             `json:"success"`
+		Data    settingsResponse `json:"data"`
+	}
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+
+	// Environment variable must take strict precedence
+	if resp.Data.Jellyfin.URL != "http://from-env:8096" {
+		t.Errorf("expected Jellyfin URL from env 'http://from-env:8096', got %s", resp.Data.Jellyfin.URL)
+	}
+	if !resp.Data.JellyfinEnvManaged {
+		t.Errorf("expected JellyfinEnvManaged to be true")
+	}
 }

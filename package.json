@@ -1,6 +1,6 @@
 {
   "name": "jellygate",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "private": true,
   "license": "MIT",
   "scripts": {
@@ -20,4 +20,4 @@
     "puppeteer": "^25.2.1",
     "tailwindcss": "^4.3.2"
   }
-}
+}

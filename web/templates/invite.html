@@ -17,7 +17,7 @@
                 </svg>
             </div>
             <h1 class="text-2xl font-bold mb-1">{{ .T "invite_heading" }}</h1>
-            <p class="text-sm text-slate-500 dark:text-slate-400">{{ .T "invite_subheading" }}</p>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ printf (.T "invite_subheading") (or .Data.JellyfinServerName "Jellyfin") }}</p>
             {{ if .Invitation }}
             {{ if .Invitation.Label }}
             <span
@@ -44,6 +44,16 @@
             </div>
             <h1 class="text-xl font-bold mb-3">{{ .T "success" }}</h1>
             <p class="text-slate-600 dark:text-slate-300">{{ .SuccessMessage }}</p>
+            {{ if .Data.RecoveryURL }}
+            <div class="mt-6">
+                <a href="{{ .Data.RecoveryURL }}" class="jg-btn jg-btn-primary w-full text-base py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25">
+                    <span>{{ .T "invite_set_password" }}</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </a>
+            </div>
+            {{ end }}
             {{ if .Data.InviteSuccessHTML }}
             <div class="jg-markdown-panel mt-6 text-left">
                 {{ .Data.InviteSuccessHTML }}
@@ -66,69 +76,121 @@
                 {{ end }}
             </div>
             {{ end }}
-        </div>
-        {{ else }}
-        {{/* Carte formulaire */}}
-        <div class="glass-card p-8 glow-accent">
+        {{ else if .Data.AuthentikEnrollmentURL }}
+        <div class="glass-card p-8 glow-accent text-center">
             {{ if .Data.InviteIntroHTML }}
-            <div class="jg-markdown-panel mb-6">
+            <div class="jg-markdown-panel mb-6 text-left">
                 {{ .Data.InviteIntroHTML }}
             </div>
             {{ end }}
+
+            {{ if .Error }}
+            <div class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300 text-left">
+                {{ .Error }}
+            </div>
+            {{ end }}
+
+            <div class="w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-purple-500/20">
+                <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+            </div>
+
+            <h2 class="text-xl font-bold mb-2 text-slate-100">{{ .T "invite_heading" }}</h2>
+            <p class="text-sm text-slate-400 mb-6">{{ printf (.T "invite_subheading") (or .Data.JellyfinServerName "Jellyfin") }}</p>
+
+            <a href="{{ .Data.AuthentikEnrollmentURL }}" id="authentik-enroll-btn" class="jg-btn jg-btn-primary w-full text-base py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25">
+                <span>{{ .T "invite_submit" }} (Authentik SSO)</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </a>
+        </div>
+        {{ else }}
+        <div class="glass-card p-8 glow-accent">
+            {{ if .Data.InviteIntroHTML }}
+            <div class="jg-markdown-panel mb-6 text-left">
+                {{ .Data.InviteIntroHTML }}
+            </div>
+            {{ end }}
+
+            {{ if .Error }}
+            <div class="mb-6 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300 text-left">
+                {{ .Error }}
+            </div>
+            {{ end }}
+
             <form id="invite-form" method="POST" action="/invite/{{ .Invitation.Code }}" novalidate
                 data-username-min-length="{{ or .Data.UsernameMinLength 3 }}"
                 data-username-max-length="{{ or .Data.UsernameMaxLength 32 }}"
-                data-require-email="{{ if .Data.RequireEmail }}true{{ else }}false{{ end }}"
-                data-password-min-length="{{ or .Data.PasswordMinLength 8 }}"
-                data-password-max-length="{{ or .Data.PasswordMaxLength 128 }}"
-                data-password-require-upper="{{ .Data.PasswordRequireUpper }}"
-                data-password-require-lower="{{ .Data.PasswordRequireLower }}"
-                data-password-require-digit="{{ .Data.PasswordRequireDigit }}"
-                data-password-require-special="{{ .Data.PasswordRequireSpecial }}">
+                data-require-email="{{ or .Data.RequireEmail false }}">
 
-                {{/* Username */}}
-                <div class="mb-5">
-                    <label class="jg-label" for="username">{{ .T "field_username" }}</label>
-                    <input type="text" id="username" name="username" class="jg-input"
-                        placeholder='{{ .T "field_username_placeholder" }}' required pattern="[a-zA-Z0-9_-]+"
-                        minlength="{{ or .Data.UsernameMinLength 3 }}" maxlength="{{ or .Data.UsernameMaxLength 32 }}" autocomplete="username" {{ if .Data.ForcedUsername
-                        }}value="{{ .Data.ForcedUsername }}" readonly{{ end }}>
-                    <p class="text-xs text-slate-500 mt-1">{{ .T "field_username_help" }} ({{ or .Data.UsernameMinLength 3 }}-{{ or .Data.UsernameMaxLength 32 }} {{ .T "password_rules_chars" }})</p>
-                </div>
-
-                {{/* Email */}}
-                <div class="mb-5">
-                    <label class="jg-label" for="email">{{ if .Data.RequireEmail }}{{ .T "field_email_required" }}{{ else }}{{ .T "field_email" }}{{ end }}</label>
-                    <input type="email" id="email" name="email" class="jg-input"
-                        placeholder='{{ .T "field_email_placeholder" }}' autocomplete="email" {{ if .Data.RequireEmail }}required{{ end }}>
-                </div>
-
-                {{/* Password */}}
-                {{ if not .Data.RequireEmailVerification }}
-                <div class="mb-5">
-                    <label class="jg-label" for="password">{{ .T "field_password" }}</label>
-                    <input type="password" id="password" name="password" class="jg-input"
-                        placeholder='{{ .T "field_password_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
-                        autocomplete="new-password">
-                    <p id="password-policy-msg" class="text-xs mt-1 text-slate-500">
-                        {{ .T "password_rules_prefix" }} {{ or .Data.PasswordMinLength 8 }}-{{ or .Data.PasswordMaxLength 128 }} {{ .T "password_rules_chars" }}{{ if .Data.PasswordRequireUpper }}, {{ .T "password_rule_upper" }}{{ end }}{{ if .Data.PasswordRequireLower }}, {{ .T "password_rule_lower" }}{{ end }}{{ if .Data.PasswordRequireDigit }}, {{ .T "password_rule_digit" }}{{ end }}{{ if .Data.PasswordRequireSpecial }}, {{ .T "password_rule_special" }}{{ end }}.
-                    </p>
-                </div>
-
-                {{/* Password Confirm */}}
-                <div class="mb-6">
-                    <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
-                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
-                        placeholder='{{ .T "field_password_confirm_placeholder" }}' required minlength="{{ or .Data.PasswordMinLength 8 }}" maxlength="{{ or .Data.PasswordMaxLength 128 }}"
-                        autocomplete="new-password">
-                    <p id="password-match-msg" class="text-xs mt-1 hidden"></p>
+                {{/* Forced Display Name (if set) */}}
+                {{ if .Data.ForcedName }}
+                <div class="mb-5 text-left">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="jg-label mb-0" for="display_name">{{ or (.T "invitations_forced_name") "Nom d'affichage" }}</label>
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[11px] font-bold text-purple-300">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            <span>{{ or (.T "invitations_forced_name_badge") "Nom d'affichage assigné" }}</span>
+                        </span>
+                    </div>
+                    <input type="text" id="display_name" name="display_name" class="jg-input bg-white/5 border-purple-500/30 cursor-not-allowed opacity-90 font-semibold text-purple-200"
+                        value="{{ .Data.ForcedName }}" readonly tabindex="-1">
                 </div>
                 {{ end }}
 
+                {{/* Username */}}
+                <div class="mb-5 text-left">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="jg-label mb-0" for="username">{{ .T "field_username" }}</label>
+                        {{ if .Data.ForcedUsername }}
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-[11px] font-bold text-purple-300">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            <span>{{ or (.T "invitations_forced_username_badge") "Nom d'utilisateur assigné" }}</span>
+                        </span>
+                        {{ end }}
+                    </div>
+                    <input type="text" id="username" name="username" class="jg-input {{ if .Data.ForcedUsername }}bg-white/5 border-purple-500/30 cursor-not-allowed opacity-90 font-semibold text-purple-200{{ end }}"
+                        placeholder="john_doe" autocomplete="username" {{ if not .Data.ForcedUsername }}autofocus{{ end }} required
+                        value="{{ or .Data.ForcedUsername .Data.SubmittedUsername }}"
+                        {{ if .Data.ForcedUsername }}readonly tabindex="-1"{{ end }}>
+                </div>
+
+                {{/* Email */}}
+                <div class="mb-5 text-left">
+                    <label class="jg-label" for="email">
+                        {{ .T "field_email" }}
+                        {{ if not .Data.RequireEmail }}
+                        <span class="text-xs text-slate-400 font-normal">({{ .T "optional" }})</span>
+                        {{ end }}
+                    </label>
+                    <input type="email" id="email" name="email" class="jg-input"
+                        placeholder="john@example.com" autocomplete="email"
+                        {{ if .Data.RequireEmail }}required{{ end }}
+                        value="{{ .Data.SubmittedEmail }}">
+                </div>
+
+                {{/* Password */}}
+                <div class="mb-5 text-left">
+                    <label class="jg-label" for="password">{{ .T "field_password" }}</label>
+                    <input type="password" id="password" name="password" class="jg-input"
+                        placeholder="••••••••" autocomplete="new-password" required>
+                    <p id="password-policy-msg" class="text-xs mt-1 text-slate-500"></p>
+                </div>
+
+                {{/* Confirm Password */}}
+                <div class="mb-5 text-left">
+                    <label class="jg-label" for="password_confirm">{{ .T "field_password_confirm" }}</label>
+                    <input type="password" id="password_confirm" name="password_confirm" class="jg-input"
+                        placeholder="••••••••" autocomplete="new-password" required>
+                    <p id="password-match-msg" class="text-xs mt-1 text-slate-500"></p>
+                </div>
+
                 {{ if .Data.CaptchaEnabled }}
-                <div class="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div class="mb-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                     <label class="jg-label" for="captcha_answer">Protection anti-abus</label>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 mt-2">
                         <div class="rounded-xl border border-jg-accent/30 bg-jg-accent/10 px-4 py-3 font-mono text-sm font-bold text-jg-accent">
                             {{ .Data.CaptchaQuestion }}
                         </div>
@@ -138,13 +200,15 @@
                 </div>
                 {{ end }}
 
-                {{/* Submit */}}
-                <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-3" id="submit-btn">
-                    {{ .T "invite_submit" }}
+                <button type="submit" class="jg-btn jg-btn-primary w-full text-lg py-3.5 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/25" id="submit-btn">
+                    <span>{{ .T "invite_submit" }}</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
                 </button>
-
             </form>
         </div>
+        {{ end }}
 
         {{/* Footer */}}
         {{ if or .Data.JellyfinURL .Data.JellyseerrURL .Data.JellyTrackURL }}
@@ -167,7 +231,6 @@
         <p class="text-center text-xs text-slate-600 mt-6">
             {{ .T "invite_footer" }}
         </p>
-        {{ end }}
     </div>
 </div>
 {{ end }}

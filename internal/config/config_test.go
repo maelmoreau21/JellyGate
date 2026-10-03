@@ -39,3 +39,291 @@ func TestDatabaseTypeAutoDetection(t *testing.T) {
 		}
 	})
 }
+
+func TestOIDCAndAuthentikConfigLoading(t *testing.T) {
+	t.Run("loads clean simplified OIDC and Authentik variables", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_BASE_URL", "https://jellygate.example.com")
+		t.Setenv("OIDC_ENABLED", "true")
+		t.Setenv("OIDC_URL", "https://auth.example.com/application/o/jellygate/")
+		t.Setenv("OIDC_CLIENT_ID", "jellygate-client")
+		t.Setenv("OIDC_CLIENT_SECRET", "super-secret-oidc")
+		t.Setenv("AUTHENTIK_ENABLED", "true")
+		t.Setenv("AUTHENTIK_URL", "https://auth.example.com")
+		t.Setenv("AUTHENTIK_API_TOKEN", "ak-token-12345")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !cfg.Authentik.Enabled {
+			t.Errorf("expected Authentik.Enabled to be true")
+		}
+		if cfg.Authentik.URL != "https://auth.example.com" {
+			t.Errorf("expected Authentik.URL https://auth.example.com, got %s", cfg.Authentik.URL)
+		}
+		if cfg.Authentik.IssuerURL != "https://auth.example.com/application/o/jellygate" {
+			t.Errorf("expected IssuerURL https://auth.example.com/application/o/jellygate, got %s", cfg.Authentik.IssuerURL)
+		}
+		if cfg.Authentik.ClientID != "jellygate-client" {
+			t.Errorf("expected ClientID jellygate-client, got %s", cfg.Authentik.ClientID)
+		}
+		if cfg.Authentik.ClientSecret != "super-secret-oidc" {
+			t.Errorf("expected ClientSecret super-secret-oidc, got %s", cfg.Authentik.ClientSecret)
+		}
+		if cfg.Authentik.APIToken != "ak-token-12345" {
+			t.Errorf("expected APIToken ak-token-12345, got %s", cfg.Authentik.APIToken)
+		}
+		if cfg.Authentik.RedirectURL != "https://jellygate.example.com/auth/callback" {
+			t.Errorf("expected RedirectURL https://jellygate.example.com/auth/callback, got %s", cfg.Authentik.RedirectURL)
+		}
+	})
+
+	t.Run("auto-derives Authentik.URL from OIDC_URL", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("OIDC_ENABLED", "true")
+		t.Setenv("OIDC_URL", "https://auth.myhost.org/application/o/jellygate/")
+		t.Setenv("OIDC_CLIENT_ID", "jg-client")
+		t.Setenv("AUTHENTIK_URL", "")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if cfg.Authentik.URL != "https://auth.myhost.org" {
+			t.Errorf("expected derived Authentik.URL https://auth.myhost.org, got %s", cfg.Authentik.URL)
+		}
+	})
+
+	t.Run("auto-derives OIDC IssuerURL from AUTHENTIK_URL", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("AUTHENTIK_ENABLED", "true")
+		t.Setenv("AUTHENTIK_URL", "https://authentik.mydomain.local")
+		t.Setenv("OIDC_URL", "")
+		t.Setenv("OIDC_ISSUER_URL", "")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		expectedIssuer := "https://authentik.mydomain.local/application/o/jellygate/"
+		if cfg.Authentik.IssuerURL != expectedIssuer {
+			t.Errorf("expected derived IssuerURL %s, got %s", expectedIssuer, cfg.Authentik.IssuerURL)
+		}
+	})
+
+	t.Run("auto-appends /application/o/jellygate/ if OIDC_URL is only a domain", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("OIDC_ENABLED", "true")
+		t.Setenv("OIDC_URL", "https://auth.mydomain.com")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		expectedIssuer := "https://auth.mydomain.com/application/o/jellygate/"
+		if cfg.Authentik.IssuerURL != expectedIssuer {
+			t.Errorf("expected IssuerURL %s, got %s", expectedIssuer, cfg.Authentik.IssuerURL)
+		}
+		if cfg.Authentik.URL != "https://auth.mydomain.com" {
+			t.Errorf("expected Authentik.URL https://auth.mydomain.com, got %s", cfg.Authentik.URL)
+		}
+	})
+
+	t.Run("loads with JELLYGATE_ prefixed variable aliases", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_OIDC_ENABLED", "true")
+		t.Setenv("JELLYGATE_OIDC_URL", "https://authentik.dfmag.fr/application/o/jellygate/")
+		t.Setenv("JELLYGATE_OIDC_CLIENT_ID", "dfmag-client")
+		t.Setenv("JELLYGATE_OIDC_CLIENT_SECRET", "dfmag-secret")
+		t.Setenv("JELLYGATE_AUTHENTIK_API_TOKEN", "dfmag-token")
+		t.Setenv("AUTHENTIK_URL", "https://authentik.dfmag.fr")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !cfg.Authentik.Enabled {
+			t.Errorf("expected Authentik.Enabled to be true")
+		}
+		if cfg.Authentik.URL != "https://authentik.dfmag.fr" {
+			t.Errorf("expected URL https://authentik.dfmag.fr, got %s", cfg.Authentik.URL)
+		}
+		if cfg.Authentik.ClientID != "dfmag-client" {
+			t.Errorf("expected ClientID dfmag-client, got %s", cfg.Authentik.ClientID)
+		}
+		if cfg.Authentik.ClientSecret != "dfmag-secret" {
+			t.Errorf("expected ClientSecret dfmag-secret, got %s", cfg.Authentik.ClientSecret)
+		}
+		if cfg.Authentik.APIToken != "dfmag-token" {
+			t.Errorf("expected APIToken dfmag-token, got %s", cfg.Authentik.APIToken)
+		}
+	})
+
+	t.Run("loads pure generic OIDC variables for any provider", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("OIDC_ENABLED", "true")
+		t.Setenv("OIDC_URL", "https://keycloak.example.com/realms/master")
+		t.Setenv("OIDC_ISSUER_URL", "https://keycloak.example.com/realms/master")
+		t.Setenv("OIDC_CLIENT_ID", "keycloak-client")
+		t.Setenv("OIDC_CLIENT_SECRET", "keycloak-secret")
+		t.Setenv("OIDC_API_TOKEN", "kc-admin-token")
+		t.Setenv("OIDC_USER_GROUP", "kc-users")
+		t.Setenv("OIDC_ADMIN_GROUP", "kc-admins")
+		t.Setenv("OIDC_JELLYFIN_USER_GROUP", "kc-jellyfin-users")
+		t.Setenv("OIDC_ENROLLMENT_FLOW_SLUG", "kc-registration")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !cfg.Authentik.Enabled {
+			t.Errorf("expected Enabled to be true")
+		}
+		if cfg.Authentik.URL != "https://keycloak.example.com" {
+			t.Errorf("expected base URL https://keycloak.example.com, got %s", cfg.Authentik.URL)
+		}
+		if cfg.Authentik.IssuerURL != "https://keycloak.example.com/realms/master" {
+			t.Errorf("expected IssuerURL https://keycloak.example.com/realms/master, got %s", cfg.Authentik.IssuerURL)
+		}
+		if cfg.Authentik.ClientID != "keycloak-client" {
+			t.Errorf("expected ClientID keycloak-client, got %s", cfg.Authentik.ClientID)
+		}
+		if cfg.Authentik.APIToken != "kc-admin-token" {
+			t.Errorf("expected APIToken kc-admin-token, got %s", cfg.Authentik.APIToken)
+		}
+		if cfg.Authentik.UserGroup != "kc-users" {
+			t.Errorf("expected UserGroup kc-users, got %s", cfg.Authentik.UserGroup)
+		}
+		if cfg.Authentik.AdminGroup != "kc-admins" {
+			t.Errorf("expected AdminGroup kc-admins, got %s", cfg.Authentik.AdminGroup)
+		}
+		if cfg.Authentik.JellyfinUserGroup != "kc-jellyfin-users" {
+			t.Errorf("expected JellyfinUserGroup kc-jellyfin-users, got %s", cfg.Authentik.JellyfinUserGroup)
+		}
+		if cfg.Authentik.EnrollmentFlowSlug != "kc-registration" {
+			t.Errorf("expected EnrollmentFlowSlug kc-registration, got %s", cfg.Authentik.EnrollmentFlowSlug)
+		}
+	})
+
+	t.Run("local admin is disabled by default when password is empty", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_USER", "")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "")
+		t.Setenv("LOCAL_ADMIN_PASSWORD", "")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if cfg.LocalAdmin.Enabled {
+			t.Errorf("expected LocalAdmin.Enabled to be false when password is empty")
+		}
+	})
+
+	t.Run("local admin is enabled when password is provided", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_USER", "superadmin")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "my-local-secret-pass")
+
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if !cfg.LocalAdmin.Enabled {
+			t.Errorf("expected LocalAdmin.Enabled to be true")
+		}
+		if cfg.LocalAdmin.Username != "superadmin" {
+			t.Errorf("expected username superadmin, got %s", cfg.LocalAdmin.Username)
+		}
+		if cfg.LocalAdmin.Password != "my-local-secret-pass" {
+			t.Errorf("expected password my-local-secret-pass, got %s", cfg.LocalAdmin.Password)
+		}
+	})
+}
+
+func TestSecurityValidations_SecretKey(t *testing.T) {
+	t.Run("rejects placeholder secret from .env.example", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "change_this_to_a_secure_random_32_character_string")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error when using example placeholder secret, got nil")
+		}
+	})
+
+	t.Run("rejects low entropy repeating secret", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error when using repeating character secret, got nil")
+		}
+	})
+
+	t.Run("accepts strong random secret", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "a8b9c0d1e2f3a4b5c6d7e8f90123456789abcdef0123456789abcdef01234567")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(cfg.SecretKey) < 32 {
+			t.Errorf("unexpected secret length: %d", len(cfg.SecretKey))
+		}
+	})
+}
+
+func TestSecurityValidations_LocalAdmin(t *testing.T) {
+	t.Run("rejects short password under 12 characters", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "shortpass")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error for local admin password under 12 characters, got nil")
+		}
+	})
+
+	t.Run("rejects example placeholder password", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_LOCAL_ADMIN_PASSWORD", "change_this_to_a_secure_local_password")
+		_, err := Load()
+		if err == nil {
+			t.Fatal("expected error for example placeholder password, got nil")
+		}
+	})
+}
+
+func TestSecurityValidations_TrustedProxies(t *testing.T) {
+	t.Run("uses default private and loopback CIDRs when not specified", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_TRUSTED_PROXIES", "")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(cfg.TrustedProxies) == 0 {
+			t.Fatal("expected non-empty default trusted proxies")
+		}
+	})
+
+	t.Run("parses custom comma-separated CIDRs", func(t *testing.T) {
+		t.Setenv("JELLYGATE_SECRET", "12345678901234567890123456789012")
+		t.Setenv("JELLYGATE_TRUSTED_PROXIES", "10.100.0.0/16, 192.168.1.50/32")
+		cfg, err := Load()
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(cfg.TrustedProxies) != 2 {
+			t.Fatalf("expected 2 trusted proxies, got %d", len(cfg.TrustedProxies))
+		}
+		if cfg.TrustedProxies[0] != "10.100.0.0/16" || cfg.TrustedProxies[1] != "192.168.1.50/32" {
+			t.Errorf("unexpected trusted proxies: %v", cfg.TrustedProxies)
+		}
+	})
+}

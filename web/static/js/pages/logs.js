@@ -2,30 +2,34 @@
     const config = window.JGPageLogs || {};
     const i18n = config.i18n || {};
     const uiLocale = config.uiLocale || undefined;
-    const LOG_PRESETS_STORAGE_KEY = 'jg.logs.presets.v1';
+
+    // ── État global ────────────────────────────────────────────────────────────
     const state = {
+        activeTab: 'system', // 'system' ou 'audit'
+        
+        // System logs state
+        selectedFile: '',
+        files: [],
+        lines: [],
+        maxLines: 200,
+        syslogSearch: '',
+        autoRefresh: true,
+        autoRefreshInterval: null,
+        
+        // Audit logs state
         page: 1,
         limit: 50,
         sort: 'created_at',
         order: 'desc',
         search: '',
-        action: '',
-        actor: '',
-        target: '',
-        request_id: '',
-        result: '',
-        from: '',
-        to: '',
-        category: 'app',
         totalPages: 1,
     };
-    let searchTimeout;
-    let filterTimeout;
+
+    let auditSearchTimeout;
+    let syslogSearchTimeout;
 
     function escapeHtml(unsafe) {
-        if (!unsafe) {
-            return '';
-        }
+        if (!unsafe) return '';
         return unsafe.toString()
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -34,475 +38,394 @@
             .replace(/'/g, '&#039;');
     }
 
-    function triggerExport(format) {
-        const params = new URLSearchParams({
-            sort: state.sort,
-            order: state.order,
-            search: state.search,
-            action: state.action,
-            actor: state.actor,
-            target: state.target,
-            request_id: state.request_id,
-            result: state.result,
-            from: state.from,
-            to: state.to,
-            category: state.category,
-            export: format,
-        });
-        window.open(`/admin/api/logs?${params.toString()}`, '_blank');
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    function getCurrentFilters() {
-        return {
-            action: state.action,
-            actor: state.actor,
-            result: state.result,
-            from: state.from,
-            to: state.to,
-            search: state.search,
-            limit: state.limit,
-            sort: state.sort,
-            order: state.order,
-            category: state.category,
-        };
-    }
-
-    function readStoredPresets() {
+    function formatDate(dateStr) {
+        if (!dateStr) return '-';
         try {
-            const raw = localStorage.getItem(LOG_PRESETS_STORAGE_KEY);
-            if (!raw) {
-                return [];
-            }
-            const parsed = JSON.parse(raw);
-            if (!Array.isArray(parsed)) {
-                return [];
-            }
-            return parsed
-                .filter((item) => item && typeof item.name === 'string' && item.filters && typeof item.filters === 'object')
-                .map((item) => ({
-                    name: item.name.trim(),
-                    filters: item.filters,
-                }))
-                .filter((item) => item.name !== '');
+            const d = new Date(dateStr);
+            return d.toLocaleString(uiLocale, {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
         } catch (_) {
-            return [];
+            return dateStr;
         }
     }
 
-    function writeStoredPresets(presets) {
-        localStorage.setItem(LOG_PRESETS_STORAGE_KEY, JSON.stringify(presets));
-    }
+    // ── 1. LOGS SYSTÈME RÉELS ──────────────────────────────────────────────────
 
-    function renderPresetOptions(selectedName = '') {
-        const select = document.getElementById('logs-preset-select');
-        const btnDelete = document.getElementById('logs-preset-delete');
-        if (!select) {
-            return;
+    async function loadSystemLogs(silent = false) {
+        const terminal = document.getElementById('syslog-terminal');
+        if (!silent && terminal) {
+            terminal.innerHTML = '<div class="text-slate-500 animate-pulse">Chargement des logs système...</div>';
         }
 
-        const presets = readStoredPresets();
-        const defaultLabel = i18n.presetsLocal || 'Filter presets (local)';
-        const options = [`<option value="">${escapeHtml(defaultLabel)}</option>`]
-            .concat(presets.map((p) => `<option value="${escapeHtml(p.name)}">${escapeHtml(p.name)}</option>`));
-        select.innerHTML = options.join('');
-        if (selectedName) {
-            select.value = selectedName;
-        }
-
-        if (btnDelete) {
-            btnDelete.classList.toggle('hidden', !selectedName);
-        }
-    }
-
-    function applyFiltersToInputs(filters) {
-        const filterAction = document.getElementById('filter-action');
-        const filterActor = document.getElementById('filter-actor');
-        const filterResult = document.getElementById('filter-result');
-        const filterFrom = document.getElementById('filter-from');
-        const filterTo = document.getElementById('filter-to');
-        const searchInput = document.getElementById('search-input');
-        const limitSelect = document.getElementById('limit-select');
-
-        state.action = String(filters.action || '').trim();
-        state.actor = String(filters.actor || '').trim();
-        state.result = String(filters.result || '').trim();
-        state.from = String(filters.from || '').trim();
-        state.to = String(filters.to || '').trim();
-        state.search = String(filters.search || '').trim();
-        state.limit = Number.parseInt(filters.limit || state.limit, 10) || state.limit;
-        state.sort = String(filters.sort || state.sort).trim() || 'created_at';
-        state.order = String(filters.order || state.order).trim() === 'asc' ? 'asc' : 'desc';
-        state.category = String(filters.category || state.category).trim() || 'app';
-        state.page = 1;
-
-        if (filterAction) {
-            filterAction.value = state.action;
-        }
-        if (filterActor) {
-            filterActor.value = state.actor;
-        }
-        if (filterResult) {
-            filterResult.value = state.result;
-        }
-        if (filterFrom) {
-            filterFrom.value = state.from;
-        }
-        if (filterTo) {
-            filterTo.value = state.to;
-        }
-        if (searchInput) {
-            searchInput.value = state.search;
-        }
-        if (limitSelect) {
-            limitSelect.value = String(state.limit);
-        }
-
-        document.querySelectorAll('.sort-icon').forEach((icon) => {
-            icon.classList.add('hidden');
-            if (icon.dataset.col === state.sort) {
-                icon.classList.remove('hidden');
-                icon.textContent = state.order === 'desc' ? '▼' : '▲';
-            }
-        });
-
-        updateActiveFilterCount();
-        updateCategoryTabUI();
-    }
-
-    function saveCurrentPreset() {
-        const currentName = document.getElementById('logs-preset-select')?.value || '';
-        const nameInput = window.prompt(i18n.presetPromptName || 'Preset name', currentName);
-        if (!nameInput) {
-            return;
-        }
-        const name = nameInput.trim();
-        if (!name) {
-            return;
-        }
-
-        const presets = readStoredPresets().filter((p) => p.name !== name);
-        presets.push({ name, filters: getCurrentFilters() });
-        presets.sort((a, b) => a.name.localeCompare(b.name, uiLocale || 'fr'));
-        writeStoredPresets(presets);
-        renderPresetOptions(name);
-    }
-
-    function deleteSelectedPreset() {
-        const select = document.getElementById('logs-preset-select');
-        if (!select || !select.value) {
-            return;
-        }
-        const selected = select.value;
-        const presets = readStoredPresets().filter((p) => p.name !== selected);
-        writeStoredPresets(presets);
-        renderPresetOptions('');
-    }
-
-    function applySelectedPreset() {
-        const select = document.getElementById('logs-preset-select');
-        if (!select) {
-            return;
-        }
-
-        const selected = select.value;
-        const btnDelete = document.getElementById('logs-preset-delete');
-        if (btnDelete) {
-            btnDelete.classList.toggle('hidden', !selected);
-        }
-
-        if (!selected) {
-            return;
-        }
-
-        const preset = readStoredPresets().find((p) => p.name === selected);
-        if (!preset) {
-            return;
-        }
-        applyFiltersToInputs(preset.filters || {});
-        fetchLogs();
-    }
-
-    function refreshFilterStateFromInputs() {
-        state.action = document.getElementById('filter-action')?.value.trim() || '';
-        state.actor = document.getElementById('filter-actor')?.value.trim() || '';
-        state.result = document.getElementById('filter-result')?.value || '';
-        state.from = document.getElementById('filter-from')?.value || '';
-        state.to = document.getElementById('filter-to')?.value || '';
-    }
-
-    function formatDateInputValue(date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-    }
-
-    function applyQuickRange(range) {
-        const now = new Date();
-        const start = new Date(now);
-        if (range === 'today') {
-            start.setHours(0, 0, 0, 0);
-        } else if (range === '24h') {
-            start.setDate(start.getDate() - 1);
-        } else if (range === '7d') {
-            start.setDate(start.getDate() - 7);
-        } else if (range === '30d') {
-            start.setDate(start.getDate() - 30);
-        }
-
-        const filterFrom = document.getElementById('filter-from');
-        const filterTo = document.getElementById('filter-to');
-        if (!filterFrom || !filterTo) {
-            return;
-        }
-
-        filterFrom.value = formatDateInputValue(start);
-        filterTo.value = formatDateInputValue(now);
-        refreshFilterStateFromInputs();
-        state.page = 1;
-        updateActiveFilterCount();
-        fetchLogs();
-    }
-
-    function toggleSort(col) {
-        if (state.sort === col) {
-            state.order = state.order === 'desc' ? 'asc' : 'desc';
-        } else {
-            state.sort = col;
-            state.order = 'desc';
-        }
-
-        document.querySelectorAll('.sort-icon').forEach((icon) => {
-            icon.classList.add('hidden');
-            if (icon.dataset.col === state.sort) {
-                icon.classList.remove('hidden');
-                icon.textContent = state.order === 'desc' ? '▼' : '▲';
-            }
-        });
-
-        fetchLogs();
-    }
-
-    function changePage(delta) {
-        const newPage = state.page + delta;
-        if (newPage >= 1 && newPage <= state.totalPages) {
-            state.page = newPage;
-            fetchLogs();
-        }
-    }
-
-    async function fetchLogs() {
         try {
-            const tbody = document.getElementById('logs-tbody');
-            const btnPrev = document.getElementById('btn-prev');
-            const btnNext = document.getElementById('btn-next');
-            const pageInfo = document.getElementById('pagination-info');
-
-            if (!tbody || !btnPrev || !btnNext || !pageInfo) {
-                return;
+            const params = new URLSearchParams({
+                lines: state.maxLines,
+            });
+            if (state.selectedFile) {
+                params.set('file', state.selectedFile);
             }
 
-            btnPrev.disabled = true;
-            btnNext.disabled = true;
+            const res = await fetch(`/admin/api/logs/system?${params.toString()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const data = await res.json();
 
+            if (!data.success) throw new Error(data.message || 'Erreur inconnue');
+
+            state.files = data.files || [];
+            state.selectedFile = data.selected_file || (state.files[0] ? state.files[0].name : '');
+            state.lines = data.lines || [];
+
+            renderLogFilesList();
+            renderTerminalLines();
+
+            // Mettre à jour le bouton de téléchargement du fichier sélectionné
+            const btnDownloadSelected = document.getElementById('btn-download-selected-file');
+            if (btnDownloadSelected && state.selectedFile) {
+                btnDownloadSelected.href = `/admin/api/logs/system/download?file=${encodeURIComponent(state.selectedFile)}`;
+                btnDownloadSelected.classList.remove('hidden');
+            }
+
+            const viewingLabel = document.getElementById('current-viewing-filename');
+            if (viewingLabel) {
+                viewingLabel.textContent = state.selectedFile || 'Console Système';
+            }
+        } catch (err) {
+            if (terminal) {
+                terminal.innerHTML = `<div class="text-rose-400 font-bold">Erreur de chargement des logs: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+    }
+
+    function renderLogFilesList() {
+        const container = document.getElementById('log-files-container');
+        const countLabel = document.getElementById('log-files-count');
+        if (!container) return;
+
+        if (countLabel) {
+            countLabel.textContent = `${state.files.length} fichier(s) de journalisation`;
+        }
+
+        if (state.files.length === 0) {
+            container.innerHTML = `<div class="p-4 rounded-xl border border-white/5 bg-black/20 text-center text-xs text-jg-text-muted col-span-full">Aucun fichier de log sur le disque</div>`;
+            return;
+        }
+
+        container.innerHTML = state.files.map(f => {
+            const isSelected = f.name === state.selectedFile;
+            return `
+                <div class="p-3.5 rounded-xl border ${isSelected ? 'border-jg-accent bg-jg-accent/10 shadow-lg shadow-purple-500/10' : 'border-white/5 bg-black/20 hover:border-white/20'} flex items-center justify-between gap-3 transition-all">
+                    <div class="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1 select-log-file-btn" data-file="${escapeHtml(f.name)}">
+                        <div class="w-8 h-8 rounded-lg ${f.is_current ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-slate-400'} flex items-center justify-center shrink-0">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-mono font-bold text-slate-200 truncate">${escapeHtml(f.name)}</span>
+                                ${f.is_current ? '<span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Actif</span>' : ''}
+                            </div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">${formatBytes(f.size)} • ${formatDate(f.mod_time)}</div>
+                        </div>
+                    </div>
+
+                    <a href="/admin/api/logs/system/download?file=${encodeURIComponent(f.name)}" class="jg-btn jg-btn-ghost p-2 text-xs border border-white/10 rounded-lg hover:bg-white/10 shrink-0" title="Télécharger ce fichier .log">
+                        <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    </a>
+                </div>
+            `;
+        }).join('');
+
+        container.querySelectorAll('.select-log-file-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                state.selectedFile = btn.getAttribute('data-file');
+                loadSystemLogs();
+            });
+        });
+    }
+
+    function renderTerminalLines() {
+        const terminal = document.getElementById('syslog-terminal');
+        if (!terminal) return;
+
+        let linesToDisplay = state.lines;
+        if (state.syslogSearch) {
+            const filter = state.syslogSearch.toLowerCase();
+            linesToDisplay = linesToDisplay.filter(l => l.toLowerCase().includes(filter));
+        }
+
+        if (linesToDisplay.length === 0) {
+            terminal.innerHTML = '<div class="text-slate-500 italic">Aucune ligne de journal correspondant aux critères.</div>';
+            return;
+        }
+
+        const formatted = linesToDisplay.map((line, idx) => {
+            let colorClass = 'text-slate-300';
+            if (line.includes('level=ERROR') || line.includes('level=error') || line.includes('ERR')) {
+                colorClass = 'text-rose-400 font-semibold bg-rose-950/20';
+            } else if (line.includes('level=WARN') || line.includes('level=warn') || line.includes('WARN')) {
+                colorClass = 'text-amber-300 bg-amber-950/20';
+            } else if (line.includes('level=INFO') || line.includes('level=info')) {
+                colorClass = 'text-slate-300';
+            }
+
+            return `<div class="py-0.5 px-2 hover:bg-white/5 rounded font-mono text-[11px] whitespace-pre-wrap break-all ${colorClass}"><span class="text-slate-600 select-none mr-3">${idx + 1}</span>${escapeHtml(line)}</div>`;
+        }).join('');
+
+        terminal.innerHTML = formatted;
+        terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    function toggleAutoRefresh() {
+        state.autoRefresh = !state.autoRefresh;
+        const btn = document.getElementById('btn-toggle-autorefresh');
+        const label = document.getElementById('autorefresh-label');
+
+        if (state.autoRefresh) {
+            if (btn) {
+                btn.className = 'jg-btn jg-btn-ghost h-9 px-3 text-xs font-bold flex items-center gap-1.5 border border-emerald-500/30 text-emerald-400';
+            }
+            if (label) label.textContent = 'Auto-refresh (3s)';
+            startAutoRefreshTimer();
+        } else {
+            if (btn) {
+                btn.className = 'jg-btn jg-btn-ghost h-9 px-3 text-xs font-bold flex items-center gap-1.5 border border-slate-500/30 text-slate-400';
+            }
+            if (label) label.textContent = 'En pause';
+            stopAutoRefreshTimer();
+        }
+    }
+
+    function startAutoRefreshTimer() {
+        stopAutoRefreshTimer();
+        state.autoRefreshInterval = setInterval(() => {
+            if (state.activeTab === 'system' && state.autoRefresh) {
+                loadSystemLogs(true);
+            }
+        }, 3000);
+    }
+
+    function stopAutoRefreshTimer() {
+        if (state.autoRefreshInterval) {
+            clearInterval(state.autoRefreshInterval);
+            state.autoRefreshInterval = null;
+        }
+    }
+
+    // ── 2. JOURNAL D'AUDIT APPLICATIF ──────────────────────────────────────────
+
+    async function loadAuditLogs() {
+        const tbody = document.getElementById('logs-tbody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="py-20 text-center">
+                        <div class="flex flex-col items-center gap-3">
+                            <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
+                            <span class="text-jg-text-muted animate-pulse">${escapeHtml(i18n.loadError ? 'Chargement...' : 'Chargement...')}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        try {
             const params = new URLSearchParams({
                 page: state.page,
                 limit: state.limit,
                 sort: state.sort,
                 order: state.order,
                 search: state.search,
-                action: state.action,
-                actor: state.actor,
-                target: state.target,
-                request_id: state.request_id,
-                result: state.result,
-                from: state.from,
-                to: state.to,
-                category: state.category,
             });
 
-            const res = await fetch(`/admin/api/logs?${params}`);
-            if (!res.ok) {
-                throw new Error(i18n.networkError || 'Network error');
-            }
+            const res = await fetch(`/admin/api/logs?${params.toString()}`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
 
-            if (!data.success || !data.data || !data.data.logs || data.data.logs.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">${escapeHtml(i18n.noResults || 'No results')}</td></tr>`;
-                pageInfo.textContent = i18n.noResultsShort || 'No results';
-                state.totalPages = 1;
-                return;
-            }
+            if (!data.success) throw new Error(data.message || 'Erreur');
 
-            const logs = data.data.logs;
-            const meta = data.data.meta;
-            state.totalPages = meta.total_pages;
+            const rows = data.data || [];
+            const pagination = data.pagination || {};
+            state.totalPages = pagination.total_pages || 1;
 
-            pageInfo.innerHTML = `${escapeHtml(i18n.pageLabel || 'Page')} <span class="text-white font-medium">${meta.page}</span> ${escapeHtml(i18n.ofLabel || 'of')} <span class="text-white font-medium">${meta.total_pages}</span> <span class="mx-2 text-slate-600">|</span> ${escapeHtml(i18n.totalLabel || 'Total')}: ${meta.total}`;
-            btnPrev.disabled = meta.page <= 1;
-            btnNext.disabled = meta.page >= meta.total_pages;
-
-            tbody.innerHTML = '';
-            logs.forEach((log) => {
-                const tr = document.createElement('tr');
-                tr.className = 'hover:bg-white/5 transition-colors';
-
-                const date = new Date(log.created_at);
-                const dateStr = date.toLocaleString(uiLocale, {
-                    day: '2-digit', month: '2-digit', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit', second: '2-digit',
-                });
-
-                let actionBadge = 'bg-slate-500/20 text-slate-300 border-slate-500/30';
-                if (log.action.includes('login') || log.action.includes('success')) {
-                    actionBadge = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-                } else if (log.action.includes('delete') || log.action.includes('fail') || log.action.includes('error')) {
-                    actionBadge = 'bg-red-500/20 text-red-400 border-red-500/30';
-                } else if (log.action.includes('create') || log.action.includes('invite')) {
-                    actionBadge = 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-                } else if (log.action.includes('update') || log.action.includes('modify') || log.action.includes('toggle')) {
-                    actionBadge = 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-                }
-
-                const actorHtml = log.actor === 'system'
-                    ? `<span class="px-2 py-0.5 rounded text-xs bg-slate-700/50 text-slate-300 border border-slate-600">${escapeHtml(i18n.systemActor || 'system')}</span>`
-                    : `<span class="font-medium text-slate-200">${escapeHtml(log.actor)}</span>`;
-
-                tr.innerHTML = `
-                    <td class="px-4 py-3 text-sm text-slate-400 whitespace-nowrap">${dateStr}</td>
-                    <td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-medium border ${actionBadge}">${escapeHtml(log.action)}</span></td>
-                    <td class="px-4 py-3 text-sm">${actorHtml}</td>
-                    <td class="px-4 py-3 text-sm text-slate-300">${escapeHtml(log.target || '-')}</td>
-                    <td class="px-4 py-3 text-xs text-cyan-300 font-mono">${escapeHtml(log.request_id || '-')}</td>
-                    <td class="px-4 py-3 text-xs text-slate-500 max-w-md break-all font-mono" title="${escapeHtml(log.details)}">${escapeHtml(log.details || '-')}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            renderAuditTable(rows);
+            renderPagination(pagination);
         } catch (err) {
-            console.error(err);
-            const tbody = document.getElementById('logs-tbody');
             if (tbody) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-red-400">${escapeHtml(i18n.loadError || 'Load failed')}</td></tr>`;
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="py-12 text-center text-rose-400 font-bold">
+                            Erreur de chargement: ${escapeHtml(err.message)}
+                        </td>
+                    </tr>
+                `;
             }
         }
     }
 
-    function updateActiveFilterCount() {
-        const filters = ['filter-action', 'filter-actor', 'filter-result', 'filter-from', 'filter-to'];
-        let count = 0;
-        filters.forEach(id => {
-            const el = document.getElementById(id);
-            if (el && el.value.trim() !== '') count++;
-        });
+    function renderAuditTable(rows) {
+        const tbody = document.getElementById('logs-tbody');
+        if (!tbody) return;
 
-        const badge = document.getElementById('active-filter-count');
-        if (badge) {
-            badge.textContent = count;
-            badge.classList.toggle('hidden', count === 0);
+        if (rows.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="py-12 text-center text-slate-500">
+                        ${escapeHtml(i18n.noResults || 'Aucun événement d\'audit enregistré.')}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = rows.map(r => `
+            <tr class="hover:bg-white/[0.02] transition-colors border-b border-white/5">
+                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400 font-mono">${formatDate(r.created_at)}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2.5 py-1 rounded-md text-xs font-mono font-bold bg-purple-500/10 text-purple-300 border border-purple-500/20">${escapeHtml(r.action)}</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-200">${escapeHtml(r.actor || '-')}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-xs text-slate-400">${escapeHtml(r.target || '-')}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-xs font-mono text-slate-500">${escapeHtml(r.request_id || '-')}</td>
+                <td class="px-6 py-4 text-xs text-slate-300 break-all">${escapeHtml(r.details || '-')}</td>
+            </tr>
+        `).join('');
+    }
+
+    function renderPagination(pagination) {
+        const info = document.getElementById('pagination-info');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+
+        if (info) {
+            info.textContent = `Page ${pagination.page || state.page} / ${pagination.total_pages || 1} (${pagination.total_count || 0} événements)`;
+        }
+        if (btnPrev) {
+            btnPrev.disabled = (pagination.page || state.page) <= 1;
+        }
+        if (btnNext) {
+            btnNext.disabled = (pagination.page || state.page) >= (pagination.total_pages || 1);
         }
     }
 
-    function updateCategoryTabUI() {
-        document.querySelectorAll('.log-category-btn').forEach(btn => {
-            if (btn.dataset.category === state.category) {
-                btn.classList.add('bg-jg-accent', 'text-always-white');
-                btn.classList.remove('text-jg-text-muted', 'hover:text-jg-text');
-            } else {
-                btn.classList.remove('bg-jg-accent', 'text-always-white');
-                btn.classList.add('text-jg-text-muted', 'hover:text-jg-text');
-            }
+    function triggerAuditExport(format) {
+        const params = new URLSearchParams({
+            sort: state.sort,
+            order: state.order,
+            search: state.search,
+            export: format,
         });
+        window.open(`/admin/api/logs?${params.toString()}`, '_blank');
+    }
+
+    // ── 3. INITIALISATION & ÉVÉNEMENTS ─────────────────────────────────────────
+
+    function switchTab(tab) {
+        state.activeTab = tab;
+        const btnSystem = document.getElementById('tab-btn-system');
+        const btnAudit = document.getElementById('tab-btn-audit');
+        const panelSystem = document.getElementById('panel-system-logs');
+        const panelAudit = document.getElementById('panel-audit-logs');
+
+        if (tab === 'system') {
+            if (btnSystem) {
+                btnSystem.className = 'log-tab-btn px-5 py-2.5 rounded-lg text-xs font-bold transition-all bg-jg-accent text-always-white shadow-lg shadow-purple-500/20';
+            }
+            if (btnAudit) {
+                btnAudit.className = 'log-tab-btn px-5 py-2.5 rounded-lg text-xs font-bold transition-all text-jg-text-muted hover:text-jg-text';
+            }
+            if (panelSystem) panelSystem.classList.remove('hidden');
+            if (panelAudit) panelAudit.classList.add('hidden');
+
+            loadSystemLogs();
+            if (state.autoRefresh) startAutoRefreshTimer();
+        } else {
+            if (btnAudit) {
+                btnAudit.className = 'log-tab-btn px-5 py-2.5 rounded-lg text-xs font-bold transition-all bg-jg-accent text-always-white shadow-lg shadow-purple-500/20';
+            }
+            if (btnSystem) {
+                btnSystem.className = 'log-tab-btn px-5 py-2.5 rounded-lg text-xs font-bold transition-all text-jg-text-muted hover:text-jg-text';
+            }
+            if (panelSystem) panelSystem.classList.add('hidden');
+            if (panelAudit) panelAudit.classList.remove('hidden');
+
+            stopAutoRefreshTimer();
+            loadAuditLogs();
+        }
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        // --- Filter Toggle Logic ---
-        const btnToggleFilters = document.getElementById('btn-toggle-filters');
-        const filterPanel = document.getElementById('filter-panel');
-        const toggleIcon = document.getElementById('filter-toggle-icon');
+        // Tab switching
+        document.getElementById('tab-btn-system')?.addEventListener('click', () => switchTab('system'));
+        document.getElementById('tab-btn-audit')?.addEventListener('click', () => switchTab('audit'));
 
-        if (btnToggleFilters && filterPanel && toggleIcon) {
-            btnToggleFilters.addEventListener('click', () => {
-                const isHidden = filterPanel.classList.toggle('hidden');
-                toggleIcon.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
-                btnToggleFilters.classList.toggle('bg-white/10', !isHidden);
-            });
-        }
-
-        // --- Event Listeners for Filters ---
-        document.querySelectorAll('[data-sort-col]').forEach((el) => {
-            el.addEventListener('click', () => toggleSort(el.dataset.sortCol || 'created_at'));
+        // System logs controls
+        document.getElementById('btn-toggle-autorefresh')?.addEventListener('click', toggleAutoRefresh);
+        document.getElementById('btn-refresh-syslog')?.addEventListener('click', () => loadSystemLogs());
+        
+        document.getElementById('syslog-lines-select')?.addEventListener('change', (e) => {
+            state.maxLines = parseInt(e.target.value, 10) || 200;
+            loadSystemLogs();
         });
 
-        document.querySelectorAll('[data-page-delta]').forEach((el) => {
-            el.addEventListener('click', () => changePage(parseInt(el.dataset.pageDelta || '0', 10)));
+        document.getElementById('syslog-search')?.addEventListener('input', (e) => {
+            clearTimeout(syslogSearchTimeout);
+            syslogSearchTimeout = setTimeout(() => {
+                state.syslogSearch = e.target.value.trim();
+                renderTerminalLines();
+            }, 200);
         });
 
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-            searchInput.addEventListener('input', (event) => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    state.search = event.target.value;
-                    state.page = 1;
-                    fetchLogs();
-                }, 300);
-            });
-        }
-
-        const limitSelect = document.getElementById('limit-select');
-        if (limitSelect) {
-            limitSelect.addEventListener('change', (event) => {
-                state.limit = parseInt(event.target.value, 10);
-                state.page = 1;
-                fetchLogs();
-            });
-        }
-
-        ['filter-action', 'filter-actor', 'filter-result', 'filter-from', 'filter-to'].forEach((id) => {
-            const el = document.getElementById(id);
-            if (!el) return;
-
-            const handleFastRefresh = () => {
-                refreshFilterStateFromInputs();
-                state.page = 1;
-                updateActiveFilterCount();
-                fetchLogs();
-            };
-
-            if (id === 'filter-action' || id === 'filter-actor') {
-                el.addEventListener('input', () => {
-                    clearTimeout(filterTimeout);
-                    filterTimeout = setTimeout(handleFastRefresh, 250);
+        document.getElementById('btn-copy-syslog')?.addEventListener('click', () => {
+            const terminal = document.getElementById('syslog-terminal');
+            if (terminal) {
+                navigator.clipboard.writeText(terminal.innerText).then(() => {
+                    const originalText = document.getElementById('btn-copy-syslog').title;
+                    alert('Lignes de logs copiées dans le presse-papier !');
                 });
-            } else {
-                el.addEventListener('change', handleFastRefresh);
             }
         });
 
-        document.getElementById('logs-preset-save')?.addEventListener('click', saveCurrentPreset);
-        document.getElementById('logs-preset-delete')?.addEventListener('click', deleteSelectedPreset);
-        document.getElementById('logs-preset-select')?.addEventListener('change', applySelectedPreset);
-
-        document.querySelectorAll('#logs-quick-ranges [data-range]').forEach((btn) => {
-            btn.addEventListener('click', () => applyQuickRange(btn.dataset.range || ''));
-        });
-
-        document.querySelectorAll('.log-category-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (state.category === btn.dataset.category) return;
-                state.category = btn.dataset.category;
+        // Audit logs controls
+        document.getElementById('audit-search-input')?.addEventListener('input', (e) => {
+            clearTimeout(auditSearchTimeout);
+            auditSearchTimeout = setTimeout(() => {
+                state.search = e.target.value.trim();
                 state.page = 1;
-                updateCategoryTabUI();
-                fetchLogs();
-            });
+                loadAuditLogs();
+            }, 300);
         });
 
-        // --- Export Listeners ---
-        document.getElementById('export-json')?.addEventListener('click', () => triggerExport('json'));
-        document.getElementById('export-csv')?.addEventListener('click', () => triggerExport('csv'));
+        document.getElementById('export-json')?.addEventListener('click', () => triggerAuditExport('json'));
+        document.getElementById('export-csv')?.addEventListener('click', () => triggerAuditExport('csv'));
 
-        renderPresetOptions('');
-        updateActiveFilterCount();
-        fetchLogs();
+        document.getElementById('btn-prev')?.addEventListener('click', () => {
+            if (state.page > 1) {
+                state.page--;
+                loadAuditLogs();
+            }
+        });
+
+        document.getElementById('btn-next')?.addEventListener('click', () => {
+            if (state.page < state.totalPages) {
+                state.page++;
+                loadAuditLogs();
+            }
+        });
+
+        // Démarrage initial sur l'onglet système
+        switchTab('system');
     });
 })();

@@ -3,16 +3,19 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
@@ -21,20 +24,23 @@ import (
 
 // InvitationResponse représente une invitation formatée pour l'API JSON.
 type InvitationResponse struct {
-	ID                  int64                  `json:"id"`
-	Code                string                 `json:"code"`
-	Label               string                 `json:"label"`
-	PreferredLang       string                 `json:"preferred_lang"`
-	MaxUses             int                    `json:"max_uses"`
-	UsedCount           int                    `json:"used_count"`
-	JellyfinProfile     map[string]interface{} `json:"jellyfin_profile"`
-	ProfileID           string                 `json:"profile_id"`
-	ProfileSnapshot     map[string]interface{} `json:"profile_snapshot,omitempty"`
-	IsTemporary         bool                   `json:"is_temporary"`
-	AccountDurationDays int                    `json:"account_duration_days"`
-	ExpiresAt           string                 `json:"expires_at,omitempty"`
-	CreatedBy           string                 `json:"created_by"`
-	CreatedAt           string                 `json:"created_at"`
+	ID                     int64                  `json:"id"`
+	Code                   string                 `json:"code"`
+	Label                  string                 `json:"label"`
+	PreferredLang          string                 `json:"preferred_lang"`
+	MaxUses                int                    `json:"max_uses"`
+	UsedCount              int                    `json:"used_count"`
+	JellyfinProfile        map[string]interface{} `json:"jellyfin_profile"`
+	ProfileID              string                 `json:"profile_id"`
+	ProfileSnapshot        map[string]interface{} `json:"profile_snapshot,omitempty"`
+	IsTemporary            bool                   `json:"is_temporary"`
+	AccountDurationDays    int                    `json:"account_duration_days"`
+	ExpiresAt              string                 `json:"expires_at,omitempty"`
+	CreatedBy              string                 `json:"created_by"`
+	CreatedAt              string                 `json:"created_at"`
+	AuthentikInvitationID  string                 `json:"authentik_invitation_id,omitempty"`
+	AuthentikEnrollmentURL string                 `json:"authentik_enrollment_url,omitempty"`
+	InviteURL              string                 `json:"invite_url,omitempty"`
 }
 
 type InvitationSponsorStats struct {
@@ -70,6 +76,7 @@ type CreateInvitationRequest struct {
 	EnableDownloads        bool     `json:"enable_downloads"`
 	PolicyPresetID         string   `json:"policy_preset_id"`
 	GroupName              string   `json:"group_name"`
+	ForcedName             string   `json:"forced_name"`
 	ForcedUsername         string   `json:"forced_username"`
 	TemplateUserID         string   `json:"template_user_id"`
 	UsernameMinLen         *int     `json:"username_min_length"`
@@ -122,8 +129,36 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	links := resolvePortalLinks(h.cfg, h.db)
+	baseURL := strings.TrimSpace(links.JellyGateURL)
+	if baseURL == "" {
+		baseURL = requestBaseURL(r)
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	var authBaseURL string
+	var flowSlug string
+	if authentikEnabled {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL = authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug = strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+	}
+
 	rows, err := h.db.Query(`
-		SELECT id, code, max_uses, used_count, expires_at, created_at 
+		SELECT id, code, max_uses, used_count, expires_at, created_at, COALESCE(authentik_invitation_id, '')
 		FROM invitations 
 		WHERE created_by = ? 
 		ORDER BY created_at DESC`, sess.Username)
@@ -139,11 +174,17 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 	for rows.Next() {
 		var i InvitationResponse
 		var rawExpiresAt, rawCreatedAt interface{}
-		if err := rows.Scan(&i.ID, &i.Code, &i.MaxUses, &i.UsedCount, &rawExpiresAt, &rawCreatedAt); err != nil {
+		var authInvID sql.NullString
+		if err := rows.Scan(&i.ID, &i.Code, &i.MaxUses, &i.UsedCount, &rawExpiresAt, &rawCreatedAt, &authInvID); err != nil {
 			continue
 		}
 		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedAt = anyToDateString(rawCreatedAt)
+		i.AuthentikInvitationID = strings.TrimSpace(authInvID.String)
+		i.InviteURL = strings.TrimRight(baseURL, "/") + "/invite/" + i.Code
+		if authentikEnabled && i.AuthentikInvitationID != "" && authBaseURL != "" {
+			i.AuthentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(i.AuthentikInvitationID))
+		}
 		isExpired := false
 		if strings.TrimSpace(i.ExpiresAt) != "" {
 			if exp, parseErr := parseAccessExpiry(i.ExpiresAt); parseErr == nil {
@@ -205,6 +246,10 @@ func (h *AdminHandler) GetMyInvitations(w http.ResponseWriter, r *http.Request) 
 // CreateMyInvitation génère une invitation automatique (parrainage) basée sur le preset de l'utilisateur.
 func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	now := time.Now()
 
 	inviteCfg, err := h.db.GetInvitationProfileConfig()
@@ -275,6 +320,20 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		}
 	}
 
+	// Verification quota parrainage JellyGate
+	var sponsorUserID int64
+	_ = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, sess.Username).Scan(&sponsorUserID)
+	if sponsorUserID > 0 {
+		calc, qErr := h.db.CalculateUserQuota(r.Context(), sponsorUserID)
+		if qErr == nil && calc != nil && calc.RemainingQuota <= 0 {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: fmt.Sprintf(h.tr(r, "admin_quota_reached", "Quota d'invitations épuisé (%d/%d)"), calc.UsedQuota, calc.TotalQuota),
+			})
+			return
+		}
+	}
+
 	code, err := generateSecureToken(12)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_invite_gen_failed", "Impossible de generer un code d'invitation")})
@@ -293,8 +352,9 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 
 	var expiresAt interface{}
 	var expiresAtResponse interface{}
+	var resolvedExpiry time.Time
 	if validityDays > 0 {
-		resolvedExpiry := now.AddDate(0, 0, validityDays)
+		resolvedExpiry = now.AddDate(0, 0, validityDays)
 		expiresAt = resolvedExpiry
 		expiresAtResponse = resolvedExpiry.Format(time.RFC3339)
 	}
@@ -302,7 +362,6 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	profile := inviteProfileFromPolicyPreset(targetPreset)
 	profile.CanInvite = false
 	profile.RequireEmail = inviteCfg.RequireEmail
-	profile.RequireEmailVerification = resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, false, maxUses)
 	if profile.IsTemporary {
 		duration := profile.AccountDurationDays
 		if duration <= 0 {
@@ -322,10 +381,81 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 	}
 	profileJSON, _ := json.Marshal(profile)
 
-	_, err = h.db.Exec(`
-		INSERT INTO invitations (code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, profile_id, profile_snapshot, is_temporary, account_duration_days)
-		VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
-		code, "Parrainage de "+sess.Username, maxUses, string(profileJSON), expiresAt, sess.Username,
+	// Invoquer l'API Authentik pour créer une invitation Stage si Authentik est configuré
+	var authentikInvID string
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	effectiveAuth := h.getEffectiveAuthentikClient()
+	if effectiveAuth != nil && authentikEnabled {
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+
+		var targetGroups []string
+		jellyfinGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+		if jellyfinGroup == "" && h.cfg != nil {
+			jellyfinGroup = strings.TrimSpace(h.cfg.Authentik.JellyfinUserGroup)
+		}
+		if jellyfinGroup == "" {
+			jellyfinGroup = "jellyfin-users"
+		}
+		targetGroups = append(targetGroups, jellyfinGroup)
+
+		isRecursive := sess.CanInviteRecursive
+		if !isRecursive {
+			invRecGroup := strings.TrimSpace(authCfg.InvitersRecursiveGroup)
+			if invRecGroup == "" {
+				invRecGroup = "jellygate-inviters-recursive"
+			}
+			for _, g := range sess.Groups {
+				if strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters-recursive") {
+					isRecursive = true
+					break
+				}
+			}
+		}
+
+		if isRecursive {
+			invGroup := strings.TrimSpace(authCfg.InvitersGroup)
+			if invGroup == "" {
+				invGroup = "jellygate-inviters"
+			}
+			targetGroups = append(targetGroups, invGroup)
+		}
+
+		fixedData := map[string]interface{}{
+			"source":                "JellyGate",
+			"created_by":            "JellyGate",
+			"created_by_app":        "JellyGate",
+			"sponsor":               sess.Username,
+			"sponsor_user_id":       sponsorUserID,
+			"code":                  code,
+			"invitation_code":       code,
+			"groups":                targetGroups,
+			"preset_id":             targetPreset.ID,
+			"target_preset_name":    targetPreset.Name,
+			"is_temporary":          profile.IsTemporary,
+			"account_duration_days": profile.AccountDurationDays,
+		}
+
+		tokenName := fmt.Sprintf("jellygate-sponsor-%s-%s", sess.Username, code)
+		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, resolvedExpiry, fixedData, maxUses == 1, flowSlug)
+		if authErr == nil && strings.TrimSpace(invID) != "" {
+			authentikInvID = strings.TrimSpace(invID)
+			slog.Info("Jeton invitation Authentik créé avec succès pour parrainage", "code", code, "sponsor", sess.Username, "authentik_invitation_id", authentikInvID, "expires", resolvedExpiry)
+		} else if authErr != nil {
+			slog.Warn("Création token invitation Authentik échouée pour parrainage (fallback local)", "code", code, "sponsor", sess.Username, "error", authErr)
+		}
+	}
+
+	res, err := h.db.Exec(`
+		INSERT INTO invitations (code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, created_by_user_id, authentik_invitation_id, profile_id, profile_snapshot, is_temporary, account_duration_days)
+		VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		code, "Parrainage de "+sess.Username, maxUses, string(profileJSON), expiresAt, sess.Username, sponsorUserID, authentikInvID,
 		strings.TrimSpace(strings.ToLower(profile.PresetID)), string(profileJSON), profile.IsTemporary, profile.AccountDurationDays)
 
 	if err != nil {
@@ -334,16 +464,54 @@ func (h *AdminHandler) CreateMyInvitation(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	invitationID, _ := res.LastInsertId()
+	if sponsorUserID > 0 {
+		_, _ = h.db.CreateReferral(r.Context(), sponsorUserID, invitationID, "")
+	}
+
 	_ = h.db.LogAction("invite.created.sponsor", sess.Username, code, fmt.Sprintf(`{"target_preset":"%s","max_uses":%d,"validity_days":%d}`, targetPreset.ID, maxUses, validityDays))
 
+	var authentikEnrollmentURL string
+	if authentikEnabled && authentikInvID != "" {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL := authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if effectiveAuth != nil {
+			if discovered := effectiveAuth.GetEnrollmentFlowSlug(r.Context(), flowSlug); discovered != "" {
+				flowSlug = discovered
+			}
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+		if authBaseURL != "" {
+			authentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(authentikInvID))
+		}
+	}
+
+	inviteURL := strings.TrimRight(requestBaseURL(r), "/") + "/invite/" + code
+
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_invite_created", "Lien de parrainage créé"), Data: map[string]interface{}{
-		"code":               code,
-		"max_uses":           maxUses,
-		"expires_at":         expiresAtResponse,
-		"target_preset_id":   targetPreset.ID,
-		"target_preset_name": targetPreset.Name,
-		"link_validity_days": validityDays,
-		"invite_url":         strings.TrimRight(requestBaseURL(r), "/") + "/invite/" + code,
+		"code":                     code,
+		"max_uses":                 maxUses,
+		"expires_at":               expiresAtResponse,
+		"authentik_invitation_id":  authentikInvID,
+		"authentik_enrollment_url": authentikEnrollmentURL,
+		"authentik_enabled":        authentikEnabled,
+		"target_preset_id":         targetPreset.ID,
+		"target_preset_name":       targetPreset.Name,
+		"link_validity_days":       validityDays,
+		"invite_url":               inviteURL,
+		"url":                      inviteURL,
 	}})
 }
 
@@ -388,18 +556,48 @@ func (h *AdminHandler) resolveInvitationCreatorLimits(sess *session.Payload, inv
 		return limits, nil
 	}
 
+	if sess.CanInvite || sess.CanInviteRecursive {
+		limits.CanInvite = true
+		if sess.CanInviteRecursive {
+			limits.AllowGrant = true
+		}
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	invGroup := strings.TrimSpace(authCfg.InvitersGroup)
+	if invGroup == "" {
+		invGroup = "jellygate-inviters"
+	}
+	invRecGroup := strings.TrimSpace(authCfg.InvitersRecursiveGroup)
+	if invRecGroup == "" {
+		invRecGroup = "jellygate-inviters-recursive"
+	}
+
+	for _, g := range sess.Groups {
+		if strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters-recursive") {
+			limits.CanInvite = true
+			limits.AllowGrant = true
+			break
+		}
+		if strings.EqualFold(g, invGroup) || strings.EqualFold(g, "jellygate-inviters") {
+			limits.CanInvite = true
+		}
+	}
+
 	var (
 		canInvite bool
 		presetID  sql.NullString
 	)
 	err := h.db.QueryRow(
-		`SELECT can_invite, preset_id FROM users WHERE jellyfin_id = ?`,
-		sess.UserID,
+		`SELECT can_invite, preset_id FROM users WHERE (jellyfin_id = ? AND jellyfin_id != '') OR CAST(id AS TEXT) = ? OR username = ? LIMIT 1`,
+		sess.UserID, sess.UserID, sess.Username,
 	).Scan(&canInvite, &presetID)
 	if err != nil && err != sql.ErrNoRows {
 		return limits, err
 	}
-	limits.CanInvite = canInvite
+	if canInvite {
+		limits.CanInvite = true
+	}
 
 	presetIDStr := strings.TrimSpace(presetID.String)
 	if presetIDStr != "" {
@@ -463,28 +661,6 @@ func (h *AdminHandler) countInvitationsCreatedSince(creator string, since time.T
 	return count, nil
 }
 
-func resolveInviteEmailVerificationRequirement(policy string, legacyRequire bool, createdByAdmin bool, maxUses int) bool {
-	mode := strings.TrimSpace(strings.ToLower(policy))
-	switch mode {
-	case "required":
-		return true
-	case "disabled":
-		return false
-	case "admin_bypass":
-		if createdByAdmin {
-			return false
-		}
-		return true
-	case "conditional":
-		if createdByAdmin && maxUses == 1 {
-			return false
-		}
-		return true
-	default:
-		return legacyRequire
-	}
-}
-
 // ListInvitations retourne les invitations SQLite avec pagination et recherche.
 func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
@@ -532,9 +708,37 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	links := resolvePortalLinks(h.cfg, h.db)
+	baseURL := strings.TrimSpace(links.JellyGateURL)
+	if baseURL == "" {
+		baseURL = requestBaseURL(r)
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	var authBaseURL string
+	var flowSlug string
+	if authentikEnabled {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL = authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug = strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+	}
+
 	// 2. Récupérer les données paginées
 	offset := (page - 1) * limit
-	query := fmt.Sprintf(`SELECT id, code, label, preferred_lang, max_uses, used_count, jellyfin_profile, profile_id, profile_snapshot, is_temporary, account_duration_days, expires_at, created_by, created_at FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
+	query := fmt.Sprintf(`SELECT id, code, label, preferred_lang, max_uses, used_count, jellyfin_profile, profile_id, profile_snapshot, is_temporary, account_duration_days, expires_at, created_by, created_at, COALESCE(authentik_invitation_id, '') FROM invitations %s ORDER BY created_at DESC LIMIT ? OFFSET ?`, whereClause)
 
 	queryArgs := append(args, limit, offset)
 	rows, err := h.db.Query(query, queryArgs...)
@@ -551,11 +755,12 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		var label, profile, profileID, profileSnapshot, createdBy, preferredLang sql.NullString
 		var rawExpiresAt interface{}
 		var rawCreatedAt interface{}
+		var authInvID sql.NullString
 
 		err := rows.Scan(
 			&i.ID, &i.Code, &label, &preferredLang, &i.MaxUses, &i.UsedCount,
 			&profile, &profileID, &profileSnapshot, &i.IsTemporary, &i.AccountDurationDays,
-			&rawExpiresAt, &createdBy, &rawCreatedAt,
+			&rawExpiresAt, &createdBy, &rawCreatedAt, &authInvID,
 		)
 		if err != nil {
 			slog.Error("Erreur scan invitation", "error", err)
@@ -568,6 +773,11 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 		i.ExpiresAt = anyToDateString(rawExpiresAt)
 		i.CreatedBy = createdBy.String
 		i.CreatedAt = anyToDateString(rawCreatedAt)
+		i.AuthentikInvitationID = strings.TrimSpace(authInvID.String)
+		i.InviteURL = strings.TrimRight(baseURL, "/") + "/invite/" + i.Code
+		if authentikEnabled && i.AuthentikInvitationID != "" && authBaseURL != "" {
+			i.AuthentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(i.AuthentikInvitationID))
+		}
 
 		if profile.String != "" {
 			var p map[string]interface{}
@@ -605,13 +815,16 @@ func (h *AdminHandler) ListInvitations(w http.ResponseWriter, r *http.Request) {
 // InvitationStats retourne des statistiques de parrainage par createur d'invitations.
 func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	cleanupClosedInvitationsIfEnabled(h.db)
 
 	scope := "all"
 	filterByCreator := ""
 	if !sess.IsAdmin {
-		var canInvite bool
-		_ = h.db.QueryRow(`SELECT can_invite FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&canInvite)
+		canInvite := h.resolveCanInviteForSession(sess)
 		if !canInvite {
 			writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation d'acceder aux statistiques de parrainage"})
 			return
@@ -747,6 +960,10 @@ func (h *AdminHandler) InvitationStats(w http.ResponseWriter, r *http.Request) {
 // CreateInvitation crée un nouveau lien d'invitation avec un jeton robuste et logiques complexes (JFA-GO).
 func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 
 	var req CreateInvitationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -836,6 +1053,11 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		preset = resolvedPreset
 	}
 
+	targetPresetName := ""
+	if preset != nil {
+		targetPresetName = preset.Name
+	}
+
 	code, err := generateSecureToken(16)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de generation du jeton"})
@@ -872,6 +1094,7 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 	profile := inviteProfileFromPolicyPreset(preset)
 	if sess.IsAdmin {
 		profile.GroupName = strings.TrimSpace(req.GroupName)
+		profile.ForcedName = strings.TrimSpace(req.ForcedName)
 		profile.ForcedUsername = strings.TrimSpace(req.ForcedUsername)
 		profile.TemplateUserID = strings.TrimSpace(req.TemplateUserID)
 		if req.UsernameMinLen != nil {
@@ -908,9 +1131,13 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		profile.EnableDownload = true
 	}
 
-	profile.CanInvite = req.NewUserCanInvite
+	// Le droit de parrainage est strictement déterminé par le profil / groupe sélectionné
+	if preset != nil {
+		profile.CanInvite = preset.CanInvite || preset.CanCreateInvitations
+	} else {
+		profile.CanInvite = false
+	}
 	profile.RequireEmail = inviteCfg.RequireEmail
-	profile.RequireEmailVerification = resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, sess.IsAdmin, req.MaxUses)
 
 	profile.IsTemporary = req.IsTemporary
 	if preset != nil && preset.IsTemporary {
@@ -1001,10 +1228,107 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		maxUses = limits.MaxUses
 	}
 
+	// Invoquer l'API Authentik pour créer une invitation Stage si Authentik est configuré
+	var authentikInvID string
+	authCfg, _ := h.db.GetAuthentikConfig()
+	authentikEnabled := (h.cfg != nil && h.cfg.Authentik.Enabled) || authCfg.Enabled
+	effectiveAuth := h.getEffectiveAuthentikClient()
+
+	if effectiveAuth != nil && authentikEnabled {
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+
+		var targetGroups []string
+		groupName := strings.TrimSpace(profile.GroupName)
+		if groupName != "" {
+			targetGroups = append(targetGroups, groupName)
+		} else {
+			jfGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+			if jfGroup == "" && h.cfg != nil {
+				jfGroup = strings.TrimSpace(h.cfg.Authentik.JellyfinUserGroup)
+			}
+			if jfGroup == "" {
+				jfGroup = "jellyfin-users"
+			}
+			targetGroups = append(targetGroups, jfGroup)
+		}
+
+		isRecursive := sess.CanInviteRecursive
+		if !isRecursive {
+			invRecGroup := strings.TrimSpace(authCfg.InvitersRecursiveGroup)
+			if invRecGroup == "" {
+				invRecGroup = "jellygate-inviters-recursive"
+			}
+			for _, g := range sess.Groups {
+				if strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters-recursive") {
+					isRecursive = true
+					break
+				}
+			}
+		}
+
+		if req.NewUserCanInvite || isRecursive {
+			invGroup := strings.TrimSpace(authCfg.InvitersGroup)
+			if invGroup == "" {
+				invGroup = "jellygate-inviters"
+			}
+			targetGroups = append(targetGroups, invGroup)
+		}
+
+		fixedData := map[string]interface{}{
+			"source":                "JellyGate",
+			"created_by":            "JellyGate",
+			"sponsor":               sess.Username,
+			"code":                  code,
+			"invitation_code":       code,
+			"groups":                targetGroups,
+			"preset_id":             targetPresetID,
+			"target_preset_name":    targetPresetName,
+			"is_temporary":          profile.IsTemporary,
+			"account_duration_days": profile.AccountDurationDays,
+		}
+		if strings.TrimSpace(req.ForcedUsername) != "" {
+			fixedData["username"] = strings.TrimSpace(req.ForcedUsername)
+		}
+		if strings.TrimSpace(req.ForcedName) != "" {
+			fixedData["name"] = strings.TrimSpace(req.ForcedName)
+		}
+		sendToEmailCandidate := strings.TrimSpace(req.SendToEmail)
+		if sendToEmailCandidate == "" {
+			sendToEmailCandidate = strings.TrimSpace(req.Email)
+		}
+		if sendToEmailCandidate != "" {
+			fixedData["email"] = sendToEmailCandidate
+		}
+
+		var stageExpiry time.Time
+		if t, ok := expiresAt.(time.Time); ok {
+			stageExpiry = t
+		} else if expiresAtResponse != nil {
+			if t, tErr := time.Parse(time.RFC3339, fmt.Sprint(expiresAtResponse)); tErr == nil {
+				stageExpiry = t
+			}
+		}
+
+		tokenName := fmt.Sprintf("jellygate-invite-%s", code)
+		invID, authErr := effectiveAuth.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
+		if authErr == nil && strings.TrimSpace(invID) != "" {
+			authentikInvID = strings.TrimSpace(invID)
+			slog.Info("Jeton invitation Authentik créé avec succès", "code", code, "creator", sess.Username, "authentik_invitation_id", authentikInvID, "expires", stageExpiry)
+		} else if authErr != nil {
+			slog.Warn("Création token invitation Authentik échouée (fallback local)", "code", code, "creator", sess.Username, "error", authErr)
+		}
+	}
+
 	_, err = h.db.Exec(`
-		INSERT INTO invitations (code, label, preferred_lang, max_uses, used_count, jellyfin_profile, expires_at, created_by, profile_id, profile_snapshot, is_temporary, account_duration_days)
-		VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
-		code, label, req.PreferredLang, maxUses, string(profileJSON), expiresAt, sess.Username,
+		INSERT INTO invitations (code, label, preferred_lang, max_uses, used_count, jellyfin_profile, expires_at, created_by, authentik_invitation_id, profile_id, profile_snapshot, is_temporary, account_duration_days)
+		VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		code, label, req.PreferredLang, maxUses, string(profileJSON), expiresAt, sess.Username, authentikInvID,
 		strings.TrimSpace(strings.ToLower(profile.PresetID)), string(profileJSON), profile.IsTemporary, profile.AccountDurationDays)
 
 	if err != nil {
@@ -1103,12 +1427,49 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	var authentikEnrollmentURL string
+	if authentikEnabled && authentikInvID != "" {
+		rawAuthURL := authCfg.URL
+		if rawAuthURL == "" && h.cfg != nil {
+			rawAuthURL = h.cfg.Authentik.URL
+		}
+		if rawAuthURL == "" && authCfg.IssuerURL != "" {
+			rawAuthURL = authCfg.IssuerURL
+		}
+		authBaseURL := authentik.ResolveBaseURL(rawAuthURL)
+		flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+		if flowSlug == "" && h.cfg != nil {
+			flowSlug = strings.TrimSpace(h.cfg.Authentik.EnrollmentFlowSlug)
+		}
+		if effectiveAuth != nil {
+			if discovered := effectiveAuth.GetEnrollmentFlowSlug(r.Context(), flowSlug); discovered != "" {
+				flowSlug = discovered
+			}
+		}
+		if flowSlug == "" {
+			flowSlug = "default-enrollment-flow"
+		}
+		if authBaseURL != "" {
+			authentikEnrollmentURL = fmt.Sprintf("%s/if/flow/%s/?itoken=%s", authBaseURL, flowSlug, url.QueryEscape(authentikInvID))
+		}
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Message: "Invitation générée avec succès",
 		Data: map[string]interface{}{
-			"code": code,
-			"url":  inviteURL,
+			"code":                     code,
+			"url":                      inviteURL,
+			"invite_url":               inviteURL,
+			"authentik_invitation_id":  authentikInvID,
+			"authentik_enrollment_url": authentikEnrollmentURL,
+			"authentik_enabled":        authentikEnabled,
+			"target_preset_id":         targetPresetID,
+			"target_preset_name":       targetPresetName,
+			"max_uses":                 maxUses,
+			"expires_at":               expiresAtResponse,
+			"is_temporary":             profile.IsTemporary,
+			"account_duration_days":    profile.AccountDurationDays,
 		},
 	})
 }
@@ -1116,28 +1477,41 @@ func (h *AdminHandler) CreateInvitation(w http.ResponseWriter, r *http.Request) 
 // DeleteInvitation supprime brutalement l'invitation SQLite
 func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	invID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID invalide"})
 		return
 	}
 
-	var errDB error
-	if sess.IsAdmin {
-		_, errDB = h.db.Exec(`DELETE FROM invitations WHERE id = ?`, invID)
-	} else {
-		// Security: Le standard user ne supprime que ses propres liens
-		result, errDBQuery := h.db.Exec(`DELETE FROM invitations WHERE id = ? AND created_by = ?`, invID, sess.Username)
-		errDB = errDBQuery
-		if errDB == nil {
-			rowsAffected, _ := result.RowsAffected()
-			if rowsAffected == 0 {
-				writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de supprimer ce lien"})
-				return
-			}
+	var authInvID sql.NullString
+	var createdBy string
+	err = h.db.QueryRow(`SELECT authentik_invitation_id, created_by FROM invitations WHERE id = ?`, invID).Scan(&authInvID, &createdBy)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Invitation introuvable"})
+			return
+		}
+		slog.Error("Erreur lecture invitation pour suppression", "id", invID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur DB"})
+		return
+	}
+
+	if !sess.IsAdmin && createdBy != sess.Username {
+		writeJSON(w, http.StatusForbidden, APIResponse{Success: false, Message: "Vous n'avez pas l'autorisation de supprimer ce lien"})
+		return
+	}
+
+	if authInvID.Valid && authInvID.String != "" && h.authClient != nil {
+		if errDel := h.authClient.DeleteInvitationStageToken(r.Context(), authInvID.String); errDel != nil {
+			slog.Warn("Suppression du token invitation Authentik échouée", "token_id", authInvID.String, "error", errDel)
 		}
 	}
 
+	_, errDB := h.db.Exec(`DELETE FROM invitations WHERE id = ?`, invID)
 	if errDB != nil {
 		slog.Error("Erreur suppression invitation", "id", invID, "error", errDB)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur DB"})
@@ -1275,4 +1649,184 @@ func presetInviteLinkValidityDays(preset *config.JellyfinPolicyPreset) int {
 		return (preset.InviteMaxLinkHours + 23) / 24
 	}
 	return 0
+}
+
+// SyncAuthentikInvitations reconciles invitations between JellyGate and Authentik.
+func (h *AdminHandler) SyncAuthentikInvitations(w http.ResponseWriter, r *http.Request) {
+	sess := session.FromContext(r.Context())
+	if sess == nil || !sess.IsAdmin {
+		writeJSON(w, http.StatusForbidden, APIResponse{
+			Success: false,
+			Message: h.tr(r, "admin_forbidden", "Accès interdit (Administrateurs uniquement)"),
+		})
+		return
+	}
+
+	client := h.getEffectiveAuthentikClient()
+	if client == nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   "Authentik n'est pas configuré",
+		})
+		return
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+	if flowSlug == "" {
+		flowSlug = "default-enrollment-flow"
+	}
+
+	// 1. Lister les invitations Authentik actuelles
+	tokens, err := client.ListInvitationStageTokens(r.Context())
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   fmt.Sprintf("Impossible de lister les tokens Authentik: %v", err),
+		})
+		return
+	}
+
+	tokenByPK := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	tokenByCode := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	for _, tok := range tokens {
+		if tok.PK != "" {
+			tokenByPK[tok.PK] = tok
+		}
+		if tok.FixedData != nil {
+			if c, ok := tok.FixedData["code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			} else if c, ok := tok.FixedData["invitation_code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			}
+		}
+	}
+
+	rows, err := h.db.Query(`
+		SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, authentik_invitation_id, profile_id, is_temporary, account_duration_days
+		FROM invitations
+	`)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+	defer rows.Close()
+
+	now := time.Now()
+	recreated := 0
+	cleaned := 0
+	totalChecked := 0
+
+	for rows.Next() {
+		totalChecked++
+		var id int64
+		var code, label, jfProfile, createdBy, profileID string
+		var maxUses, usedCount, accountDurationDays int
+		var expiresAt sql.NullTime
+		var authentikID sql.NullString
+		var isTemporary bool
+
+		if err := rows.Scan(&id, &code, &label, &maxUses, &usedCount, &jfProfile, &expiresAt, &createdBy, &authentikID, &profileID, &isTemporary, &accountDurationDays); err != nil {
+			continue
+		}
+
+		code = strings.TrimSpace(code)
+		if code == "" {
+			continue
+		}
+
+		isExpired := expiresAt.Valid && expiresAt.Time.Before(now)
+		isExhausted := maxUses > 0 && usedCount >= maxUses
+		isActive := !isExpired && !isExhausted
+
+		curAuthID := strings.TrimSpace(authentikID.String)
+
+		if isActive {
+			tokenExists := false
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					tokenExists = true
+				}
+			}
+			if !tokenExists {
+				if tok, ok := tokenByCode[code]; ok && tok.PK != "" {
+					tokenExists = true
+					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tok.PK, id)
+				}
+			}
+
+			// Si le token n'existe pas dans Authentik, le recréer automatiquement
+			if !tokenExists {
+				var targetGroups []string
+				jfGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+				if jfGroup == "" {
+					jfGroup = "jellyfin-users"
+				}
+				targetGroups = append(targetGroups, jfGroup)
+
+				fixedData := map[string]interface{}{
+					"source":                "JellyGate",
+					"created_by":            "JellyGate",
+					"created_by_app":        "JellyGate",
+					"invitation_code":       code,
+					"code":                  code,
+					"sponsor":               createdBy,
+					"groups":                targetGroups,
+					"preset_id":             profileID,
+					"is_temporary":          isTemporary,
+					"account_duration_days": accountDurationDays,
+				}
+
+				var stageExpiry time.Time
+				if expiresAt.Valid {
+					stageExpiry = expiresAt.Time
+				}
+
+				tokenName := fmt.Sprintf("jellygate-%s", code)
+				newTokPK, tokErr := client.CreateInvitationStageToken(r.Context(), tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
+				if tokErr == nil && strings.TrimSpace(newTokPK) != "" {
+					newTokPK = strings.TrimSpace(newTokPK)
+					_, _ = h.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, newTokPK, id)
+					_ = h.db.LogAction("invite.reconciled", "admin", code, fmt.Sprintf("Jeton Authentik recréé avec succès (PK: %s)", newTokPK))
+					recreated++
+				} else {
+					slog.Warn("Admin: échec recréation token Authentik", "code", code, "error", tokErr)
+				}
+			}
+		} else {
+			// L'invitation est expirée ou épuisée : nettoyer dans Authentik
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					if delErr := client.DeleteInvitationStageToken(r.Context(), curAuthID); delErr == nil {
+						_ = h.db.LogAction("invite.authentik_cleanup", "admin", code, fmt.Sprintf("Jeton Authentik expiré supprimé (PK: %s)", curAuthID))
+						cleaned++
+					}
+				}
+			}
+		}
+	}
+
+	actor := "admin"
+	if sess := session.FromContext(r.Context()); sess != nil && sess.Username != "" {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("invite.sync_authentik", actor, "invitations", fmt.Sprintf("Synchronisation Authentik manuelle : %d vérifiées, %d recréées, %d nettoyées", totalChecked, recreated, cleaned))
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":       true,
+		"total_checked": totalChecked,
+		"recreated":     recreated,
+		"cleaned":       cleaned,
+		"message":       fmt.Sprintf("Synchronisation Authentik terminée : %d vérifiées, %d recréées, %d nettoyées", totalChecked, recreated, cleaned),
+	})
 }

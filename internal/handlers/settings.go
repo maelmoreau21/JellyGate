@@ -1,16 +1,17 @@
-// Package handlers Ã¢â‚¬â€� settings.go
+// Package handlers — settings.go
 //
-// API REST pour la gestion des paramÃƒÂ¨tres stockÃƒÂ©s en base (table settings).
-// Permet de lire et sauvegarder la configuration gÃƒÂ©nÃƒÂ©rale, LDAP, SMTP et Webhooks
+// API REST pour la gestion des paramètres stockés en base (table settings).
+// Permet de lire et sauvegarder la configuration générale, Authentik, SMTP et Webhooks
 // depuis l'interface d'administration.
 //
 // Routes :
-//   - GET  /admin/api/settings          Ã¢â€ â€™ RÃƒÂ©cupÃƒÂ©rer toute la configuration
-//   - POST /admin/api/settings/general  Ã¢â€ â€™ Sauvegarder les paramÃƒÂ¨tres gÃƒÂ©nÃƒÂ©raux (langue)
-//   - POST /admin/api/settings/ldap     Ã¢â€ â€™ Sauvegarder la config LDAP
-//   - POST /admin/api/settings/smtp     Ã¢â€ â€™ Sauvegarder la config SMTP
-//   - POST /admin/api/settings/webhooks Ã¢â€ â€™ Sauvegarder la config Webhooks
-//   - POST /admin/api/settings/backup    Ã¢â€ â€™ Sauvegarder la config de sauvegarde planifiÃƒÂ©e
+//   - GET  /admin/api/settings          → Récupérer toute la configuration
+//   - POST /admin/api/settings/general  → Sauvegarder les paramètres généraux (langue)
+//   - POST /admin/api/settings/authentik → Sauvegarder la config Authentik OIDC / API
+//   - GET  /admin/api/settings/authentik/health → Diagnostic de santé Authentik
+//   - POST /admin/api/settings/smtp     → Sauvegarder la config SMTP
+//   - POST /admin/api/settings/webhooks → Sauvegarder la config Webhooks
+//   - POST /admin/api/settings/backup   → Sauvegarder la config de sauvegarde planifiée
 package handlers
 
 import (
@@ -28,10 +29,11 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
+	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/session"
@@ -41,14 +43,17 @@ import (
 
 // SettingsHandler gère les routes de configuration.
 type SettingsHandler struct {
-	db       *database.DB
-	jfClient *jellyfin.Client
-	renderer *render.Engine
+	cfg        *config.Config
+	db         *database.DB
+	jfClient   *jellyfin.Client
+	authClient authentik.Client
+	renderer   *render.Engine
 
 	// Callbacks de rechargement à chaud
-	OnLDAPReload     func(config.LDAPConfig)
-	OnSMTPReload     func(config.SMTPConfig)
-	OnWebhooksReload func(config.WebhooksConfig)
+	OnSMTPReload      func(config.SMTPConfig)
+	OnWebhooksReload  func(config.WebhooksConfig)
+	OnAuthentikReload func(config.AuthentikConfig)
+	OnJellyfinReload  func(config.JellyfinConfig)
 }
 
 func (h *SettingsHandler) tr(r *http.Request, key, fallback string) string {
@@ -64,8 +69,154 @@ func (h *SettingsHandler) tr(r *http.Request, key, fallback string) string {
 }
 
 // NewSettingsHandler crée un nouveau handler de paramètres.
-func NewSettingsHandler(db *database.DB, jf *jellyfin.Client, renderer *render.Engine) *SettingsHandler {
-	return &SettingsHandler{db: db, jfClient: jf, renderer: renderer}
+func NewSettingsHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, authClient authentik.Client, renderer *render.Engine) *SettingsHandler {
+	return &SettingsHandler{cfg: cfg, db: db, jfClient: jf, authClient: authClient, renderer: renderer}
+}
+
+// SetAuthentikClient met à jour le client Authentik / SSO.
+func (h *SettingsHandler) SetAuthentikClient(authClient authentik.Client) {
+	h.authClient = authClient
+}
+
+// SetJellyfinClient met à jour le client Jellyfin.
+func (h *SettingsHandler) SetJellyfinClient(jfClient *jellyfin.Client) {
+	h.jfClient = jfClient
+}
+
+// resolveEffectiveAuthentikConfig combine la configuration stockée en base SQL avec les variables d'environnement.
+// Les variables d'environnement (Docker Compose / .env) sont STRICTEMENT prioritaires.
+func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConfig {
+	cfg := config.AuthentikConfig{
+		Enabled:            false,
+		UserGroup:          "jellygate-users",
+		AdminGroup:         "jellygate-admins",
+		JellyfinUserGroup:  "jellyfin-users",
+		EnrollmentFlowSlug: "default-enrollment-flow",
+	}
+
+	if h.db != nil {
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil {
+			if dbCfg.URL != "" || dbCfg.IssuerURL != "" || dbCfg.ClientID != "" || dbCfg.APIToken != "" || dbCfg.Enabled {
+				cfg = dbCfg
+			}
+		}
+	}
+
+	// Les variables d'environnement Docker écrasent systématiquement la config DB si définies
+	if h.cfg != nil {
+		env := h.cfg.Authentik
+
+		if strings.TrimSpace(env.URL) != "" {
+			cfg.URL = strings.TrimSpace(env.URL)
+		}
+		if strings.TrimSpace(env.IssuerURL) != "" {
+			cfg.IssuerURL = strings.TrimSpace(env.IssuerURL)
+		}
+		if strings.TrimSpace(env.ClientID) != "" {
+			cfg.ClientID = strings.TrimSpace(env.ClientID)
+		}
+		if strings.TrimSpace(env.ClientSecret) != "" {
+			cfg.ClientSecret = strings.TrimSpace(env.ClientSecret)
+		}
+		if strings.TrimSpace(env.RedirectURL) != "" {
+			cfg.RedirectURL = strings.TrimSpace(env.RedirectURL)
+		}
+		if strings.TrimSpace(env.APIToken) != "" {
+			cfg.APIToken = strings.TrimSpace(env.APIToken)
+		}
+		if strings.TrimSpace(env.UserGroup) != "" {
+			cfg.UserGroup = strings.TrimSpace(env.UserGroup)
+		}
+		if strings.TrimSpace(env.AdminGroup) != "" {
+			cfg.AdminGroup = strings.TrimSpace(env.AdminGroup)
+		}
+		if strings.TrimSpace(env.JellyfinUserGroup) != "" {
+			cfg.JellyfinUserGroup = strings.TrimSpace(env.JellyfinUserGroup)
+		}
+		if strings.TrimSpace(env.InvitersGroup) != "" {
+			cfg.InvitersGroup = strings.TrimSpace(env.InvitersGroup)
+		}
+		if strings.TrimSpace(env.InvitersRecursiveGroup) != "" {
+			cfg.InvitersRecursiveGroup = strings.TrimSpace(env.InvitersRecursiveGroup)
+		}
+		if strings.TrimSpace(env.EnrollmentFlowSlug) != "" {
+			cfg.EnrollmentFlowSlug = strings.TrimSpace(env.EnrollmentFlowSlug)
+		}
+		if env.Enabled || (env.URL != "" || env.IssuerURL != "" || env.ClientID != "") {
+			cfg.Enabled = true
+		}
+	}
+
+	if cfg.UserGroup == "" {
+		cfg.UserGroup = "jellygate-users"
+	}
+	if cfg.AdminGroup == "" {
+		cfg.AdminGroup = "jellygate-admins"
+	}
+	if cfg.JellyfinUserGroup == "" {
+		cfg.JellyfinUserGroup = "jellyfin-users"
+	}
+	if cfg.EnrollmentFlowSlug == "" {
+		cfg.EnrollmentFlowSlug = "default-enrollment-flow"
+	}
+
+	if cfg.URL != "" {
+		if u, err := url.Parse(cfg.URL); err == nil && u.Scheme != "" && u.Host != "" && u.Path != "" && u.Path != "/" {
+			if cfg.IssuerURL == "" || cfg.IssuerURL == cfg.URL {
+				cfg.IssuerURL = cfg.URL
+			}
+			cfg.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if cfg.URL == "" && cfg.IssuerURL != "" {
+		if u, err := url.Parse(cfg.IssuerURL); err == nil && u.Scheme != "" && u.Host != "" {
+			cfg.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if cfg.IssuerURL == "" && cfg.URL != "" {
+		cfg.IssuerURL = cfg.URL + "/application/o/jellygate/"
+	}
+
+	return cfg
+}
+
+func (h *SettingsHandler) isAuthentikEnvManaged() bool {
+	if h.cfg == nil {
+		return false
+	}
+	env := h.cfg.Authentik
+	return strings.TrimSpace(env.URL) != "" || strings.TrimSpace(env.IssuerURL) != "" || strings.TrimSpace(env.ClientID) != "" || strings.TrimSpace(env.APIToken) != ""
+}
+
+// resolveEffectiveJellyfinConfig combine la configuration stockée en base SQL avec les variables d'environnement.
+// Les variables d'environnement Docker / .env (JELLYFIN_URL, JELLYFIN_API_KEY) sont STRICTEMENT prioritaires.
+func (h *SettingsHandler) resolveEffectiveJellyfinConfig() config.JellyfinConfig {
+	var cfg config.JellyfinConfig
+
+	if h.db != nil {
+		if dbCfg, err := h.db.GetJellyfinConfig(); err == nil {
+			cfg = dbCfg
+		}
+	}
+
+	// Les variables d'environnement Docker écrasent systématiquement la config DB si définies
+	if h.cfg != nil {
+		if strings.TrimSpace(h.cfg.Jellyfin.URL) != "" {
+			cfg.URL = strings.TrimSpace(h.cfg.Jellyfin.URL)
+		}
+		if strings.TrimSpace(h.cfg.Jellyfin.APIKey) != "" {
+			cfg.APIKey = strings.TrimSpace(h.cfg.Jellyfin.APIKey)
+		}
+	}
+
+	return cfg
+}
+
+func (h *SettingsHandler) isJellyfinEnvManaged() bool {
+	if h.cfg == nil {
+		return false
+	}
+	return strings.TrimSpace(h.cfg.Jellyfin.URL) != "" || strings.TrimSpace(h.cfg.Jellyfin.APIKey) != ""
 }
 
 const maskedSecretValue = "********"
@@ -151,224 +302,239 @@ func (h *SettingsHandler) ensureAdmin(w http.ResponseWriter, r *http.Request) bo
 	return true
 }
 
-type ldapUserTestInput struct {
-	config.LDAPConfig
-	Username string `json:"username"`
-}
-
-type jellyfinLDAPAuthTestInput struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-func (h *SettingsHandler) normalizeLDAPInput(input *config.LDAPConfig) {
-	if isMaskedSecret(input.BindPassword) || input.BindPassword == "" {
-		existing, _ := h.db.GetLDAPConfig()
-		input.BindPassword = existing.BindPassword
-	}
-	if input.Port == 0 {
-		input.Port = 636
-	}
-	input.SearchFilter = strings.TrimSpace(input.SearchFilter)
-	if input.SearchFilter == "" {
-		input.SearchFilter = "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))"
-	}
-	input.SearchAttributes = strings.TrimSpace(input.SearchAttributes)
-	if input.SearchAttributes == "" {
-		input.SearchAttributes = "uid,sAMAccountName,cn,userPrincipalName,mail"
-	}
-	input.UIDAttribute = strings.TrimSpace(input.UIDAttribute)
-	if input.UIDAttribute == "" {
-		input.UIDAttribute = "uid"
-	}
-	if strings.TrimSpace(input.UserOU) == "" {
-		input.UserOU = "CN=Users"
-	}
-	input.UsernameAttribute = strings.TrimSpace(input.UsernameAttribute)
-	if input.UsernameAttribute == "" {
-		input.UsernameAttribute = "auto"
-	}
-	input.AdminFilter = strings.TrimSpace(input.AdminFilter)
-	input.UserObjectClass = strings.TrimSpace(input.UserObjectClass)
-	if input.UserObjectClass == "" {
-		input.UserObjectClass = "auto"
-	}
-	input.GroupMemberAttr = strings.TrimSpace(input.GroupMemberAttr)
-	if input.GroupMemberAttr == "" {
-		input.GroupMemberAttr = "auto"
-	}
-
-	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
-	if input.ProvisionMode == "" {
-		input.ProvisionMode = "hybrid"
-	}
-	input.JellyfinLDAPAuthProviderID = strings.TrimSpace(input.JellyfinLDAPAuthProviderID)
-	if input.JellyfinLDAPAuthProviderID == "" {
-		input.JellyfinLDAPAuthProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin"
-	}
-	input.JellyfinLDAPPasswordResetProviderID = strings.TrimSpace(input.JellyfinLDAPPasswordResetProviderID)
-	if input.JellyfinLDAPPasswordResetProviderID == "" {
-		input.JellyfinLDAPPasswordResetProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider"
-	}
-
-	input.JellyfinGroup = strings.TrimSpace(input.JellyfinGroup)
-	input.InviterGroup = strings.TrimSpace(input.InviterGroup)
-	input.AdministratorsGroup = strings.TrimSpace(input.AdministratorsGroup)
-	if input.JellyfinGroup == "" {
-		input.JellyfinGroup = "jellyfin"
-	}
-	if input.InviterGroup == "" {
-		input.InviterGroup = "jellyfin-Parrainage"
-	}
-	if input.AdministratorsGroup == "" {
-		input.AdministratorsGroup = "jellyfin-administrateur"
-	}
-	input.UserGroup = input.JellyfinGroup
-}
-
-func validateLDAPMinimalConfig(input config.LDAPConfig) error {
-	if strings.TrimSpace(input.Host) == "" {
-		return fmt.Errorf("host LDAP requis") // This is internal error, handled by caller
-	}
-	if strings.TrimSpace(input.BindDN) == "" {
-		return fmt.Errorf("bind_dn requis")
-	}
-	if strings.TrimSpace(input.BindPassword) == "" {
-		return fmt.Errorf("bind_password requis")
-	}
-	if strings.TrimSpace(input.BaseDN) == "" {
-		return fmt.Errorf("base_dn requis")
-	}
-	return nil
-}
-
-// TestLDAPConnection teste la connexion et le bind LDAP sans sauvegarder la configuration.
-func (h *SettingsHandler) TestLDAPConnection(w http.ResponseWriter, r *http.Request) {
+// SaveAuthentik sauvegarde la configuration Authentik OIDC et API.
+func (h *SettingsHandler) SaveAuthentik(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
 	}
 
-	var input config.LDAPConfig
+	var input config.AuthentikConfig
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
 		return
 	}
 
-	h.normalizeLDAPInput(&input)
-	if err := validateLDAPMinimalConfig(input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+	existing := h.resolveEffectiveAuthentikConfig()
+	if isMaskedSecret(input.APIToken) || input.APIToken == "" {
+		input.APIToken = existing.APIToken
+	}
+	if isMaskedSecret(input.ClientSecret) || input.ClientSecret == "" {
+		input.ClientSecret = existing.ClientSecret
+	}
+
+	if input.URL != "" {
+		if u, err := url.Parse(input.URL); err == nil && u.Scheme != "" && u.Host != "" && u.Path != "" && u.Path != "/" {
+			if input.IssuerURL == "" || input.IssuerURL == input.URL {
+				input.IssuerURL = input.URL
+			}
+			input.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if input.URL == "" && input.IssuerURL != "" {
+		if u, err := url.Parse(input.IssuerURL); err == nil && u.Scheme != "" && u.Host != "" {
+			input.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if input.IssuerURL == "" && input.URL != "" {
+		input.IssuerURL = input.URL + "/application/o/jellygate/"
+	}
+
+	if err := h.db.SaveAuthentikConfig(input); err != nil {
+		slog.Error("Erreur sauvegarde config Authentik", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur de sauvegarde"})
 		return
 	}
 
-	client := jgldap.New(input)
-	if err := client.TestConnection(); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_connection", "Echec connexion LDAP") + ": " + err.Error()})
-		return
+	if h.OnAuthentikReload != nil {
+		h.OnAuthentikReload(input)
 	}
 
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "settings_success_ldap_connection", "Connexion LDAP OK (reseau + bind)")})
+	slog.Info("Configuration Authentik sauvegardée avec succès", "url", input.URL, "enabled", input.Enabled)
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Configuration Authentik sauvegardée"})
 }
 
-// TestLDAPUserLookup teste la recherche d'un utilisateur LDAP via l'attribut
-// de login configure (ex: sAMAccountName, uid).
-func (h *SettingsHandler) TestLDAPUserLookup(w http.ResponseWriter, r *http.Request) {
+// GetAuthentikHealth renvoie le diagnostic complet et structuré de l'intégration Authentik.
+func (h *SettingsHandler) GetAuthentikHealth(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
 	}
 
-	var input ldapUserTestInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
+	cfg := h.resolveEffectiveAuthentikConfig()
+
+	client := h.authClient
+	if client == nil || cfg.URL != "" || cfg.IssuerURL != "" {
+		client = authentik.NewClient(cfg)
+	}
+
+	health := client.CheckHealth(r.Context(), cfg)
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Data:    health,
+	})
+}
+
+// ReloadAuthentikFromEnv recharge la configuration SSO directement depuis les variables d'environnement (Docker Compose) et l'enregistre en base.
+func (h *SettingsHandler) ReloadAuthentikFromEnv(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
 		return
 	}
 
-	h.normalizeLDAPInput(&input.LDAPConfig)
-	if err := validateLDAPMinimalConfig(input.LDAPConfig); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: err.Error()})
+	if h.cfg == nil {
+		writeJSON(w, http.StatusOK, APIResponse{
+			Success: false,
+			Message: "Aucune configuration d'environnement disponible",
+		})
 		return
 	}
 
-	username := strings.TrimSpace(input.Username)
-	if username == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "username de test requis"})
-		return
+	envCfg := h.cfg.Authentik
+	if h.db != nil {
+		if err := h.db.SaveAuthentikConfig(envCfg); err != nil {
+			slog.Warn("Erreur persistance SSO depuis environnement", "error", err)
+		}
 	}
-
-	client := jgldap.New(input.LDAPConfig)
-	entry, isAdmin, err := client.ResolveUserAccess(username)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_lookup", "Echec recherche LDAP") + ": " + err.Error()})
-		return
-	}
-	if entry == nil {
-		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "settings_error_ldap_user_not_found", "Utilisateur LDAP introuvable")})
-		return
+	if h.OnAuthentikReload != nil {
+		h.OnAuthentikReload(envCfg)
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: h.tr(r, "settings_success_ldap_user_found", "Utilisateur LDAP trouve (filtre d'acces applique)"),
-		Data: map[string]interface{}{
-			"dn":            entry.DN,
-			"username":      entry.Username,
-			"uid":           entry.UID,
-			"username_attr": entry.UsernameAttribute,
-			"display_name":  entry.DisplayName,
-			"email":         entry.Email,
-			"upn":           entry.UPN,
-			"is_disabled":   entry.IsDisabled,
-			"is_admin":      isAdmin,
-			"search_filter": input.SearchFilter,
-			"admin_filter":  input.AdminFilter,
-		},
+		Message: "Paramètres SSO rechargés depuis l'environnement Docker (.env) et enregistrés en base",
+		Data:    envCfg,
 	})
 }
 
-// TestJellyfinLDAPAuth vÃ©rifie que l'authentification LDAP via le plugin Jellyfin fonctionne.
-func (h *SettingsHandler) TestJellyfinLDAPAuth(w http.ResponseWriter, r *http.Request) {
+type testUserPayload struct {
+	Username string `json:"username"`
+}
+
+type testUserResult struct {
+	Found            bool     `json:"found"`
+	Username         string   `json:"username"`
+	Name             string   `json:"name,omitempty"`
+	Email            string   `json:"email,omitempty"`
+	IsActive         bool     `json:"is_active"`
+	Groups           []string `json:"groups"`
+	IsJellyGateUser  bool     `json:"is_jellygate_user"`
+	IsJellyGateAdmin bool     `json:"is_jellygate_admin"`
+	IsJellyfinUser   bool     `json:"is_jellyfin_user"`
+	Source           string   `json:"source"`
+}
+
+// TestAuthentikUser vérifie l'existence et les appartenances aux groupes d'un utilisateur dans le SSO / annuaire.
+func (h *SettingsHandler) TestAuthentikUser(w http.ResponseWriter, r *http.Request) {
 	if !h.ensureAdmin(w, r) {
 		return
 	}
 
-	var input jellyfinLDAPAuthTestInput
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "JSON invalide : " + err.Error()})
+	var input testUserPayload
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil || strings.TrimSpace(input.Username) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "Nom d'utilisateur requis",
+		})
 		return
 	}
 
 	username := strings.TrimSpace(input.Username)
-	password := input.Password
-	if username == "" || password == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "username et mot de passe de test requis"})
-		return
+	cfg := h.resolveEffectiveAuthentikConfig()
+
+	reqUserGroup := strings.TrimSpace(cfg.UserGroup)
+	if reqUserGroup == "" {
+		reqUserGroup = "jellygate-users"
+	}
+	reqAdminGroup := strings.TrimSpace(cfg.AdminGroup)
+	if reqAdminGroup == "" {
+		reqAdminGroup = "jellygate-admins"
+	}
+	reqJfGroup := strings.TrimSpace(cfg.JellyfinUserGroup)
+	if reqJfGroup == "" {
+		reqJfGroup = "jellyfin-users"
 	}
 
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Client Jellyfin non configure"})
-		return
+	hasGroup := func(groups []string, target string) bool {
+		for _, g := range groups {
+			if strings.EqualFold(strings.TrimSpace(g), target) {
+				return true
+			}
+		}
+		return false
 	}
 
-	authUser, err := h.jfClient.AuthenticateByName(username, password)
-	if err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Connexion Jellyfin impossible: " + err.Error()})
-		return
+	// 1. Essayer via le client Authentik REST API si configuré
+	client := h.authClient
+	if client == nil || cfg.URL != "" || cfg.IssuerURL != "" {
+		client = authentik.NewClient(cfg)
 	}
-	if authUser == nil {
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "settings_error_jellyfin_response_invalid", "Reponse Jellyfin invalide")})
-		return
+
+	if client != nil && cfg.APIToken != "" {
+		user, err := client.GetUserByUsername(r.Context(), username)
+		if err == nil && user != nil {
+			writeJSON(w, http.StatusOK, APIResponse{
+				Success: true,
+				Data: testUserResult{
+					Found:            true,
+					Username:         user.Username,
+					Name:             user.Name,
+					Email:            user.Email,
+					IsActive:         user.IsActive,
+					Groups:           user.Groups,
+					IsJellyGateUser:  hasGroup(user.Groups, reqUserGroup) || hasGroup(user.Groups, reqAdminGroup),
+					IsJellyGateAdmin: hasGroup(user.Groups, reqAdminGroup),
+					IsJellyfinUser:   hasGroup(user.Groups, reqJfGroup),
+					Source:           "authentik_api",
+				},
+			})
+			return
+		}
+	}
+
+	// 2. Recherche de secours dans la base locale / Jellyfin
+	if h.db != nil {
+		var (
+			dbUser      string
+			dbEmail     string
+			dbCanInvite bool
+			dbIsActive  bool
+		)
+		err := h.db.QueryRow(
+			`SELECT username, email, can_invite, is_active FROM users WHERE username = ? OR email = ? LIMIT 1`,
+			username, username,
+		).Scan(&dbUser, &dbEmail, &dbCanInvite, &dbIsActive)
+		if err == nil {
+			groups := []string{reqUserGroup}
+			if dbCanInvite {
+				groups = append(groups, reqAdminGroup)
+			}
+			groups = append(groups, reqJfGroup)
+			writeJSON(w, http.StatusOK, APIResponse{
+				Success: true,
+				Data: testUserResult{
+					Found:            true,
+					Username:         dbUser,
+					Email:            dbEmail,
+					IsActive:         dbIsActive,
+					Groups:           groups,
+					IsJellyGateUser:  true,
+					IsJellyGateAdmin: dbCanInvite,
+					IsJellyfinUser:   true,
+					Source:           "database",
+				},
+			})
+			return
+		}
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: h.tr(r, "settings_success_jellyfin_auth", "Authentification Jellyfin via LDAP plugin OK"),
-		Data: map[string]interface{}{
-			"jellyfin_user_id": authUser.ID,
-			"jellyfin_name":    authUser.Name,
+		Data: testUserResult{
+			Found:    false,
+			Username: username,
 		},
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ Structures de rÃƒÂ©ponse Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
+// ── Structures de réponse ─────────────────────────────────────────────────────────────
 
 // settingsResponse contient toute la configuration pour le frontend.
 type settingsResponse struct {
@@ -380,13 +546,17 @@ type settingsResponse struct {
 	PortalLinks                       config.PortalLinksConfig               `json:"portal_links"`
 	InvitationProfile                 config.InvitationProfileConfig         `json:"invitation_profile"`
 	AuthSession                       database.AuthSessionConfig             `json:"auth_session"`
-	LDAP                              config.LDAPConfig                      `json:"ldap"`
+	Authentik                         config.AuthentikConfig                 `json:"authentik"`
+	AuthentikEnvManaged               bool                                   `json:"authentik_env_managed"`
+	Jellyfin                          config.JellyfinConfig                  `json:"jellyfin"`
+	JellyfinEnvManaged                bool                                   `json:"jellyfin_env_managed"`
 	SMTP                              config.SMTPConfig                      `json:"smtp"`
 	Webhooks                          config.WebhooksConfig                  `json:"webhooks"`
 	Backup                            config.BackupConfig                    `json:"backup"`
 	EmailTemplates                    config.EmailTemplatesConfig            `json:"email_templates"`
 	EmailTemplatesByLang              map[string]config.EmailTemplatesConfig `json:"email_templates_by_lang"`
 	EmailTemplatesMultilingualEnabled bool                                   `json:"email_templates_multilingual_enabled"`
+	LogRetentionDays                  int                                    `json:"log_retention_days"`
 }
 
 // generalInput est le corps JSON attendu par SaveGeneral.
@@ -397,6 +567,7 @@ type generalInput struct {
 	JellyfinServerName string `json:"jellyfin_server_name"`
 	JellyseerrURL      string `json:"jellyseerr_url"`
 	JellyTrackURL      string `json:"jellytrack_url"`
+	LogRetentionDays   int    `json:"log_retention_days"`
 }
 
 type authSessionInput struct {
@@ -493,81 +664,51 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	defaultLang := h.db.GetDefaultLang()
 
-	ldapCfg, err := h.db.GetLDAPConfig()
-	if err != nil {
-		slog.Error("Erreur lecture config LDAP", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: h.tr(r, "settings_error_ldap_read", "Erreur lecture configuration LDAP"),
-		})
-		return
+	authentikCfg := h.resolveEffectiveAuthentikConfig()
+	maskedAuthentik := authentikCfg
+	if maskedAuthentik.ClientSecret != "" {
+		maskedAuthentik.ClientSecret = maskedSecretValue
+	}
+	if maskedAuthentik.APIToken != "" {
+		maskedAuthentik.APIToken = maskedSecretValue
 	}
 
 	smtpCfg, err := h.db.GetSMTPConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config SMTP", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: h.tr(r, "settings_error_smtp_read", "Erreur lecture configuration SMTP"),
-		})
-		return
+		slog.Warn("Erreur lecture config SMTP (utilisation valeurs par défaut)", "error", err)
+		smtpCfg = config.SMTPConfig{}
 	}
 
 	webhooksCfg, err := h.db.GetWebhooksConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Webhooks", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture configuration Webhooks",
-		})
-		return
+		slog.Warn("Erreur lecture config Webhooks (utilisation valeurs par défaut)", "error", err)
+		webhooksCfg = config.WebhooksConfig{}
 	}
 
 	backupCfg, err := h.db.GetBackupConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Backup", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture configuration sauvegardes",
-		})
-		return
+		slog.Warn("Erreur lecture config Backup (utilisation valeurs par défaut)", "error", err)
+		backupCfg = config.DefaultBackupConfig()
 	}
 
 	portalLinks, err := h.db.GetPortalLinksConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Portal Links", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture des URLs publiques",
-		})
-		return
+		slog.Warn("Erreur lecture config Portal Links (utilisation valeurs par défaut)", "error", err)
+		portalLinks = config.PortalLinksConfig{}
 	}
 
 	inviteProfileCfg, err := h.db.GetInvitationProfileConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config Invitation Profile", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur lecture du profil d'invitation",
-		})
-		return
+		slog.Warn("Erreur lecture config Invitation Profile (utilisation valeurs par défaut)", "error", err)
+		inviteProfileCfg = config.DefaultInvitationProfileConfig()
 	}
 
 	authSessionCfg, err := h.db.GetAuthSessionConfig()
 	if err != nil {
-		slog.Error("Erreur lecture config AuthSession", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: h.tr(r, "settings_auth_session_read_error", "Erreur lecture de la politique de session"),
-		})
-		return
+		slog.Warn("Erreur lecture config AuthSession (utilisation valeurs par défaut)", "error", err)
+		authSessionCfg = database.DefaultAuthSessionConfig()
 	}
 
-	// Masquer le mot de passe LDAP et SMTP dans la rÃƒÂ©ponse
-	maskedLDAP := ldapCfg
-	if maskedLDAP.BindPassword != "" {
-		maskedLDAP.BindPassword = maskedSecretValue
-	}
 	maskedSMTP := smtpCfg
 	if maskedSMTP.Password != "" {
 		maskedSMTP.Password = maskedSecretValue
@@ -591,6 +732,12 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 		trimEmailTemplateSubjects(&emailTemplatesCfg)
 	}
 
+	effectiveJellyfin := h.resolveEffectiveJellyfinConfig()
+	maskedJellyfin := effectiveJellyfin
+	if maskedJellyfin.APIKey != "" {
+		maskedJellyfin.APIKey = maskedSecretValue
+	}
+
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data: settingsResponse{
@@ -602,13 +749,17 @@ func (h *SettingsHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 			PortalLinks:                       portalLinks,
 			InvitationProfile:                 inviteProfileCfg,
 			AuthSession:                       authSessionCfg,
-			LDAP:                              maskedLDAP,
+			Authentik:                         maskedAuthentik,
+			AuthentikEnvManaged:               h.isAuthentikEnvManaged(),
+			Jellyfin:                          maskedJellyfin,
+			JellyfinEnvManaged:                h.isJellyfinEnvManaged(),
 			SMTP:                              maskedSMTP,
 			Webhooks:                          maskedWebhooksConfig(webhooksCfg),
 			Backup:                            backupCfg,
 			EmailTemplates:                    emailTemplatesCfg,
 			EmailTemplatesByLang:              emailTemplatesByLang,
 			EmailTemplatesMultilingualEnabled: h.db.GetEmailTemplatesMultilingualEnabled(),
+			LogRetentionDays:                  h.db.GetLogRetentionDays(),
 		},
 	})
 }
@@ -687,12 +838,19 @@ func (h *SettingsHandler) SaveGeneral(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slog.Info("Langue par dÃ©faut mise Ã  jour", "lang", input.DefaultLang)
+	slog.Info("Langue par défaut mise à jour", "lang", input.DefaultLang)
+	if input.LogRetentionDays <= 0 {
+		input.LogRetentionDays = 30
+	}
+	if err := h.db.SaveLogRetentionDays(input.LogRetentionDays); err != nil {
+		slog.Error("Erreur sauvegarde log_retention_days", "error", err)
+	}
+
 	_ = h.db.LogAction("settings.general.saved", "", "", "default_lang="+input.DefaultLang)
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: h.tr(r, "settings_success_general_saved", "ParamÃ¨tres gÃ©nÃ©raux sauvegardÃ©s"),
+		Message: h.tr(r, "settings_success_general_saved", "Paramètres généraux sauvegardés"),
 	})
 }
 
@@ -773,7 +931,7 @@ func (h *SettingsHandler) FetchJellyfinServerName(w http.ResponseWriter, r *http
 		return
 	}
 
-	if h.jfClient == nil {
+	if h.jfClient == nil || !h.jfClient.IsConfigured() {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Client Jellyfin non configure"})
 		return
 	}
@@ -803,6 +961,166 @@ func (h *SettingsHandler) FetchJellyfinServerName(w http.ResponseWriter, r *http
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
 		Data:    map[string]string{"server_name": serverName},
+	})
+}
+
+// SaveJellyfin sauvegarde la configuration du serveur Jellyfin.
+func (h *SettingsHandler) SaveJellyfin(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	var input config.JellyfinConfig
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "JSON invalide : " + err.Error(),
+		})
+		return
+	}
+
+	existing, _ := h.db.GetJellyfinConfig()
+	if isMaskedSecret(input.APIKey) || strings.TrimSpace(input.APIKey) == "" {
+		input.APIKey = existing.APIKey
+	}
+
+	input.URL = strings.TrimSpace(input.URL)
+	if input.URL != "" && !strings.HasPrefix(input.URL, "http://") && !strings.HasPrefix(input.URL, "https://") {
+		input.URL = "http://" + input.URL
+	}
+	input.URL = strings.TrimRight(input.URL, "/")
+
+	if input.URL != "" {
+		parsed, err := url.ParseRequestURI(input.URL)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "Format de l'URL Jellyfin invalide",
+			})
+			return
+		}
+		scheme := strings.ToLower(parsed.Scheme)
+		if scheme != "http" && scheme != "https" {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "L'URL Jellyfin doit obligatoirement utiliser le protocole http ou https",
+			})
+			return
+		}
+		if strings.TrimSpace(parsed.Host) == "" {
+			writeJSON(w, http.StatusBadRequest, APIResponse{
+				Success: false,
+				Message: "L'URL Jellyfin doit contenir un nom d'hôte ou une adresse IP valide",
+			})
+			return
+		}
+	}
+
+	if err := h.db.SaveJellyfinConfig(input); err != nil {
+		slog.Error("Erreur sauvegarde config Jellyfin", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: "Erreur de sauvegarde de la configuration Jellyfin",
+		})
+		return
+	}
+
+	effective := h.resolveEffectiveJellyfinConfig()
+	if h.jfClient != nil {
+		h.jfClient.UpdateConfig(effective)
+	}
+	if h.OnJellyfinReload != nil {
+		h.OnJellyfinReload(effective)
+	}
+
+	slog.Info("Configuration Jellyfin sauvegardée", "url", effective.URL)
+	_ = h.db.LogAction("settings.jellyfin.saved", "", "", fmt.Sprintf(`{"url":"%s"}`, effective.URL))
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: "Configuration Jellyfin sauvegardée",
+		Data: map[string]interface{}{
+			"url":            effective.URL,
+			"configured":     effective.URL != "" && effective.APIKey != "",
+			"env_overridden": h.isJellyfinEnvManaged(),
+		},
+	})
+}
+
+// TestJellyfin teste la connectivité et la clé API avec le serveur Jellyfin.
+func (h *SettingsHandler) TestJellyfin(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	testCfg := h.resolveEffectiveJellyfinConfig()
+	if r.Method == http.MethodPost && r.Body != nil {
+		var input config.JellyfinConfig
+		if err := json.NewDecoder(r.Body).Decode(&input); err == nil && input.URL != "" {
+			if isMaskedSecret(input.APIKey) || strings.TrimSpace(input.APIKey) == "" {
+				input.APIKey = testCfg.APIKey
+			}
+			input.URL = strings.TrimSpace(input.URL)
+			if input.URL != "" && !strings.HasPrefix(input.URL, "http://") && !strings.HasPrefix(input.URL, "https://") {
+				input.URL = "http://" + input.URL
+			}
+			input.URL = strings.TrimRight(input.URL, "/")
+			if h.cfg != nil {
+				if strings.TrimSpace(h.cfg.Jellyfin.URL) != "" {
+					input.URL = strings.TrimSpace(h.cfg.Jellyfin.URL)
+				}
+				if strings.TrimSpace(h.cfg.Jellyfin.APIKey) != "" {
+					input.APIKey = strings.TrimSpace(h.cfg.Jellyfin.APIKey)
+				}
+			}
+			testCfg = input
+		}
+	}
+
+	if strings.TrimSpace(testCfg.URL) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "URL Jellyfin non configurée",
+		})
+		return
+	}
+
+	parsed, err := url.ParseRequestURI(testCfg.URL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || strings.TrimSpace(parsed.Host) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: "URL Jellyfin invalide (schéma http ou https avec hôte requis)",
+		})
+		return
+	}
+
+	client := jellyfin.New(testCfg)
+	diag := client.Diagnostics()
+
+	status := "error"
+	message := "Serveur Jellyfin injoignable"
+	if diag.APIKeyValid && diag.Version != "" {
+		status = "ok"
+		message = "Connexion établie avec succès"
+	} else if diag.Version != "" {
+		status = "warning"
+		message = "Serveur joignable mais clé API invalide ou refusée"
+	} else if diag.PublicError != "" {
+		message = "Erreur: " + diag.PublicError
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: status == "ok" || status == "warning",
+		Message: message,
+		Data: map[string]interface{}{
+			"status":         status,
+			"url":            testCfg.URL,
+			"server_name":    diag.ServerName,
+			"version":        diag.Version,
+			"api_key_valid":  diag.APIKeyValid,
+			"public_error":   diag.PublicError,
+			"auth_error":     diag.AuthError,
+			"env_overridden": h.isJellyfinEnvManaged(),
+		},
 	})
 }
 
@@ -918,69 +1236,6 @@ func (h *SettingsHandler) PreviewEmailTemplate(w http.ResponseWriter, r *http.Re
 	})
 }
 
-// Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/settings/ldap Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
-
-// SaveLDAP sauvegarde la configuration LDAP.
-func (h *SettingsHandler) SaveLDAP(w http.ResponseWriter, r *http.Request) {
-	if !h.ensureAdmin(w, r) {
-		return
-	}
-
-	var input config.LDAPConfig
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{
-			Success: false,
-			Message: "JSON invalide : " + err.Error(),
-		})
-		return
-	}
-
-	// Si le mot de passe est masquÃƒÂ© (pas changÃƒÂ©), conserver l'ancien
-	h.normalizeLDAPInput(&input)
-
-	input.ProvisionMode = strings.ToLower(strings.TrimSpace(input.ProvisionMode))
-	if input.ProvisionMode == "" {
-		input.ProvisionMode = "hybrid"
-	}
-	if input.ProvisionMode != "hybrid" && input.ProvisionMode != "ldap_only" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{
-			Success: false,
-			Message: "Mode LDAP invalide: hybrid ou ldap_only",
-		})
-		return
-	}
-
-	// Compatibilite: user_group reste renseigne pour les anciennes versions/exports.
-	input.UserGroup = input.JellyfinGroup
-
-	if err := h.db.SaveLDAPConfig(input); err != nil {
-		slog.Error("Erreur sauvegarde config LDAP", "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{
-			Success: false,
-			Message: "Erreur de sauvegarde",
-		})
-		return
-	}
-
-	slog.Info("Configuration LDAP sauvegardÃ©e",
-		"enabled", input.Enabled,
-		"host", input.Host,
-		"provision_mode", input.ProvisionMode,
-	)
-
-	// Rechargement ÃƒÂ  chaud
-	if h.OnLDAPReload != nil {
-		h.OnLDAPReload(input)
-	}
-
-	_ = h.db.LogAction("settings.ldap.saved", "", "", "")
-
-	writeJSON(w, http.StatusOK, APIResponse{
-		Success: true,
-		Message: "Configuration LDAP sauvegardÃ©e",
-	})
-}
-
 // Ã¢â€�â‚¬Ã¢â€�â‚¬ POST /admin/api/settings/smtp Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬Ã¢â€�â‚¬
 
 // SaveSMTP sauvegarde la configuration SMTP.
@@ -1029,7 +1284,217 @@ func (h *SettingsHandler) SaveSMTP(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, APIResponse{
 		Success: true,
-		Message: "Configuration SMTP sauvegardÃ©e",
+		Message: "Configuration SMTP sauvegardée",
+	})
+}
+
+// TestSMTP teste la configuration SMTP en envoyant un email à l'administrateur connecté.
+func (h *SettingsHandler) TestSMTP(w http.ResponseWriter, r *http.Request) {
+	if !h.ensureAdmin(w, r) {
+		return
+	}
+
+	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{
+			Success: false,
+			Message: h.tr(r, "common_unauthorized", "Non autorisé"),
+		})
+		return
+	}
+
+	type smtpTestInput struct {
+		Host     string `json:"host"`
+		Port     int    `json:"port"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+		From     string `json:"from"`
+		UseTLS   bool   `json:"use_tls"`
+		To       string `json:"to"`
+	}
+
+	var testInput smtpTestInput
+	if r.Method == http.MethodPost && r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&testInput)
+	}
+
+	// Récupérer la configuration SMTP enregistrée
+	smtpCfg, err := h.db.GetSMTPConfig()
+	if err != nil {
+		smtpCfg = config.SMTPConfig{}
+	}
+
+	if strings.TrimSpace(testInput.Host) != "" {
+		if isMaskedSecret(testInput.Password) || testInput.Password == "" {
+			testInput.Password = smtpCfg.Password
+		}
+		if testInput.Port == 0 {
+			testInput.Port = 587
+		}
+		smtpCfg = config.SMTPConfig{
+			Host:     testInput.Host,
+			Port:     testInput.Port,
+			Username: testInput.Username,
+			Password: testInput.Password,
+			From:     testInput.From,
+			UseTLS:   testInput.UseTLS,
+		}
+	}
+
+	if strings.TrimSpace(smtpCfg.Host) == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_smtp_host_required", "L'hôte SMTP est requis pour le test."),
+		})
+		return
+	}
+	if strings.TrimSpace(smtpCfg.From) == "" {
+		smtpCfg.From = "noreply@jellygate.local"
+	}
+
+	// Déterminer l'adresse email de destination pour le test
+	targetEmail := strings.TrimSpace(testInput.To)
+	if targetEmail == "" {
+		targetEmail = strings.TrimSpace(sess.Email)
+	}
+	if targetEmail == "" && h.db != nil {
+		var dbEmail string
+		_ = h.db.QueryRow(
+			`SELECT email FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR id = ? LIMIT 1`,
+			sess.AuthentikID, sess.Username, sess.UserID,
+		).Scan(&dbEmail)
+		targetEmail = strings.TrimSpace(dbEmail)
+	}
+	if targetEmail == "" && h.authClient != nil && sess.Username != "" {
+		if u, err := h.authClient.GetUserByUsername(r.Context(), sess.Username); err == nil && u != nil {
+			targetEmail = strings.TrimSpace(u.Email)
+		}
+	}
+	if targetEmail == "" && strings.TrimSpace(smtpCfg.From) != "" {
+		targetEmail = strings.TrimSpace(smtpCfg.From)
+	}
+
+	if targetEmail == "" {
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: h.tr(r, "settings_smtp_test_no_email", "Aucune adresse e-mail n'est associée à votre compte administrateur. Veuillez renseigner un e-mail dans Mon Compte ou dans Authentik pour recevoir l'e-mail de test."),
+		})
+		return
+	}
+
+	// Instancier le mailer de test
+	testMailer, err := mail.New(smtpCfg)
+	if err != nil {
+		slog.Warn("Erreur instanciation mailer de test", "error", err)
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: fmt.Sprintf("Configuration SMTP invalide : %v", err),
+		})
+		return
+	}
+
+	// Tester la connexion (Ping)
+	if err := testMailer.Ping(); err != nil {
+		slog.Warn("Erreur ping SMTP lors du test", "error", err)
+		writeJSON(w, http.StatusBadRequest, APIResponse{
+			Success: false,
+			Message: fmt.Sprintf("Connexion au serveur SMTP impossible : %v", err),
+		})
+		return
+	}
+
+	// Préparer l'email de test HTML
+	nowFormatted := time.Now().Format("02/01/2006 à 15:04:05")
+	subject := fmt.Sprintf("[JellyGate] Test de configuration SMTP (%s)", time.Now().Format("15:04:05"))
+	tlsLabel := "Désactivé"
+	if smtpCfg.UseTLS {
+		if smtpCfg.Port == 465 {
+			tlsLabel = "Activé (SSL/TLS direct)"
+		} else {
+			tlsLabel = "Activé (STARTTLS)"
+		}
+	}
+	htmlBody := fmt.Sprintf(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test SMTP JellyGate</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0b0f19; color: #e2e8f0; padding: 24px; margin: 0;">
+  <div style="display: none; max-height: 0px; overflow: hidden; opacity: 0; font-size: 1px; line-height: 1px; color: #0b0f19;">
+    Connexion SMTP réussie ! Ce message confirme le bon fonctionnement de votre serveur SMTP JellyGate.
+  </div>
+  <table role="presentation" width="100%%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; margin: 0 auto; background-color: #131b2e; border: 1px solid #1e293b; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+    <tr>
+      <td style="padding: 32px;">
+        <div style="background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #ffffff; font-weight: bold; padding: 6px 14px; border-radius: 8px; font-size: 12px; display: inline-block; margin-bottom: 18px; letter-spacing: 0.5px; text-transform: uppercase;">
+          JellyGate · Test SMTP
+        </div>
+        <h1 style="font-size: 22px; font-weight: bold; color: #ffffff; margin: 0 0 12px 0;">Connexion SMTP réussie !</h1>
+        <p style="font-size: 14px; line-height: 1.6; color: #94a3b8; margin: 0 0 24px 0;">
+          Bonjour <strong style="color: #f1f5f9;">%s</strong>,<br>
+          Ce message confirme que la configuration du serveur SMTP de votre instance JellyGate est parfaitement fonctionnelle et prête pour l'envoi d'emails.
+        </p>
+
+        <table role="presentation" width="100%%" border="0" cellspacing="0" cellpadding="0" style="background-color: #0b0f19; border: 1px solid #1e293b; border-radius: 12px; margin-bottom: 24px; font-size: 13px;">
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Destinataire</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Serveur SMTP</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-weight: 600; text-align: right; font-family: monospace;">%s:%d</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Expéditeur configuré</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #cbd5e1; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #64748b; font-weight: 500;">Chiffrement TLS</td>
+            <td style="padding: 12px 16px; border-bottom: 1px solid #1e293b; color: #10b981; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; color: #64748b; font-weight: 500;">Date du test</td>
+            <td style="padding: 12px 16px; color: #cbd5e1; font-weight: 600; text-align: right;">%s</td>
+          </tr>
+        </table>
+
+        <div style="font-size: 12px; color: #64748b; text-align: center; border-top: 1px solid #1e293b; padding-top: 20px;">
+          JellyGate SSO & User Management · E-mail automatique de diagnostic
+        </div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`,
+		template.HTMLEscapeString(sess.Username),
+		template.HTMLEscapeString(targetEmail),
+		template.HTMLEscapeString(smtpCfg.Host),
+		smtpCfg.Port,
+		template.HTMLEscapeString(smtpCfg.From),
+		tlsLabel,
+		nowFormatted,
+	)
+
+	if err := testMailer.SendRawHTML(targetEmail, subject, htmlBody); err != nil {
+		slog.Error("Échec envoi email de test SMTP", "to", targetEmail, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{
+			Success: false,
+			Message: fmt.Sprintf("Échec d'envoi du mail de test à %s : %v", targetEmail, err),
+		})
+		return
+	}
+
+	_ = h.db.LogAction("settings.smtp.tested", sess.Username, targetEmail, fmt.Sprintf("host=%s port=%d", smtpCfg.Host, smtpCfg.Port))
+	slog.Info("E-mail de test SMTP envoyé avec succès", "to", targetEmail, "host", smtpCfg.Host)
+
+	writeJSON(w, http.StatusOK, APIResponse{
+		Success: true,
+		Message: fmt.Sprintf(h.tr(r, "settings_smtp_test_success", "E-mail de test envoyé avec succès à %s"), targetEmail),
+		Data: map[string]interface{}{
+			"recipient": targetEmail,
+		},
 	})
 }
 

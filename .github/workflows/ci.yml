@@ -19,7 +19,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.26.6'
           check-latest: true
 
       - name: Download Go modules
@@ -44,13 +44,72 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version: '1.26.6'
 
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
           only-new-issues: true
+
+  frontend-and-quality:
+    name: Frontend, CSS & Secrets Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: PUPPETEER_SKIP_DOWNLOAD=true pnpm install --frozen-lockfile
+
+      - name: Check Secrets Leak
+        run: npm run secrets:check
+
+      - name: Check JavaScript Syntax
+        run: |
+          find web/static/js scripts -type f -name "*.js" -exec node -c {} +
+
+      - name: Build CSS & Check Drift
+        run: |
+          npm run build:css
+          git diff --exit-code web/static/css/tailwind.generated.css || (echo "❌ CSS is out of sync. Please run 'npm run build:css' and commit the result." && exit 1)
+
+      - name: Validate i18n JSON
+        run: npm run i18n:validate
+
+  build-binaries:
+    name: Build Go Binaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.26.6'
+          check-latest: true
+
+      - name: Build JellyGate binary
+        run: go build -v ./cmd/jellygate
+
+      - name: Build Helper binaries
+        run: |
+          go build -v ./cmd/generate_session
+          go build -v ./cmd/i18ncheck
+          go build -v ./cmd/i18ncoverage
 
   docker-smoke-test:
     name: Docker Build & Health Check Test
@@ -74,14 +133,15 @@ jobs:
             jellygate:ci-test
 
       - name: Verify HTTP Health Check
+        shell: bash
         run: |
           echo "Attente du démarrage du conteneur..."
-          for i in {1..15}; do
-            if curl -s -f http://localhost:8097/health > /dev/null || curl -s -f http://localhost:8097/ > /dev/null; then
+          for i in $(seq 1 30); do
+            if curl -s -f http://localhost:8097/health > /dev/null 2>&1 || curl -s -f http://localhost:8097/ > /dev/null 2>&1; then
               echo "✅ Conteneur démarré et répond correctement !"
               exit 0
             fi
-            sleep 2
+            sleep 1
           done
           echo "❌ Le conteneur n'a pas répondu à temps."
           exit 1

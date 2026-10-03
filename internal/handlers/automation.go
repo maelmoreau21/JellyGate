@@ -43,11 +43,15 @@ func (h *AutomationHandler) tr(r *http.Request, key, fallback string) string {
 
 func (h *AutomationHandler) AutomationPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/admin/login", http.StatusSeeOther)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "automation"
 	if err := h.renderer.Render(w, "admin/automation.html", td); err != nil {
 		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur : impossible de charger la page"), http.StatusInternalServerError)
@@ -64,8 +68,8 @@ func (h *AutomationHandler) ListPresets(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *AutomationHandler) ListLibraries(w http.ResponseWriter, r *http.Request) {
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin indisponible")})
+	if h.jfClient == nil || !h.jfClient.IsConfigured() {
+		writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: []interface{}{}})
 		return
 	}
 
@@ -148,10 +152,7 @@ func (h *AutomationHandler) SaveGroupMappings(w http.ResponseWriter, r *http.Req
 	for i := range mappings {
 		mappings[i].GroupName = strings.TrimSpace(mappings[i].GroupName)
 		mappings[i].PolicyPresetID = strings.TrimSpace(strings.ToLower(mappings[i].PolicyPresetID))
-		mappings[i].Source = strings.TrimSpace(strings.ToLower(mappings[i].Source))
-		if mappings[i].Source != "ldap" {
-			mappings[i].Source = "internal"
-		}
+		mappings[i].Source = "internal"
 		if mappings[i].GroupName == "" || mappings[i].PolicyPresetID == "" {
 			continue
 		}

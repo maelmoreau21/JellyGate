@@ -74,12 +74,6 @@
                     <span class="jg-nav-label">Profils</span>
                 </a>
 
-                {{ if .LDAPEnabled }}
-                <a href="/admin/ldap" class="jg-nav-item {{ if eq $current "ldap" }}active{{ end }}">
-                    <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 20h12M8 20V9m8 11V9M5 9h14l-2-5H7L5 9zm3 4h2m4 0h2" /></svg>
-                    <span class="jg-nav-label">{{ .T "settings_tab_ldap" }}</span>
-                </a>
-                {{ end }}
 
                 <a href="/admin/security" class="jg-nav-item {{ if eq $current "security" }}active{{ end }}">
                     <svg class="jg-nav-icon w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3l7 4v5c0 4.418-2.91 8.32-7 9-4.09-.68-7-4.582-7-9V7l7-4z" /></svg>

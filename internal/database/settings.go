@@ -1,8 +1,8 @@
 // Package database — settings.go
 //
 // CRUD pour la table `settings` (clé/valeur).
-// Stocke la configuration LDAP, SMTP et Webhooks en JSON,
-// ainsi que des flags comme ldap_enabled.
+// Stocke la configuration SMTP et Webhooks en JSON,
+// ainsi que des paramètres d'administration.
 package database
 
 import (
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,23 +21,24 @@ import (
 // ── Clés de settings ────────────────────────────────────────────────────────
 
 const (
-	SettingLDAPConfig                  = "ldap_config"             // JSON: config.LDAPConfig
-	SettingSMTPConfig                  = "smtp_config"             // JSON: config.SMTPConfig
-	SettingWebhooksConfig              = "webhooks_config"         // JSON: config.WebhooksConfig
-	SettingPortalLinks                 = "portal_links"            // JSON: config.PortalLinksConfig
-	SettingEmailTemplates              = "email_templates"         // JSON: config.EmailTemplatesConfig
-	SettingEmailTemplatesByLang        = "email_templates_by_lang" // JSON: map[lang]config.EmailTemplatesConfig
-	SettingEmailTemplatesMultilingual  = "email_templates_multilingual_enabled"
-	SettingBackupConfig                = "backup_config"                  // JSON: config.BackupConfig
-	SettingProductFeatures             = "product_features"               // JSON: config.ProductFeaturesConfig
-	SettingJellyfinPresets             = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
-	SettingGroupMappings               = "group_mappings"                 // JSON: []config.GroupPolicyMapping
-	SettingInviteProfile               = "invite_profile"                 // JSON: config.InvitationProfileConfig
-	SettingAuthSessionConfig           = "auth_session_config"            // JSON: AuthSessionConfig
-	SettingBackupLastRun               = "backup_last_run"                // Date locale YYYY-MM-DD
-	SettingDefaultLang                 = "default_lang"                   // Default language of the server (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
-	SettingEmailVerificationBackfillV1 = "email_verification_backfill_v1" // Flag one-shot pour les comptes historiques
-	SettingDefaultBackupTaskCleanupV1  = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
+	SettingSMTPConfig                 = "smtp_config"             // JSON: config.SMTPConfig
+	SettingWebhooksConfig             = "webhooks_config"         // JSON: config.WebhooksConfig
+	SettingPortalLinks                = "portal_links"            // JSON: config.PortalLinksConfig
+	SettingEmailTemplates             = "email_templates"         // JSON: config.EmailTemplatesConfig
+	SettingEmailTemplatesByLang       = "email_templates_by_lang" // JSON: map[lang]config.EmailTemplatesConfig
+	SettingEmailTemplatesMultilingual = "email_templates_multilingual_enabled"
+	SettingBackupConfig               = "backup_config"                  // JSON: config.BackupConfig
+	SettingProductFeatures            = "product_features"               // JSON: config.ProductFeaturesConfig
+	SettingJellyfinPresets            = "jellyfin_presets"               // JSON: []config.JellyfinPolicyPreset
+	SettingGroupMappings              = "group_mappings"                 // JSON: []config.GroupPolicyMapping
+	SettingInviteProfile              = "invite_profile"                 // JSON: config.InvitationProfileConfig
+	SettingAuthSessionConfig          = "auth_session_config"            // JSON: AuthSessionConfig
+	SettingBackupLastRun              = "backup_last_run"                // Date locale YYYY-MM-DD
+	SettingDefaultLang                = "default_lang"                   // Default language of the server (fr, en, de, es, it, nl, pl, pt-br, ru, zh)
+	SettingDefaultBackupTaskCleanupV1 = "default_backup_task_cleanup_v1" // Flag one-shot pour l'ancien doublon backup Automation
+	SettingAuthentikConfig            = "authentik_config"               // JSON: config.AuthentikConfig
+	SettingJellyfinConfig             = "jellyfin_config"                // JSON: config.JellyfinConfig
+	SettingLogRetentionDays           = "log_retention_days"             // Nombre de jours de rétention des logs système (int)
 )
 
 // AuthSessionConfig controle la duree des sessions persistantes et la
@@ -233,33 +235,18 @@ func (db *DB) SavePortalLinksConfig(cfg config.PortalLinksConfig) error {
 	return db.SetSetting(SettingPortalLinks, string(data))
 }
 
-// ── LDAP Config ─────────────────────────────────────────────────────────────
+// ── Authentik Config ─────────────────────────────────────────────────────────
 
-// GetLDAPConfig récupère la configuration LDAP depuis la base.
-// Retourne une config par défaut (Enabled=false) si non configurée.
-func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
-	cfg := config.LDAPConfig{
-		Enabled:                             false,
-		Port:                                636,
-		UseTLS:                              true,
-		SearchFilter:                        "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))",
-		SearchAttributes:                    "uid,sAMAccountName,cn,userPrincipalName,mail",
-		UIDAttribute:                        "uid",
-		UsernameAttribute:                   "auto",
-		AdminFilter:                         "",
-		AdminFilterMemberUID:                false,
-		UserObjectClass:                     "auto",
-		GroupMemberAttr:                     "auto",
-		UserOU:                              "CN=Users",
-		ProvisionMode:                       "hybrid",
-		JellyfinGroup:                       "jellyfin",
-		InviterGroup:                        "jellyfin-Parrainage",
-		AdministratorsGroup:                 "jellyfin-administrateur",
-		JellyfinLDAPAuthProviderID:          "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin",
-		JellyfinLDAPPasswordResetProviderID: "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider",
+// GetAuthentikConfig récupère la configuration Authentik OIDC depuis la base.
+func (db *DB) GetAuthentikConfig() (config.AuthentikConfig, error) {
+	cfg := config.AuthentikConfig{
+		Enabled:           false,
+		UserGroup:         "jellygate-users",
+		AdminGroup:        "jellygate-admins",
+		JellyfinUserGroup: "jellyfin-users",
 	}
 
-	raw, err := db.GetSetting(SettingLDAPConfig)
+	raw, err := db.GetSetting(SettingAuthentikConfig)
 	if err != nil {
 		return cfg, err
 	}
@@ -268,93 +255,83 @@ func (db *DB) GetLDAPConfig() (config.LDAPConfig, error) {
 	}
 
 	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
-		slog.Warn("Erreur de parsing de la config LDAP", "error", err)
+		slog.Warn("Erreur de parsing de la config Authentik", "error", err)
 		return cfg, nil
 	}
 
-	cfg.ProvisionMode = strings.ToLower(strings.TrimSpace(cfg.ProvisionMode))
-	if cfg.ProvisionMode == "" {
-		cfg.ProvisionMode = "hybrid"
+	if cfg.UserGroup == "" {
+		cfg.UserGroup = "jellygate-users"
 	}
-	if cfg.ProvisionMode != "hybrid" && cfg.ProvisionMode != "ldap_only" {
-		cfg.ProvisionMode = "hybrid"
+	if cfg.AdminGroup == "" {
+		cfg.AdminGroup = "jellygate-admins"
 	}
-
-	cfg.UsernameAttribute = strings.TrimSpace(cfg.UsernameAttribute)
-	if cfg.UsernameAttribute == "" {
-		cfg.UsernameAttribute = "auto"
-	}
-
-	cfg.SearchFilter = strings.TrimSpace(cfg.SearchFilter)
-	if cfg.SearchFilter == "" {
-		cfg.SearchFilter = "(&(|(objectClass=user)(objectClass=person)(objectClass=organizationalPerson)(objectClass=inetOrgPerson)(objectClass=posixAccount))(|(uid={username})(sAMAccountName={username})(cn={username})(userPrincipalName={username})(mail={username})))"
-	}
-
-	cfg.SearchAttributes = strings.TrimSpace(cfg.SearchAttributes)
-	if cfg.SearchAttributes == "" {
-		cfg.SearchAttributes = "uid,sAMAccountName,cn,userPrincipalName,mail"
-	}
-
-	cfg.UIDAttribute = strings.TrimSpace(cfg.UIDAttribute)
-	if cfg.UIDAttribute == "" {
-		cfg.UIDAttribute = "uid"
-	}
-
-	cfg.AdminFilter = strings.TrimSpace(cfg.AdminFilter)
-
-	cfg.UserObjectClass = strings.TrimSpace(cfg.UserObjectClass)
-	if cfg.UserObjectClass == "" {
-		cfg.UserObjectClass = "auto"
-	}
-
-	cfg.GroupMemberAttr = strings.TrimSpace(cfg.GroupMemberAttr)
-	if cfg.GroupMemberAttr == "" {
-		cfg.GroupMemberAttr = "auto"
-	}
-
-	if strings.TrimSpace(cfg.JellyfinGroup) == "" {
-		cfg.JellyfinGroup = strings.TrimSpace(cfg.UserGroup)
-	}
-	if strings.TrimSpace(cfg.JellyfinGroup) == "" {
-		cfg.JellyfinGroup = "jellyfin"
-	}
-	if strings.TrimSpace(cfg.InviterGroup) == "" {
-		cfg.InviterGroup = "jellyfin-Parrainage"
-	}
-	if strings.TrimSpace(cfg.AdministratorsGroup) == "" {
-		cfg.AdministratorsGroup = "jellyfin-administrateur"
-	}
-	if strings.TrimSpace(cfg.JellyfinLDAPAuthProviderID) == "" {
-		cfg.JellyfinLDAPAuthProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin"
-	}
-	if strings.TrimSpace(cfg.JellyfinLDAPPasswordResetProviderID) == "" {
-		cfg.JellyfinLDAPPasswordResetProviderID = "Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider"
+	if cfg.JellyfinUserGroup == "" {
+		cfg.JellyfinUserGroup = "jellyfin-users"
 	}
 
 	return cfg, nil
 }
 
-// SaveLDAPConfig sauvegarde la configuration LDAP dans la base.
-func (db *DB) SaveLDAPConfig(cfg config.LDAPConfig) error {
-	data, err := json.Marshal(cfg)
+// SaveAuthentikConfig sauvegarde la configuration Authentik dans la base (chiffrée au repos).
+func (db *DB) SaveAuthentikConfig(cfg config.AuthentikConfig) error {
+	data, err := json.Marshal(cfg) // #nosec G117 -- Authentik credentials are encrypted before being persisted.
 	if err != nil {
-		return fmt.Errorf("SaveLDAPConfig marshal: %w", err)
+		return fmt.Errorf("SaveAuthentikConfig marshal: %w", err)
 	}
 	enc, err := db.encrypt(string(data))
 	if err != nil {
-		return fmt.Errorf("SaveLDAPConfig encrypt: %w", err)
+		return fmt.Errorf("SaveAuthentikConfig encrypt: %w", err)
 	}
-	return db.SetSetting(SettingLDAPConfig, enc)
+	return db.SetSetting(SettingAuthentikConfig, enc)
 }
 
-// IsLDAPEnabled vérifie rapidement si l'intégration LDAP est activée.
-func (db *DB) IsLDAPEnabled() bool {
-	cfg, err := db.GetLDAPConfig()
+// IsAuthentikEnabled indique si l'intégration Authentik est activée.
+func (db *DB) IsAuthentikEnabled() bool {
+	cfg, err := db.GetAuthentikConfig()
 	if err != nil {
-		slog.Warn("Erreur lecture config LDAP", "error", err)
 		return false
 	}
 	return cfg.Enabled
+}
+
+// ── Jellyfin Config ──────────────────────────────────────────────────────────
+
+// GetJellyfinConfig récupère la configuration du serveur Jellyfin depuis la base.
+func (db *DB) GetJellyfinConfig() (config.JellyfinConfig, error) {
+	var cfg config.JellyfinConfig
+
+	raw, err := db.GetSetting(SettingJellyfinConfig)
+	if err != nil {
+		return cfg, err
+	}
+	if raw == "" {
+		return cfg, nil
+	}
+
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		slog.Warn("Erreur de parsing de la config Jellyfin", "error", err)
+		return cfg, nil
+	}
+
+	cfg.URL = strings.TrimSpace(cfg.URL)
+	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
+	return cfg, nil
+}
+
+// SaveJellyfinConfig sauvegarde la configuration du serveur Jellyfin dans la base (chiffrée au repos).
+func (db *DB) SaveJellyfinConfig(cfg config.JellyfinConfig) error {
+	cfg.URL = strings.TrimSpace(cfg.URL)
+	cfg.APIKey = strings.TrimSpace(cfg.APIKey)
+
+	data, err := json.Marshal(cfg) // #nosec G117 -- Jellyfin API key is marshaled for database settings persistence.
+	if err != nil {
+		return fmt.Errorf("SaveJellyfinConfig marshal: %w", err)
+	}
+	enc, err := db.encrypt(string(data))
+	if err != nil {
+		return fmt.Errorf("SaveJellyfinConfig encrypt: %w", err)
+	}
+	return db.SetSetting(SettingJellyfinConfig, enc)
 }
 
 // ── SMTP Config ─────────────────────────────────────────────────────────────
@@ -870,7 +847,6 @@ func normalizeJellyfinPolicyPreset(preset config.JellyfinPolicyPreset) config.Je
 	preset.BlockedTags = normalizeStringList(preset.BlockedTags)
 	preset.BlockUnratedItems = normalizeStringList(preset.BlockUnratedItems)
 	preset.AccessSchedules = normalizeJellyfinAccessSchedules(preset.AccessSchedules)
-	preset.LDAPGroups = normalizeStringList(preset.LDAPGroups)
 	preset.AllowedTargetPresetIDs = normalizePresetIDList(preset.AllowedTargetPresetIDs)
 	preset.AllowedTemporaryPresetIDs = normalizePresetIDList(preset.AllowedTemporaryPresetIDs)
 	preset.UserConfiguration = config.NormalizeJellyfinPresetUserConfiguration(preset.UserConfiguration)
@@ -1105,15 +1081,9 @@ func (db *DB) GetGroupPolicyMappings() ([]config.GroupPolicyMapping, error) {
 			continue
 		}
 
-		source := strings.TrimSpace(strings.ToLower(mappings[i].Source))
-		if source != "ldap" {
-			source = "internal"
-		}
-
 		normalized = append(normalized, config.GroupPolicyMapping{
 			GroupName:      groupName,
-			Source:         source,
-			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
+			Source:         "internal",
 			PolicyPresetID: presetID,
 			Priority:       mappings[i].Priority,
 		})
@@ -1135,15 +1105,9 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 			continue
 		}
 
-		source := strings.TrimSpace(strings.ToLower(mappings[i].Source))
-		if source != "ldap" {
-			source = "internal"
-		}
-
 		normalized = append(normalized, config.GroupPolicyMapping{
 			GroupName:      groupName,
-			Source:         source,
-			LDAPGroupDN:    strings.TrimSpace(mappings[i].LDAPGroupDN),
+			Source:         "internal",
 			PolicyPresetID: presetID,
 			Priority:       mappings[i].Priority,
 		})
@@ -1162,33 +1126,6 @@ func (db *DB) SaveGroupPolicyMappings(mappings []config.GroupPolicyMapping) erro
 func normalizeInvitationProfile(cfg config.InvitationProfileConfig) config.InvitationProfileConfig {
 	cfg.PolicyPresetID = strings.TrimSpace(strings.ToLower(cfg.PolicyPresetID))
 	cfg.TemplateUserID = strings.TrimSpace(cfg.TemplateUserID)
-	cfg.EmailVerificationPolicy = strings.TrimSpace(strings.ToLower(cfg.EmailVerificationPolicy))
-	switch cfg.EmailVerificationPolicy {
-	case "required", "conditional", "admin_bypass", "disabled":
-	default:
-		if cfg.RequireEmailVerification {
-			cfg.EmailVerificationPolicy = "required"
-		} else {
-			cfg.EmailVerificationPolicy = "disabled"
-		}
-	}
-
-	switch cfg.EmailVerificationPolicy {
-	case "required":
-		cfg.RequireEmailVerification = true
-		cfg.RequireEmail = true
-	case "conditional":
-		cfg.RequireEmail = true
-	case "admin_bypass":
-		cfg.RequireEmailVerification = true
-		cfg.RequireEmail = true
-	case "disabled":
-		cfg.RequireEmailVerification = false
-	}
-
-	if cfg.RequireEmailVerification {
-		cfg.RequireEmail = true
-	}
 
 	if cfg.DisableAfterDays < 0 {
 		cfg.DisableAfterDays = 0
@@ -1320,4 +1257,25 @@ func (db *DB) SaveWebhooksConfig(cfg config.WebhooksConfig) error {
 		return fmt.Errorf("SaveWebhooksConfig encrypt: %w", err)
 	}
 	return db.SetSetting(SettingWebhooksConfig, enc)
+}
+
+// GetLogRetentionDays retourne le nombre de jours de rétention des logs système (30 jours par défaut).
+func (db *DB) GetLogRetentionDays() int {
+	raw, err := db.GetSetting(SettingLogRetentionDays)
+	if err != nil || strings.TrimSpace(raw) == "" {
+		return 30
+	}
+	days, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil || days <= 0 {
+		return 30
+	}
+	return days
+}
+
+// SaveLogRetentionDays sauvegarde la durée de rétention des logs système en jours.
+func (db *DB) SaveLogRetentionDays(days int) error {
+	if days <= 0 {
+		days = 30
+	}
+	return db.SetSetting(SettingLogRetentionDays, strconv.Itoa(days))
 }

@@ -1,19 +1,19 @@
 // Package jellyfin fournit un client REST pour interagir avec l'API Jellyfin.
 //
 // Opérations supportées :
-//   - Création d'utilisateur (POST /Users/New)
-//   - Suppression d'utilisateur (DELETE /Users/{Id})
-//   - Modification de politique (POST /Users/{Id}/Policy)
-//   - Application d'un profil de bibliothèques
-//   - Récupération de la liste des utilisateurs et bibliothèques
+//   - Modification de politique de streaming (POST /Users/{Id}/Policy)
+//   - Application des profils de bibliothèques et limites de transcodage
+//   - Récupération des bibliothèques (/Library/VirtualFolders) et infos serveur
+//   - Proxy des avatars utilisateurs
 //
-// Chaque méthode retourne des erreurs explicites pour permettre le rollback
-// lors du flux de création atomique (invitation).
+// L'identité utilisateur est gérée de manière centralisée par Authentik
+// et exposée à Jellyfin via son Outpost LDAP.
 package jellyfin
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -25,6 +25,20 @@ import (
 	"time"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
+)
+
+var (
+	ErrNotConfigured = errors.New("jellyfin: client non configuré")
+	ErrUnavailable   = errors.New("jellyfin: service indisponible")
+)
+
+type IntegrationStatus string
+
+const (
+	StatusDisabled    IntegrationStatus = "disabled"
+	StatusConfigured  IntegrationStatus = "configured"
+	StatusAvailable   IntegrationStatus = "available"
+	StatusUnavailable IntegrationStatus = "unavailable"
 )
 
 // ── Client ──────────────────────────────────────────────────────────────────
@@ -41,7 +55,7 @@ type Client struct {
 // New crée un nouveau client Jellyfin à partir de la configuration.
 func New(cfg config.JellyfinConfig) *Client {
 	url := strings.TrimRight(cfg.URL, "/")
-	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+	if url != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
 		url = "http://" + url
 	}
 
@@ -52,6 +66,55 @@ func New(cfg config.JellyfinConfig) *Client {
 			Timeout: 15 * time.Second,
 		},
 	}
+}
+
+// UpdateConfig met à jour dynamiquement la configuration du client Jellyfin.
+func (c *Client) UpdateConfig(cfg config.JellyfinConfig) {
+	if c == nil {
+		return
+	}
+	url := strings.TrimRight(cfg.URL, "/")
+	if url != "" && !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = "http://" + url
+	}
+	c.authMu.Lock()
+	defer c.authMu.Unlock()
+	c.baseURL = url
+	c.apiKey = strings.TrimSpace(cfg.APIKey)
+}
+
+// Config retourne une copie de la configuration courante du client.
+func (c *Client) Config() config.JellyfinConfig {
+	if c == nil {
+		return config.JellyfinConfig{}
+	}
+	c.authMu.RLock()
+	defer c.authMu.RUnlock()
+	return config.JellyfinConfig{
+		URL:    c.baseURL,
+		APIKey: c.apiKey,
+	}
+}
+
+// IsConfigured indique si le client Jellyfin dispose d'une URL et d'une clé API valides.
+func (c *Client) IsConfigured() bool {
+	if c == nil {
+		return false
+	}
+	c.authMu.RLock()
+	defer c.authMu.RUnlock()
+	return strings.TrimSpace(c.baseURL) != "" && strings.TrimSpace(c.apiKey) != ""
+}
+
+// Status retourne le statut courant de l'intégration Jellyfin.
+func (c *Client) Status() IntegrationStatus {
+	if !c.IsConfigured() {
+		return StatusDisabled
+	}
+	if _, err := c.GetPublicSystemInfo(); err != nil {
+		return StatusUnavailable
+	}
+	return StatusAvailable
 }
 
 // ── Structures de données ───────────────────────────────────────────────────
@@ -209,15 +272,13 @@ type InviteProfile struct {
 	AccessSchedules   []AccessSchedule `json:"access_schedules"`
 
 	// JFA-Go Features
-	ForcedUsername              string   `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
-	TemplateUserID              string   `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
-	CanInvite                   bool     `json:"can_invite"`
-	PresetID                    string   `json:"preset_id"` // Identifiant du preset (Parrainage)
-	IsTemporary                 bool     `json:"is_temporary"`
-	AccountDurationDays         int      `json:"account_duration_days"`
-	LDAPGroups                  []string `json:"ldap_groups"`
-	LDAPAuthProviderID          string   `json:"ldap_auth_provider_id"`
-	LDAPPasswordResetProviderID string   `json:"ldap_password_reset_provider_id"`
+	ForcedName          string `json:"forced_name"`      // Si rempli, impose le nom d'affichage (Display Name / Name)
+	ForcedUsername      string `json:"forced_username"`  // Si rempli (Flux B), l'utilisateur n'a pas le choix du nom
+	TemplateUserID      string `json:"template_user_id"` // Legacy, conserve pour compatibilite JSON.
+	CanInvite           bool   `json:"can_invite"`
+	PresetID            string `json:"preset_id"` // Identifiant du preset (Parrainage)
+	IsTemporary         bool   `json:"is_temporary"`
+	AccountDurationDays int    `json:"account_duration_days"`
 
 	UserConfiguration  config.JellyfinPresetUserConfiguration  `json:"user_configuration"`
 	DisplayPreferences config.JellyfinPresetDisplayPreferences `json:"display_preferences"`
@@ -297,7 +358,6 @@ func InviteProfileFromPolicyPreset(preset *config.JellyfinPolicyPreset) InvitePr
 		PresetID:                         strings.TrimSpace(strings.ToLower(preset.ID)),
 		IsTemporary:                      preset.IsTemporary,
 		AccountDurationDays:              accountDurationDays,
-		LDAPGroups:                       append([]string(nil), preset.LDAPGroups...),
 		UserConfiguration:                preset.UserConfiguration,
 		DisplayPreferences:               preset.DisplayPreferences,
 	}
@@ -325,58 +385,6 @@ func normalizeInviteProfileExpiryAction(action string) string {
 	default:
 		return "disable"
 	}
-}
-
-func (c *Client) CreateUser(name, password string) (*User, error) {
-	reqBody, err := json.Marshal(CreateUserRequest{ // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
-		Name:     name,
-		Password: password,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("jellyfin.CreateUser: erreur de sérialisation: %w", err)
-	}
-
-	resp, err := c.doRequest(http.MethodPost, "/Users/New", reqBody)
-	if err != nil {
-		return nil, fmt.Errorf("jellyfin.CreateUser: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return nil, fmt.Errorf("jellyfin.CreateUser: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	var user User
-	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
-		return nil, fmt.Errorf("jellyfin.CreateUser: parse error: %w", err)
-	}
-
-	slog.Info("Utilisateur créé dans Jellyfin", "name", name, "id", user.ID)
-	return &user, nil
-}
-
-// DeleteUser supprime un utilisateur de Jellyfin par son ID.
-//
-// Utilisé lors du rollback en cas d'échec, ou pour la suppression admin.
-func (c *Client) DeleteUser(userID string) error {
-	if userID == "" {
-		return fmt.Errorf("jellyfin.DeleteUser: userID vide")
-	}
-
-	resp, err := c.doRequest(http.MethodDelete, fmt.Sprintf("/Users/%s", userID), nil)
-	if err != nil {
-		return fmt.Errorf("jellyfin.DeleteUser: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return fmt.Errorf("jellyfin.DeleteUser: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	slog.Info("Utilisateur Jellyfin supprimé", "id", userID)
-	return nil
 }
 
 // GetUserImage récupère l'image de profil d'un utilisateur.
@@ -421,12 +429,17 @@ func (c *Client) SetUserImage(userID string, contentType string, data []byte) er
 	}
 
 	path := fmt.Sprintf("/Users/%s/Images/Primary", userID)
-	req, err := http.NewRequest(http.MethodPost, c.baseURL+path, bytes.NewReader(data))
+	c.authMu.RLock()
+	baseURL := c.baseURL
+	apiKey := c.apiKey
+	c.authMu.RUnlock()
+
+	req, err := http.NewRequest(http.MethodPost, baseURL+path, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
 	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
+	req.Header.Set("Authorization", AuthorizationHeader(apiKey))
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -538,53 +551,6 @@ func (c *Client) setDisplayPreferences(userID string, preferences map[string]int
 	}
 
 	return nil
-}
-
-// UpdateUserPassword change le mot de passe d'un utilisateur Jellyfin.
-func (c *Client) UpdateUserPassword(userID, currentPassword, newPassword string) error {
-	if userID == "" {
-		return fmt.Errorf("jellyfin.UpdateUserPassword: userID vide")
-	}
-
-	payload := map[string]string{
-		"CurrentPassword": currentPassword,
-		"NewPassword":     newPassword,
-	}
-	reqBody, _ := json.Marshal(payload)
-
-	resp, err := c.doRequest(http.MethodPost, fmt.Sprintf("/Users/%s/Password", userID), reqBody)
-	if err != nil {
-		return fmt.Errorf("jellyfin.UpdateUserPassword: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return fmt.Errorf("jellyfin.UpdateUserPassword: HTTP %d — %s", resp.StatusCode, string(body))
-	}
-
-	return nil
-}
-
-// EnableUser active un utilisateur en mettant IsDisabled à false.
-func (c *Client) EnableUser(userID string) error {
-	// Récupérer la politique actuelle pour ne modifier que IsDisabled
-	user, err := c.GetUser(userID)
-	if err != nil {
-		return fmt.Errorf("jellyfin.EnableUser: %w", err)
-	}
-	user.Policy.IsDisabled = false
-	return c.SetUserPolicy(userID, user.Policy)
-}
-
-// DisableUser désactive un utilisateur en mettant IsDisabled à true.
-func (c *Client) DisableUser(userID string) error {
-	user, err := c.GetUser(userID)
-	if err != nil {
-		return fmt.Errorf("jellyfin.DisableUser: %w", err)
-	}
-	user.Policy.IsDisabled = true
-	return c.SetUserPolicy(userID, user.Policy)
 }
 
 // buildUserConfigurationPayload merge la configuration existante avec le preset.
@@ -699,12 +665,6 @@ func (c *Client) ApplyInviteProfile(userID string, profile InviteProfile) error 
 	policy.MaxParentalRating = profile.MaxParentalRating
 	policy.BlockUnratedItems = profile.BlockUnratedItems
 	policy.AccessSchedules = profile.AccessSchedules
-	if strings.TrimSpace(profile.LDAPAuthProviderID) != "" {
-		policy.AuthenticationProviderID = strings.TrimSpace(profile.LDAPAuthProviderID)
-	}
-	if strings.TrimSpace(profile.LDAPPasswordResetProviderID) != "" {
-		policy.PasswordResetProviderID = strings.TrimSpace(profile.LDAPPasswordResetProviderID)
-	}
 
 	// Activer les capacités de lecture par défaut
 	if !policy.EnableMediaPlayback &&
@@ -760,7 +720,7 @@ func (c *Client) GetUser(userID string) (*User, error) {
 	return &user, nil
 }
 
-// GetUsers récupère la liste de tous les utilisateurs Jellyfin.
+// GetUsers récupère la liste de tous les utilisateurs présents dans Jellyfin.
 func (c *Client) GetUsers() ([]User, error) {
 	resp, err := c.doRequest(http.MethodGet, "/Users", nil)
 	if err != nil {
@@ -781,31 +741,25 @@ func (c *Client) GetUsers() ([]User, error) {
 	return users, nil
 }
 
-// GetUsersBatch récupère les informations de plusieurs utilisateurs par leurs IDs.
-// Utilise le paramètre "Ids" de l'API Jellyfin (virgule séparée).
-func (c *Client) GetUsersBatch(ids []string) ([]User, error) {
-	if len(ids) == 0 {
-		return nil, nil
+// GetUserByName recherche un utilisateur Jellyfin par son nom (insensible à la casse).
+func (c *Client) GetUserByName(name string) (*User, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil, fmt.Errorf("jellyfin.GetUserByName: nom vide")
 	}
 
-	path := fmt.Sprintf("/Users?Ids=%s", strings.Join(ids, ","))
-	resp, err := c.doRequest(http.MethodGet, path, nil)
+	users, err := c.GetUsers()
 	if err != nil {
-		return nil, fmt.Errorf("jellyfin.GetUsersBatch: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return nil, fmt.Errorf("jellyfin.GetUsersBatch: HTTP %d — %s", resp.StatusCode, string(body))
+		return nil, err
 	}
 
-	var users []User
-	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
-		return nil, fmt.Errorf("jellyfin.GetUsersBatch: erreur de décodage: %w", err)
+	for i := range users {
+		if strings.EqualFold(strings.TrimSpace(users[i].Name), name) {
+			return &users[i], nil
+		}
 	}
 
-	return users, nil
+	return nil, fmt.Errorf("jellyfin.GetUserByName: utilisateur %q introuvable", name)
 }
 
 // GetLibraries récupère la liste des bibliothèques de médias.
@@ -867,95 +821,31 @@ func (c *Client) GetSystemInfo() (map[string]interface{}, error) {
 	return info, nil
 }
 
-// ResetPassword réinitialise le mot de passe d'un utilisateur Jellyfin.
-//
-// Utilisé lors de la récupération de mot de passe (en complément de l'AD).
-func (c *Client) ResetPassword(userID, newPassword string) error {
-	if c == nil {
-		return fmt.Errorf("jellyfin.ResetPassword: client nil")
+func readHTTPDetail(r io.Reader) string {
+	if r == nil {
+		return ""
 	}
-	if userID == "" {
-		return fmt.Errorf("jellyfin.ResetPassword: userID vide")
-	}
-
-	passwordPath := fmt.Sprintf("/Users/%s/Password", userID)
-
-	// Étape 1 : Réinitialiser le mot de passe (le supprime)
-	resetBody, _ := json.Marshal(map[string]bool{"ResetPassword": true})
-	resp, err := c.doRequest(http.MethodPost, passwordPath, resetBody)
-	if err != nil {
-		return fmt.Errorf("jellyfin.ResetPassword: reset — %w", err)
-	}
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		err := jellyfinHTTPError("jellyfin.ResetPassword: reset", resp)
-		_ = resp.Body.Close()
-		return err
-	}
-	_ = resp.Body.Close()
-
-	// Étape 2 : Définir le nouveau mot de passe
-	attempts := []struct {
-		shape   string
-		payload map[string]string
-	}{
-		{
-			shape: "CurrentPassword/NewPassword",
-			payload: map[string]string{
-				"CurrentPassword": "",
-				"NewPassword":     newPassword,
-			},
-		},
-		{
-			shape: "CurrentPw/NewPw",
-			payload: map[string]string{
-				"CurrentPw": "",
-				"NewPw":     newPassword,
-			},
-		},
-	}
-
-	var lastErr error
-	for idx, attempt := range attempts {
-		body, err := json.Marshal(attempt.payload) // #nosec G117 -- password is sent directly to Jellyfin over the configured API client.
-		if err != nil {
-			return fmt.Errorf("jellyfin.ResetPassword: set %s: erreur de serialisation: %w", attempt.shape, err)
-		}
-		resp2, err := c.doRequest(http.MethodPost, passwordPath, body)
-		if err != nil {
-			return fmt.Errorf("jellyfin.ResetPassword: set %s: %w", attempt.shape, err)
-		}
-		if resp2.StatusCode == http.StatusOK || resp2.StatusCode == http.StatusNoContent {
-			_ = resp2.Body.Close()
-			slog.Info("Mot de passe Jellyfin reinitialise", "id", userID, "payload_shape", attempt.shape)
-			return nil
-		}
-		lastErr = jellyfinHTTPError("jellyfin.ResetPassword: set "+attempt.shape, resp2)
-		_ = resp2.Body.Close()
-		if idx == len(attempts)-1 || !shouldTryNextPasswordPayload(resp2.StatusCode) {
-			break
-		}
-	}
-	if lastErr != nil {
-		return lastErr
-	}
-	return fmt.Errorf("jellyfin.ResetPassword: set impossible")
+	b, _ := io.ReadAll(io.LimitReader(r, 2048))
+	return strings.TrimSpace(string(b))
 }
 
 // ── Méthode interne ─────────────────────────────────────────────────────────
 
-func shouldTryNextPasswordPayload(status int) bool {
-	switch status {
-	case http.StatusBadRequest, http.StatusNotFound, http.StatusMethodNotAllowed, http.StatusUnsupportedMediaType, http.StatusUnprocessableEntity, http.StatusInternalServerError:
-		return true
-	default:
-		return false
-	}
-}
-
 // doRequest exécute une requête HTTP vers l'API Jellyfin.
 // Ajoute automatiquement le header d'authentification API key.
 func (c *Client) doRequest(method, path string, body []byte) (*http.Response, error) {
-	url := c.baseURL + path
+	if c == nil {
+		return nil, ErrNotConfigured
+	}
+	c.authMu.RLock()
+	baseURL := c.baseURL
+	apiKey := c.apiKey
+	c.authMu.RUnlock()
+
+	if strings.TrimSpace(baseURL) == "" || strings.TrimSpace(apiKey) == "" {
+		return nil, ErrNotConfigured
+	}
+	url := baseURL + path
 
 	var reqBody io.Reader
 	if body != nil {
@@ -967,7 +857,7 @@ func (c *Client) doRequest(method, path string, body []byte) (*http.Response, er
 		return nil, fmt.Errorf("erreur de création de la requête %s %s: %w", method, path, err)
 	}
 
-	req.Header.Set("Authorization", AuthorizationHeader(c.apiKey))
+	req.Header.Set("Authorization", AuthorizationHeader(apiKey))
 	req.Header.Set("Accept", "application/json")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

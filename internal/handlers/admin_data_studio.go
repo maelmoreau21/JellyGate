@@ -20,13 +20,17 @@ import (
 
 func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "profiles"
 	if err := h.renderer.Render(w, "admin/profiles.html", td); err != nil {
 		slog.Error("Erreur rendu profiles page", "error", err)
@@ -34,35 +38,47 @@ func (h *AdminHandler) ProfilesPage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *AdminHandler) LDAPPage(w http.ResponseWriter, r *http.Request) {
-	if !h.db.IsLDAPEnabled() {
-		http.Redirect(w, r, "/admin/settings#ldap", http.StatusSeeOther)
+func (h *AdminHandler) AuthentikPage(w http.ResponseWriter, r *http.Request) {
+	if h.renderer == nil {
+		http.Error(w, "Renderer non initialisé", http.StatusInternalServerError)
 		return
 	}
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
-	td.Section = "ldap"
-	if err := h.renderer.Render(w, "admin/ldap.html", td); err != nil {
-		slog.Error("Erreur rendu ldap page", "error", err)
-		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur"), http.StatusInternalServerError)
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
+	td.Section = "authentik"
+
+	cfg, _ := h.db.GetAuthentikConfig()
+	td.Data["AuthentikConfig"] = cfg
+
+	if err := h.renderer.Render(w, "admin/authentik.html", td); err != nil {
+		slog.Error("Erreur rendu authentik page", "error", err)
+		http.Error(w, h.tr(r, "common_server_error_page", "Erreur serveur : impossible de charger la page"), http.StatusInternalServerError)
 	}
 }
 
 func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "security"
 	if err := h.renderer.Render(w, "admin/security.html", td); err != nil {
 		slog.Error("Erreur rendu security page", "error", err)
@@ -72,13 +88,17 @@ func (h *AdminHandler) SecurityPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) PendingActionsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "pending_actions"
 	if err := h.renderer.Render(w, "admin/pending_actions.html", td); err != nil {
 		slog.Error("Erreur rendu pending actions page", "error", err)
@@ -241,19 +261,16 @@ func (h *AdminHandler) PendingActions(w http.ResponseWriter, r *http.Request) {
 	smtpSince := now.AddDate(0, 0, -7).Format("2006-01-02 15:04:05")
 
 	expiring := h.pendingExpiringUsers(userHorizon)
-	unverified := h.pendingUnverifiedEmails()
 	invites := h.pendingExpiringInvitations(inviteHorizon)
 	smtpErrors := h.pendingSMTPErrors(smtpSince)
 
 	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: map[string]interface{}{
 		"summary": map[string]int{
 			"expiring_accounts":    len(expiring),
-			"unverified_emails":    len(unverified),
 			"expiring_invitations": len(invites),
 			"smtp_errors":          len(smtpErrors),
 		},
 		"expiring_accounts":    expiring,
-		"unverified_emails":    unverified,
 		"expiring_invitations": invites,
 		"smtp_errors":          smtpErrors,
 	}})
@@ -279,30 +296,6 @@ func (h *AdminHandler) pendingExpiringUsers(horizon string) []map[string]interfa
 		var email, expiresAt, action sql.NullString
 		if err := rows.Scan(&id, &username, &email, &expiresAt, &action); err == nil {
 			items = append(items, map[string]interface{}{"id": id, "username": username, "email": email.String, "expires_at": expiresAt.String, "action": action.String})
-		}
-	}
-	return items
-}
-
-func (h *AdminHandler) pendingUnverifiedEmails() []map[string]interface{} {
-	rows, err := h.db.Query(
-		`SELECT id, username, email, pending_email, email_verification_sent_at
-		 FROM users
-		 WHERE email_verified = ? AND ((email IS NOT NULL AND email <> '') OR pending_email <> '')
-		 ORDER BY updated_at DESC LIMIT 50`,
-		false,
-	)
-	if err != nil {
-		return []map[string]interface{}{}
-	}
-	defer rows.Close()
-	items := []map[string]interface{}{}
-	for rows.Next() {
-		var id int64
-		var username string
-		var email, pendingEmail, sentAt sql.NullString
-		if err := rows.Scan(&id, &username, &email, &pendingEmail, &sentAt); err == nil {
-			items = append(items, map[string]interface{}{"id": id, "username": username, "email": email.String, "pending_email": pendingEmail.String, "sent_at": sentAt.String})
 		}
 	}
 	return items
@@ -377,6 +370,10 @@ func (h *AdminHandler) pendingSMTPErrors(since string) []map[string]interface{} 
 
 func (h *AdminHandler) PreviewInvitation(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	var req CreateInvitationRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
@@ -463,31 +460,29 @@ func (h *AdminHandler) buildInvitationPreview(r *http.Request, sess *session.Pay
 	}
 
 	profile := jellyfin.InviteProfile{
-		EnableAllFolders:         len(req.Libraries) == 0,
-		EnabledFolderIDs:         req.Libraries,
-		EnableDownload:           inviteCfg.EnableDownloads,
-		RequireEmail:             inviteCfg.RequireEmail,
-		RequireEmailVerification: resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, sess.IsAdmin, maxUses),
-		EnableRemoteAccess:       true,
-		UserExpiryDays:           userDays,
-		DisableAfterDays:         userDays,
-		ForcedUsername:           strings.TrimSpace(req.ForcedUsername),
-		CanInvite:                req.NewUserCanInvite && (sess.IsAdmin || limits.AllowGrant),
-		UsernameMinLength:        inviteCfg.UsernameMinLength,
-		UsernameMaxLength:        inviteCfg.UsernameMaxLength,
-		PasswordMinLength:        inviteCfg.PasswordMinLength,
-		PasswordMaxLength:        inviteCfg.PasswordMaxLength,
-		PasswordRequireUpper:     inviteCfg.PasswordRequireUpper,
-		PasswordRequireLower:     inviteCfg.PasswordRequireLower,
-		PasswordRequireDigit:     inviteCfg.PasswordRequireDigit,
-		PasswordRequireSpecial:   inviteCfg.PasswordRequireSpecial,
-		ExpiryAction:             normalizeExpiryAction(inviteCfg.ExpiryAction),
-		DeleteAfterDays:          inviteCfg.DeleteAfterDays,
+		EnableAllFolders:       len(req.Libraries) == 0,
+		EnabledFolderIDs:       req.Libraries,
+		EnableDownload:         inviteCfg.EnableDownloads,
+		RequireEmail:           inviteCfg.RequireEmail,
+		EnableRemoteAccess:     true,
+		UserExpiryDays:         userDays,
+		DisableAfterDays:       userDays,
+		ForcedUsername:         strings.TrimSpace(req.ForcedUsername),
+		CanInvite:              req.NewUserCanInvite && (sess.IsAdmin || limits.AllowGrant),
+		UsernameMinLength:      inviteCfg.UsernameMinLength,
+		UsernameMaxLength:      inviteCfg.UsernameMaxLength,
+		PasswordMinLength:      inviteCfg.PasswordMinLength,
+		PasswordMaxLength:      inviteCfg.PasswordMaxLength,
+		PasswordRequireUpper:   inviteCfg.PasswordRequireUpper,
+		PasswordRequireLower:   inviteCfg.PasswordRequireLower,
+		PasswordRequireDigit:   inviteCfg.PasswordRequireDigit,
+		PasswordRequireSpecial: inviteCfg.PasswordRequireSpecial,
+		ExpiryAction:           normalizeExpiryAction(inviteCfg.ExpiryAction),
+		DeleteAfterDays:        inviteCfg.DeleteAfterDays,
 	}
 	if preset != nil {
 		profile = inviteProfileFromPolicyPreset(preset)
 		profile.RequireEmail = inviteCfg.RequireEmail
-		profile.RequireEmailVerification = resolveInviteEmailVerificationRequirement(inviteCfg.EmailVerificationPolicy, inviteCfg.RequireEmailVerification, sess.IsAdmin, maxUses)
 		profile.UserExpiryDays = userDays
 		profile.DisableAfterDays = userDays
 		profile.ForcedUsername = strings.TrimSpace(req.ForcedUsername)

@@ -9,7 +9,6 @@
     let emailTemplatesMultilingualEnabled = true;
     let emailBaseDefaults = { header: '', footer: '' };
     let currentInvitationProfile = {};
-    let currentLDAPConfig = {};
     let basePreviewTimer = null;
     let basePreviewRequestId = 0;
     const templateValidationTimers = new Map();
@@ -28,6 +27,368 @@
         zh: '中文 (简体)',
     };
     let activeEmailEditorTarget = null;
+
+    const ssoPresets = {
+        authentik: {
+            name: 'Authentik',
+            urlPlaceholder: 'https://auth.example.com',
+            issuerPlaceholder: 'https://auth.example.com/application/o/jellygate/',
+            hintUrl: 'Exemple : https://auth.domaine.com',
+            hintIssuer: 'URL complète du Provider OIDC Authentik (/application/o/<app>/)',
+            showApi: true
+        },
+        keycloak: {
+            name: 'Keycloak',
+            urlPlaceholder: 'https://keycloak.example.com',
+            issuerPlaceholder: 'https://keycloak.example.com/realms/master',
+            hintUrl: 'Exemple : https://keycloak.domaine.com',
+            hintIssuer: 'Point d\'accès du Realm : https://keycloak.domaine.com/realms/<nom-du-realm>',
+            showApi: false
+        },
+        authelia: {
+            name: 'Authelia',
+            urlPlaceholder: 'https://auth.example.com',
+            issuerPlaceholder: 'https://auth.example.com/api/oidc',
+            hintUrl: 'Exemple : https://auth.domaine.com',
+            hintIssuer: 'Point d\'accès OIDC Authelia : https://auth.domaine.com/api/oidc',
+            showApi: false
+        },
+        okta: {
+            name: 'Okta / Entra ID',
+            urlPlaceholder: 'https://your-org.okta.com',
+            issuerPlaceholder: 'https://your-org.okta.com/oauth2/default',
+            hintUrl: 'Exemple : https://your-tenant.okta.com',
+            hintIssuer: 'Émetteur d\'autorisation : https://your-tenant.okta.com/oauth2/default',
+            showApi: false
+        },
+        generic: {
+            name: 'Générique',
+            urlPlaceholder: 'https://idp.example.com',
+            issuerPlaceholder: 'https://idp.example.com',
+            hintUrl: 'URL racine de votre serveur d\'identité',
+            hintIssuer: 'URL racine où se situe /.well-known/openid-configuration',
+            showApi: false
+        }
+    };
+
+    function applySSOPreset(presetKey) {
+        const preset = ssoPresets[presetKey] || ssoPresets.generic;
+
+        document.querySelectorAll('.sso-preset-btn').forEach(btn => {
+            if (btn.dataset.preset === presetKey) {
+                btn.className = 'sso-preset-btn active p-3 rounded-2xl border border-indigo-500/50 bg-indigo-500/10 hover:bg-indigo-500/20 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer shadow-lg shadow-indigo-500/10';
+            } else {
+                btn.className = 'sso-preset-btn p-3 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all flex flex-col items-center gap-2 text-center group cursor-pointer';
+            }
+        });
+
+        const urlInput = document.getElementById('authentik_url');
+        const issuerInput = document.getElementById('oidc_issuer_url');
+        const hintUrl = document.getElementById('hint-sso-url');
+        const hintIssuer = document.getElementById('hint-sso-issuer');
+
+        if (urlInput && !urlInput.value) {
+            urlInput.placeholder = preset.urlPlaceholder;
+        }
+        if (issuerInput && !issuerInput.value) {
+            issuerInput.placeholder = preset.issuerPlaceholder;
+        }
+        if (hintUrl) hintUrl.textContent = preset.hintUrl;
+        if (hintIssuer) hintIssuer.textContent = preset.hintIssuer;
+    }
+    window.applySSOPreset = applySSOPreset;
+
+    function copyCallbackURL() {
+        const input = document.getElementById('oidc_redirect_url');
+        const val = (input && input.value) ? input.value : (window.location.origin + '/auth/callback');
+        navigator.clipboard.writeText(val).then(() => {
+            const textSpan = document.getElementById('copy-callback-text');
+            if (textSpan) {
+                const original = textSpan.textContent;
+                textSpan.textContent = 'Copié !';
+                setTimeout(() => { textSpan.textContent = original; }, 2000);
+            }
+            if (window.JG && JG.toast) {
+                JG.toast('URL de redirection copiée dans le presse-papier !', 'success');
+            }
+        }).catch(err => {
+            console.error('Erreur copie presse-papier:', err);
+        });
+    }
+    window.copyCallbackURL = copyCallbackURL;
+
+    function toggleSecretVisibility(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+        if (input.type === 'password') {
+            input.type = 'text';
+            if (btn) {
+                btn.innerHTML = `<svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>`;
+                btn.setAttribute('title', 'Masquer');
+            }
+        } else {
+            input.type = 'password';
+            if (btn) {
+                btn.innerHTML = `<svg class="w-4 h-4 text-slate-400 hover:text-white eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>`;
+                btn.setAttribute('title', 'Afficher');
+            }
+        }
+    }
+    window.toggleSecretVisibility = toggleSecretVisibility;
+
+    async function testJellyfinConnection(options = {}) {
+        const spinIcon = document.getElementById('icon-jf-test-spin');
+        if (spinIcon) spinIcon.classList.add('animate-spin');
+
+        const updateCard = (key, text, dotClass, detailsText) => {
+            const dot = document.getElementById(`dot-jf-${key}`);
+            const msg = document.getElementById(`msg-jf-${key}`);
+            const details = document.getElementById(`details-jf-${key}`);
+            if (msg) msg.textContent = text || '—';
+            if (dot && dotClass) dot.className = `w-2.5 h-2.5 rounded-full ${dotClass}`;
+            if (details) details.textContent = detailsText || '—';
+        };
+
+        const serverUrlInput = document.getElementById('jellyfin-server-url');
+        const apiKeyInput = document.getElementById('jellyfin-api-key');
+
+        const payload = {};
+        if (serverUrlInput && serverUrlInput.value) {
+            payload.url = serverUrlInput.value.trim();
+        }
+        if (apiKeyInput && apiKeyInput.value) {
+            payload.api_key = apiKeyInput.value.trim();
+        }
+
+        try {
+            const res = await JG.api('/admin/api/settings/jellyfin/test', {
+                method: 'POST',
+                body: Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined
+            });
+
+            if (res && res.success && res.data) {
+                const d = res.data;
+                const badge = document.getElementById('jf-status-badge');
+                if (d.status === 'ok') {
+                    if (badge) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+                        badge.textContent = 'Connecté & Opérationnel';
+                    }
+                    updateCard('status', 'Connecté', 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]', d.url || 'API Joignable');
+                    updateCard('version', d.version || 'Inconnue', 'bg-emerald-500', 'Jellyfin Core');
+                    updateCard('name', d.server_name || 'Jellyfin', 'bg-emerald-500', 'Instance');
+                    updateCard('auth', 'Valide & Autorisé', 'bg-emerald-500', 'Droits Admin OK');
+                    if (!options.silent) {
+                        JG.toast('Connexion au serveur Jellyfin réussie !', 'success');
+                    }
+                } else if (d.status === 'warning') {
+                    if (badge) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40';
+                        badge.textContent = 'Clé API Invalide';
+                    }
+                    updateCard('status', 'Joignable', 'bg-amber-500', d.url || 'Public Info OK');
+                    updateCard('version', d.version || 'Inconnue', 'bg-emerald-500', 'Jellyfin Core');
+                    updateCard('name', d.server_name || 'Jellyfin', 'bg-emerald-500', 'Instance');
+                    updateCard('auth', 'Refusée', 'bg-amber-500', d.auth_error || 'Vérifiez la clé API');
+                    if (!options.silent) {
+                        JG.toast('Serveur Jellyfin joignable mais clé API invalide', 'warning');
+                    }
+                } else {
+                    if (badge) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40';
+                        badge.textContent = 'Inaccessible';
+                    }
+                    updateCard('status', 'Inaccessible', 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]', d.public_error || 'Erreur réseau');
+                    updateCard('version', '—', 'bg-slate-500', 'Jellyfin Core');
+                    updateCard('name', '—', 'bg-slate-500', 'Instance');
+                    updateCard('auth', 'Non vérifiée', 'bg-slate-500', 'En attente');
+                    if (!options.silent) {
+                        JG.toast((res && res.message) || 'Impossible de joindre le serveur Jellyfin', 'error');
+                    }
+                }
+            } else {
+                const badge = document.getElementById('jf-status-badge');
+                if (badge) {
+                    badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40';
+                    badge.textContent = 'Erreur';
+                }
+                updateCard('status', 'Erreur', 'bg-red-500', (res && res.message) || 'Inaccessible');
+                if (!options.silent) {
+                    JG.toast((res && res.message) || 'Erreur de connexion Jellyfin', 'error');
+                }
+            }
+        } catch (e) {
+            console.error('Erreur testJellyfinConnection:', e);
+            if (!options.silent) {
+                JG.toast('Erreur de communication avec le serveur', 'error');
+            }
+        } finally {
+            if (spinIcon) spinIcon.classList.remove('animate-spin');
+        }
+    }
+    window.testJellyfinConnection = testJellyfinConnection;
+
+    async function testSSOUser() {
+        const input = document.getElementById('test_sso_username');
+        const username = input ? input.value.trim() : '';
+        if (!username) {
+            JG.toast('Veuillez saisir un identifiant utilisateur à tester', 'error');
+            if (input) input.focus();
+            return;
+        }
+
+        const spinIcon = document.getElementById('icon-test-user-spin');
+        if (spinIcon) spinIcon.classList.add('animate-spin');
+
+        const resultsContainer = document.getElementById('test-sso-user-results');
+        if (resultsContainer) resultsContainer.classList.remove('hidden');
+
+        try {
+            const res = await JG.api('/admin/api/settings/authentik/test-user', {
+                method: 'POST',
+                body: JSON.stringify({ username })
+            });
+
+            if (!resultsContainer) return;
+
+            if (res && res.success && res.data) {
+                const u = res.data;
+                if (!u.found) {
+                    resultsContainer.innerHTML = `
+                        <div class="flex items-center gap-3 text-red-300">
+                            <div class="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                                <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-white">Utilisateur "${JG.esc(username)}" introuvable</div>
+                                <p class="text-[11px] text-slate-400">Aucun compte correspondant trouvé dans l'annuaire ou la base de données.</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    const groupsHtml = (u.groups && u.groups.length > 0)
+                        ? u.groups.map(g => `<span class="px-2 py-0.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono">${JG.esc(g)}</span>`).join(' ')
+                        : '<span class="text-slate-500 text-[11px] italic">Aucun groupe</span>';
+
+                    resultsContainer.innerHTML = `
+                        <div class="space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center font-bold text-indigo-300">
+                                        ${JG.esc(u.username.charAt(0).toUpperCase())}
+                                    </div>
+                                    <div>
+                                        <div class="text-sm font-extrabold text-white flex items-center gap-2">
+                                            <span>${JG.esc(u.username)}</span>
+                                            ${u.is_active ? '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">Actif</span>' : '<span class="px-2 py-0.5 rounded-full text-[9px] font-bold bg-red-500/20 text-red-300 border border-red-500/40">Inactif</span>'}
+                                        </div>
+                                        <div class="text-xs text-slate-400">${JG.esc(u.email || 'Aucune adresse e-mail')}</div>
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider self-start sm:self-auto">Source : ${JG.esc(u.source || 'SSO')}</span>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div class="p-3 rounded-xl border ${u.is_jellygate_user ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'} flex items-center gap-2.5">
+                                    <span class="text-base">${u.is_jellygate_user ? '✅' : '❌'}</span>
+                                    <div>
+                                        <div class="text-xs font-bold text-white">Accès JellyGate</div>
+                                        <div class="text-[10px] text-slate-400">${u.is_jellygate_user ? 'Membre du groupe utilisateurs' : 'Non autorisé'}</div>
+                                    </div>
+                                </div>
+
+                                <div class="p-3 rounded-xl border ${u.is_jellygate_admin ? 'bg-purple-500/10 border-purple-500/30 text-purple-300' : 'bg-slate-500/10 border-slate-500/20 text-slate-400'} flex items-center gap-2.5">
+                                    <span class="text-base">${u.is_jellygate_admin ? '👑' : '👤'}</span>
+                                    <div>
+                                        <div class="text-xs font-bold text-white">Droits Administrateur</div>
+                                        <div class="text-[10px] text-slate-400">${u.is_jellygate_admin ? 'Administrateur' : 'Utilisateur standard'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                <span class="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Groupes Détectés :</span>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${groupsHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                resultsContainer.innerHTML = `<div class="text-xs text-red-400">${JG.esc((res && res.message) || 'Erreur lors du test')}</div>`;
+            }
+        } catch (e) {
+            console.error('Erreur testSSOUser:', e);
+            if (resultsContainer) {
+                resultsContainer.innerHTML = '<div class="text-xs text-red-400">Erreur lors de la vérification de l\'utilisateur</div>';
+            }
+        } finally {
+            if (spinIcon) spinIcon.classList.remove('animate-spin');
+        }
+    }
+    window.testSSOUser = testSSOUser;
+
+    async function runSSOHealthCheck() {
+        const spinIcon = document.getElementById('icon-sso-test-spin') || document.getElementById('icon-test-spin');
+        if (spinIcon) spinIcon.classList.add('animate-spin');
+
+        const updateCard = (key, comp) => {
+            const dot = document.getElementById(`dot-sso-${key}`) || document.getElementById(`dot-health-${key}`);
+            const msg = document.getElementById(`msg-sso-${key}`) || document.getElementById(`msg-health-${key}`);
+            const details = document.getElementById(`details-sso-${key}`) || document.getElementById(`details-health-${key}`);
+            if (!comp) return;
+
+            if (msg) msg.textContent = comp.message || 'OK';
+            if (dot) {
+                if (comp.status === 'ok') {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]';
+                } else if (comp.status === 'warning') {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.8)]';
+                } else {
+                    dot.className = 'w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]';
+                }
+            }
+            if (details) {
+                if (comp.details && Object.keys(comp.details).length > 0) {
+                    details.textContent = Object.entries(comp.details).map(([k, v]) => `${k}: ${v}`).join(' | ');
+                } else {
+                    details.textContent = comp.status === 'ok' ? 'Opérationnel' : 'Vérifiez les paramètres';
+                }
+            }
+        };
+
+        try {
+            const res = await (window.JG && JG.api ? JG.api('/admin/api/settings/authentik/health') : fetch('/admin/api/settings/authentik/health').then(r => r.json()));
+            if (res && res.success && res.data && res.data.components) {
+                updateCard('oidc', res.data.components.oidc_discovery);
+                updateCard('api', res.data.components.api);
+                updateCard('enrollment', res.data.components.enrollment_flow);
+                updateCard('groups', res.data.components.groups);
+
+                const badge = document.getElementById('sso-status-badge');
+                if (badge) {
+                    if (res.data.overall_status === 'ok') {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+                        badge.textContent = 'Connecté & Opérationnel';
+                    } else if (res.data.overall_status === 'warning') {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.2)]';
+                        badge.textContent = 'Partiel / Attention';
+                    } else {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-500/40';
+                        badge.textContent = 'Erreur Connexion';
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Erreur diagnostic SSO:', e);
+        } finally {
+            if (spinIcon) spinIcon.classList.remove('animate-spin');
+        }
+    }
+    window.runSSOHealthCheck = runSSOHealthCheck;
+    window.runAuthentikHealthCheck = runSSOHealthCheck;
+    window.saveAuthentikSettings = (e) => saveSettings('authentik', e);
 
     function t(key, fallback) {
         return i18n[key] || fallback || key;
@@ -664,33 +1025,35 @@
     }
 
     function readEmailTemplateLocalizedForm() {
+        const getVal = (id) => document.getElementById(id)?.value || '';
+        const getTrim = (id) => (document.getElementById(id)?.value || '').trim();
         return extractEmailTemplateLocalizedConfig({
-            confirmation: document.getElementById('tpl-confirmation').value,
-            confirmation_subject: document.getElementById('tpl-confirmation-subject').value.trim(),
-            expiry_reminder: document.getElementById('tpl-expiry-reminder').value,
-            expiry_reminder_subject: document.getElementById('tpl-expiry-reminder-subject').value.trim(),
-            invitation: document.getElementById('tpl-invitation').value,
-            invitation_subject: document.getElementById('tpl-invitation-subject').value.trim(),
-            invite_expiry: document.getElementById('tpl-invite-expiry').value,
-            invite_expiry_subject: document.getElementById('tpl-invite-expiry-subject').value.trim(),
-            password_reset: document.getElementById('tpl-password-reset').value,
-            password_reset_subject: document.getElementById('tpl-password-reset-subject').value.trim(),
-            email_verification: document.getElementById('tpl-email-verification').value,
-            email_verification_subject: document.getElementById('tpl-email-verification-subject').value.trim(),
-            user_creation: document.getElementById('tpl-user-creation').value,
-            user_creation_subject: document.getElementById('tpl-user-creation-subject').value.trim(),
-            user_deletion: document.getElementById('tpl-user-deletion').value,
-            user_deletion_subject: document.getElementById('tpl-user-deletion-subject').value.trim(),
-            user_disabled: document.getElementById('tpl-user-disabled').value,
-            user_disabled_subject: document.getElementById('tpl-user-disabled-subject').value.trim(),
-            user_enabled: document.getElementById('tpl-user-enabled').value,
-            user_enabled_subject: document.getElementById('tpl-user-enabled-subject').value.trim(),
-            user_expired: document.getElementById('tpl-user-expired').value,
-            user_expired_subject: document.getElementById('tpl-user-expired-subject').value.trim(),
-            expiry_adjusted: document.getElementById('tpl-expiry-adjusted').value,
-            expiry_adjusted_subject: document.getElementById('tpl-expiry-adjusted-subject').value.trim(),
-            welcome: document.getElementById('tpl-welcome').value,
-            welcome_subject: document.getElementById('tpl-welcome-subject').value.trim(),
+            confirmation: getVal('tpl-confirmation'),
+            confirmation_subject: getTrim('tpl-confirmation-subject'),
+            expiry_reminder: getVal('tpl-expiry-reminder'),
+            expiry_reminder_subject: getTrim('tpl-expiry-reminder-subject'),
+            invitation: getVal('tpl-invitation'),
+            invitation_subject: getTrim('tpl-invitation-subject'),
+            invite_expiry: getVal('tpl-invite-expiry'),
+            invite_expiry_subject: getTrim('tpl-invite-expiry-subject'),
+            password_reset: getVal('tpl-password-reset'),
+            password_reset_subject: getTrim('tpl-password-reset-subject'),
+            email_verification: getVal('tpl-email-verification'),
+            email_verification_subject: getTrim('tpl-email-verification-subject'),
+            user_creation: getVal('tpl-user-creation'),
+            user_creation_subject: getTrim('tpl-user-creation-subject'),
+            user_deletion: getVal('tpl-user-deletion'),
+            user_deletion_subject: getTrim('tpl-user-deletion-subject'),
+            user_disabled: getVal('tpl-user-disabled'),
+            user_disabled_subject: getTrim('tpl-user-disabled-subject'),
+            user_enabled: getVal('tpl-user-enabled'),
+            user_enabled_subject: getTrim('tpl-user-enabled-subject'),
+            user_expired: getVal('tpl-user-expired'),
+            user_expired_subject: getTrim('tpl-user-expired-subject'),
+            expiry_adjusted: getVal('tpl-expiry-adjusted'),
+            expiry_adjusted_subject: getTrim('tpl-expiry-adjusted-subject'),
+            welcome: getVal('tpl-welcome'),
+            welcome_subject: getTrim('tpl-welcome-subject'),
         });
     }
 
@@ -700,51 +1063,54 @@
 
     function applyEmailTemplateSharedForm(configValue) {
         const value = extractEmailTemplateSharedConfig(configValue);
-        document.getElementById('tpl-base-header').value = value.base_template_header || '';
-        document.getElementById('tpl-base-footer').value = value.base_template_footer || '';
-        document.getElementById('tpl-email-logo-url').value = value.email_logo_url || '';
-        document.getElementById('tpl-enable-confirmation-email').checked = !value.disable_confirmation_email;
-        document.getElementById('tpl-enable-expiry-reminder-email').checked = !value.disable_expiry_reminder_emails;
-        document.getElementById('tpl-expiry-reminder-days').value = value.expiry_reminder_days || 3;
-        document.getElementById('tpl-enable-invite-expiry-email').checked = !value.disable_invite_expiry_email;
-        document.getElementById('tpl-enable-user-creation-email').checked = !value.disable_user_creation_email;
-        document.getElementById('tpl-enable-user-deletion-email').checked = !value.disable_user_deletion_email;
-        document.getElementById('tpl-enable-user-disabled-email').checked = !value.disable_user_disabled_email;
-        document.getElementById('tpl-enable-user-enabled-email').checked = !value.disable_user_enabled_email;
-        document.getElementById('tpl-enable-user-expired-email').checked = !value.disable_user_expired_email;
-        document.getElementById('tpl-enable-expiry-adjusted-email').checked = !value.disable_expiry_adjusted_email;
-        document.getElementById('tpl-enable-welcome-email').checked = !value.disable_welcome_email;
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        const setChecked = (id, c) => { const el = document.getElementById(id); if (el) el.checked = c; };
+        setVal('tpl-base-header', value.base_template_header || '');
+        setVal('tpl-base-footer', value.base_template_footer || '');
+        setVal('tpl-email-logo-url', value.email_logo_url || '');
+        setChecked('tpl-enable-confirmation-email', !value.disable_confirmation_email);
+        setChecked('tpl-enable-expiry-reminder-email', !value.disable_expiry_reminder_emails);
+        setVal('tpl-expiry-reminder-days', value.expiry_reminder_days || 3);
+        setChecked('tpl-enable-invite-expiry-email', !value.disable_invite_expiry_email);
+        setChecked('tpl-enable-user-creation-email', !value.disable_user_creation_email);
+        setChecked('tpl-enable-user-deletion-email', !value.disable_user_deletion_email);
+        setChecked('tpl-enable-user-disabled-email', !value.disable_user_disabled_email);
+        setChecked('tpl-enable-user-enabled-email', !value.disable_user_enabled_email);
+        setChecked('tpl-enable-user-expired-email', !value.disable_user_expired_email);
+        setChecked('tpl-enable-expiry-adjusted-email', !value.disable_expiry_adjusted_email);
+        setChecked('tpl-enable-welcome-email', !value.disable_welcome_email);
         document.querySelectorAll('.email-template-item').forEach((item) => syncEmailTemplateCardState(item));
     }
 
     function applyEmailTemplateLocalizedForm(configValue) {
         const value = extractEmailTemplateLocalizedConfig(configValue);
-        document.getElementById('tpl-confirmation').value = value.confirmation || '';
-        document.getElementById('tpl-confirmation-subject').value = value.confirmation_subject || '';
-        document.getElementById('tpl-expiry-reminder').value = value.expiry_reminder || '';
-        document.getElementById('tpl-expiry-reminder-subject').value = value.expiry_reminder_subject || '';
-        document.getElementById('tpl-invitation').value = value.invitation || '';
-        document.getElementById('tpl-invitation-subject').value = value.invitation_subject || '';
-        document.getElementById('tpl-invite-expiry').value = value.invite_expiry || '';
-        document.getElementById('tpl-invite-expiry-subject').value = value.invite_expiry_subject || '';
-        document.getElementById('tpl-password-reset').value = value.password_reset || '';
-        document.getElementById('tpl-password-reset-subject').value = value.password_reset_subject || '';
-        document.getElementById('tpl-email-verification').value = value.email_verification || '';
-        document.getElementById('tpl-email-verification-subject').value = value.email_verification_subject || '';
-        document.getElementById('tpl-user-creation').value = value.user_creation || '';
-        document.getElementById('tpl-user-creation-subject').value = value.user_creation_subject || '';
-        document.getElementById('tpl-user-deletion').value = value.user_deletion || '';
-        document.getElementById('tpl-user-deletion-subject').value = value.user_deletion_subject || '';
-        document.getElementById('tpl-user-disabled').value = value.user_disabled || '';
-        document.getElementById('tpl-user-disabled-subject').value = value.user_disabled_subject || '';
-        document.getElementById('tpl-user-enabled').value = value.user_enabled || '';
-        document.getElementById('tpl-user-enabled-subject').value = value.user_enabled_subject || '';
-        document.getElementById('tpl-user-expired').value = value.user_expired || '';
-        document.getElementById('tpl-user-expired-subject').value = value.user_expired_subject || '';
-        document.getElementById('tpl-expiry-adjusted').value = value.expiry_adjusted || '';
-        document.getElementById('tpl-expiry-adjusted-subject').value = value.expiry_adjusted_subject || '';
-        document.getElementById('tpl-welcome').value = value.welcome || '';
-        document.getElementById('tpl-welcome-subject').value = value.welcome_subject || '';
+        const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        setVal('tpl-confirmation', value.confirmation || '');
+        setVal('tpl-confirmation-subject', value.confirmation_subject || '');
+        setVal('tpl-expiry-reminder', value.expiry_reminder || '');
+        setVal('tpl-expiry-reminder-subject', value.expiry_reminder_subject || '');
+        setVal('tpl-invitation', value.invitation || '');
+        setVal('tpl-invitation-subject', value.invitation_subject || '');
+        setVal('tpl-invite-expiry', value.invite_expiry || '');
+        setVal('tpl-invite-expiry-subject', value.invite_expiry_subject || '');
+        setVal('tpl-password-reset', value.password_reset || '');
+        setVal('tpl-password-reset-subject', value.password_reset_subject || '');
+        setVal('tpl-email-verification', value.email_verification || '');
+        setVal('tpl-email-verification-subject', value.email_verification_subject || '');
+        setVal('tpl-user-creation', value.user_creation || '');
+        setVal('tpl-user-creation-subject', value.user_creation_subject || '');
+        setVal('tpl-user-deletion', value.user_deletion || '');
+        setVal('tpl-user-deletion-subject', value.user_deletion_subject || '');
+        setVal('tpl-user-disabled', value.user_disabled || '');
+        setVal('tpl-user-disabled-subject', value.user_disabled_subject || '');
+        setVal('tpl-user-enabled', value.user_enabled || '');
+        setVal('tpl-user-enabled-subject', value.user_enabled_subject || '');
+        setVal('tpl-user-expired', value.user_expired || '');
+        setVal('tpl-user-expired-subject', value.user_expired_subject || '');
+        setVal('tpl-expiry-adjusted', value.expiry_adjusted || '');
+        setVal('tpl-expiry-adjusted-subject', value.expiry_adjusted_subject || '');
+        setVal('tpl-welcome', value.welcome || '');
+        setVal('tpl-welcome-subject', value.welcome_subject || '');
         bindEmailEditorTargets();
     }
 
@@ -906,107 +1272,7 @@
         document.getElementById(`tab-${name}`)?.classList.add('active');
     }
 
-    function toggleLDAPFields() {
-        const enabled = document.getElementById('ldap-enabled')?.checked;
-        const fields = document.getElementById('ldap-fields');
-        if (!fields) {
-            return;
-        }
-        if (enabled) {
-            fields.style.opacity = '1';
-            fields.style.pointerEvents = 'auto';
-        } else {
-            fields.style.opacity = '0.35';
-            fields.style.pointerEvents = 'none';
-        }
-    }
 
-    function collectLDAPPayload() {
-        const payload = {
-            ...currentLDAPConfig,
-            enabled: document.getElementById('ldap-enabled').checked,
-            host: document.getElementById('ldap-host').value,
-            port: parseInt(document.getElementById('ldap-port').value, 10) || 636,
-            use_tls: document.getElementById('ldap-tls').checked,
-            skip_verify: document.getElementById('ldap-skip-verify').checked,
-            bind_dn: document.getElementById('ldap-bind-dn').value,
-            bind_password: document.getElementById('ldap-bind-password').value,
-            base_dn: document.getElementById('ldap-base-dn').value,
-            search_filter: document.getElementById('ldap-search-filter').value.trim(),
-            search_attributes: document.getElementById('ldap-search-attributes').value.trim(),
-            uid_attribute: document.getElementById('ldap-uid-attribute').value.trim(),
-            username_attribute: document.getElementById('ldap-username-attribute').value.trim(),
-            admin_filter: document.getElementById('ldap-admin-filter').value.trim(),
-            admin_filter_memberuid: !!document.getElementById('ldap-admin-filter-memberuid')?.checked,
-            jellyfin_ldap_auth_provider_id: (document.getElementById('ldap-jf-auth-provider')?.value || '').trim(),
-            jellyfin_ldap_password_reset_provider_id: (document.getElementById('ldap-jf-reset-provider')?.value || '').trim(),
-        };
-
-        if (!payload.provision_mode) payload.provision_mode = 'hybrid';
-        if (!payload.user_ou) payload.user_ou = 'CN=Users';
-        if (!payload.user_object_class) payload.user_object_class = 'auto';
-        if (!payload.group_member_attr) payload.group_member_attr = 'auto';
-
-        return payload;
-    }
-
-    function showLDAPTestResult(message, type = 'info') {
-        const box = document.getElementById('ldap-test-result');
-        if (!box) {
-            return;
-        }
-        box.classList.remove('hidden', 'border-emerald-500/40', 'bg-emerald-500/10', 'text-emerald-200', 'border-red-500/40', 'bg-red-500/10', 'text-red-200', 'border-sky-500/40', 'bg-sky-500/10', 'text-sky-200');
-
-        if (type === 'success') {
-            box.classList.add('border-emerald-500/40', 'bg-emerald-500/10', 'text-emerald-200');
-        } else if (type === 'error') {
-            box.classList.add('border-red-500/40', 'bg-red-500/10', 'text-red-200');
-        } else {
-            box.classList.add('border-sky-500/40', 'bg-sky-500/10', 'text-sky-200');
-        }
-        box.textContent = message;
-    }
-
-    async function runLDAPTest(endpoint, payload) {
-        showLDAPTestResult(t('ldap_test_running', 'Test in progress...'), 'info');
-        const res = await JG.api(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-
-        if (res && res.success) {
-            showLDAPTestResult(res.message || t('ldap_test_success', 'Test succeeded'), 'success');
-            return;
-        }
-        showLDAPTestResult((res && res.message) || t('ldap_test_failed', 'Test failed'), 'error');
-    }
-
-    async function confirmLDAPDryRunBeforeSave(payload) {
-        showLDAPTestResult('Dry-run LDAP en cours...', 'info');
-        const res = await JG.api('/admin/api/settings/ldap/dry-run', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        if (!res || !res.success) {
-            showLDAPTestResult((res && res.message) || 'Dry-run LDAP impossible', 'error');
-            return false;
-        }
-
-        const summary = res.data?.summary || {};
-        const message = `Dry-run LDAP: ${summary.would_create || 0} création(s), ${summary.would_sync || 0} synchronisation(s), ${summary.blocking_conflicts || 0} conflit(s) bloquant(s).`;
-        showLDAPTestResult(message, summary.blocking_conflicts > 0 ? 'error' : 'success');
-        if ((summary.blocking_conflicts || 0) <= 0) {
-            return true;
-        }
-
-        return JG.confirm(
-            'Conflits LDAP détectés',
-            `${message} Sauvegarder quand même la configuration LDAP ?`,
-            { danger: true, confirmLabel: 'Sauvegarder quand même' },
-        );
-    }
 
     function refreshPortalShortcuts(links) {
         const mapping = [
@@ -1078,83 +1344,29 @@
     function applyInvitationProfileConfig(cfg) {
         const profile = cfg || {};
         currentInvitationProfile = { ...profile };
-        document.getElementById('invite-profile-require-email').checked = profile.require_email !== false;
-        document.getElementById('invite-profile-require-email-verification').checked = profile.require_email_verification !== false;
-        const policySelect = document.getElementById('invite-profile-email-verification-policy');
-        if (policySelect) {
-            const resolvedPolicy = String(profile.email_verification_policy || (profile.require_email_verification === false ? 'disabled' : 'required')).trim().toLowerCase();
-            if (policySelect.querySelector(`option[value="${resolvedPolicy}"]`)) {
-                policySelect.value = resolvedPolicy;
-            } else {
-                policySelect.value = 'required';
-            }
-        }
-        document.getElementById('invite-profile-user-min').value = Number.isInteger(profile.username_min_length) ? profile.username_min_length : 3;
-        document.getElementById('invite-profile-user-max').value = Number.isInteger(profile.username_max_length) ? profile.username_max_length : 32;
-        document.getElementById('invite-profile-pw-min').value = Number.isInteger(profile.password_min_length) ? profile.password_min_length : 8;
-        document.getElementById('invite-profile-pw-max').value = Number.isInteger(profile.password_max_length) ? profile.password_max_length : 128;
-        document.getElementById('invite-profile-pw-upper').checked = !!profile.password_require_upper;
-        document.getElementById('invite-profile-pw-lower').checked = !!profile.password_require_lower;
-        document.getElementById('invite-profile-pw-digit').checked = !!profile.password_require_digit;
-        document.getElementById('invite-profile-pw-special').checked = !!profile.password_require_special;
-        syncInviteEmailPolicyControls();
-        syncInviteEmailRequirementFromVerification();
-    }
-
-    function syncInviteEmailPolicyControls() {
-        const requireEmail = document.getElementById('invite-profile-require-email');
-        const requireVerification = document.getElementById('invite-profile-require-email-verification');
-        const policySelect = document.getElementById('invite-profile-email-verification-policy');
-        if (!requireEmail || !requireVerification || !policySelect) {
-            return;
-        }
-
-        const mode = String(policySelect.value || '').trim().toLowerCase();
-        if (mode === 'required' || mode === 'admin_bypass') {
-            requireVerification.checked = true;
-            requireEmail.checked = true;
-        } else if (mode === 'conditional') {
-            requireEmail.checked = true;
-        } else if (mode === 'disabled') {
-            requireVerification.checked = false;
-        }
-    }
-
-    function syncInviteEmailRequirementFromVerification() {
-        const requireEmail = document.getElementById('invite-profile-require-email');
-        const requireVerification = document.getElementById('invite-profile-require-email-verification');
-        const policySelect = document.getElementById('invite-profile-email-verification-policy');
-        if (!requireEmail || !requireVerification) {
-            return;
-        }
-        if (requireVerification.checked) {
-            requireEmail.checked = true;
-            if (policySelect && policySelect.value === 'disabled') {
-                policySelect.value = 'required';
-            }
-            return;
-        }
+        const reqEmail = document.getElementById('invite-profile-require-email');
+        if (reqEmail) reqEmail.checked = profile.require_email !== false;
+        const userMin = document.getElementById('invite-profile-user-min');
+        if (userMin) userMin.value = Number.isInteger(profile.username_min_length) ? profile.username_min_length : 3;
+        const userMax = document.getElementById('invite-profile-user-max');
+        if (userMax) userMax.value = Number.isInteger(profile.username_max_length) ? profile.username_max_length : 32;
+        const pwMin = document.getElementById('invite-profile-pw-min');
+        if (pwMin) pwMin.value = Number.isInteger(profile.password_min_length) ? profile.password_min_length : 8;
+        const pwMax = document.getElementById('invite-profile-pw-max');
+        if (pwMax) pwMax.value = Number.isInteger(profile.password_max_length) ? profile.password_max_length : 128;
+        const pwUpper = document.getElementById('invite-profile-pw-upper');
+        if (pwUpper) pwUpper.checked = !!profile.password_require_upper;
+        const pwLower = document.getElementById('invite-profile-pw-lower');
+        if (pwLower) pwLower.checked = !!profile.password_require_lower;
+        const pwDigit = document.getElementById('invite-profile-pw-digit');
+        if (pwDigit) pwDigit.checked = !!profile.password_require_digit;
+        const pwSpecial = document.getElementById('invite-profile-pw-special');
+        if (pwSpecial) pwSpecial.checked = !!profile.password_require_special;
     }
 
     function setBackupMode(databaseType) {
         const normalized = String(databaseType || '').trim().toLowerCase() || 'sqlite';
         backupDatabaseType = normalized;
-    }
-
-    function setAuthSessionDuration(remember30Days) {
-        const thirtyDays = document.getElementById('auth-session-duration-30-days');
-        const indefinite = document.getElementById('auth-session-duration-indefinite');
-        if (thirtyDays) {
-            thirtyDays.checked = remember30Days !== false;
-        }
-        if (indefinite) {
-            indefinite.checked = remember30Days === false;
-        }
-    }
-
-    function getAuthSessionRemember30Days() {
-        const selected = document.querySelector('input[name="auth_session_duration"]:checked');
-        return !selected || selected.value !== 'indefinite';
     }
 
     async function loadSettings() {
@@ -1163,7 +1375,6 @@
             return;
         }
         const data = res.data || {};
-        const ldap = data.ldap || {};
         const smtp = data.smtp || {};
         const webhooks = data.webhooks || {};
         const discordWebhook = webhooks.discord || {};
@@ -1183,6 +1394,10 @@
             document.getElementById('general-jellyfin-server-name').value = links.jellyfin_server_name || 'Jellyfin';
             document.getElementById('general-jellyseerr-url').value = links.jellyseerr_url || '';
             document.getElementById('general-jellytrack-url').value = links.jellytrack_url || '';
+            const retentionField = document.getElementById('log-retention-days');
+            if (retentionField) {
+                retentionField.value = data.log_retention_days || 30;
+            }
             refreshPortalShortcuts(links);
         }
 
@@ -1199,39 +1414,73 @@
             })();
         }
 
-        if (document.getElementById('form-auth-session')) {
-            const authSession = data.auth_session || {};
-            setAuthSessionDuration(authSession.remember_30_days !== false);
+        if (document.getElementById('form-jellyfin-settings')) {
+            const jf = data.jellyfin || {};
+            const urlInput = document.getElementById('jellyfin-server-url');
+            const apiKeyInput = document.getElementById('jellyfin-api-key');
+            if (urlInput) urlInput.value = jf.url || '';
+            if (apiKeyInput) apiKeyInput.value = jf.api_key || '';
+
+            const envNotice = document.getElementById('jf-env-notice');
+            if (envNotice) {
+                if (data.jellyfin_env_managed) {
+                    envNotice.classList.remove('hidden');
+                } else {
+                    envNotice.classList.add('hidden');
+                }
+            }
+
+            if (jf.url) {
+                setTimeout(() => testJellyfinConnection({ silent: true }), 250);
+            }
         }
 
-        if (document.getElementById('form-invitation-profile')) {
-            applyInvitationProfileConfig(data.invitation_profile || {});
+        const authentik = data.authentik || {};
+        if (document.getElementById('form-authentik-settings')) {
+            const enabledToggle = document.getElementById('authentik_enabled');
+            if (enabledToggle) enabledToggle.checked = authentik.enabled !== false;
+
+            const urlInput = document.getElementById('authentik_url');
+            if (urlInput) urlInput.value = authentik.oidc_issuer_url || authentik.authentik_url || '';
+
+            const clientIdInput = document.getElementById('oidc_client_id');
+            if (clientIdInput) clientIdInput.value = authentik.oidc_client_id || '';
+
+            const clientSecretInput = document.getElementById('oidc_client_secret');
+            if (clientSecretInput) clientSecretInput.value = authentik.oidc_client_secret || '';
+
+            const redirectInput = document.getElementById('oidc_redirect_url');
+            if (redirectInput) redirectInput.value = authentik.oidc_redirect_url || (window.location.origin + '/auth/callback');
+
+            const userGrpInput = document.getElementById('user_group');
+            if (userGrpInput) userGrpInput.value = authentik.user_group || 'jellygate-users';
+
+            const adminGrpInput = document.getElementById('admin_group');
+            if (adminGrpInput) adminGrpInput.value = authentik.admin_group || 'jellygate-admins';
+
+            const tokenInput = document.getElementById('authentik_api_token');
+            if (tokenInput) tokenInput.value = authentik.authentik_api_token || '';
+
+            const flowInput = document.getElementById('enrollment_flow_slug');
+            if (flowInput) flowInput.value = authentik.enrollment_flow_slug || '';
+
+            const badge = document.getElementById('sso-status-badge');
+            if (badge) {
+                if (authentik.enabled !== false && (authentik.authentik_url || authentik.oidc_issuer_url || authentik.oidc_client_id)) {
+                    badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+                    badge.textContent = 'SSO Configuré';
+                } else {
+                    badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/20 text-slate-400 border border-slate-500/30';
+                    badge.textContent = 'Non configuré';
+                }
+            }
+
+            if (authentik.enabled || authentik.authentik_url || authentik.oidc_issuer_url) {
+                setTimeout(runSSOHealthCheck, 300);
+            }
         }
 
-        if (document.getElementById('form-ldap')) {
-            currentLDAPConfig = { ...ldap };
-            document.getElementById('ldap-enabled').checked = ldap.enabled || false;
-            document.getElementById('ldap-host').value = ldap.host || '';
-            document.getElementById('ldap-port').value = ldap.port || 636;
-            document.getElementById('ldap-tls').checked = ldap.use_tls !== false;
-            document.getElementById('ldap-skip-verify').checked = ldap.skip_verify || false;
-            document.getElementById('ldap-bind-dn').value = ldap.bind_dn || '';
-            document.getElementById('ldap-bind-password').value = ldap.bind_password || '';
-            document.getElementById('ldap-base-dn').value = ldap.base_dn || '';
-            document.getElementById('ldap-search-filter').value = ldap.search_filter || '';
-            document.getElementById('ldap-search-attributes').value = ldap.search_attributes || 'uid,sAMAccountName,cn,userPrincipalName,mail';
-            document.getElementById('ldap-uid-attribute').value = ldap.uid_attribute || 'uid';
-            document.getElementById('ldap-username-attribute').value = ldap.username_attribute || 'auto';
-            document.getElementById('ldap-admin-filter').value = ldap.admin_filter || '';
-            document.getElementById('ldap-admin-filter-memberuid').checked = !!ldap.admin_filter_memberuid;
-            if (document.getElementById('ldap-jf-auth-provider')) {
-                document.getElementById('ldap-jf-auth-provider').value = ldap.jellyfin_ldap_auth_provider_id || 'Jellyfin.Plugin.LDAP_Auth.LdapAuthenticationProviderPlugin';
-            }
-            if (document.getElementById('ldap-jf-reset-provider')) {
-                document.getElementById('ldap-jf-reset-provider').value = ldap.jellyfin_ldap_password_reset_provider_id || 'Jellyfin.Plugin.LDAP_Auth.LdapPasswordResetProvider';
-            }
-            toggleLDAPFields();
-        }
+
 
         if (document.getElementById('form-smtp')) {
             document.getElementById('smtp-host').value = smtp.host || '';
@@ -1311,35 +1560,17 @@
                 jellyfin_server_name: document.getElementById('general-jellyfin-server-name').value.trim(),
                 jellyseerr_url: document.getElementById('general-jellyseerr-url').value.trim(),
                 jellytrack_url: document.getElementById('general-jellytrack-url').value.trim(),
+                log_retention_days: parseInt(document.getElementById('log-retention-days')?.value, 10) || 30,
             };
         } else if (section === 'auth-session') {
             body = {
                 remember_30_days: getAuthSessionRemember30Days(),
             };
-        } else if (section === 'invitation-profile') {
+        } else if (section === 'jellyfin') {
             body = {
-                ...currentInvitationProfile,
-                require_email: document.getElementById('invite-profile-require-email').checked,
-                require_email_verification: document.getElementById('invite-profile-require-email-verification').checked,
-                email_verification_policy: document.getElementById('invite-profile-email-verification-policy').value || 'required',
-                username_min_length: parseInt(document.getElementById('invite-profile-user-min').value, 10) || 3,
-                username_max_length: parseInt(document.getElementById('invite-profile-user-max').value, 10) || 32,
-                password_min_length: parseInt(document.getElementById('invite-profile-pw-min').value, 10) || 8,
-                password_max_length: parseInt(document.getElementById('invite-profile-pw-max').value, 10) || 128,
-                password_require_upper: document.getElementById('invite-profile-pw-upper').checked,
-                password_require_lower: document.getElementById('invite-profile-pw-lower').checked,
-                password_require_digit: document.getElementById('invite-profile-pw-digit').checked,
-                password_require_special: document.getElementById('invite-profile-pw-special').checked,
+                url: document.getElementById('jellyfin-server-url').value.trim(),
+                api_key: document.getElementById('jellyfin-api-key').value.trim(),
             };
-        } else if (section === 'ldap') {
-            body = collectLDAPPayload();
-            const hasInlineLDAPConfig = !document.getElementById('ldap-fields')?.classList.contains('hidden');
-            if (body.enabled && hasInlineLDAPConfig) {
-                const dryRunOK = await confirmLDAPDryRunBeforeSave(body);
-                if (!dryRunOK) {
-                    return;
-                }
-            }
         } else if (section === 'smtp') {
             body = {
                 host: document.getElementById('smtp-host').value,
@@ -1401,6 +1632,19 @@
                 templates_by_lang: templatesByLang,
                 multilingual_enabled: emailTemplatesMultilingualEnabled,
             };
+        } else if (section === 'authentik') {
+            body = {
+                enabled: document.getElementById('authentik_enabled') ? document.getElementById('authentik_enabled').checked : true,
+                authentik_url: document.getElementById('authentik_url') ? document.getElementById('authentik_url').value.trim() : '',
+                oidc_issuer_url: document.getElementById('authentik_url') ? document.getElementById('authentik_url').value.trim() : '',
+                oidc_client_id: document.getElementById('oidc_client_id') ? document.getElementById('oidc_client_id').value.trim() : '',
+                oidc_client_secret: document.getElementById('oidc_client_secret') ? document.getElementById('oidc_client_secret').value : '',
+                oidc_redirect_url: document.getElementById('oidc_redirect_url') ? document.getElementById('oidc_redirect_url').value.trim() : '',
+                user_group: document.getElementById('user_group') ? document.getElementById('user_group').value.trim() : 'jellygate-users',
+                admin_group: document.getElementById('admin_group') ? document.getElementById('admin_group').value.trim() : 'jellygate-admins',
+                authentik_api_token: document.getElementById('authentik_api_token') ? document.getElementById('authentik_api_token').value : '',
+                enrollment_flow_slug: document.getElementById('enrollment_flow_slug') ? document.getElementById('enrollment_flow_slug').value.trim() : '',
+            };
         } else if (section === 'backup') {
             const [hourStr, minuteStr] = (document.getElementById('backup-time').value || '03:00').split(':');
             document.getElementById('backup-retention').value = '7';
@@ -1423,8 +1667,19 @@
             if (section === 'invitation-profile') {
                 currentInvitationProfile = { ...body };
             }
-            if (section === 'auth-session' && res.data) {
-                setAuthSessionDuration(res.data.remember_30_days !== false);
+            if (section === 'authentik') {
+                const enabledToggle = document.getElementById('authentik_enabled');
+                const badge = document.getElementById('sso-status-badge');
+                if (badge && enabledToggle) {
+                    if (enabledToggle.checked) {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]';
+                        badge.textContent = 'SSO Activé';
+                    } else {
+                        badge.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-500/20 text-slate-400 border border-slate-500/30';
+                        badge.textContent = 'Désactivé';
+                    }
+                }
+                runSSOHealthCheck();
             }
             if (section === 'general') {
                 refreshPortalShortcuts(body);
@@ -1433,9 +1688,6 @@
                     document.cookie = `lang=${lang};path=/;max-age=31536000;SameSite=Lax`;
                 }
                 window.location.reload();
-            }
-            if (section === 'ldap') {
-                window.setTimeout(() => window.location.reload(), 350);
             }
         } else {
             JG.toast((res && res.message) || t('settings_save_error', 'Save failed'), 'error');
@@ -1853,7 +2105,71 @@
         JG.toast((res && res.message) || t('backup_delete_error', 'Delete failed'), 'error');
     }
 
+    function initCallbackURL() {
+        const callbackUrl = window.location.origin + '/auth/callback';
+        const displayEl = document.getElementById('display-callback-url');
+        if (displayEl) displayEl.textContent = callbackUrl;
+    }
+
+    function copyCallbackURL() {
+        const callbackUrl = window.location.origin + '/auth/callback';
+        navigator.clipboard.writeText(callbackUrl).then(() => {
+            const textSpan = document.getElementById('copy-callback-text');
+            if (textSpan) {
+                const original = textSpan.textContent;
+                textSpan.textContent = 'Copié !';
+                setTimeout(() => { textSpan.textContent = original; }, 2000);
+            }
+            if (window.JG && typeof JG.toast === 'function') {
+                JG.toast('URL de redirection copiée !', 'success');
+            }
+        }).catch(() => {
+            if (window.JG && typeof JG.toast === 'function') {
+                JG.toast('Impossible de copier l\'URL', 'error');
+            }
+        });
+    }
+
+    async function testSMTPConnection() {
+        const btn = document.getElementById('btn-test-smtp');
+        const origContent = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="w-4 h-4 animate-spin text-cyan-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> <span>${t('settings_smtp_test_sending', 'Envoi du test...')}</span>`;
+        }
+
+        try {
+            const payload = {
+                host: document.getElementById('smtp-host')?.value || '',
+                port: parseInt(document.getElementById('smtp-port')?.value, 10) || 587,
+                username: document.getElementById('smtp-username')?.value || '',
+                password: document.getElementById('smtp-password')?.value || '',
+                from: document.getElementById('smtp-from')?.value || '',
+                use_tls: !!document.getElementById('smtp-tls')?.checked,
+            };
+
+            const res = await JG.api('/admin/api/settings/smtp/test', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+
+            if (res && res.success) {
+                JG.toast(res.message || t('settings_smtp_test_success', 'E-mail de test envoyé avec succès'), 'success');
+            } else {
+                JG.toast((res && res.message) || t('settings_smtp_test_failed', 'Échec du test SMTP'), 'error');
+            }
+        } catch (err) {
+            JG.toast(err?.message || t('settings_smtp_test_failed', 'Échec du test SMTP'), 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origContent;
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
+        initCallbackURL();
         document.querySelectorAll('[data-tab-target]').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const target = btn.dataset.tabTarget || 'general';
@@ -1866,16 +2182,18 @@
             });
         });
 
-        const requestedTab = String(window.location.hash || '').replace(/^#/, '').trim();
+        let requestedTab = String(window.location.hash || '').replace(/^#/, '').trim();
+        if (requestedTab === 'sso') {
+            requestedTab = 'authentik';
+        }
         if (requestedTab && document.getElementById(`tab-${requestedTab}`) && document.getElementById(`panel-${requestedTab}`)) {
             switchTab(requestedTab);
         }
 
         [
             ['form-general', 'general'],
-            ['form-auth-session', 'auth-session'],
-            ['form-invitation-profile', 'invitation-profile'],
-            ['form-ldap', 'ldap'],
+            ['form-jellyfin-settings', 'jellyfin'],
+            ['form-authentik-settings', 'authentik'],
             ['form-smtp', 'smtp'],
             ['form-webhooks', 'webhooks'],
             ['form-email-templates', 'email-templates'],
@@ -1886,10 +2204,6 @@
                 form.addEventListener('submit', (event) => saveSettings(section, event));
             }
         });
-
-        document.getElementById('ldap-enabled')?.addEventListener('change', toggleLDAPFields);
-        document.getElementById('invite-profile-require-email-verification')?.addEventListener('change', syncInviteEmailRequirementFromVerification);
-        document.getElementById('invite-profile-email-verification-policy')?.addEventListener('change', syncInviteEmailPolicyControls);
 
         const toggle = document.getElementById('sidebar-toggle');
         if (toggle) {
@@ -1926,34 +2240,36 @@
             }
         });
 
-        document.getElementById('btn-ldap-test-conn')?.addEventListener('click', async () => {
-            await runLDAPTest('/admin/api/settings/ldap/test-connection', collectLDAPPayload());
-        });
-
-        document.getElementById('btn-ldap-test-user')?.addEventListener('click', async () => {
-            const username = (document.getElementById('ldap-test-username').value || '').trim();
-            if (!username) {
-                showLDAPTestResult(t('ldap_test_username_required', 'Enter a test user identifier.'), 'error');
-                return;
-            }
-            const payload = collectLDAPPayload();
-            payload.username = username;
-            await runLDAPTest('/admin/api/settings/ldap/test-user', payload);
-        });
-
-        document.getElementById('btn-ldap-test-jf')?.addEventListener('click', async () => {
-            const username = (document.getElementById('ldap-test-username').value || '').trim();
-            const password = document.getElementById('ldap-test-password').value || '';
-            if (!username || !password) {
-                showLDAPTestResult(t('ldap_test_credentials_required', 'Enter username and password to validate Jellyfin LDAP plugin.'), 'error');
-                return;
-            }
-            await runLDAPTest('/admin/api/settings/ldap/test-jellyfin-auth', { username, password });
-        });
-
         document.getElementById('backup-create-btn')?.addEventListener('click', createBackupNow);
         document.getElementById('backup-import-btn')?.addEventListener('click', importBackup);
         document.getElementById('btn-auth-session-revoke-all')?.addEventListener('click', revokeAuthSessions);
+        document.getElementById('btn-test-smtp')?.addEventListener('click', testSMTPConnection);
+        document.getElementById('btn-test-jellyfin')?.addEventListener('click', () => testJellyfinConnection());
+        document.getElementById('btn-toggle-jf-api-key')?.addEventListener('click', function () {
+            toggleSecretVisibility('jellyfin-api-key', this);
+        });
+        document.getElementById('btn-test-sso')?.addEventListener('click', runSSOHealthCheck);
+        document.getElementById('btn-copy-callback-url')?.addEventListener('click', copyCallbackURL);
+        document.getElementById('btn-test-sso-user')?.addEventListener('click', testSSOUser);
+        document.getElementById('test_sso_username')?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                testSSOUser();
+            }
+        });
+        document.querySelectorAll('.sso-preset-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const preset = btn.dataset.preset || 'generic';
+                applySSOPreset(preset);
+            });
+        });
+        document.querySelectorAll('[data-toggle-secret]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.dataset.toggleSecret;
+                toggleSecretVisibility(targetId, btn);
+            });
+        });
+
         document.getElementById('btn-fetch-server-name')?.addEventListener('click', async () => {
             const btn = document.getElementById('btn-fetch-server-name');
             if (btn) btn.disabled = true;

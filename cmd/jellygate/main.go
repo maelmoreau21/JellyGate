@@ -1,11 +1,12 @@
 // Package main est le point d'entrée de JellyGate.
 //
-// JellyGate est un gestionnaire d'invitations, de récupération de mots de passe
-// et d'utilisateurs pour Jellyfin/Emby avec intégration Active Directory (LDAP).
+// JellyGate est un gestionnaire d'invitations, de parrainage
+// et d'utilisateurs pour Jellyfin avec intégration Authentik (OIDC).
 package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,25 +14,28 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/backup"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/handlers"
 	"github.com/maelmoreau21/JellyGate/internal/integrations"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
+	"github.com/maelmoreau21/JellyGate/internal/oidc"
 	"github.com/maelmoreau21/JellyGate/internal/render"
 	"github.com/maelmoreau21/JellyGate/internal/scheduler"
 	"github.com/maelmoreau21/JellyGate/internal/session"
+	"github.com/maelmoreau21/JellyGate/internal/syslog"
 )
 
 func main() {
@@ -57,6 +61,13 @@ func main() {
 		"base_url", cfg.BaseURL,
 		"jellyfin_url", cfg.Jellyfin.URL,
 	)
+
+	// ── 2b. Initialiser le gestionnaire de logs système (disque + console) ──
+	if _, err := syslog.Init(cfg.DataDir); err != nil {
+		slog.Warn("⚠️ Impossible d'initialiser la journalisation sur disque", "error", err)
+	} else {
+		slog.Info("📁 Journalisation système activée", "dir", cfg.DataDir+"/logs")
+	}
 
 	if err := backup.ApplyPendingRestore(cfg.DataDir, cfg.Database.Type); err != nil {
 		slog.Error("Erreur application restauration en attente", "error", err)
@@ -84,19 +95,24 @@ func main() {
 		}
 	}
 
-	// ── 3b. Initialiser les clients de service à partir des settings DB ──
-	jfClient := jellyfin.New(cfg.Jellyfin)
-	slog.Info("Client Jellyfin initialisé")
-	go jfClient.LogDiagnostics()
-
-	// LDAP (optionnel — chargé depuis la base)
-	ldapCfg, _ := db.GetLDAPConfig()
-	var ldClient *jgldap.Client
-	if ldapCfg.Enabled {
-		ldClient = jgldap.New(ldapCfg)
-		slog.Info("Client LDAP initialisé", "host", ldapCfg.Host)
+	// ── 3b. Initialiser les clients de service à partir des settings DB & Env ──
+	jellyfinCfg := cfg.Jellyfin
+	if db != nil {
+		if dbJfCfg, err := db.GetJellyfinConfig(); err == nil {
+			if strings.TrimSpace(jellyfinCfg.URL) == "" {
+				jellyfinCfg.URL = dbJfCfg.URL
+			}
+			if strings.TrimSpace(jellyfinCfg.APIKey) == "" {
+				jellyfinCfg.APIKey = dbJfCfg.APIKey
+			}
+		}
+	}
+	jfClient := jellyfin.New(jellyfinCfg)
+	if jfClient.IsConfigured() {
+		slog.Info("Client Jellyfin initialisé", "url", jellyfinCfg.URL)
+		go jfClient.LogDiagnostics()
 	} else {
-		slog.Info("Intégration LDAP désactivée")
+		slog.Info("Intégration Jellyfin non configurée (démarrage en mode pur Authentik)")
 	}
 
 	// SMTP (optionnel — chargé depuis la base)
@@ -129,34 +145,90 @@ func main() {
 	slog.Info("Moteur de rendu HTML initialisé")
 
 	// ── 3d. Initialiser les handlers ───────────────────────────────────────
-	authHandler := handlers.NewAuthHandler(cfg, db, jfClient, renderEngine)
-	inviteHandler := handlers.NewInvitationHandler(cfg, db, jfClient, ldClient, provisioner, mailer, notifier, renderEngine)
-	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
-	resetHandler := handlers.NewPasswordResetHandler(cfg, db, jfClient, ldClient, mailer, renderEngine)
-	settingsHandler := handlers.NewSettingsHandler(db, jfClient, renderEngine)
+	authentikCfg := cfg.Authentik
+	if db != nil {
+		if dbAuthCfg, err := db.GetAuthentikConfig(); err == nil {
+			if dbAuthCfg.Enabled || dbAuthCfg.URL != "" || dbAuthCfg.IssuerURL != "" {
+				if strings.TrimSpace(dbAuthCfg.URL) != "" {
+					authentikCfg.URL = dbAuthCfg.URL
+				}
+				if strings.TrimSpace(dbAuthCfg.IssuerURL) != "" {
+					authentikCfg.IssuerURL = dbAuthCfg.IssuerURL
+				}
+				if strings.TrimSpace(dbAuthCfg.ClientID) != "" {
+					authentikCfg.ClientID = dbAuthCfg.ClientID
+				}
+				if strings.TrimSpace(dbAuthCfg.ClientSecret) != "" {
+					authentikCfg.ClientSecret = dbAuthCfg.ClientSecret
+				}
+				if strings.TrimSpace(dbAuthCfg.RedirectURL) != "" {
+					authentikCfg.RedirectURL = dbAuthCfg.RedirectURL
+				}
+				if strings.TrimSpace(dbAuthCfg.APIToken) != "" {
+					authentikCfg.APIToken = dbAuthCfg.APIToken
+				}
+				if strings.TrimSpace(dbAuthCfg.UserGroup) != "" {
+					authentikCfg.UserGroup = dbAuthCfg.UserGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.AdminGroup) != "" {
+					authentikCfg.AdminGroup = dbAuthCfg.AdminGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.JellyfinUserGroup) != "" {
+					authentikCfg.JellyfinUserGroup = dbAuthCfg.JellyfinUserGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.EnrollmentFlowSlug) != "" {
+					authentikCfg.EnrollmentFlowSlug = dbAuthCfg.EnrollmentFlowSlug
+				}
+				if strings.TrimSpace(dbAuthCfg.InvitersGroup) != "" {
+					authentikCfg.InvitersGroup = dbAuthCfg.InvitersGroup
+				}
+				if strings.TrimSpace(dbAuthCfg.InvitersRecursiveGroup) != "" {
+					authentikCfg.InvitersRecursiveGroup = dbAuthCfg.InvitersRecursiveGroup
+				}
+				authentikCfg.Enabled = dbAuthCfg.Enabled
+			}
+		}
+	}
+	// Surcharge par les variables d'environnement si définies explicitement
+	if strings.TrimSpace(cfg.Authentik.URL) != "" {
+		authentikCfg.URL = strings.TrimSpace(cfg.Authentik.URL)
+	}
+	if strings.TrimSpace(cfg.Authentik.IssuerURL) != "" {
+		authentikCfg.IssuerURL = strings.TrimSpace(cfg.Authentik.IssuerURL)
+	}
+	if strings.TrimSpace(cfg.Authentik.ClientID) != "" {
+		authentikCfg.ClientID = strings.TrimSpace(cfg.Authentik.ClientID)
+	}
+	if strings.TrimSpace(cfg.Authentik.ClientSecret) != "" {
+		authentikCfg.ClientSecret = strings.TrimSpace(cfg.Authentik.ClientSecret)
+	}
+	if strings.TrimSpace(cfg.Authentik.RedirectURL) != "" {
+		authentikCfg.RedirectURL = strings.TrimSpace(cfg.Authentik.RedirectURL)
+	}
+	if strings.TrimSpace(cfg.Authentik.APIToken) != "" {
+		authentikCfg.APIToken = strings.TrimSpace(cfg.Authentik.APIToken)
+	}
+	if cfg.Authentik.Enabled {
+		authentikCfg.Enabled = true
+	}
+	if authentikCfg.RedirectURL == "" && strings.TrimSpace(cfg.BaseURL) != "" {
+		authentikCfg.RedirectURL = strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/") + "/auth/callback"
+	}
+	oidcClient := oidc.NewClient(authentikCfg)
+	authentikClient := authentik.NewClient(authentikCfg)
+
+	authHandler := handlers.NewAuthHandler(cfg, db, oidcClient, authentikClient, renderEngine)
+	inviteHandler := handlers.NewInvitationHandler(cfg, db, provisioner, mailer, notifier, renderEngine)
+	inviteHandler.SetAuthentikClient(authentikClient)
+	adminHandler := handlers.NewAdminHandler(cfg, db, jfClient, authentikClient, mailer, renderEngine)
+	settingsHandler := handlers.NewSettingsHandler(cfg, db, jfClient, authentikClient, renderEngine)
 	backupService := backup.NewService(cfg.DataDir, db)
 	backupHandler := handlers.NewBackupHandler(db, backupService, renderEngine)
-	schedulerService := scheduler.NewService(db, jfClient, backupService, mailer, notifier)
+	schedulerService := scheduler.NewService(db, backupService, mailer, notifier)
+	schedulerService.SetAuthentikClient(authentikClient)
 	automationHandler := handlers.NewAutomationHandler(db, renderEngine, schedulerService, jfClient)
 	authSessionValidator := func(sess *session.Payload) bool {
 		return authSessionAllowed(db, sess)
-	}
-
-	// Callbacks de rechargement à chaud
-	settingsHandler.OnLDAPReload = func(c config.LDAPConfig) {
-		if ldClient != nil {
-			ldClient.Close()
-		}
-		if c.Enabled {
-			ldClient = jgldap.New(c)
-			slog.Info("🔄 Client LDAP rechargé", "host", c.Host)
-		} else {
-			ldClient = nil
-			slog.Info("🔄 Intégration LDAP désactivée")
-		}
-		inviteHandler.SetLDAPClient(ldClient)
-		adminHandler.SetLDAPClient(ldClient)
-		resetHandler.SetLDAPClient(ldClient)
 	}
 	settingsHandler.OnSMTPReload = func(c config.SMTPConfig) {
 		if c.Host != "" {
@@ -167,7 +239,6 @@ func main() {
 			}
 			mailer = newMailer
 			inviteHandler.SetMailer(mailer)
-			resetHandler.SetMailer(mailer)
 			adminHandler.SetMailer(mailer)
 			schedulerService.SetMailer(mailer)
 			slog.Info("🔄 Client SMTP rechargé", "host", c.Host)
@@ -178,15 +249,34 @@ func main() {
 		inviteHandler.SetNotifier(newNotifier)
 		slog.Info("🔄 Webhooks rechargés")
 	}
+	settingsHandler.OnAuthentikReload = func(c config.AuthentikConfig) {
+		newOIDC := oidc.NewClient(c)
+		newAuthClient := authentik.NewClient(c)
+		authHandler.SetOIDCClient(newOIDC)
+		authHandler.SetAuthentikClient(newAuthClient)
+		inviteHandler.SetAuthentikClient(newAuthClient)
+		adminHandler.SetAuthentikClient(newAuthClient)
+		settingsHandler.SetAuthentikClient(newAuthClient)
+		schedulerService.SetAuthentikClient(newAuthClient)
+		slog.Info("🔄 Clients OIDC & Authentik rechargés", "enabled", c.Enabled, "url", c.URL)
+	}
+	settingsHandler.OnJellyfinReload = func(c config.JellyfinConfig) {
+		jfClient.UpdateConfig(c)
+		if jfClient.IsConfigured() {
+			go jfClient.LogDiagnostics()
+		}
+		slog.Info("🔄 Client Jellyfin rechargé", "url", c.URL)
+	}
 
 	// ── 4. Configurer le routeur Chi ────────────────────────────────────────
 	r := chi.NewRouter()
 
 	// Middlewares globaux
-	r.Use(jgmw.SecurityHeaders(cfg.BaseURL)) // Headers de securite HTTP
-	r.Use(chimw.RequestID)                   // ID unique par requête
+	r.Use(jgmw.SecurityHeaders(cfg.BaseURL))       // Headers de securite HTTP
+	r.Use(jgmw.LimitRequestBody(10 * 1024 * 1024)) // Protection DoS: limite le corps des requêtes à 10 Mo
+	r.Use(chimw.RequestID)                         // ID unique par requête
 	if cfg.TrustProxyHeaders {
-		r.Use(chimw.RealIP)
+		r.Use(jgmw.TrustedProxyRealIP(cfg.TrustedProxies))
 	}
 	r.Use(chimw.Logger)                    // Log de chaque requête
 	r.Use(jgmw.LogPanics())                // Dev: log panics with stack trace
@@ -205,6 +295,7 @@ func main() {
 	// Endpoint de santé
 	r.Get("/health", handleHealthCheck)
 	r.Head("/health", handleHealthCheck)
+	r.Get("/health/jellyfin", handleJellyfinHealthCheck(jfClient))
 
 	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "web/static/favicon.svg")
@@ -222,8 +313,8 @@ func main() {
 		http.ServeFile(w, r, "web/static/service-worker.js")
 	})
 
-	// Fichiers statiques
-	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
+	// Fichiers statiques protégés contre toute fuite d'informations sensibles
+	r.With(jgmw.StaticFileFilter()).Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("web/static"))))
 
 	// Routes d'invitation (publiques)
 	r.Route("/invite", func(r chi.Router) {
@@ -231,26 +322,43 @@ func main() {
 		r.With(jgmw.RateLimitByIP(15, 5*time.Minute)).Post("/{code}", inviteHandler.InviteSubmit)
 	})
 
-	// Routes de réinitialisation de mot de passe (publiques)
-	r.Route("/reset", func(r chi.Router) {
-		r.Get("/", resetHandler.RequestPage)
-		r.With(jgmw.RateLimitByIP(10, 10*time.Minute)).Post("/request", resetHandler.SubmitRequest)
-		r.Get("/{code}", resetHandler.ResetPage)
-		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", resetHandler.SubmitReset)
+	// Redirection de la réinitialisation de mot de passe vers Authentik
+	r.Get("/reset/*", func(w http.ResponseWriter, r *http.Request) {
+		if authentikCfg.URL != "" {
+			http.Redirect(w, r, strings.TrimRight(authentikCfg.URL, "/")+"/flow/initial-setup/", http.StatusFound)
+		} else {
+			http.Redirect(w, r, "/auth/login", http.StatusFound)
+		}
 	})
 
-	r.Route("/verify-email", func(r chi.Router) {
-		r.Get("/{code}", inviteHandler.VerifyEmailPage)
-		r.With(jgmw.RateLimitByIP(12, 10*time.Minute)).Post("/{code}", inviteHandler.VerifyEmailSubmit)
+	// Routes d'authentification OIDC & locale de secours (publiques)
+	r.Route("/auth", func(r chi.Router) {
+		r.Use(jgmw.EnsureCSRFCookie(cfg.BaseURL))
+		r.Get("/login", authHandler.LoginRedirect)
+		r.Get("/callback", authHandler.Callback)
+		r.Get("/local", authHandler.LocalLoginPage)
+		r.With(jgmw.RateLimitByIP(6, 5*time.Minute), jgmw.RequireCSRF()).Post("/local", authHandler.LocalLoginSubmit)
+		r.Get("/logout", authHandler.Logout)
+		r.Post("/logout", authHandler.Logout)
 	})
+
+	// Accès direct /login, /local pour la connexion d'urgence et /logout
+	r.With(jgmw.EnsureCSRFCookie(cfg.BaseURL)).Get("/login", authHandler.LoginPage)
+	r.With(jgmw.EnsureCSRFCookie(cfg.BaseURL)).Get("/local", authHandler.LocalLoginPage)
+	r.With(jgmw.EnsureCSRFCookie(cfg.BaseURL), jgmw.RateLimitByIP(6, 5*time.Minute), jgmw.RequireCSRF()).Post("/local", authHandler.LocalLoginSubmit)
+	r.Get("/logout", authHandler.Logout)
+	r.Post("/logout", authHandler.Logout)
 
 	// ── Routes admin (authentification requise) ─────────────────────────────
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(jgmw.EnsureCSRFCookie(cfg.BaseURL))
 		// Routes publiques (login/logout) — pas de middleware auth
 		r.Get("/login", authHandler.LoginPage)
+		r.Get("/login/local", authHandler.LocalLoginPage)
+		r.With(jgmw.RateLimitByIP(6, 5*time.Minute), jgmw.RequireCSRF()).Post("/login/local", authHandler.LocalLoginSubmit)
 		r.With(jgmw.RateLimitByIP(12, 10*time.Minute), jgmw.RequireCSRF()).Post("/login", authHandler.LoginSubmit)
-		r.With(jgmw.RequireCSRF()).Post("/logout", authHandler.Logout)
+		r.Get("/logout", authHandler.Logout)
+		r.Post("/logout", authHandler.Logout)
 
 		if cfg.EnableDebugRoutes {
 			slog.Warn("Routes debug admin activées: à ne jamais utiliser en production")
@@ -305,7 +413,6 @@ func main() {
 				r.Post("/avatar", adminHandler.UpdateMyAccountAvatar)
 				r.Get("/invitations", adminHandler.GetMyInvitations)
 				r.Post("/invitations", adminHandler.CreateMyInvitation)
-				r.Post("/email-verification/resend", adminHandler.ResendEmailVerification)
 			})
 
 			// ── Routes limitées aux administrateurs purs ────────────────────
@@ -314,7 +421,8 @@ func main() {
 
 				r.Get("/users", adminHandler.UsersPage)
 				r.Get("/profiles", adminHandler.ProfilesPage)
-				r.Get("/ldap", adminHandler.LDAPPage)
+				r.Get("/authentik", adminHandler.AuthentikPage)
+				r.Get("/sso", adminHandler.AuthentikPage)
 				r.Get("/security", adminHandler.SecurityPage)
 				r.Get("/pending-actions", adminHandler.PendingActionsPage)
 				r.Get("/automation", func(w http.ResponseWriter, r *http.Request) {
@@ -324,18 +432,19 @@ func main() {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.ListUsers)
 					r.Post("/", adminHandler.CreateUser)
+					r.Post("/sync", adminHandler.SyncJellyfinUsers)
 					r.Get("/dashboard/stats", adminHandler.DashboardStats)
 					r.Get("/invitations", adminHandler.ListInvitations)
 					r.Get("/{id}/avatar", adminHandler.UserAvatar)
 					r.Get("/{id}/timeline", adminHandler.UserTimeline)
 					r.Post("/bulk", adminHandler.BulkUsersAction)
-					r.Post("/sync", adminHandler.SyncJellyfinUsers)
 					r.Patch("/{id}", adminHandler.UpdateUser)
 					r.Post("/{id}/toggle", adminHandler.ToggleUser)
-					r.Post("/{id}/password-reset/send", adminHandler.SendUserPasswordReset)
 					r.Post("/{id}/invite-toggle", adminHandler.ToggleUserInvite)
 					r.Post("/{id}/ban", adminHandler.BanUser)
 					r.Delete("/{id}", adminHandler.DeleteUser)
+					r.Post("/{id}/quota", adminHandler.SetUserQuota)
+					r.Get("/referrals", adminHandler.GetReferrals)
 					r.Post("/{id}/extend", adminHandler.ExtendAccess)
 				})
 
@@ -346,12 +455,16 @@ func main() {
 					r.Post("/general/fetch-server-name", settingsHandler.FetchJellyfinServerName)
 					r.Post("/auth-session", settingsHandler.SaveAuthSession)
 					r.Post("/auth-session/revoke", settingsHandler.RevokeAuthSessions)
-					r.Post("/ldap", settingsHandler.SaveLDAP)
-					r.Post("/ldap/dry-run", settingsHandler.LDAPDryRun)
-					r.Post("/ldap/test-connection", settingsHandler.TestLDAPConnection)
-					r.Post("/ldap/test-user", settingsHandler.TestLDAPUserLookup)
-					r.Post("/ldap/test-jellyfin-auth", settingsHandler.TestJellyfinLDAPAuth)
+					r.Post("/authentik", settingsHandler.SaveAuthentik)
+					r.Get("/authentik/health", settingsHandler.GetAuthentikHealth)
+					r.Post("/authentik/test", settingsHandler.GetAuthentikHealth)
+					r.Post("/authentik/reload-env", settingsHandler.ReloadAuthentikFromEnv)
+					r.Post("/authentik/test-user", settingsHandler.TestAuthentikUser)
+					r.Post("/jellyfin", settingsHandler.SaveJellyfin)
+					r.Get("/jellyfin/health", settingsHandler.TestJellyfin)
+					r.Post("/jellyfin/test", settingsHandler.TestJellyfin)
 					r.Post("/smtp", settingsHandler.SaveSMTP)
+					r.Post("/smtp/test", settingsHandler.TestSMTP)
 					r.Post("/webhooks", settingsHandler.SaveWebhooks)
 					r.Post("/backup", settingsHandler.SaveBackup)
 					r.Get("/email-templates/export", settingsHandler.ExportEmailTemplates)
@@ -374,6 +487,9 @@ func main() {
 				r.Route("/api/logs", func(r chi.Router) {
 					r.Use(jgmw.RequireCSRF())
 					r.Get("/", adminHandler.LogsAPI)
+					r.Get("/system", adminHandler.SystemLogsAPI)
+					r.Get("/system/download", adminHandler.DownloadSystemLog)
+					r.Get("/system/download-all", adminHandler.DownloadAllSystemLogs)
 				})
 
 				r.Route("/api/security", func(r chi.Router) {
@@ -422,6 +538,7 @@ func main() {
 				r.Use(jgmw.RequireCSRF())
 				r.Get("/", adminHandler.ListInvitations)
 				r.Get("/stats", adminHandler.InvitationStats)
+				r.Post("/sync-authentik", adminHandler.SyncAuthentikInvitations)
 				r.Get("/security", adminHandler.InvitationSecurityConfig)
 				r.Post("/security", adminHandler.SaveInvitationSecurityConfig)
 				r.Post("/preview", adminHandler.PreviewInvitation)
@@ -488,12 +605,6 @@ func main() {
 		slog.Error("Erreur lors de l'arrêt du serveur", "error", err)
 	}
 
-	// Fermer proprement le client LDAP
-	if ldClient != nil {
-		ldClient.Close()
-		slog.Info("Client LDAP fermé proprement")
-	}
-
 	// Fermer proprement la base de données
 	if err := db.Close(); err != nil {
 		slog.Error("Erreur lors de la fermeture de la base de données", "error", err)
@@ -512,7 +623,23 @@ func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
 		config.AppVersion)
 }
 
-// authSessionAllowed applique la politique de revocation globale stockee en base.
+func handleJellyfinHealthCheck(jfClient *jellyfin.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		status := "disabled"
+		if jfClient.IsConfigured() {
+			status = string(jfClient.Status())
+		}
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": status,
+			"app":    "JellyGate",
+		})
+	}
+}
+
+// authSessionAllowed applique la politique de revocation globale stockee en base
+// ainsi que l'invalidation immediate des sessions d'utilisateurs desactives ou bannis.
 func authSessionAllowed(db *database.DB, sess *session.Payload) bool {
 	if sess == nil {
 		return false
@@ -525,7 +652,28 @@ func authSessionAllowed(db *database.DB, sess *session.Payload) bool {
 		slog.Warn("Impossible de lire la politique de session", "error", err)
 		return true
 	}
-	return cfg.AcceptsIssuedAt(sess.Iat)
+	if !cfg.AcceptsIssuedAt(sess.Iat) {
+		return false
+	}
+
+	if sess.AuthentikID == "local_admin" {
+		return true
+	}
+
+	var isActive, isBanned bool
+	err = db.QueryRow(
+		`SELECT is_active, is_banned FROM users WHERE authentik_id = ? OR username = ? LIMIT 1`,
+		sess.AuthentikID, sess.Username,
+	).Scan(&isActive, &isBanned)
+	if err == nil {
+		if isBanned || !isActive {
+			return false
+		}
+	} else if errors.Is(err, sql.ErrNoRows) && !sess.IsAdmin {
+		return false
+	}
+
+	return true
 }
 
 // adminLandingPath conserve l'ouverture de l'app sur le dashboard quand une

@@ -45,14 +45,15 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("X-Content-Type-Options", "nosniff")
 			w.Header().Set("X-Frame-Options", "DENY")
+			w.Header().Set("X-XSS-Protection", "0")
 			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 			w.Header().Set("X-Permitted-Cross-Domain-Policies", "none")
 			w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
 			w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
-			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=(), display-capture=()")
 
 			if RequestIsHTTPS(r, baseURL) {
-				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
 			}
 
 			// Optimisation : Pas de génération de nonce CSP pour les fichiers statiques
@@ -152,6 +153,11 @@ func RequestIsHTTPS(r *http.Request, baseURL string) bool {
 	if r.TLS != nil {
 		return true
 	}
+	if strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") ||
+		strings.EqualFold(r.Header.Get("X-Forwarded-Ssl"), "on") ||
+		strings.EqualFold(r.Header.Get("Front-End-Https"), "on") {
+		return true
+	}
 	return false
 }
 
@@ -169,5 +175,58 @@ func isUnsafeMethod(method string) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+// StaticFileFilter protège contre l'accès à des fichiers sensibles, cachés ou hors périmètre
+// qui pourraient se trouver dans le dossier de fichiers statiques.
+func StaticFileFilter() func(http.Handler) http.Handler {
+	blockedExtensions := []string{
+		".env", ".bak", ".sql", ".db", ".sqlite", ".sqlite3",
+		".sh", ".bash", ".go", ".mod", ".sum", ".yml", ".yaml",
+	}
+
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			path := strings.ToLower(r.URL.Path)
+
+			// 1. Interdiction des traversées de répertoires
+			if strings.Contains(path, "..") {
+				http.Error(w, "Accès interdit", http.StatusForbidden)
+				return
+			}
+
+			// 2. Interdiction de tout fichier ou dossier caché (.env, .git, etc.)
+			segments := strings.Split(path, "/")
+			for _, seg := range segments {
+				if strings.HasPrefix(seg, ".") && seg != "." {
+					http.Error(w, "Accès interdit", http.StatusForbidden)
+					return
+				}
+			}
+
+			// 3. Interdiction d'extensions sensibles
+			for _, ext := range blockedExtensions {
+				if strings.HasSuffix(path, ext) {
+					http.Error(w, "Accès interdit", http.StatusForbidden)
+					return
+				}
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// LimitRequestBody borne la taille maximale du corps de la requête HTTP
+// pour empêcher les attaques par saturation de mémoire (DoS / OOM).
+func LimitRequestBody(maxBytes int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Body != nil && maxBytes > 0 {
+				r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			}
+			next.ServeHTTP(w, r)
+		})
 	}
 }

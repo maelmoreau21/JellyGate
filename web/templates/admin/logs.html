@@ -9,163 +9,176 @@
         <p class="text-jg-text-muted mt-2">{{ .T "logs_subheading" }}</p>
     </div>
     <div class="flex items-center gap-3">
-        <div class="hidden md:flex gap-2">
-            <button id="export-json" class="jg-btn jg-btn-ghost text-xs font-bold">{{ .T "settings_backup_action_export" }} JSON</button>
-            <button id="export-csv" class="jg-btn jg-btn-ghost text-xs font-bold">{{ .T "settings_backup_action_export" }} CSV</button>
-        </div>
+        <a href="/admin/api/logs/system/download-all" id="btn-download-all-zip" class="jg-btn jg-btn-primary text-xs font-bold flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <span>Télécharger tous les logs (ZIP)</span>
+        </a>
     </div>
 </div>
 
 <div class="space-y-6">
-    <section class="jg-card p-4 shadow-lg bg-white/[0.02] mb-6">
-        <div class="flex flex-col md:flex-row items-center gap-4">
-            {{/* Main Search */}}
-            <div class="relative flex-1 group">
-                <input type="text" id="search-input" placeholder='{{ .T "logs_search_placeholder" }}' class="jg-input h-12 px-4 text-sm rounded-xl w-full focus:border-jg-accent/30 transition-all">
-            </div>
+    {{/* ── Tab Switcher ────────────────────────────────────────────────────────── */}}
+    <div class="flex items-center justify-between border-b border-white/10 pb-4">
+        <div class="flex bg-black/25 p-1 rounded-xl border border-white/5 gap-1">
+            <button id="tab-btn-system" data-tab="system" class="log-tab-btn px-5 py-2.5 rounded-lg text-xs font-bold transition-all bg-jg-accent text-always-white shadow-lg shadow-purple-500/20">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" /></svg>
+                    <span>Fichiers & Console Système</span>
+                </span>
+            </button>
+            <button id="tab-btn-audit" data-tab="audit" class="log-tab-btn px-5 py-2.5 rounded-lg text-xs font-bold transition-all text-jg-text-muted hover:text-jg-text">
+                <span class="flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <span>Journal d'Audit Applicatif</span>
+                </span>
+            </button>
+        </div>
+    </div>
 
-            {{/* Categories Tabs */}}
-            <div class="flex bg-black/20 p-1 rounded-xl border border-white/5">
-                <button data-category="app" class="log-category-btn px-4 py-2 rounded-lg text-xs font-bold transition-all bg-jg-accent text-always-white">
-                    Application
-                </button>
-                <button data-category="system" class="log-category-btn px-4 py-2 rounded-lg text-xs font-bold transition-all text-jg-text-muted hover:text-jg-text">
-                    Système
-                </button>
+    {{/* ── SECTION 1: Logs Système & Fichiers Réels ────────────────────────────── */}}
+    <div id="panel-system-logs" class="space-y-6">
+        {{/* Liste des fichiers de logs téléchargeables */}}
+        <div class="jg-card p-5 bg-white/[0.02]">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-jg-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                    <h2 class="font-bold text-base text-jg-text">Fichiers de Logs Disponibles</h2>
+                </div>
+                <span id="log-files-count" class="text-xs text-jg-text-muted">Chargement des fichiers...</span>
             </div>
-
-            {{/* Actions */}}
-            <div class="flex items-center gap-2">
-                <select id="logs-preset-select" class="jg-input jg-select-premium h-12 px-4 text-xs min-w-[210px]">
-                    <option value="">{{ .T "logs_presets_local" }}</option>
-                </select>
-                <button id="logs-preset-save" class="jg-btn jg-btn-ghost h-12 px-4 text-[11px] font-bold border border-white/10 rounded-xl hover:bg-white/10 transition-all">
-                    {{ .T "logs_preset_save" }}
-                </button>
-                <button id="logs-preset-delete" class="jg-btn jg-btn-ghost h-12 px-3 text-[11px] font-bold border border-rose-500/30 text-rose-400 rounded-xl hover:bg-rose-500/10 transition-all hidden">
-                    {{ .T "logs_preset_delete" }}
-                </button>
-                <button id="btn-toggle-filters" class="jg-btn jg-btn-ghost h-12 px-5 flex items-center gap-2 font-bold border border-white/10 rounded-xl hover:bg-white/10 transition-all">
-                    <svg class="w-4 h-4 transition-transform duration-300" id="filter-toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                    <span>{{ .T "filters" }}</span>
-                    <span id="active-filter-count" class="hidden px-2 py-0.5 rounded-full bg-jg-accent text-always-white text-[10px] font-black">0</span>
-                </button>
+            
+            <div id="log-files-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div class="p-4 rounded-xl border border-white/5 bg-black/20 text-center text-xs text-jg-text-muted col-span-full">
+                    Chargement des fichiers de logs...
+                </div>
             </div>
         </div>
 
-        {{/* Advanced Filters Panel */}}
-        <div id="filter-panel" class="hidden mt-4 pt-6 border-t border-white/5 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                <div class="jg-filter-group">
-                    <label class="jg-filter-label">{{ .T "logs_col_action" }}</label>
-                    <input id="filter-action" type="text" placeholder='{{ .T "logs_filter_action_placeholder" }}' class="jg-input h-11 px-4 text-xs focus:border-jg-accent/30" />
-                </div>
-
-                <div class="jg-filter-group">
-                    <label class="jg-filter-label">{{ .T "logs_col_actor" }}</label>
-                    <input id="filter-actor" type="text" placeholder='{{ .T "logs_filter_actor_placeholder" }}' class="jg-input h-11 px-4 text-xs focus:border-jg-accent/30" />
-                </div>
-
-                <div class="jg-filter-group">
-                    <label class="jg-filter-label">{{ .T "logs_filter_result" }}</label>
-                    <select id="filter-result" class="jg-input jg-select-premium h-11 px-4 text-xs">
-                        <option value="">{{ .T "view_all" }}</option>
-                        <option value="success">{{ .T "success" }}</option>
-                        <option value="failure">{{ .T "failure" }}</option>
-                    </select>
-                </div>
-
-                <div class="jg-filter-group lg:col-span-1">
-                    <label class="jg-filter-label">{{ .T "logs_filter_period" }}</label>
-                    <div class="flex gap-2">
-                        <input id="filter-from" type="date" class="jg-input jg-date-input h-11 px-4 text-xs w-full" />
-                        <input id="filter-to" type="date" class="jg-input jg-date-input h-11 px-4 text-xs w-full" />
+        {{/* Visionneuse Console / Stream en direct */}}
+        <div class="jg-card p-0 overflow-hidden shadow-2xl flex flex-col">
+            <div class="px-5 py-3.5 border-b border-jg-border flex flex-wrap items-center justify-between gap-3 bg-black/40">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
                     </div>
-                    <div class="flex flex-wrap gap-2 mt-3" id="logs-quick-ranges">
-                        <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm text-[10px]" data-range="today">{{ .T "logs_range_today" }}</button>
-                        <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm text-[10px]" data-range="24h">24h</button>
-                        <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm text-[10px]" data-range="7d">{{ .T "logs_range_7d" }}</button>
-                        <button type="button" class="jg-btn jg-btn-ghost jg-btn-sm text-[10px]" data-range="30d">{{ .T "logs_range_30d" }}</button>
-                    </div>
+                    <span class="text-xs font-mono font-bold text-slate-300" id="current-viewing-filename">Console Système</span>
                 </div>
 
-                <div class="jg-filter-group">
-                    <label class="jg-filter-label">{{ .T "logs_filter_show" }}</label>
-                    <select id="limit-select" class="jg-input jg-select-premium h-11 px-4 text-xs">
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="200">200</option>
-                        <option value="500">500</option>
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="text" id="syslog-search" placeholder="Filtrer dans la console..." class="jg-input h-9 px-3 text-xs w-48 bg-black/30 border-white/10" />
+                    
+                    <select id="syslog-lines-select" class="jg-input jg-select-premium h-9 px-3 text-xs bg-black/30 border-white/10">
+                        <option value="100">100 lignes</option>
+                        <option value="200" selected>200 lignes</option>
+                        <option value="500">500 lignes</option>
+                        <option value="1000">1000 lignes</option>
                     </select>
+
+                    <button id="btn-toggle-autorefresh" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-bold flex items-center gap-1.5 border border-emerald-500/30 text-emerald-400">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span id="autorefresh-label">Auto-refresh (3s)</span>
+                    </button>
+
+                    <button id="btn-refresh-syslog" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-bold border border-white/10" title="Actualiser maintenant">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
+
+                    <button id="btn-copy-syslog" class="jg-btn jg-btn-ghost h-9 px-3 text-xs font-bold border border-white/10" title="Copier le contenu">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                    </button>
+
+                    <a id="btn-download-selected-file" href="#" class="jg-btn jg-btn-primary h-9 px-3 text-xs font-bold flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <span>Télécharger ce fichier</span>
+                    </a>
                 </div>
             </div>
-        </div>
-    </section>
 
-    {{/* ── Logs Table ────────────────────────────────────────────── */}}
-    <div class="jg-card p-0 overflow-hidden shadow-2xl flex flex-col h-[calc(100vh-280px)] min-h-[500px]">
-        <div class="px-6 py-4 border-b border-jg-border flex items-center justify-between bg-white/[0.01]">
-            <div class="flex items-center gap-3">
-                <h2 class="font-bold text-lg text-jg-text">{{ .T "nav_logs" }}</h2>
-                <span id="pagination-info" class="text-[10px] uppercase tracking-widest text-jg-text-muted font-bold opacity-50"></span>
-            </div>
-            <div class="flex gap-2">
-                <button id="btn-prev" data-page-delta="-1" class="p-2 rounded-lg hover:bg-white/5 border border-jg-border text-jg-text-muted disabled:opacity-20 transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                </button>
-                <button id="btn-next" data-page-delta="1" class="p-2 rounded-lg hover:bg-white/5 border border-jg-border text-jg-text-muted disabled:opacity-20 transition-all">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-                </button>
+            <div class="bg-black/90 p-4 font-mono text-xs overflow-auto h-[550px] leading-relaxed select-text" id="syslog-terminal">
+                <div class="text-slate-500 animate-pulse">Chargement des logs système...</div>
             </div>
         </div>
+    </div>
 
-        <div class="jg-table-wrap flex-1 overflow-auto">
-            <table class="jg-table w-full text-sm text-left">
-                <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest sticky top-0 z-20 shadow-sm">
-                    <tr>
-                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="created_at">
-                            <div class="flex items-center gap-2">
-                                {{ .T "col_created_at" }}
-                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="created_at">▼</span>
-                            </div>
-                        </th>
-                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="action">
-                            <div class="flex items-center gap-2">
-                                {{ .T "logs_col_action" }}
-                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="action">▼</span>
-                            </div>
-                        </th>
-                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="actor">
-                            <div class="flex items-center gap-2">
-                                {{ .T "logs_col_actor" }}
-                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="actor">▼</span>
-                            </div>
-                        </th>
-                        <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="target">
-                            <div class="flex items-center gap-2">
-                                {{ .T "logs_col_target" }}
-                                <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="target">▼</span>
-                            </div>
-                        </th>
-                        <th class="px-6 py-4">{{ .T "logs_col_request_id" }}</th>
-                        <th class="px-6 py-4">{{ .T "logs_col_details" }}</th>
-                    </tr>
-                </thead>
-                <tbody id="logs-tbody" class="divide-y divide-jg-border">
-                    <tr>
-                        <td colspan="6" class="py-20 text-center">
-                            <div class="flex flex-col items-center gap-3">
-                                <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
-                                <span class="text-jg-text-muted animate-pulse">{{ .T "logs_loading" }}...</span>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+    {{/* ── SECTION 2: Journal d'Audit Applicatif ────────────────────────────────── */}}
+    <div id="panel-audit-logs" class="space-y-6 hidden">
+        <section class="jg-card p-4 shadow-lg bg-white/[0.02]">
+            <div class="flex flex-col md:flex-row items-center gap-4">
+                <div class="relative flex-1 group">
+                    <input type="text" id="audit-search-input" placeholder='{{ .T "logs_search_placeholder" }}' class="jg-input h-11 px-4 text-sm rounded-xl w-full focus:border-jg-accent/30 transition-all">
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="export-json" class="jg-btn jg-btn-ghost text-xs font-bold border border-white/10">{{ .T "settings_backup_action_export" }} JSON</button>
+                    <button id="export-csv" class="jg-btn jg-btn-ghost text-xs font-bold border border-white/10">{{ .T "settings_backup_action_export" }} CSV</button>
+                </div>
+            </div>
+        </section>
+
+        <div class="jg-card p-0 overflow-hidden shadow-2xl flex flex-col min-h-[500px]">
+            <div class="px-6 py-4 border-b border-jg-border flex items-center justify-between bg-white/[0.01]">
+                <div class="flex items-center gap-3">
+                    <h2 class="font-bold text-lg text-jg-text">Événements d'Audit</h2>
+                    <span id="pagination-info" class="text-[10px] uppercase tracking-widest text-jg-text-muted font-bold opacity-50"></span>
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-prev" data-page-delta="-1" class="p-2 rounded-lg hover:bg-white/5 border border-jg-border text-jg-text-muted disabled:opacity-20 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button id="btn-next" data-page-delta="1" class="p-2 rounded-lg hover:bg-white/5 border border-jg-border text-jg-text-muted disabled:opacity-20 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="jg-table-wrap flex-1 overflow-auto">
+                <table class="jg-table w-full text-sm text-left">
+                    <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest sticky top-0 z-20 shadow-sm">
+                        <tr>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="created_at">
+                                <div class="flex items-center gap-2">
+                                    {{ .T "col_created_at" }}
+                                    <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="created_at">▼</span>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="action">
+                                <div class="flex items-center gap-2">
+                                    {{ .T "logs_col_action" }}
+                                    <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="action">▼</span>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="actor">
+                                <div class="flex items-center gap-2">
+                                    {{ .T "logs_col_actor" }}
+                                    <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="actor">▼</span>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-white/5 transition-colors group" data-sort-col="target">
+                                <div class="flex items-center gap-2">
+                                    {{ .T "logs_col_target" }}
+                                    <span class="sort-icon opacity-0 group-hover:opacity-100 transition-opacity" data-col="target">▼</span>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4">{{ .T "logs_col_request_id" }}</th>
+                            <th class="px-6 py-4">{{ .T "logs_col_details" }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-tbody" class="divide-y divide-jg-border">
+                        <tr>
+                            <td colspan="6" class="py-20 text-center">
+                                <div class="flex flex-col items-center gap-3">
+                                    <span class="spinner w-10 h-10 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
+                                    <span class="text-jg-text-muted animate-pulse">{{ .T "logs_loading" }}...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
-
 {{ end }}
 
 {{ define "scripts" }}
@@ -181,8 +194,6 @@
             systemActor: '{{ .T "logs_system_actor" }}',
             networkError: '{{ .T "logs_network_error" }}',
             loadError: '{{ .T "logs_load_error" }}',
-            presetsLocal: '{{ .T "logs_presets_local" }}',
-            presetPromptName: '{{ .T "logs_preset_prompt_name" }}',
         },
     };
 </script>

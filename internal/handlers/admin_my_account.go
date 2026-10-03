@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	netmail "net/mail"
+	"strconv"
 	"strings"
 
 	"github.com/maelmoreau21/JellyGate/internal/config"
@@ -18,6 +19,10 @@ import (
 // GetMyAccount retourne les infos de l'utilisateur connecté.
 func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	if err := h.ensureUserRowForSession(sess); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_profile_load_failed", "Impossible de préparer le profil utilisateur")})
 		return
@@ -25,46 +30,36 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 
 	var (
 		id              int64
+		jellyfinID      sql.NullString
 		email           sql.NullString
-		pendingEmail    sql.NullString
-		emailVerified   bool
-		contactDiscord  sql.NullString
-		contactTelegram sql.NullString
-		contactMatrix   sql.NullString
 		preferredLang   string
 		notifyExpiry    bool
 		notifyEvents    bool
 		optInEmail      bool
-		optInDiscord    bool
-		optInTelegram   bool
-		optInMatrix     bool
 		accessExpiresAt sql.NullString
 		createdAt       sql.NullString
 	)
 
+	var parsedUserID int64
+	if uid, err := strconv.ParseInt(sess.UserID, 10, 64); err == nil {
+		parsedUserID = uid
+	}
+
 	err := h.db.QueryRow(
-		`SELECT id, email, contact_discord, contact_telegram, contact_matrix,
-		        pending_email, email_verified,
+		`SELECT id, jellyfin_id, email,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
-		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix,
+		        opt_in_email,
 		        access_expires_at, created_at
-		 FROM users WHERE jellyfin_id = ?`,
-		sess.UserID,
+		 FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR (id = ? AND ? > 0)`,
+		sess.AuthentikID, sess.Username, parsedUserID, parsedUserID,
 	).Scan(
 		&id,
+		&jellyfinID,
 		&email,
-		&contactDiscord,
-		&contactTelegram,
-		&contactMatrix,
-		&pendingEmail,
-		&emailVerified,
 		&preferredLang,
 		&notifyExpiry,
 		&notifyEvents,
 		&optInEmail,
-		&optInDiscord,
-		&optInTelegram,
-		&optInMatrix,
 		&accessExpiresAt,
 		&createdAt,
 	)
@@ -78,8 +73,33 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var jfPrimaryImageTag string
-	if jfUser, err := h.jfClient.GetUser(sess.UserID); err == nil && jfUser != nil {
-		jfPrimaryImageTag = jfUser.PrimaryImageTag
+	var jfName string
+	targetJFID := strings.TrimSpace(jellyfinID.String)
+	if targetJFID == "" {
+		targetJFID = strings.TrimSpace(sess.UserID)
+	}
+
+	if h.jfClient != nil && h.jfClient.IsConfigured() {
+		if targetJFID != "" {
+			if jfUser, err := h.jfClient.GetUser(targetJFID); err == nil && jfUser != nil {
+				jfPrimaryImageTag = jfUser.PrimaryImageTag
+				jfName = jfUser.Name
+			}
+		}
+		if jfName == "" {
+			if jfUser, err := h.jfClient.GetUserByName(sess.Username); err == nil && jfUser != nil {
+				jfPrimaryImageTag = jfUser.PrimaryImageTag
+				jfName = jfUser.Name
+			}
+		}
+	}
+
+	displayName := jfName
+	if displayName == "" && sess.DisplayName != "" {
+		displayName = sess.DisplayName
+	}
+	if displayName == "" {
+		displayName = sess.Username
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -87,20 +107,15 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]interface{}{
 			"id":                         id,
 			"username":                   sess.Username,
+			"display_name":               displayName,
+			"jellyfin_name":              jfName,
+			"jellyfin_id":                jellyfinID.String,
 			"jellyfin_primary_image_tag": jfPrimaryImageTag,
 			"email":                      email.String,
-			"pending_email":              pendingEmail.String,
-			"email_verified":             emailVerified,
-			"contact_discord":            contactDiscord.String,
-			"contact_telegram":           contactTelegram.String,
-			"contact_matrix":             contactMatrix.String,
 			"preferred_lang":             preferredLang,
 			"notify_expiry_reminder":     notifyExpiry,
 			"notify_account_events":      notifyEvents,
 			"opt_in_email":               optInEmail,
-			"opt_in_discord":             optInDiscord,
-			"opt_in_telegram":            optInTelegram,
-			"opt_in_matrix":              optInMatrix,
 			"is_admin":                   sess.IsAdmin,
 			"access_expires_at":          accessExpiresAt.String,
 			"can_invite":                 h.resolveCanInviteForSession(sess),
@@ -112,6 +127,10 @@ func (h *AdminHandler) GetMyAccount(w http.ResponseWriter, r *http.Request) {
 // UpdateMyAccount met à jour les préférences et l'email de l'utilisateur connecté.
 func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
 	if err := h.ensureUserRowForSession(sess); err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_profile_load_failed", "Impossible de préparer le profil utilisateur")})
 		return
@@ -124,42 +143,32 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var (
-		userID          int64
-		currentEmail    sql.NullString
-		currentPending  sql.NullString
-		emailVerified   bool
-		currentDiscord  sql.NullString
-		currentTelegram sql.NullString
-		currentMatrix   sql.NullString
-		preferredLang   string
-		notifyExpiry    bool
-		notifyEvents    bool
-		optInEmail      bool
-		optInDiscord    bool
-		optInTelegram   bool
-		optInMatrix     bool
+		userID        int64
+		currentEmail  sql.NullString
+		preferredLang string
+		notifyExpiry  bool
+		notifyEvents  bool
+		optInEmail    bool
 	)
+
+	var parsedUserID int64
+	if uid, err := strconv.ParseInt(sess.UserID, 10, 64); err == nil {
+		parsedUserID = uid
+	}
+
 	err := h.db.QueryRow(
-		`SELECT id, email, pending_email, email_verified, contact_discord, contact_telegram, contact_matrix,
+		`SELECT id, email,
 		        preferred_lang, notify_expiry_reminder, notify_account_events,
-		        opt_in_email, opt_in_discord, opt_in_telegram, opt_in_matrix
-		 FROM users WHERE jellyfin_id = ?`,
-		sess.UserID,
+		        opt_in_email
+		 FROM users WHERE (authentik_id = ? AND authentik_id != '') OR username = ? OR (id = ? AND ? > 0)`,
+		sess.AuthentikID, sess.Username, parsedUserID, parsedUserID,
 	).Scan(
 		&userID,
 		&currentEmail,
-		&currentPending,
-		&emailVerified,
-		&currentDiscord,
-		&currentTelegram,
-		&currentMatrix,
 		&preferredLang,
 		&notifyExpiry,
 		&notifyEvents,
 		&optInEmail,
-		&optInDiscord,
-		&optInTelegram,
-		&optInMatrix,
 	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_profile_read_failed", "Erreur de lecture des préférences")})
@@ -167,9 +176,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newEmail := strings.TrimSpace(currentEmail.String)
-	newPendingEmail := strings.TrimSpace(currentPending.String)
-	newEmailVerified := emailVerified
-	shouldSendVerification := false
 	if req.Email != nil {
 		requestedEmail := strings.TrimSpace(*req.Email)
 		if requestedEmail != "" {
@@ -178,33 +184,7 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-
-		switch {
-		case requestedEmail == "":
-			newEmail = ""
-			newPendingEmail = ""
-			newEmailVerified = false
-		case strings.EqualFold(requestedEmail, newEmail):
-			newPendingEmail = ""
-			if !emailVerified {
-				shouldSendVerification = true
-			}
-		default:
-			newPendingEmail = requestedEmail
-			shouldSendVerification = true
-		}
-	}
-	newDiscord := strings.TrimSpace(currentDiscord.String)
-	if req.ContactDiscord != nil {
-		newDiscord = strings.TrimSpace(*req.ContactDiscord)
-	}
-	newTelegram := strings.TrimSpace(currentTelegram.String)
-	if req.ContactTelegram != nil {
-		newTelegram = strings.TrimSpace(*req.ContactTelegram)
-	}
-	newMatrix := strings.TrimSpace(currentMatrix.String)
-	if req.ContactMatrix != nil {
-		newMatrix = strings.TrimSpace(*req.ContactMatrix)
+		newEmail = requestedEmail
 	}
 
 	newPreferredLang := strings.TrimSpace(preferredLang)
@@ -231,42 +211,18 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	if req.OptInEmail != nil {
 		newOptInEmail = *req.OptInEmail
 	}
-	newOptInDiscord := optInDiscord
-	if req.OptInDiscord != nil {
-		newOptInDiscord = *req.OptInDiscord
-	}
-	newOptInTelegram := optInTelegram
-	if req.OptInTelegram != nil {
-		newOptInTelegram = *req.OptInTelegram
-	}
-	newOptInMatrix := optInMatrix
-	if req.OptInMatrix != nil {
-		newOptInMatrix = *req.OptInMatrix
-	}
 
 	_, err = h.db.Exec(
 		`UPDATE users
-		 SET email = ?, pending_email = ?, email_verified = ?, contact_discord = ?, contact_telegram = ?, contact_matrix = ?,
-		     preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
-		     opt_in_email = ?, opt_in_discord = ?, opt_in_telegram = ?, opt_in_matrix = ?,
-		     email_verification_sent_at = CASE WHEN ? THEN NULL ELSE email_verification_sent_at END,
-		     updated_at = datetime('now')
-		 WHERE jellyfin_id = ?`,
+		 SET email = ?, preferred_lang = ?, notify_expiry_reminder = ?, notify_account_events = ?,
+		     opt_in_email = ?, updated_at = datetime('now')
+		 WHERE id = ? OR authentik_id = ? OR username = ?`,
 		newEmail,
-		newPendingEmail,
-		newEmailVerified,
-		newDiscord,
-		newTelegram,
-		newMatrix,
 		newPreferredLang,
 		newNotifyExpiry,
 		newNotifyEvents,
 		newOptInEmail,
-		newOptInDiscord,
-		newOptInTelegram,
-		newOptInMatrix,
-		req.Email != nil,
-		sess.UserID,
+		userID, sess.AuthentikID, sess.Username,
 	)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_update_failed", "Erreur de mise à jour des préférences")})
@@ -274,19 +230,6 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	message := h.tr(r, "admin_profile_updated", "Profile updated")
-	if shouldSendVerification {
-		if err := sendEmailVerification(r, h.cfg, h.db, h.mailer, userID, true); err != nil {
-			slog.Error("Erreur envoi verification email apres mise a jour profil", "user_id", userID, "error", err)
-			message = h.tr(r, "admin_profile_updated_email_failed", "Profile updated, but verification email could not be sent")
-		} else {
-			message = h.tr(r, "admin_profile_updated_email_sent", "Profile updated, verification email sent")
-		}
-	}
-
-	if err := h.syncUserContactToLDAP(userID); err != nil {
-		slog.Warn("Synchronisation LDAP du profil partielle", "user_id", userID, "error", err)
-		message += " (LDAP sync pending)"
-	}
 
 	if req.PreferredLang != nil {
 		if strings.TrimSpace(newPreferredLang) == "" {
@@ -318,13 +261,11 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		"user.profile.updated",
 		sess.Username,
 		sess.Username,
-		fmt.Sprintf(`{"preferred_lang":"%s","notify_expiry":%t,"notify_events":%t,"opt_in_email":%t,"opt_in_discord":%t,"opt_in_telegram":%t}`,
+		fmt.Sprintf(`{"preferred_lang":"%s","notify_expiry":%t,"notify_events":%t,"opt_in_email":%t}`,
 			newPreferredLang,
 			newNotifyExpiry,
 			newNotifyEvents,
 			newOptInEmail,
-			newOptInDiscord,
-			newOptInTelegram,
 		),
 	)
 
@@ -333,16 +274,10 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 		Message: message,
 		Data: map[string]interface{}{
 			"email":                  newEmail,
-			"pending_email":          newPendingEmail,
-			"email_verified":         newEmailVerified && newPendingEmail == "",
-			"contact_discord":        newDiscord,
-			"contact_telegram":       newTelegram,
 			"preferred_lang":         newPreferredLang,
 			"notify_expiry_reminder": newNotifyExpiry,
 			"notify_account_events":  newNotifyEvents,
 			"opt_in_email":           newOptInEmail,
-			"opt_in_discord":         newOptInDiscord,
-			"opt_in_telegram":        newOptInTelegram,
 		},
 	})
 }
@@ -350,8 +285,12 @@ func (h *AdminHandler) UpdateMyAccount(w http.ResponseWriter, r *http.Request) {
 // UpdateMyAccountAvatar change la photo de profil Jellyfin de l'utilisateur connecté.
 func (h *AdminHandler) UpdateMyAccountAvatar(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin indisponible")})
+	if sess == nil {
+		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
+		return
+	}
+	if h.jfClient == nil || !h.jfClient.IsConfigured() {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin non configuré")})
 		return
 	}
 
@@ -413,78 +352,10 @@ func isAllowedAvatarContentType(contentType string) bool {
 	}
 }
 
-// UpdateMyPassword change le mot de passe de l'utilisateur sur Jellyfin.
+// UpdateMyPassword informe l'utilisateur que la gestion du mot de passe est déléguée à Authentik SSO.
 func (h *AdminHandler) UpdateMyPassword(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	if h.jfClient == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_jf_unavailable", "Service Jellyfin indisponible")})
-		return
-	}
-
-	var req struct {
-		CurrentPassword string `json:"current_password"`
-		NewPassword     string `json:"new_password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_invalid_json", "Payload JSON invalide")})
-		return
-	}
-
-	if req.NewPassword == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_password_required", "Le nouveau mot de passe est obligatoire")})
-		return
-	}
-
-	if err := h.jfClient.UpdateUserPassword(sess.UserID, req.CurrentPassword, req.NewPassword); err != nil {
-		slog.Warn("Échec changement mot de passe", "username", sess.Username, "error", err)
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_password_failed", "Échec : ") + err.Error()})
-		return
-	}
-
-	_ = h.db.LogAction("user.password.updated", sess.Username, sess.Username, "Changement de mot de passe")
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_password_updated", "Mot de passe mis à jour avec succès")})
-}
-
-// ResendEmailVerification renvoie un code de vérification à l'utilisateur connecté.
-func (h *AdminHandler) ResendEmailVerification(w http.ResponseWriter, r *http.Request) {
-	sess := session.FromContext(r.Context())
-	if h.mailer == nil {
-		writeJSON(w, http.StatusServiceUnavailable, APIResponse{Success: false, Message: h.tr(r, "admin_mail_service_unavailable", "Service mail non configuré")})
-		return
-	}
-
-	var email, pendingEmail string
-	var emailVerified bool
-	var id int64
-	err := h.db.QueryRow(`SELECT id, email, pending_email, email_verified FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&id, &email, &pendingEmail, &emailVerified)
-	if err != nil {
-		writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: h.tr(r, "admin_user_not_found", "Utilisateur introuvable")})
-		return
-	}
-
-	if emailVerified && pendingEmail == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_email_already_verified", "Votre email est déjà vérifié")})
-		return
-	}
-
-	targetEmail := email
-	usePending := false
-	if pendingEmail != "" {
-		targetEmail = pendingEmail
-		usePending = true
-	}
-
-	if targetEmail == "" {
-		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: h.tr(r, "admin_email_not_set", "Aucune adresse email configurée")})
-		return
-	}
-
-	if err := sendEmailVerification(r, h.cfg, h.db, h.mailer, id, usePending); err != nil {
-		slog.Error("Erreur renvoi verification email", "user_id", id, "error", err)
-		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: h.tr(r, "admin_mail_send_failed", "Erreur lors de l'envoi de l'email")})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: h.tr(r, "admin_email_verification_sent", "Verification email sent")})
+	writeJSON(w, http.StatusBadRequest, APIResponse{
+		Success: false,
+		Message: h.tr(r, "admin_password_managed_by_authentik", "La gestion du mot de passe s'effectue directement sur le portail Authentik."),
+	})
 }

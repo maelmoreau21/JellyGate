@@ -43,10 +43,6 @@
             return item(row.username, `${row.email || 'sans e-mail'} · ${dateLabel(row.expires_at)}`, row.action || 'disable');
         }, 'Aucun compte proche expiration');
 
-        renderList('pending-unverified-emails', data.unverified_emails, (row) => {
-            return item(row.username, row.pending_email || row.email || 'e-mail manquant', row.sent_at ? dateLabel(row.sent_at) : 'non envoyé');
-        }, 'Aucun e-mail en attente');
-
         renderList('pending-expiring-invitations', data.expiring_invitations, (row) => {
             const uses = `${row.used_count || 0}/${row.max_uses > 0 ? row.max_uses : '∞'}`;
             return item(row.label || row.code, `${uses} · ${dateLabel(row.expires_at)}`, row.created_by || 'system');

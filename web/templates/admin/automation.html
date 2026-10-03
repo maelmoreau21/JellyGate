@@ -13,9 +13,6 @@
     <div class="jg-tabs-nav">
         <button class="jg-tab-btn active" data-tab="tab-tasks">{{ .T "automation_tasks_title" }}</button>
         <button class="jg-tab-btn" data-tab="tab-presets">{{ .T "automation_presets_title" }}</button>
-        {{ if .LDAPEnabled }}
-        <button class="jg-tab-btn" data-tab="tab-mappings">{{ .T "automation_mappings_title" }}</button>
-        {{ end }}
     </div>
 
     {{/* ── Tab: Tasks ────────────────────────────────────────────────── */}}
@@ -28,7 +25,6 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button id="btn-task-quick-sync-users" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_users" }}</button>
-                    <button id="btn-task-quick-sync-ldap" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_sync_ldap" }}</button>
                     <button id="btn-task-quick-cleanup" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_manual_cleanup_resets" }}</button>
                 </div>
             </div>
@@ -97,7 +93,7 @@
                     <label class="jg-label" for="task-type">{{ .T "automation_col_type" }}</label>
                     <select id="task-type" class="jg-input jg-select-premium h-11 bg-black/20 text-sm">
                         <option value="sync_users">{{ .T "automation_task_type_sync_users" }}</option>
-                        <option value="sync_ldap_users">{{ .T "automation_task_type_sync_ldap_users" }}</option>
+                        <option value="sync_authentik">{{ .T "automation_task_type_sync_authentik" }}</option>
                         <option value="cleanup_resets">{{ .T "automation_task_type_cleanup_resets" }}</option>
                     </select>
                 </div>
@@ -157,16 +153,7 @@
 
             <form id="preset-form-internal" class="space-y-5">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {{ if .LDAPEnabled }}
-                    <div>
-                        <label class="jg-label" for="preset-ldap-dn">{{ .T "automation_ldap_users_group_label" }}</label>
-                        <input id="preset-ldap-dn" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_ldap_users_group_placeholder" }}'>
-                    </div>
-                    <div>
-                        <label class="jg-label" for="preset-ldap-dn-inviter">{{ .T "automation_ldap_inviter_group_label" }}</label>
-                        <input id="preset-ldap-dn-inviter" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_ldap_inviter_group_placeholder" }}'>
-                    </div>
-                    {{ end }}
+
                     <div class="md:col-span-2">
                         <label class="jg-label" for="preset-name">{{ .T "automation_col_name" }}</label>
                         <input id="preset-name" class="jg-input h-11 bg-black/20 text-sm" placeholder='{{ .T "automation_preset_name_placeholder" }}'>
@@ -371,37 +358,6 @@
                 </table>
             </div>
         </section>
-    </div>
-
-    {{ if .LDAPEnabled }}
-    <div id="tab-mappings" class="jg-tab-pane">
-        <section id="automation-mappings" class="jg-card p-0 overflow-hidden shadow-2xl">
-            <div class="px-6 py-5 border-b border-jg-border flex items-center justify-between bg-white/[0.01]">
-                <h2 class="font-bold text-lg text-jg-text">{{ .T "automation_mappings_title" }}</h2>
-                <div class="flex gap-2">
-                    <button id="btn-group-map-add" class="jg-btn jg-btn-ghost jg-btn-sm">{{ .T "automation_add" }}</button>
-                    <button id="btn-group-map-save" class="jg-btn jg-btn-primary jg-btn-sm">{{ .T "automation_save" }}</button>
-                </div>
-            </div>
-            <div class="jg-table-wrap overflow-x-auto">
-                <table class="jg-table w-full text-sm text-left">
-                    <thead class="bg-jg-bg-secondary/30 text-jg-text-muted uppercase text-[10px] font-bold tracking-widest border-b border-jg-border">
-                        <tr>
-                            <th class="px-6 py-4">{{ .T "automation_col_group" }}</th>
-                            <th class="px-6 py-4">{{ .T "automation_col_source" }}</th>
-                            <th class="px-6 py-4">{{ .T "automation_col_ldap_dn_optional" }}</th>
-                            <th class="px-6 py-4">{{ .T "automation_col_preset_target" }}</th>
-                            <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
-                        </tr>
-                    </thead>
-                    <tbody id="group-mappings-body" class="divide-y divide-jg-border">
-                        <tr><td colspan="5" class="text-center py-12 text-jg-text-muted">{{ .T "settings_loading" }}</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-    </div>
-    {{ end }}
 </div>
 
 {{ end }}
@@ -446,12 +402,12 @@
             deniedLabel: '{{ .T "automation_denied" }}',
             streamsUnit: '{{ .T "automation_streams_unit" }}',
             defaultPresetName: '{{ .T "automation_default_preset_name" }}',
-            mappingLdapUsersSuffix: '{{ .T "automation_mapping_ldap_users_suffix" }}',
-            mappingLdapInviterSuffix: '{{ .T "automation_mapping_ldap_inviter_suffix" }}',
+            mappingAuthentikUsersSuffix: '{{ .T "automation_mapping_authentik_users_suffix" }}',
+            mappingAuthentikInviterSuffix: '{{ .T "automation_mapping_authentik_inviter_suffix" }}',
             mappingDeleteConfirm: '{{ .T "automation_mapping_delete_confirm" }}',
             groupNamePlaceholder: '{{ .T "automation_group_name_placeholder" }}',
             sourceInternal: '{{ .T "automation_source_internal" }}',
-            sourceLdap: '{{ .T "automation_source_ldap" }}',
+            sourceAuthentik: '{{ .T "automation_source_authentik" }}',
             librariesLoading: '{{ .T "automation_libraries_loading" }}',
             librariesEmpty: '{{ .T "automation_libraries_empty" }}',
             librariesLoadFailed: '{{ .T "automation_error_libraries" }}',
@@ -482,10 +438,9 @@
             presetDeleteFailed: '{{ .T "automation_preset_delete_failed" }}',
             presetDeleted: '{{ .T "automation_preset_deleted" }}',
             manualSyncUsers: '{{ .T "automation_manual_sync_users" }}',
-            manualSyncLdap: '{{ .T "automation_manual_sync_ldap" }}',
             manualCleanupResets: '{{ .T "automation_manual_cleanup_resets" }}',
             taskTypeSyncUsers: '{{ .T "automation_task_type_sync_users" }}',
-            taskTypeSyncLdapUsers: '{{ .T "automation_task_type_sync_ldap_users" }}',
+            taskTypeSyncAuthentik: '{{ .T "automation_task_type_sync_authentik" }}',
             taskTypeCleanupResets: '{{ .T "automation_task_type_cleanup_resets" }}',
             taskTypeAdvancedBadge: '{{ .T "automation_task_type_advanced_badge" }}',
             quickTaskMissing: '{{ .T "automation_manual_task_missing" }}',
@@ -495,7 +450,7 @@
         },
         taskTypeDescriptions: {
             sync_users: '{{ .T "automation_type_sync_users_desc" }}',
-            sync_ldap_users: '{{ .T "automation_type_sync_ldap_users_desc" }}',
+            sync_authentik: '{{ .T "automation_type_sync_authentik_desc" }}',
             cleanup_resets: '{{ .T "automation_type_cleanup_resets_desc" }}',
         },
     };

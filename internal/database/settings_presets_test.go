@@ -75,7 +75,7 @@ func TestGetJellyfinPolicyPresetsMergesDefaultsWithoutOverwriting(t *testing.T) 
 	if got := byID["admin"]; got.Name != "Admin custom" || got.IsAdministrator {
 		t.Fatalf("existing admin preset overwritten: %+v", got)
 	}
-	for _, id := range []string{"family", "temporary_guest", "sponsor", "standard", "limited"} {
+	for _, id := range []string{"standard", "inviter_simple", "inviter_chain"} {
 		if _, ok := byID[id]; !ok {
 			t.Fatalf("default preset %q missing from merged presets", id)
 		}
@@ -193,8 +193,8 @@ func TestSaveJellyfinPolicyPresetsNormalizesNewBlocks(t *testing.T) {
 func TestGroupPolicyMappingsSortedByPriority(t *testing.T) {
 	db := newPresetTestDB(t)
 	if err := db.SaveGroupPolicyMappings([]config.GroupPolicyMapping{
-		{GroupName: "media", Source: "ldap", LDAPGroupDN: "cn=low", PolicyPresetID: "limited", Priority: 1},
-		{GroupName: "media", Source: "ldap", LDAPGroupDN: "cn=high", PolicyPresetID: "admin", Priority: 50},
+		{GroupName: "media", Source: "internal", PolicyPresetID: "limited", Priority: 1},
+		{GroupName: "media", Source: "internal", PolicyPresetID: "admin", Priority: 50},
 	}); err != nil {
 		t.Fatalf("SaveGroupPolicyMappings() error = %v", err)
 	}

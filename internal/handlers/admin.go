@@ -26,10 +26,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-chi/chi/v5"
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
 	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	jgldap "github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	jgmw "github.com/maelmoreau21/JellyGate/internal/middleware"
 	"github.com/maelmoreau21/JellyGate/internal/render"
@@ -44,7 +45,7 @@ type UserResponse struct {
 	JellyfinID         string `json:"jellyfin_id"`
 	Username           string `json:"username"`
 	Email              string `json:"email"`
-	LDAPDN             string `json:"ldap_dn"`
+	AuthentikID        string `json:"authentik_id"`
 	GroupName          string `json:"group_name"`
 	PresetID           string `json:"preset_id"` // NEW
 	InvitedBy          string `json:"invited_by"`
@@ -63,6 +64,8 @@ type UserResponse struct {
 	UpdatedAt          string `json:"updated_at"`
 
 	// Statuts temps réel depuis Jellyfin (enrichissement)
+	DisplayName             string `json:"display_name,omitempty"`
+	JellyfinName            string `json:"jellyfin_name,omitempty"`
 	JellyfinDisabled        bool   `json:"jellyfin_disabled"`
 	JellyfinExists          bool   `json:"jellyfin_exists"`
 	JellyfinPrimaryImageTag string `json:"jellyfin_primary_image_tag,omitempty"`
@@ -103,19 +106,15 @@ type adminUserRecord struct {
 	PendingEmail       string
 	EmailVerified      bool
 	JellyfinID         string
-	LDAPDN             string // FIXED
+	AuthentikID        sql.NullString
 	GroupName          string
 	PresetID           string // NEW
-	ContactDiscord     string
-	ContactTelegram    string
 	IsActive           bool
 	CanInvite          bool
 	PreferredLang      string
 	NotifyExpiry       bool
 	NotifyEvents       bool
 	OptInEmail         bool
-	OptInDiscord       bool
-	OptInTelegram      bool
 	ExpiryAction       string
 	DeleteAfterDays    int
 	DeleteAt           sql.NullString
@@ -149,16 +148,10 @@ type CreateAdminUserRequest struct {
 
 type UpdateMyAccountRequest struct {
 	Email                *string `json:"email"`
-	ContactDiscord       *string `json:"contact_discord"`
-	ContactTelegram      *string `json:"contact_telegram"`
-	ContactMatrix        *string `json:"contact_matrix"`
 	PreferredLang        *string `json:"preferred_lang"`
 	NotifyExpiryReminder *bool   `json:"notify_expiry_reminder"`
 	NotifyAccountEvents  *bool   `json:"notify_account_events"`
 	OptInEmail           *bool   `json:"opt_in_email"`
-	OptInDiscord         *bool   `json:"opt_in_discord"`
-	OptInTelegram        *bool   `json:"opt_in_telegram"`
-	OptInMatrix          *bool   `json:"opt_in_matrix"`
 }
 
 type BulkJellyfinPolicyPatch struct {
@@ -185,31 +178,58 @@ type BulkUsersActionRequest struct {
 
 // AdminHandler gère les endpoints d'administration.
 type AdminHandler struct {
-	cfg      *config.Config
-	db       *database.DB
-	jfClient *jellyfin.Client
-	ldClient *jgldap.Client
-	mailer   *mail.Mailer
-	renderer *render.Engine
+	cfg        *config.Config
+	db         *database.DB
+	jfClient   *jellyfin.Client
+	authClient authentik.Client
+	mailer     *mail.Mailer
+	renderer   *render.Engine
 }
 
 // NewAdminHandler crée un nouveau handler d'administration.
-func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, ld *jgldap.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
+func NewAdminHandler(cfg *config.Config, db *database.DB, jf *jellyfin.Client, auth authentik.Client, m *mail.Mailer, renderer *render.Engine) *AdminHandler {
 	return &AdminHandler{
-		cfg:      cfg,
-		db:       db,
-		jfClient: jf,
-		ldClient: ld,
-		mailer:   m,
-		renderer: renderer,
+		cfg:        cfg,
+		db:         db,
+		jfClient:   jf,
+		authClient: auth,
+		mailer:     m,
+		renderer:   renderer,
 	}
 }
 
-// SetLDAPClient remplace le client LDAP (rechargement à chaud).
-func (h *AdminHandler) SetLDAPClient(ld *jgldap.Client) { h.ldClient = ld }
-
 // SetMailer remplace le Mailer SMTP (rechargement à chaud).
 func (h *AdminHandler) SetMailer(m *mail.Mailer) { h.mailer = m }
+
+// SetAuthentikClient remplace le client Authentik / SSO (rechargement à chaud).
+func (h *AdminHandler) SetAuthentikClient(auth authentik.Client) { h.authClient = auth }
+
+func (h *AdminHandler) getEffectiveAuthentikClient() authentik.Client {
+	if h.authClient != nil {
+		return h.authClient
+	}
+	if h.db != nil {
+		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil && (dbCfg.URL != "" || dbCfg.IssuerURL != "") {
+			return authentik.NewClient(dbCfg)
+		}
+	}
+	if h.cfg != nil && (h.cfg.Authentik.URL != "" || h.cfg.Authentik.IssuerURL != "") {
+		return authentik.NewClient(h.cfg.Authentik)
+	}
+	return nil
+}
+
+func (h *AdminHandler) tr(r *http.Request, key, fallback string) string {
+	if h.renderer == nil {
+		return fallback
+	}
+	lang := jgmw.LangFromContext(r.Context())
+	value := h.renderer.Translate(lang, key)
+	if value == "["+key+"]" {
+		return fallback
+	}
+	return value
+}
 
 func (h *AdminHandler) sendUserEventEmail(rec *adminUserRecord, subject, lang, templateKey, templateBody string, emailCfg config.EmailTemplatesConfig, extra map[string]string) error {
 	if rec == nil {
@@ -365,76 +385,6 @@ func normalizeExpiryAction(raw string) string {
 	default:
 		return "disable"
 	}
-}
-
-func normalizePhoneForLDAP(raw string) string {
-	candidate := strings.TrimSpace(raw)
-	if candidate == "" {
-		return ""
-	}
-
-	replacer := strings.NewReplacer(" ", "", "-", "", ".", "", "(", "", ")", "")
-	normalized := replacer.Replace(candidate)
-	if strings.HasPrefix(normalized, "00") {
-		normalized = "+" + normalized[2:]
-	}
-
-	if strings.HasPrefix(normalized, "+") {
-		if len(normalized) < 7 || len(normalized) > 21 {
-			return ""
-		}
-		for _, r := range normalized[1:] {
-			if r < '0' || r > '9' {
-				return ""
-			}
-		}
-		return normalized
-	}
-
-	if len(normalized) < 6 || len(normalized) > 20 {
-		return ""
-	}
-	for _, r := range normalized {
-		if r < '0' || r > '9' {
-			return ""
-		}
-	}
-
-	return normalized
-}
-
-func (h *AdminHandler) syncUserContactToLDAP(userID int64) error {
-	if userID <= 0 || h.ldClient == nil {
-		return nil
-	}
-
-	var (
-		ldapDN          sql.NullString
-		email           sql.NullString
-		contactTelegram sql.NullString
-	)
-
-	err := h.db.QueryRow(
-		`SELECT ldap_dn, email, contact_telegram FROM users WHERE id = ?`,
-		userID,
-	).Scan(&ldapDN, &email, &contactTelegram)
-	if err == sql.ErrNoRows {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("lecture contact utilisateur: %w", err)
-	}
-
-	userDN := strings.TrimSpace(ldapDN.String)
-	if userDN == "" {
-		return nil
-	}
-
-	return h.ldClient.UpdateUserContact(
-		userDN,
-		strings.TrimSpace(email.String),
-		normalizePhoneForLDAP(contactTelegram.String),
-	)
 }
 
 // — Background Jobs ———————————————————————————————————————————————————————————————————
@@ -601,7 +551,7 @@ func (h *AdminHandler) runExpirationCheck() {
 
 	// Rechercher les utilisateurs actifs dont access_expires_at est dépassé.
 	rows, err := h.db.Query(`
-		SELECT id, username, email, jellyfin_id, ldap_dn, access_expires_at, expiry_action, expiry_delete_after_days
+		SELECT id, username, email, jellyfin_id, authentik_id, access_expires_at, expiry_action, expiry_delete_after_days
 		FROM users
 		WHERE is_active = TRUE
 		  AND access_expires_at IS NOT NULL
@@ -617,7 +567,7 @@ func (h *AdminHandler) runExpirationCheck() {
 		Username        string
 		Email           string
 		JellyfinID      string
-		LDAPDN          string
+		AuthentikID     sql.NullString
 		ExpiresAt       string
 		ExpiryAction    string
 		DeleteAfterDays int
@@ -626,13 +576,13 @@ func (h *AdminHandler) runExpirationCheck() {
 	usersToProcess := make([]expiredUser, 0)
 	for rows.Next() {
 		var u expiredUser
-		var email, jfID, ldDN, expiresAt, expiryAction sql.NullString
-		if err := rows.Scan(&u.ID, &u.Username, &email, &jfID, &ldDN, &expiresAt, &expiryAction, &u.DeleteAfterDays); err != nil {
+		var email, jfID, authID, expiresAt, expiryAction sql.NullString
+		if err := rows.Scan(&u.ID, &u.Username, &email, &jfID, &authID, &expiresAt, &expiryAction, &u.DeleteAfterDays); err != nil {
 			continue
 		}
 		u.Email = email.String
 		u.JellyfinID = jfID.String
-		u.LDAPDN = ldDN.String
+		u.AuthentikID = authID
 		u.ExpiresAt = expiresAt.String
 		u.ExpiryAction = normalizeExpiryAction(expiryAction.String)
 		usersToProcess = append(usersToProcess, u)
@@ -665,15 +615,9 @@ func (h *AdminHandler) runExpirationCheck() {
 
 		slog.Info("Desactivation automatique de l'utilisateur (Expire)", "user", u.Username, "policy", u.ExpiryAction)
 
-		if h.ldClient != nil && u.LDAPDN != "" {
-			if err := h.ldClient.DisableUser(u.LDAPDN); err != nil {
-				slog.Error("Erreur lors de la desactivation LDAP (Expiration)", "error", err)
-			}
-		}
-
-		if u.JellyfinID != "" {
-			if err := h.jfClient.DisableUser(u.JellyfinID); err != nil {
-				slog.Error("Erreur lors de la desactivation Jellyfin (Expiration)", "error", err)
+		if h.authClient != nil && u.AuthentikID.Valid && u.AuthentikID.String != "" {
+			if err := h.authClient.SetUserActiveStatusByString(context.Background(), u.AuthentikID.String, false); err != nil {
+				slog.Error("Erreur lors de la desactivation Authentik (Expiration)", "error", err)
 			}
 		}
 
@@ -755,6 +699,10 @@ func (h *AdminHandler) runExpirationCheck() {
 // DashboardPage affiche la page principale du tableau de bord.
 func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
@@ -763,7 +711,7 @@ func (h *AdminHandler) DashboardPage(w http.ResponseWriter, r *http.Request) {
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "dashboard"
 
 	if err := h.renderer.Render(w, "admin/dashboard.html", td); err != nil {
@@ -788,28 +736,25 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 
 	// 3. Santé des services
 	health := map[string]bool{
-		"database": true,
-		"jellyfin": false,
-		"ldap":     false,
+		"database":  true,
+		"jellyfin":  false,
+		"authentik": h.db.IsAuthentikEnabled(),
 	}
 
 	// Test Jellyfin (léger)
-	if h.jfClient != nil {
+	if h.jfClient != nil && h.jfClient.IsConfigured() {
 		if _, err := h.jfClient.GetPublicSystemInfo(); err == nil {
 			health["jellyfin"] = true
 		}
 	}
 
-	// Test LDAP (si activé)
-	ldapCfg, _ := h.db.GetLDAPConfig()
-	if ldapCfg.Enabled {
-		client := jgldap.New(ldapCfg)
-		if err := client.TestConnection(); err == nil {
-			health["ldap"] = true
+	// Test Authentik (si activé)
+	if h.authClient != nil && h.cfg != nil && h.cfg.Authentik.Enabled {
+		if _, err := h.authClient.ListUsers(r.Context()); err == nil {
+			health["authentik"] = true
+		} else {
+			health["authentik"] = false
 		}
-	} else {
-		// Pas d'erreur si désactivé, on peut mettre true ou le retirer.
-		health["ldap"] = true
 	}
 
 	writeJSON(w, http.StatusOK, APIResponse{
@@ -825,13 +770,16 @@ func (h *AdminHandler) DashboardStats(w http.ResponseWriter, r *http.Request) {
 // MyAccountPage affiche la page "Mon compte" pour l'utilisateur connecté.
 func (h *AdminHandler) MyAccountPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
 	td.CanInvite = h.resolveCanInviteForSession(sess)
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
 	td.Section = "my_account"
 
 	if err := h.renderer.Render(w, "admin/my_account.html", td); err != nil {
@@ -845,12 +793,16 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return fmt.Errorf("session absente")
 	}
 
-	if strings.TrimSpace(sess.UserID) == "" {
-		return fmt.Errorf("session sans user id jellyfin")
+	authID := strings.TrimSpace(sess.AuthentikID)
+	if authID == "" {
+		authID = strings.TrimSpace(sess.UserID)
+	}
+	if authID == "" {
+		return fmt.Errorf("session sans authentik_id")
 	}
 
 	var userID int64
-	err := h.db.QueryRow(`SELECT id FROM users WHERE jellyfin_id = ?`, sess.UserID).Scan(&userID)
+	err := h.db.QueryRow(`SELECT id FROM users WHERE authentik_id = ?`, authID).Scan(&userID)
 	if err == nil {
 		return nil
 	}
@@ -858,19 +810,18 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return err
 	}
 
-	// Cas LDAP-only: l'utilisateur peut exister en base avec username sans jellyfin_id.
-	err = h.db.QueryRow(`SELECT id FROM users WHERE username = ?`, sess.Username).Scan(&userID)
+	err = h.db.QueryRow(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, strings.TrimSpace(sess.Username)).Scan(&userID)
 	if err == nil {
 		_, upErr := h.db.Exec(
 			`UPDATE users
-			 SET jellyfin_id = ?, is_active = TRUE, can_invite = ?, updated_at = CURRENT_TIMESTAMP
+			 SET authentik_id = ?, is_active = TRUE, can_invite = ?, updated_at = CURRENT_TIMESTAMP
 			 WHERE id = ?`,
-			sess.UserID,
+			authID,
 			sess.IsAdmin,
 			userID,
 		)
 		if upErr != nil {
-			slog.Error("Erreur mise a jour profil session (LDAP path)", "username", sess.Username, "error", upErr)
+			slog.Error("Erreur mise a jour profil session (Authentik path)", "username", sess.Username, "error", upErr)
 		}
 		return upErr
 	}
@@ -878,16 +829,13 @@ func (h *AdminHandler) ensureUserRowForSession(sess *session.Payload) error {
 		return err
 	}
 
-	_, err = h.db.Exec(
-		`INSERT INTO users (jellyfin_id, username, is_active, can_invite)
-			 VALUES (?, ?, TRUE, ?)
-		 ON CONFLICT(jellyfin_id) DO UPDATE SET username = excluded.username, updated_at = CURRENT_TIMESTAMP`,
-		sess.UserID,
-		sess.Username,
-		sess.IsAdmin,
-	)
+	insertQuery := `INSERT INTO users (authentik_id, username, email, is_active, can_invite) VALUES (?, ?, ?, TRUE, ?)`
+	if h.db.IsSQLite() {
+		insertQuery = `INSERT INTO users (authentik_id, username, email, is_active, can_invite) VALUES (?, ?, ?, 1, ?) ON CONFLICT(authentik_id) DO UPDATE SET username = excluded.username, updated_at = datetime('now')`
+	}
+	_, err = h.db.Exec(insertQuery, authID, sess.Username, sess.Email, sess.IsAdmin)
 	if err != nil {
-		slog.Error("Erreur insertion profil session (Default path)", "username", sess.Username, "error", err)
+		slog.Error("Erreur insertion profil session Authentik", "username", sess.Username, "error", err)
 	}
 	return err
 }
@@ -896,8 +844,24 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 	if sess == nil {
 		return false
 	}
-	if sess.IsAdmin {
+	if sess.IsAdmin || sess.CanInvite || sess.CanInviteRecursive {
 		return true
+	}
+
+	authCfg, _ := h.db.GetAuthentikConfig()
+	invGroup := authCfg.InvitersGroup
+	if invGroup == "" {
+		invGroup = "jellygate-inviters"
+	}
+	invRecGroup := authCfg.InvitersRecursiveGroup
+	if invRecGroup == "" {
+		invRecGroup = "jellygate-inviters-recursive"
+	}
+
+	for _, g := range sess.Groups {
+		if strings.EqualFold(g, invGroup) || strings.EqualFold(g, invRecGroup) || strings.EqualFold(g, "jellygate-inviters") || strings.EqualFold(g, "jellygate-inviters-recursive") {
+			return true
+		}
 	}
 
 	_ = h.ensureUserRowForSession(sess)
@@ -921,7 +885,7 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 
 	if presetID.Valid && presetID.String != "" {
 		preset, _ := h.getJellyfinPresetByID(presetID.String)
-		if preset != nil && preset.CanInvite {
+		if preset != nil && (preset.CanInvite || preset.CanCreateInvitations) {
 			return true
 		}
 	}
@@ -929,17 +893,21 @@ func (h *AdminHandler) resolveCanInviteForSession(sess *session.Payload) bool {
 	return canInvite
 }
 
-// GetMyAccount, UpdateMyAccount, GetMyInvitations, CreateMyInvitation, UpdateMyAccountAvatar, UpdateMyPassword, ResendEmailVerification have been moved to separate modular files.
+// GetMyAccount, UpdateMyAccount, GetMyInvitations, CreateMyInvitation, UpdateMyAccountAvatar, UpdateMyPassword have been moved to separate modular files.
 
 func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "users"
 	if err := h.renderer.Render(w, "admin/users.html", td); err != nil {
 		slog.Error("Erreur rendu users page", "error", err)
@@ -949,13 +917,17 @@ func (h *AdminHandler) UsersPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "settings"
 	if err := h.renderer.Render(w, "admin/settings.html", td); err != nil {
 		slog.Error("Erreur rendu settings page", "error", err)
@@ -965,13 +937,17 @@ func (h *AdminHandler) SettingsPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) EmailTemplatesPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "email_templates"
 	if err := h.renderer.Render(w, "admin/email_templates.html", td); err != nil {
 		slog.Error("Erreur rendu email templates page", "error", err)
@@ -982,12 +958,16 @@ func (h *AdminHandler) EmailTemplatesPage(w http.ResponseWriter, r *http.Request
 // InvitationsPage affiche la page de gestion des invitations.
 func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = sess.IsAdmin
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 
 	inviteCfg, err := h.db.GetInvitationProfileConfig()
 	if err != nil {
@@ -1064,13 +1044,17 @@ func (h *AdminHandler) InvitationsPage(w http.ResponseWriter, r *http.Request) {
 
 func (h *AdminHandler) LogsPage(w http.ResponseWriter, r *http.Request) {
 	sess := session.FromContext(r.Context())
+	if sess == nil {
+		http.Redirect(w, r, "/auth/login", http.StatusFound)
+		return
+	}
 	td := applyRequestTemplateData(r, h.renderer.NewTemplateData(jgmw.LangFromContext(r.Context())))
 	links := resolvePortalLinks(h.cfg, h.db)
 	td.Data["JellyfinURL"] = links.JellyfinURL
 	td.AdminUsername = sess.Username
 	td.IsAdmin = true
 	td.CanInvite = true
-	td.LDAPEnabled = h.db.IsLDAPEnabled()
+	td.AuthentikEnabled = h.db.IsAuthentikEnabled()
 	td.Section = "logs"
 	if err := h.renderer.Render(w, "admin/logs.html", td); err != nil {
 		slog.Error("Erreur rendu logs page", "error", err)
@@ -1298,6 +1282,61 @@ func extractRequestIDFromDetails(details string) string {
 	return strings.TrimSpace(rest[:end])
 }
 
+// SetUserQuotaRequest payload pour l'ajustement administrateur des quotas.
+type SetUserQuotaRequest struct {
+	CustomQuota *int `json:"custom_quota"`
+	BonusQuota  int  `json:"bonus_quota"`
+	MalusQuota  int  `json:"malus_quota"`
+}
+
+// SetUserQuota permet à un administrateur d'ajuster les quotas d'un parrain.
+func (h *AdminHandler) SetUserQuota(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+	userID, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || userID <= 0 {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID d'utilisateur invalide"})
+		return
+	}
+
+	var req SetUserQuotaRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "Payload JSON invalide"})
+		return
+	}
+
+	if err := h.db.SetUserQuotaOverrides(r.Context(), userID, req.CustomQuota, req.BonusQuota, req.MalusQuota); err != nil {
+		slog.Error("Erreur mise à jour quota utilisateur", "user_id", userID, "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de données"})
+		return
+	}
+
+	calc, err := h.db.CalculateUserQuota(r.Context(), userID)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur calcul quota"})
+		return
+	}
+
+	actor := "system"
+	if sess := session.FromContext(r.Context()); sess != nil {
+		actor = sess.Username
+	}
+	_ = h.db.LogAction("user.quota.updated", actor, idStr, fmt.Sprintf(`{"bonus":%d,"malus":%d}`, req.BonusQuota, req.MalusQuota))
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Message: "Quota utilisateur mis à jour", Data: calc})
+}
+
+// GetReferrals renvoie l'arbre complet de parrainage pour la vue administrateur.
+func (h *AdminHandler) GetReferrals(w http.ResponseWriter, r *http.Request) {
+	referrals, err := h.db.GetAllReferrals(r.Context())
+	if err != nil {
+		slog.Error("Erreur récupération liste des parrainages", "error", err)
+		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur base de données"})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, APIResponse{Success: true, Data: referrals})
+}
+
 // writeJSON écrit une réponse JSON avec le code HTTP donné.
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -1306,6 +1345,6 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
-		slog.Error("Erreur d'encodage JSON", "error", err)
+		slog.Error("Erreur encodage JSON", "error", err)
 	}
 }

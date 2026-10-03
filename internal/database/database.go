@@ -488,7 +488,39 @@ func (db *DB) migrate() error {
 		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN account_duration_days INTEGER NOT NULL DEFAULT 0`)
 		_, _ = db.conn.Exec(`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`)
 		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN preset_id TEXT`) // NEW
-		_, _ = db.conn.Exec(`ALTER TABLE pending_invite_signups ADD COLUMN used BOOLEAN NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`DROP TABLE IF EXISTS password_resets`)
+		_, _ = db.conn.Exec(`DROP TABLE IF EXISTS pending_invite_signups`)
+		_, _ = db.conn.Exec(`ALTER TABLE users DROP COLUMN ldap_dn`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN authentik_id TEXT`)
+		_, _ = db.conn.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_authentik_id ON users(authentik_id)`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN custom_quota INTEGER`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN bonus_quota INTEGER NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN malus_quota INTEGER NOT NULL DEFAULT 0`)
+		_, _ = db.conn.Exec(`ALTER TABLE users ADD COLUMN invited_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN authentik_invitation_id TEXT`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN authentik_group_id TEXT NOT NULL DEFAULT 'jellyfin-users'`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN accepted_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN activated_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN revoked_at DATETIME`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN email TEXT NOT NULL DEFAULT ''`)
+		_, _ = db.conn.Exec(`ALTER TABLE invitations ADD COLUMN created_by_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`)
+		_, _ = db.conn.Exec(`CREATE TABLE IF NOT EXISTS referrals (
+			id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+			sponsor_user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			godchild_user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+			godchild_authentik_id   TEXT,
+			invitation_id           INTEGER REFERENCES invitations(id) ON DELETE SET NULL,
+			status                  TEXT NOT NULL DEFAULT 'pending',
+			accepted_at             DATETIME,
+			activated_at            DATETIME,
+			revoked_at              DATETIME,
+			created_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at              DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`)
+		_, _ = db.conn.Exec(`CREATE INDEX IF NOT EXISTS idx_referrals_sponsor ON referrals(sponsor_user_id)`)
+		_, _ = db.conn.Exec(`CREATE INDEX IF NOT EXISTS idx_referrals_godchild ON referrals(godchild_user_id)`)
+		_, _ = db.conn.Exec(`CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status)`)
 	} else {
 		// Postgres: on utilise IF NOT EXISTS pour la compatibilité (9.6+)
 		queries := []string{
@@ -521,7 +553,39 @@ func (db *DB) migrate() error {
 			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS account_duration_days INTEGER NOT NULL DEFAULT 0`,
 			`ALTER TABLE user_messages ADD COLUMN IF NOT EXISTS target_preset_id TEXT NOT NULL DEFAULT ''`,
 			`ALTER TABLE users ADD COLUMN IF NOT EXISTS preset_id TEXT`,
-			`ALTER TABLE pending_invite_signups ADD COLUMN IF NOT EXISTS used BOOLEAN NOT NULL DEFAULT FALSE`,
+			`DROP TABLE IF EXISTS password_resets CASCADE`,
+			`DROP TABLE IF EXISTS pending_invite_signups CASCADE`,
+			`ALTER TABLE users DROP COLUMN IF EXISTS ldap_dn`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS authentik_id TEXT`,
+			`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_authentik_id ON users(authentik_id)`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_quota INTEGER`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS bonus_quota INTEGER NOT NULL DEFAULT 0`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS malus_quota INTEGER NOT NULL DEFAULT 0`,
+			`ALTER TABLE users ADD COLUMN IF NOT EXISTS invited_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS authentik_invitation_id TEXT`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS authentik_group_id TEXT NOT NULL DEFAULT 'jellyfin-users'`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pending'`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS email TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE invitations ADD COLUMN IF NOT EXISTS created_by_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE`,
+			`CREATE TABLE IF NOT EXISTS referrals (
+				id                      SERIAL PRIMARY KEY,
+				sponsor_user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				godchild_user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+				godchild_authentik_id   TEXT,
+				invitation_id           INTEGER REFERENCES invitations(id) ON DELETE SET NULL,
+				status                  TEXT NOT NULL DEFAULT 'pending',
+				accepted_at             TIMESTAMPTZ,
+				activated_at            TIMESTAMPTZ,
+				revoked_at              TIMESTAMPTZ,
+				created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				updated_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+			)`,
+			`CREATE INDEX IF NOT EXISTS idx_referrals_sponsor ON referrals(sponsor_user_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_referrals_godchild ON referrals(godchild_user_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_referrals_status ON referrals(status)`,
 		}
 		for _, q := range queries {
 			if _, err := db.conn.Exec(q); err != nil {
@@ -531,9 +595,9 @@ func (db *DB) migrate() error {
 		}
 	}
 
-	if err := db.backfillExistingEmailVerificationState(); err != nil {
-		return fmt.Errorf("backfill email verification historique: %w", err)
-	}
+	// Suppression de la table obsolète email_verifications si elle existe encore
+	_, _ = db.conn.Exec("DROP TABLE IF EXISTS email_verifications")
+
 	if err := db.disableDefaultBackupAutomationTaskOnce(); err != nil {
 		return fmt.Errorf("nettoyage tache backup automation historique: %w", err)
 	}
@@ -571,15 +635,6 @@ func (db *DB) disableDefaultBackupAutomationTaskOnce() error {
 }
 
 func (db *DB) seedDefaultTasks() error {
-	var count int
-	err := db.QueryRow(`SELECT COUNT(*) FROM scheduled_tasks`).Scan(&count)
-	if err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-
 	tasks := []struct {
 		name     string
 		taskType string
@@ -587,60 +642,26 @@ func (db *DB) seedDefaultTasks() error {
 		minute   int
 	}{
 		{"Synchro Utilisateurs", "sync_users", 4, 0},
+		{"Synchro & Réconciliation Authentik", "sync_authentik", 5, 0},
 		{"Nettoyage Jetons", "cleanup_resets", 3, 0},
 	}
 
 	now := time.Now().Format("2006-01-02 15:04:05")
 	for _, t := range tasks {
-		_, err := db.Exec(
-			`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, 'system', ?, ?)`,
-			t.name, t.taskType, true, t.hour, t.minute, now, now,
-		)
-		if err != nil {
-			slog.Error("Erreur lors de l'insertion d'une tache par defaut", "name", t.name, "error", err)
+		var exists int
+		_ = db.QueryRow(`SELECT COUNT(*) FROM scheduled_tasks WHERE task_type = ?`, t.taskType).Scan(&exists)
+		if exists == 0 {
+			_, err := db.Exec(
+				`INSERT INTO scheduled_tasks (name, task_type, enabled, hour, minute, created_by, created_at, updated_at)
+				 VALUES (?, ?, ?, ?, ?, 'system', ?, ?)`,
+				t.name, t.taskType, true, t.hour, t.minute, now, now,
+			)
+			if err != nil {
+				slog.Error("Erreur lors de l'insertion d'une tache par defaut", "name", t.name, "error", err)
+			}
 		}
 	}
 
-	slog.Info("Taches par defaut inserees avec succes")
-	return nil
-}
-
-func (db *DB) backfillExistingEmailVerificationState() error {
-	status, err := db.GetSetting(SettingEmailVerificationBackfillV1)
-	if err != nil {
-		return err
-	}
-	if strings.EqualFold(strings.TrimSpace(status), "done") {
-		return nil
-	}
-
-	query := `UPDATE users
-		SET email_verified = 1, updated_at = datetime('now')
-		WHERE email_verified = 0
-		  AND TRIM(COALESCE(email, '')) <> ''
-		  AND TRIM(COALESCE(pending_email, '')) = ''
-		  AND email_verification_sent_at IS NULL`
-	if db.IsPostgres() {
-		query = `UPDATE users
-			SET email_verified = TRUE, updated_at = CURRENT_TIMESTAMP
-			WHERE email_verified = FALSE
-			  AND BTRIM(COALESCE(email, '')) <> ''
-			  AND BTRIM(COALESCE(pending_email, '')) = ''
-			  AND email_verification_sent_at IS NULL`
-	}
-
-	result, err := db.Exec(query)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, _ := result.RowsAffected()
-	if err := db.SetSetting(SettingEmailVerificationBackfillV1, "done"); err != nil {
-		return err
-	}
-
-	slog.Info("Backfill verification email historique termine", "rows", rowsAffected)
 	return nil
 }
 
@@ -656,7 +677,6 @@ func (db *DB) sqliteMigrations() []migration {
 				email_verified    BOOLEAN NOT NULL DEFAULT 0,
 				pending_email     TEXT    NOT NULL DEFAULT '',
 				email_verification_sent_at DATETIME,
-				ldap_dn           TEXT,
 				group_name        TEXT    NOT NULL DEFAULT '',
 				contact_discord   TEXT    NOT NULL DEFAULT '',
 				contact_telegram  TEXT    NOT NULL DEFAULT '',
@@ -702,17 +722,6 @@ func (db *DB) sqliteMigrations() []migration {
 			)`,
 		},
 		{
-			name: "create_password_resets",
-			sql: `CREATE TABLE IF NOT EXISTS password_resets (
-				id         INTEGER PRIMARY KEY AUTOINCREMENT,
-				user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-				code       TEXT    UNIQUE NOT NULL,
-				expires_at DATETIME NOT NULL,
-				used       BOOLEAN NOT NULL DEFAULT 0,
-				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
 			name: "create_email_verifications",
 			sql: `CREATE TABLE IF NOT EXISTS email_verifications (
 				id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -722,20 +731,6 @@ func (db *DB) sqliteMigrations() []migration {
 				expires_at DATETIME NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT 0,
 				created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
-			name: "create_pending_invite_signups",
-			sql: `CREATE TABLE IF NOT EXISTS pending_invite_signups (
-				id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-				code                TEXT    UNIQUE NOT NULL,
-				invitation_code     TEXT    NOT NULL,
-				username            TEXT    NOT NULL,
-				email               TEXT    NOT NULL,
-				password_ciphertext TEXT    NOT NULL,
-				expires_at          DATETIME NOT NULL,
-				used                BOOLEAN NOT NULL DEFAULT 0,
-				created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -776,18 +771,6 @@ func (db *DB) sqliteMigrations() []migration {
 		{
 			name: "index_invitations_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_code ON invitations(code)`,
-		},
-		{
-			name: "index_password_resets_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_password_resets_code ON password_resets(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_code ON pending_invite_signups(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_username",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_username ON pending_invite_signups(username)`,
 		},
 		{
 			name: "index_audit_log_action",
@@ -886,7 +869,6 @@ func (db *DB) postgresMigrations() []migration {
 				email_verified    BOOLEAN NOT NULL DEFAULT FALSE,
 				pending_email     TEXT NOT NULL DEFAULT '',
 				email_verification_sent_at TIMESTAMPTZ,
-				ldap_dn           TEXT,
 				group_name        TEXT NOT NULL DEFAULT '',
 				contact_discord   TEXT NOT NULL DEFAULT '',
 				contact_telegram  TEXT NOT NULL DEFAULT '',
@@ -932,17 +914,6 @@ func (db *DB) postgresMigrations() []migration {
 			)`,
 		},
 		{
-			name: "create_password_resets",
-			sql: `CREATE TABLE IF NOT EXISTS password_resets (
-				id         BIGSERIAL PRIMARY KEY,
-				user_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-				code       TEXT UNIQUE NOT NULL,
-				expires_at TIMESTAMPTZ NOT NULL,
-				used       BOOLEAN NOT NULL DEFAULT FALSE,
-				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
 			name: "create_email_verifications",
 			sql: `CREATE TABLE IF NOT EXISTS email_verifications (
 				id         BIGSERIAL PRIMARY KEY,
@@ -952,20 +923,6 @@ func (db *DB) postgresMigrations() []migration {
 				expires_at TIMESTAMPTZ NOT NULL,
 				used       BOOLEAN NOT NULL DEFAULT FALSE,
 				created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-			)`,
-		},
-		{
-			name: "create_pending_invite_signups",
-			sql: `CREATE TABLE IF NOT EXISTS pending_invite_signups (
-				id                  BIGSERIAL PRIMARY KEY,
-				code                TEXT UNIQUE NOT NULL,
-				invitation_code     TEXT NOT NULL,
-				username            TEXT NOT NULL,
-				email               TEXT NOT NULL,
-				password_ciphertext TEXT NOT NULL,
-				expires_at          TIMESTAMPTZ NOT NULL,
-				used                BOOLEAN NOT NULL DEFAULT FALSE,
-				created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 			)`,
 		},
 		{
@@ -1006,18 +963,6 @@ func (db *DB) postgresMigrations() []migration {
 		{
 			name: "index_invitations_code",
 			sql:  `CREATE INDEX IF NOT EXISTS idx_invitations_code ON invitations(code)`,
-		},
-		{
-			name: "index_password_resets_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_password_resets_code ON password_resets(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_code",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_code ON pending_invite_signups(code)`,
-		},
-		{
-			name: "index_pending_invite_signups_username",
-			sql:  `CREATE INDEX IF NOT EXISTS idx_pending_invite_signups_username ON pending_invite_signups(username)`,
 		},
 		{
 			name: "index_audit_log_action",

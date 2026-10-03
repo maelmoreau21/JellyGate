@@ -5,7 +5,7 @@
 # =============================================================================
 
 # ── Step 1: Go binary compilation ───────────────────────────────────────────
-FROM golang:1.26.5-alpine AS builder
+FROM golang:1.26.6-alpine AS builder
 
 # Arguments automatically injected by Docker Buildx for cross-compilation
 ARG TARGETOS=linux
@@ -40,8 +40,9 @@ RUN CGO_ENABLED=0 \
 # ── Step 2: Minimal final image ─────────────────────────────────────────────
 FROM postgres:18-alpine
 
-# TLS certificates + utility tools + Postgres server cleanup to minimize image size
-RUN apk add --no-cache ca-certificates tzdata wget \
+# TLS certificates + utility tools + security upgrades + Postgres server cleanup to minimize image size
+RUN apk update && apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates tzdata wget \
     && rm -rf /usr/local/bin/postgres \
               /usr/local/bin/initdb \
               /usr/local/bin/pg_ctl \
@@ -81,7 +82,7 @@ EXPOSE 8097
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8097/ || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8097/health || exit 1
 
 # Entrypoint
 ENTRYPOINT ["./jellygate"]

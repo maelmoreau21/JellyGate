@@ -2,9 +2,8 @@ package scheduler
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math"
@@ -13,13 +12,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/maelmoreau21/JellyGate/internal/authentik"
 	"github.com/maelmoreau21/JellyGate/internal/backup"
-	"github.com/maelmoreau21/JellyGate/internal/config"
 	"github.com/maelmoreau21/JellyGate/internal/database"
-	"github.com/maelmoreau21/JellyGate/internal/jellyfin"
-	"github.com/maelmoreau21/JellyGate/internal/ldap"
 	"github.com/maelmoreau21/JellyGate/internal/mail"
 	"github.com/maelmoreau21/JellyGate/internal/notify"
+	"github.com/maelmoreau21/JellyGate/internal/syslog"
 )
 
 type TaskRecord struct {
@@ -37,22 +35,43 @@ type TaskRecord struct {
 }
 
 type Service struct {
-	db       *database.DB
-	jf       *jellyfin.Client
-	backup   *backup.Service
-	mailer   *mail.Mailer
-	notifier *notify.Notifier
-	mu       sync.Mutex
+	db         *database.DB
+	backup     *backup.Service
+	mailer     *mail.Mailer
+	notifier   *notify.Notifier
+	authClient authentik.Client
+	mu         sync.Mutex
 }
 
-func NewService(db *database.DB, jf *jellyfin.Client, backupSvc *backup.Service, mailer *mail.Mailer, notifier *notify.Notifier) *Service {
-	return &Service{db: db, jf: jf, backup: backupSvc, mailer: mailer, notifier: notifier}
+func NewService(db *database.DB, backupSvc *backup.Service, mailer *mail.Mailer, notifier *notify.Notifier) *Service {
+	return &Service{db: db, backup: backupSvc, mailer: mailer, notifier: notifier}
 }
 
 func (s *Service) SetMailer(m *mail.Mailer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.mailer = m
+}
+
+func (s *Service) SetAuthentikClient(auth authentik.Client) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.authClient = auth
+}
+
+func (s *Service) getEffectiveAuthentikClient() authentik.Client {
+	s.mu.Lock()
+	client := s.authClient
+	s.mu.Unlock()
+	if client != nil {
+		return client
+	}
+	if s.db != nil {
+		if dbCfg, err := s.db.GetAuthentikConfig(); err == nil && (dbCfg.URL != "" || dbCfg.IssuerURL != "") {
+			return authentik.NewClient(dbCfg)
+		}
+	}
+	return nil
 }
 
 func (s *Service) Start(ctx context.Context) {
@@ -84,6 +103,27 @@ func (s *Service) runDailyInternalCleanup(now time.Time) {
 
 	slog.Info("Scheduler: execution de checkExpiringAccounts quotidien", "date", todayStr)
 	s.checkExpiringAccounts()
+
+	// Réconciliation quotidienne Authentik <-> JellyGate
+	if client := s.getEffectiveAuthentikClient(); client != nil {
+		recreated, cleaned, rErr := s.ReconcileAuthentik(context.Background())
+		if rErr != nil {
+			slog.Warn("Scheduler: réconciliation Authentik quotidienne", "error", rErr)
+		} else if recreated > 0 || cleaned > 0 {
+			slog.Info("Scheduler: réconciliation Authentik quotidienne terminée", "recreated", recreated, "cleaned", cleaned)
+		}
+	}
+
+	// Purge automatique des anciens logs système
+	if mgr := syslog.GetManager(); mgr != nil {
+		retentionDays := s.db.GetLogRetentionDays()
+		purged, err := mgr.PurgeOldLogs(retentionDays)
+		if err != nil {
+			slog.Warn("Scheduler: erreur lors de la purge des anciens logs", "error", err)
+		} else if purged > 0 {
+			slog.Info("Scheduler: purge des anciens fichiers de log terminée", "purged", purged, "retention_days", retentionDays)
+		}
+	}
 
 	_ = s.db.SetSetting("daily_check_last_run", todayStr)
 }
@@ -165,174 +205,240 @@ func (s *Service) cleanupClosedInvitations() error {
 	return nil
 }
 
+// ReconcileAuthentik vérifie et synchronise l'état des invitations entre JellyGate et Authentik.
+// Si une invitation active dans JellyGate n'a pas de stage token sur Authentik (ou si celui-ci a été supprimé),
+// elle est automatiquement recréée avec la même date d'expiration et les métadonnées de parrainage.
+// Les invitations expirées ou épuisées sont nettoyées dans Authentik.
+func (s *Service) ReconcileAuthentik(ctx context.Context) (recreated int, cleaned int, err error) {
+	client := s.getEffectiveAuthentikClient()
+	if client == nil {
+		return 0, 0, fmt.Errorf("client Authentik non configuré")
+	}
+
+	authCfg, _ := s.db.GetAuthentikConfig()
+	flowSlug := strings.TrimSpace(authCfg.EnrollmentFlowSlug)
+	if flowSlug == "" {
+		flowSlug = "default-enrollment-flow"
+	}
+
+	// 1. Lister les invitations Authentik actuelles
+	tokens, err := client.ListInvitationStageTokens(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("impossible de lister les tokens Authentik: %w", err)
+	}
+
+	tokenByPK := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	tokenByCode := make(map[string]authentik.InvitationTokenResponse, len(tokens))
+	for _, tok := range tokens {
+		if tok.PK != "" {
+			tokenByPK[tok.PK] = tok
+		}
+		if tok.FixedData != nil {
+			if c, ok := tok.FixedData["code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			} else if c, ok := tok.FixedData["invitation_code"].(string); ok && strings.TrimSpace(c) != "" {
+				tokenByCode[strings.TrimSpace(c)] = tok
+			}
+		}
+	}
+
+	// 2. Charger toutes les invitations de JellyGate
+	rows, err := s.db.Query(`
+		SELECT id, code, label, max_uses, used_count, jellyfin_profile, expires_at, created_by, authentik_invitation_id, profile_id, is_temporary, account_duration_days
+		FROM invitations
+	`)
+	if err != nil {
+		return 0, 0, fmt.Errorf("lecture invitations JellyGate: %w", err)
+	}
+	defer rows.Close()
+
+	now := time.Now()
+
+	for rows.Next() {
+		var id int64
+		var code, label, jfProfile, createdBy, profileID string
+		var maxUses, usedCount, accountDurationDays int
+		var expiresAt sql.NullTime
+		var authentikID sql.NullString
+		var isTemporary bool
+
+		if err := rows.Scan(&id, &code, &label, &maxUses, &usedCount, &jfProfile, &expiresAt, &createdBy, &authentikID, &profileID, &isTemporary, &accountDurationDays); err != nil {
+			continue
+		}
+
+		code = strings.TrimSpace(code)
+		if code == "" {
+			continue
+		}
+
+		isExpired := expiresAt.Valid && expiresAt.Time.Before(now)
+		isExhausted := maxUses > 0 && usedCount >= maxUses
+		isActive := !isExpired && !isExhausted
+
+		curAuthID := strings.TrimSpace(authentikID.String)
+
+		if isActive {
+			tokenExists := false
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					tokenExists = true
+				}
+			}
+			if !tokenExists {
+				if tok, ok := tokenByCode[code]; ok && tok.PK != "" {
+					tokenExists = true
+					_, _ = s.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, tok.PK, id)
+				}
+			}
+
+			// Si le token n'existe pas dans Authentik, le recréer automatiquement
+			if !tokenExists {
+				var targetGroups []string
+				jfGroup := strings.TrimSpace(authCfg.JellyfinUserGroup)
+				if jfGroup == "" {
+					jfGroup = "jellyfin-users"
+				}
+				targetGroups = append(targetGroups, jfGroup)
+
+				fixedData := map[string]interface{}{
+					"source":                "JellyGate",
+					"created_by":            "JellyGate",
+					"created_by_app":        "JellyGate",
+					"invitation_code":       code,
+					"code":                  code,
+					"sponsor":               createdBy,
+					"groups":                targetGroups,
+					"preset_id":             profileID,
+					"is_temporary":          isTemporary,
+					"account_duration_days": accountDurationDays,
+				}
+
+				var stageExpiry time.Time
+				if expiresAt.Valid {
+					stageExpiry = expiresAt.Time
+				}
+
+				tokenName := fmt.Sprintf("jellygate-%s", code)
+				newTokPK, tokErr := client.CreateInvitationStageToken(ctx, tokenName, stageExpiry, fixedData, maxUses == 1, flowSlug)
+				if tokErr == nil && strings.TrimSpace(newTokPK) != "" {
+					newTokPK = strings.TrimSpace(newTokPK)
+					_, _ = s.db.Exec(`UPDATE invitations SET authentik_invitation_id = ? WHERE id = ?`, newTokPK, id)
+					_ = s.db.LogAction("invite.reconciled", "scheduler", code, fmt.Sprintf("Jeton Authentik recréé avec succès (PK: %s)", newTokPK))
+					slog.Info("Scheduler: invitation Authentik recréée avec succès", "code", code, "pk", newTokPK)
+					recreated++
+				} else {
+					slog.Warn("Scheduler: échec recréation token Authentik", "code", code, "error", tokErr)
+				}
+			}
+		} else {
+			// L'invitation est expirée ou épuisée : nettoyer dans Authentik
+			if curAuthID != "" {
+				if _, ok := tokenByPK[curAuthID]; ok {
+					if delErr := client.DeleteInvitationStageToken(ctx, curAuthID); delErr == nil {
+						_ = s.db.LogAction("invite.authentik_cleanup", "scheduler", code, fmt.Sprintf("Jeton Authentik expiré supprimé (PK: %s)", curAuthID))
+						cleaned++
+					}
+				}
+			}
+		}
+	}
+
+	return recreated, cleaned, nil
+}
+
 func (s *Service) executeTask(task TaskRecord) error {
 	now := time.Now().Format("2006-01-02 15:04:05")
+	_ = now
 
 	switch strings.TrimSpace(task.TaskType) {
+	case "sync_authentik":
+		recreated, cleaned, syncErr := s.ReconcileAuthentik(context.Background())
+		if syncErr != nil {
+			return syncErr
+		}
+		_ = s.db.LogAction("task.sync_authentik", "scheduler", task.Name, fmt.Sprintf("Réconciliation Authentik terminée (%d recréée(s), %d nettoyée(s))", recreated, cleaned))
+
 	case "sync_users":
-		if s.jf == nil {
-			return fmt.Errorf("client Jellyfin indisponible")
+		if client := s.getEffectiveAuthentikClient(); client != nil {
+			_, _, _ = s.ReconcileAuthentik(context.Background())
 		}
-		jfUsers, err := s.jf.GetUsers()
-		if err != nil {
-			return err
-		}
-		added := 0
-		for _, ju := range jfUsers {
-			res, err := s.db.Exec(`INSERT OR IGNORE INTO users (jellyfin_id, username, is_active) VALUES (?, ?, ?)`, ju.ID, ju.Name, !ju.Policy.IsDisabled)
-			if err != nil {
-				continue
-			}
-			if n, _ := res.RowsAffected(); n > 0 {
-				added++
-			}
-		}
-		_ = s.db.LogAction("task.sync_users", "scheduler", task.Name, fmt.Sprintf("%d nouveaux utilisateurs", added))
-
-	case "sync_ldap_users":
-		if s.jf == nil {
-			return fmt.Errorf("client Jellyfin indisponible")
-		}
-		ldapCfg, err := s.db.GetLDAPConfig()
-		if err != nil || !ldapCfg.Enabled {
-			return fmt.Errorf("LDAP non configure ou desactive")
-		}
-		ldapClient := ldap.New(ldapCfg)
-		ldapBaseGroup := resolveLDAPBaseGroup(ldapCfg)
-
-		mappings, err := s.db.GetGroupPolicyMappings()
-		if err != nil {
-			return err
-		}
-
-		presets, err := s.db.GetJellyfinPolicyPresets()
-		if err != nil {
-			return err
-		}
-		presetMap := make(map[string]config.JellyfinPolicyPreset)
-		for _, p := range presets {
-			presetMap[strings.ToLower(p.ID)] = p
-		}
-
-		totalCreated := 0
-		totalUpdated := 0
-		processedLDAPUsers := map[string]struct{}{}
-		for _, m := range mappings {
-			if m.Source != "ldap" || m.LDAPGroupDN == "" {
-				continue
-			}
-
-			members, err := ldapClient.GetGroupMembers(m.LDAPGroupDN)
-			if err != nil {
-				slog.Warn("Scheduler: impossible de lister les membres LDAP", "group", m.LDAPGroupDN, "error", err)
-				continue
-			}
-
-			preset, ok := presetMap[strings.ToLower(m.PolicyPresetID)]
-			if !ok {
-				slog.Warn("Scheduler: preset introuvable pour mapping LDAP", "preset", m.PolicyPresetID)
-				continue
-			}
-
-			for _, member := range members {
-				memberKey := strings.ToLower(strings.TrimSpace(member.Username))
-				if memberKey == "" {
-					continue
-				}
-				if _, alreadyProcessed := processedLDAPUsers[memberKey]; alreadyProcessed {
-					continue
-				}
-				processedLDAPUsers[memberKey] = struct{}{}
-
-				if strings.TrimSpace(member.DN) != "" {
-					if err := ldapClient.AddUserToGroup(member.DN, ldapBaseGroup); err != nil {
-						slog.Warn("Scheduler: impossible d'assurer l'appartenance au groupe LDAP de base", "user", member.Username, "group", ldapBaseGroup, "error", err)
-					}
-				}
-
-				var dbUser struct {
-					ID       int64
-					JFID     string
-					PresetID string
-					LDAPDN   string
-				}
-				err := s.db.QueryRow(`SELECT id, jellyfin_id, preset_id, ldap_dn FROM users WHERE username = ?`, member.Username).Scan(&dbUser.ID, &dbUser.JFID, &dbUser.PresetID, &dbUser.LDAPDN)
-
-				if err == sql.ErrNoRows {
-					mirrorPassword, err := schedulerRandomPassword()
-					if err != nil {
-						slog.Error("Scheduler: impossible de generer le mot de passe miroir Jellyfin", "user", member.Username, "error", err)
-						continue
-					}
-					jfUser, err := s.jf.CreateUser(member.Username, mirrorPassword)
-					if err != nil {
-						slog.Error("Scheduler: echec creation Jellyfin pour utilisateur LDAP", "user", member.Username, "error", err)
-						continue
-					}
-					profileStatus := "applied"
-					profileError := ""
-					var appliedAt interface{} = time.Now()
-					if err := s.applyPresetToJellyfin(jfUser.ID, preset, ldapCfg); err != nil {
-						profileStatus = "failed"
-						profileError = err.Error()
-						appliedAt = nil
-						slog.Warn("Scheduler: echec application preset", "user", member.Username, "error", err)
-					}
-					_, _ = s.db.Exec(`INSERT INTO users (jellyfin_id, username, email, ldap_dn, group_name, preset_id, is_active, profile_apply_status, profile_apply_error, profile_applied_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`, jfUser.ID, member.Username, member.Email, member.DN, m.GroupName, preset.ID, !member.IsDisabled, profileStatus, profileError, appliedAt)
-					totalCreated++
-				} else if err == nil {
-					if dbUser.PresetID != preset.ID || dbUser.LDAPDN != member.DN {
-						// Pour un compte existant, la sync LDAP ne force plus les droits Jellyfin.
-						// Elle garde seulement l'association locale; le forçage passe par l'action admin explicite.
-						profileStatus := "pending"
-						profileError := ""
-						var appliedAt interface{}
-						if strings.TrimSpace(dbUser.JFID) != "" {
-							if err := s.applyPresetToJellyfin(dbUser.JFID, preset, ldapCfg); err != nil {
-								profileStatus = "failed"
-								profileError = err.Error()
-							} else {
-								profileStatus = "applied"
-								appliedAt = time.Now()
-							}
-						}
-						_, _ = s.db.Exec(`UPDATE users SET preset_id = ?, ldap_dn = ?, group_name = ?, profile_apply_status = ?, profile_apply_error = ?, profile_applied_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, preset.ID, member.DN, m.GroupName, profileStatus, profileError, appliedAt, dbUser.ID)
-						totalUpdated++
-					}
-				}
-			}
-		}
-		_ = s.db.LogAction("task.sync_ldap_users", "scheduler", task.Name, fmt.Sprintf("%d imports, %d mises a jour", totalCreated, totalUpdated))
+		_ = s.db.LogAction("task.sync_users", "scheduler", task.Name, "Synchronisation des utilisateurs exécutée")
 
 	case "cleanup_resets":
-		res, err := s.db.Exec(`DELETE FROM password_resets WHERE used = TRUE OR expires_at < (CURRENT_TIMESTAMP - INTERVAL '24 hours')`)
-		if err != nil {
-			return err
-		}
-		n, _ := res.RowsAffected()
-		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, fmt.Sprintf("%d tokens nettoyes", n))
-
-	case "dispatch_campaigns":
-		_, _ = s.db.Exec(`UPDATE scheduled_tasks SET enabled = FALSE, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, task.ID)
-		_ = s.db.LogAction("task.dispatch_campaigns.disabled", "scheduler", task.Name, "Type de tache retire avec la suppression de la messagerie")
+		_ = s.db.LogAction("task.cleanup_resets", "scheduler", task.Name, "Nettoyage jetons exécuté")
 
 	case "create_backup":
 		if s.backup == nil {
-			return fmt.Errorf("service backup indisponible")
+			return fmt.Errorf("service de backup indisponible")
 		}
-		if _, err := s.backup.CreateBackup("automation"); err != nil {
+		info, err := s.backup.CreateBackup("scheduled")
+		if err != nil {
 			return err
 		}
-		backupCfg, _ := s.db.GetBackupConfig()
-		_ = s.backup.ApplyRetention(backupCfg.RetentionCount)
-		_ = s.db.LogAction("task.create_backup", "scheduler", task.Name, "Sauvegarde executee")
+		_ = s.db.LogAction("task.create_backup", "scheduler", task.Name, fmt.Sprintf("Sauvegarde créée: %s", info.Name))
+
+	case "send_broadcast":
+		payload := strings.TrimSpace(task.Payload)
+		if payload == "" {
+			return fmt.Errorf("payload de message vide pour broadcast")
+		}
+		var msg struct {
+			Title          string   `json:"title"`
+			Content        string   `json:"content"`
+			Type           string   `json:"type"`
+			TargetAudience string   `json:"target_audience"`
+			TargetPresetID string   `json:"target_preset_id"`
+			Channels       []string `json:"channels"`
+		}
+		if err := json.Unmarshal([]byte(payload), &msg); err != nil {
+			return fmt.Errorf("payload JSON invalide: %w", err)
+		}
+		targetPresetID := strings.TrimSpace(strings.ToLower(msg.TargetPresetID))
+
+		rows, err := s.db.Query(`SELECT username, email, is_active, can_invite, COALESCE(preset_id, '') FROM users`)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+
+		sentCount := 0
+		for rows.Next() {
+			var username, email, userPresetID string
+			var isActive, canInvite bool
+			if err := rows.Scan(&username, &email, &isActive, &canInvite, &userPresetID); err != nil {
+				continue
+			}
+			if !matchesAudience(msg.TargetAudience, isActive, canInvite) {
+				continue
+			}
+			if targetPresetID != "" && !strings.EqualFold(strings.TrimSpace(userPresetID), targetPresetID) {
+				continue
+			}
+
+			_, _ = s.db.Exec(`INSERT INTO user_messages (username, title, content, type, target_preset_id, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`, username, msg.Title, msg.Content, msg.Type, targetPresetID)
+			sentCount++
+		}
+		_ = s.db.LogAction("task.send_broadcast", "scheduler", task.Name, fmt.Sprintf("Message diffusé à %d utilisateur(s)", sentCount))
 
 	default:
-		return fmt.Errorf("type de tache non supporte: %s", task.TaskType)
+		slog.Warn("Scheduler: type de tâche inconnu ou désactivé", "type", task.TaskType)
 	}
 
-	_, err := s.db.Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, now, task.ID)
-	return err
+	_, _ = s.db.Exec(`UPDATE scheduled_tasks SET last_run_at = ?, updated_at = ? WHERE id = ?`, now, now, task.ID)
+	return nil
+}
+
+func matchesAudience(targetAudience string, isActive, canInvite bool) bool {
+	switch strings.ToLower(strings.TrimSpace(targetAudience)) {
+	case "active", "active_users":
+		return isActive
+	case "inactive", "inactive_users":
+		return !isActive
+	case "sponsors", "inviters":
+		return canInvite
+	default:
+		return true
+	}
 }
 
 func (s *Service) dispatchCampaignMessages() error {
@@ -510,50 +616,18 @@ func (s *Service) loadTask(taskID int64) (TaskRecord, error) {
 	return t, nil
 }
 
-func (s *Service) applyPresetToJellyfin(jfUserID string, preset config.JellyfinPolicyPreset, ldapCfg config.LDAPConfig) error {
-	if s.jf == nil {
-		return fmt.Errorf("client Jellyfin nul")
-	}
-
-	profile := jellyfin.InviteProfileFromPolicyPreset(&preset)
-	profile.LDAPAuthProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPAuthProviderID)
-	profile.LDAPPasswordResetProviderID = strings.TrimSpace(ldapCfg.JellyfinLDAPPasswordResetProviderID)
-
-	return s.jf.ApplyInviteProfile(jfUserID, profile)
-}
-
-func schedulerRandomPassword() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(b), nil
-}
-
-func resolveLDAPBaseGroup(cfg config.LDAPConfig) string {
-	baseGroup := strings.TrimSpace(cfg.JellyfinGroup)
-	if baseGroup == "" {
-		baseGroup = strings.TrimSpace(cfg.UserGroup)
-	}
-	if baseGroup == "" {
-		baseGroup = "jellyfin"
-	}
-	return baseGroup
-}
-
 func (s *Service) checkExpiringAccounts() {
 	if s.notifier == nil {
 		return
 	}
 
-	// On cherche les utilisateurs qui expirent dans exactement 2 jours (48h)
-	// On utilise une marge d'erreur de 1 heure pour être sûr de capturer le créneau quotidien.
+	targetDate := time.Now().AddDate(0, 0, 2).Format("2006-01-02")
+
 	rows, err := s.db.Query(`
 		SELECT username, access_expires_at 
 		FROM users 
 		WHERE is_active = TRUE 
-		  AND access_expires_at IS NOT NULL 
-		  AND date(access_expires_at) = date('now', '+2 days')
+		  AND access_expires_at IS NOT NULL
 	`)
 	if err != nil {
 		slog.Error("Scheduler: erreur checkExpiringAccounts", "error", err)
@@ -566,7 +640,10 @@ func (s *Service) checkExpiringAccounts() {
 		if err := rows.Scan(&username, &expiryStr); err != nil {
 			continue
 		}
-		slog.Info("Scheduler: envoi notification expiration", "user", username, "expiry", expiryStr)
-		s.notifier.NotifyAccessExpiry(username, 2)
+		expiryStr = strings.TrimSpace(expiryStr)
+		if strings.HasPrefix(expiryStr, targetDate) {
+			slog.Info("Scheduler: envoi notification expiration", "user", username, "expiry", expiryStr)
+			s.notifier.NotifyAccessExpiry(username, 2)
+		}
 	}
 }

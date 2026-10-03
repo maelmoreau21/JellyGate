@@ -24,7 +24,7 @@ func TestResolveEmailLanguageFallsBackToDefault(t *testing.T) {
 }
 
 func TestResolveEmailLanguageDoesNotDisableMultilangForGroup(t *testing.T) {
-	got := resolveEmailLanguage("fr", "de", "en", "ldap-group")
+	got := resolveEmailLanguage("fr", "de", "en", "custom-group")
 	if got != "en" {
 		t.Fatalf("resolveEmailLanguage() = %q, want %q", got, "en")
 	}

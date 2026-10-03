@@ -91,7 +91,7 @@
         }
         const taskTypeLabels = {
             sync_users: t('taskTypeSyncUsers', 'Sync users'),
-            sync_ldap_users: t('taskTypeSyncLdapUsers', 'Sync LDAP users'),
+            sync_authentik: t('taskTypeSyncAuthentik', 'Sync Authentik'),
             cleanup_resets: t('taskTypeCleanupResets', 'Clean reset links'),
         };
         const typeCell = (task) => {
@@ -245,7 +245,6 @@
         });
 
         document.getElementById('btn-task-quick-sync-users')?.addEventListener('click', () => runQuickTask('sync_users', t('manualSyncUsers', 'Sync users')));
-        document.getElementById('btn-task-quick-sync-ldap')?.addEventListener('click', () => runQuickTask('sync_ldap_users', t('manualSyncLdap', 'Sync LDAP users')));
         document.getElementById('btn-task-quick-cleanup')?.addEventListener('click', () => runQuickTask('cleanup_resets', t('manualCleanupResets', 'Clean reset links')));
 
         ['task-name', 'task-type', 'task-hour', 'task-minute', 'task-payload', 'task-enabled'].forEach((id) => {

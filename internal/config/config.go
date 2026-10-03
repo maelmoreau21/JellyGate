@@ -5,7 +5,7 @@
 //   - JELLYGATE_*  : Application (port, URL, data, secret)
 //   - JELLYFIN_*   : Connexion à Jellyfin
 //
-// Les paramètres LDAP, SMTP et Webhooks sont stockés en base SQL
+// Les paramètres SMTP et Webhooks sont stockés en base SQL
 // (table `settings`) et gérés via l'interface d'administration.
 package config
 
@@ -66,30 +66,61 @@ func IsSupportedLanguage(lang string) bool {
 // Ne contient que les paramètres essentiels au démarrage de l'application.
 type Config struct {
 	// Application
-	Port              int    // Port d'écoute HTTP (défaut: 8097)
-	BaseURL           string // URL de base publique
-	DataDir           string // Répertoire des données (SQLite, etc.)
-	SecretKey         string // Clé secrète pour sessions/tokens (min 32 chars)
-	TLSCert           string // Chemin vers le certificat TLS
-	TLSKey            string // Chemin vers la clé privée TLS
-	DefaultLang       string // Langue par défaut de l'interface (défaut: fr)
-	EnableDebugRoutes bool   // Active les routes /admin/debug (dev uniquement)
-	TrustProxyHeaders bool   // Autorise X-Forwarded-For/X-Real-IP via reverse proxy de confiance
+	Port              int      // Port d'écoute HTTP (défaut: 8097)
+	BaseURL           string   // URL de base publique
+	DataDir           string   // Répertoire des données (SQLite, etc.)
+	SecretKey         string   // Clé secrète pour sessions/tokens (min 32 chars)
+	TLSCert           string   // Chemin vers le certificat TLS
+	TLSKey            string   // Chemin vers la clé privée TLS
+	DefaultLang       string   // Langue par défaut de l'interface (défaut: fr)
+	EnableDebugRoutes bool     // Active les routes /admin/debug (dev uniquement)
+	TrustProxyHeaders bool     // Autorise X-Forwarded-For/X-Real-IP via reverse proxy de confiance
+	TrustedProxies    []string // Sous-réseaux CIDR ou adresses IP autorisés comme proxys de confiance
 
 	// Base de donnees (sqlite ou postgres)
 	Database DatabaseConfig
 
-	// Jellyfin (seul service externe requis au démarrage)
+	// Jellyfin (intégration métrique/preset optionnelle)
 	Jellyfin JellyfinConfig
 
 	// Intégrations tierces optionnelles (provisionnement compte)
 	ThirdParty ThirdPartyConfig
+
+	// Authentik / OIDC
+	Authentik AuthentikConfig
+
+	// Local Admin (Compte local de secours désactivé par défaut)
+	LocalAdmin LocalAdminConfig
+}
+
+// LocalAdminConfig contient la configuration du compte local d'urgence.
+type LocalAdminConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Username string `json:"username"`
+	Password string `json:"-"`
+}
+
+// AuthentikConfig contient la configuration OIDC & API Authentik.
+type AuthentikConfig struct {
+	Enabled                bool   `json:"enabled"`
+	URL                    string `json:"authentik_url"`
+	IssuerURL              string `json:"oidc_issuer_url"`
+	ClientID               string `json:"oidc_client_id"`
+	ClientSecret           string `json:"oidc_client_secret"`
+	RedirectURL            string `json:"oidc_redirect_url"`
+	APIToken               string `json:"authentik_api_token"`
+	UserGroup              string `json:"user_group"`
+	AdminGroup             string `json:"admin_group"`
+	JellyfinUserGroup      string `json:"jellyfin_user_group"`
+	InvitersGroup          string `json:"inviters_group"`           // Groupe Authentik : peut créer des invitations
+	InvitersRecursiveGroup string `json:"inviters_recursive_group"` // Groupe Authentik : peut créer des invitations + les invités peuvent aussi inviter
+	EnrollmentFlowSlug     string `json:"enrollment_flow_slug"`
 }
 
 // JellyfinConfig contient les paramètres de connexion à Jellyfin.
 type JellyfinConfig struct {
-	URL    string // URL de l'instance Jellyfin (ex: http://jellyfin:8096)
-	APIKey string // Clé API d'administration
+	URL    string `json:"url"`     // URL de l'instance Jellyfin (ex: http://jellyfin:8096)
+	APIKey string `json:"api_key"` // Clé API d'administration
 }
 
 // ThirdPartyConfig contient les paramètres optionnels pour Jellyseerr et JellyTrack.
@@ -114,42 +145,6 @@ type DatabaseConfig struct {
 // ── Types de configuration stockés en base (table settings) ─────────────────
 // Ces structs sont utilisées par database/settings.go et handlers/settings.go
 // pour sérialiser/désérialiser les paramètres depuis SQLite.
-
-// LDAPConfig contient les paramètres de connexion annuaire (LDAP/LDAPS).
-type LDAPConfig struct {
-	Enabled              bool   `json:"enabled"`                // Intégration LDAP activée
-	Host                 string `json:"host"`                   // Hostname du serveur LDAP
-	Port                 int    `json:"port"`                   // Port (défaut: 636 pour LDAPS)
-	UseTLS               bool   `json:"use_tls"`                // Utiliser LDAPS (TLS)
-	SkipVerify           bool   `json:"skip_verify"`            // Ignorer la vérification du certificat TLS
-	BindDN               string `json:"bind_dn"`                // DN de l'utilisateur pour le bind
-	BindPassword         string `json:"bind_password"`          // Mot de passe de bind
-	BaseDN               string `json:"base_dn"`                // Base DN de recherche
-	SearchFilter         string `json:"search_filter"`          // Filtre de recherche LDAP (supporte {username})
-	SearchAttributes     string `json:"search_attributes"`      // Attributs de recherche (liste CSV)
-	UIDAttribute         string `json:"uid_attribute"`          // Attribut UID LDAP (ex: uid)
-	UsernameAttribute    string `json:"username_attribute"`     // Attribut de nom d'utilisateur LDAP
-	AdminFilter          string `json:"admin_filter"`           // Filtre administrateur LDAP
-	AdminFilterMemberUID bool   `json:"admin_filter_memberuid"` // Active le mode memberUid pour le filtre admin
-	UserObjectClass      string `json:"user_object_class"`      // objectClass utilisateur (auto|user|person|posixAccount|...)
-	GroupMemberAttr      string `json:"group_member_attr"`      // Attribut membre groupe (auto|member|memberUid|...)
-	UserOU               string `json:"user_ou"`                // OU pour la création des utilisateurs
-	UserGroup            string `json:"user_group"`             // Legacy: fallback groupe utilisateur
-
-	// Mode de provisioning: "hybrid" (LDAP + Jellyfin) ou "ldap_only".
-	ProvisionMode string `json:"provision_mode"`
-
-	// Groupes LDAP cibles pour l'affectation automatique des comptes.
-	JellyfinGroup       string `json:"jellyfin_group"`
-	InviterGroup        string `json:"inviter_group"`
-	AdministratorsGroup string `json:"administrators_group"`
-
-	// Providers Jellyfin utilises pour les comptes miroir LDAP.
-	JellyfinLDAPAuthProviderID          string `json:"jellyfin_ldap_auth_provider_id"`
-	JellyfinLDAPPasswordResetProviderID string `json:"jellyfin_ldap_password_reset_provider_id"`
-
-	Domain string `json:"domain"` // Domaine AD (ex: home.lan)
-}
 
 // SMTPConfig contient les paramètres d'envoi d'emails.
 type SMTPConfig struct {
@@ -1150,7 +1145,6 @@ type JellyfinPolicyPreset struct {
 	IsTemporary                      bool                             `json:"is_temporary"`
 	DefaultAccountDurationDays       int                              `json:"default_account_duration_days"`
 	MaxAccountDurationDays           int                              `json:"max_account_duration_days"`
-	LDAPGroups                       []string                         `json:"ldap_groups"`
 
 	// Parrainage / Sponsorship
 	CanInvite                     bool     `json:"can_invite"`
@@ -1239,11 +1233,10 @@ func DefaultInvitationProfileConfig() InvitationProfileConfig {
 	}
 }
 
-// GroupPolicyMapping lie un groupe (interne ou LDAP) à un preset Jellyfin.
+// GroupPolicyMapping lie un groupe à un preset Jellyfin.
 type GroupPolicyMapping struct {
 	GroupName      string `json:"group_name"`
-	Source         string `json:"source"` // internal|ldap
-	LDAPGroupDN    string `json:"ldap_group_dn"`
+	Source         string `json:"source"` // internal
 	PolicyPresetID string `json:"policy_preset_id"`
 	Priority       int    `json:"priority"`
 }
@@ -1262,7 +1255,11 @@ func DefaultPortalLinks() PortalLinksConfig {
 	return PortalLinksConfig{JellyfinServerName: "Jellyfin"}
 }
 
-// DefaultJellyfinPolicyPresets retourne un ensemble de presets initiaux.
+// DefaultJellyfinPolicyPresets retourne les 4 profils fondamentaux de JellyGate :
+// 1. standard       : Utilisateur classique (lecture, téléchargement, sans droit d'invitation)
+// 2. inviter_simple : Utilisateur invitant simple (peut inviter, les invités reçoivent le profil standard)
+// 3. inviter_chain  : Utilisateur invitant en cascade (peut inviter, les invités obtiennent le droit d'inviter)
+// 4. admin          : Administrateur complet
 func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 	defaultUserConfiguration := DefaultJellyfinPresetUserConfiguration()
 	defaultDisplayPreferences := DefaultJellyfinPresetDisplayPreferences()
@@ -1270,59 +1267,8 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 	return []JellyfinPolicyPreset{
 		{
 			ID:                             "standard",
-			Name:                           "Standard",
-			Description:                    "Profil par defaut: acces distant actif, telechargement actif.",
-			EnableAllFolders:               true,
-			EnableAllDevices:               true,
-			EnableAllChannels:              true,
-			EnableDownload:                 true,
-			EnableRemoteAccess:             true,
-			EnableMediaPlayback:            true,
-			EnableAudioPlaybackTranscoding: true,
-			EnableVideoPlaybackTranscoding: true,
-			EnablePlaybackRemuxing:         true,
-			MaxSessions:                    0,
-			BitrateLimit:                   0,
-			UserConfiguration:              defaultUserConfiguration,
-			DisplayPreferences:             defaultDisplayPreferences,
-			UsernameMinLength:              3,
-			UsernameMaxLength:              32,
-			PasswordMinLength:              8,
-			PasswordMaxLength:              128,
-			DisableAfterDays:               0,
-			ExpiryAction:                   "disable",
-			DeleteAfterDays:                0,
-		},
-		{
-			ID:                             "limited",
-			Name:                           "Limite",
-			Description:                    "Profil restreint: telechargement coupe, 2 sessions max.",
-			EnableAllFolders:               true,
-			EnableAllDevices:               true,
-			EnableAllChannels:              true,
-			EnableDownload:                 false,
-			EnableRemoteAccess:             true,
-			EnableMediaPlayback:            true,
-			EnableAudioPlaybackTranscoding: true,
-			EnableVideoPlaybackTranscoding: true,
-			EnablePlaybackRemuxing:         true,
-			MaxSessions:                    2,
-			BitrateLimit:                   4000,
-			UserConfiguration:              defaultUserConfiguration,
-			DisplayPreferences:             defaultDisplayPreferences,
-			UsernameMinLength:              3,
-			UsernameMaxLength:              32,
-			PasswordMinLength:              10,
-			PasswordMaxLength:              128,
-			RequireDigit:                   true,
-			DisableAfterDays:               0,
-			ExpiryAction:                   "disable",
-			DeleteAfterDays:                0,
-		},
-		{
-			ID:                             "family",
-			Name:                           "Famille",
-			Description:                    "Acces familial durable: toutes les bibliotheques, telechargements actifs, sans parrainage.",
+			Name:                           "Utilisateur classique",
+			Description:                    "Accès standard Jellyfin (lecture, téléchargement, accès distant). Ne peut pas créer d'invitations.",
 			EnableAllFolders:               true,
 			EnableAllDevices:               true,
 			EnableAllChannels:              true,
@@ -1344,41 +1290,80 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			ExpiryAction:                   "disable",
 			DeleteAfterDays:                0,
 			CanInvite:                      false,
+			CanCreateInvitations:           false,
 		},
 		{
-			ID:                             "temporary_guest",
-			Name:                           "Invité temporaire",
-			Description:                    "Acces limite pour une invitation courte: 30 jours, 2 sessions, debit plafonne.",
+			ID:                             "inviter_simple",
+			Name:                           "Utilisateur invitant (invitation simple)",
+			Description:                    "Peut inviter de nouveaux membres. Les personnes invitées reçoivent le profil Utilisateur classique (sans droit d'invitation).",
 			EnableAllFolders:               true,
 			EnableAllDevices:               true,
 			EnableAllChannels:              true,
-			EnableDownload:                 false,
+			EnableDownload:                 true,
 			EnableRemoteAccess:             true,
 			EnableMediaPlayback:            true,
 			EnableAudioPlaybackTranscoding: true,
 			EnableVideoPlaybackTranscoding: true,
 			EnablePlaybackRemuxing:         true,
-			MaxSessions:                    2,
-			BitrateLimit:                   4000,
+			MaxSessions:                    0,
+			BitrateLimit:                   0,
 			UserConfiguration:              defaultUserConfiguration,
 			DisplayPreferences:             defaultDisplayPreferences,
 			UsernameMinLength:              3,
 			UsernameMaxLength:              32,
-			PasswordMinLength:              10,
+			PasswordMinLength:              8,
 			PasswordMaxLength:              128,
-			RequireDigit:                   true,
-			DisableAfterDays:               30,
+			DisableAfterDays:               0,
 			ExpiryAction:                   "disable",
 			DeleteAfterDays:                0,
-			IsTemporary:                    true,
-			DefaultAccountDurationDays:     30,
-			MaxAccountDurationDays:         30,
-			CanInvite:                      false,
+			CanInvite:                      true,
+			CanCreateInvitations:           true,
+			TargetPresetID:                 "standard",
+			AllowedTargetPresetIDs:         []string{"standard"},
+			InviteQuotaDay:                 3,
+			InviteQuotaMonth:               10,
+			InviteMaxUses:                  1,
+			InviteLinkValidityDays:         7,
+			InviteAllowLanguage:            true,
+		},
+		{
+			ID:                             "inviter_chain",
+			Name:                           "Utilisateur invitant (en cascade)",
+			Description:                    "Peut inviter des membres qui obtiennent également le droit d'inviter à leur tour (parrainage continu).",
+			EnableAllFolders:               true,
+			EnableAllDevices:               true,
+			EnableAllChannels:              true,
+			EnableDownload:                 true,
+			EnableRemoteAccess:             true,
+			EnableMediaPlayback:            true,
+			EnableAudioPlaybackTranscoding: true,
+			EnableVideoPlaybackTranscoding: true,
+			EnablePlaybackRemuxing:         true,
+			MaxSessions:                    0,
+			BitrateLimit:                   0,
+			UserConfiguration:              defaultUserConfiguration,
+			DisplayPreferences:             defaultDisplayPreferences,
+			UsernameMinLength:              3,
+			UsernameMaxLength:              32,
+			PasswordMinLength:              8,
+			PasswordMaxLength:              128,
+			DisableAfterDays:               0,
+			ExpiryAction:                   "disable",
+			DeleteAfterDays:                0,
+			CanInvite:                      true,
+			CanCreateInvitations:           true,
+			TargetPresetID:                 "inviter_chain",
+			AllowedTargetPresetIDs:         []string{"inviter_chain", "inviter_simple", "standard"},
+			InviteQuotaDay:                 5,
+			InviteQuotaMonth:               20,
+			InviteMaxUses:                  1,
+			InviteLinkValidityDays:         7,
+			InviteAllowLanguage:            true,
 		},
 		{
 			ID:                             "admin",
-			Name:                           "Admin",
-			Description:                    "Profil administrateur Jellyfin, reserve aux administrateurs JellyGate.",
+			Name:                           "Administrateur",
+			Description:                    "Profil administrateur complet Jellyfin et JellyGate avec tous les privilèges et création libre d'invitations.",
 			IsAdministrator:                true,
 			EnableAllFolders:               true,
 			EnableAllDevices:               true,
@@ -1399,56 +1384,14 @@ func DefaultJellyfinPolicyPresets() []JellyfinPolicyPreset {
 			DisplayPreferences:             defaultDisplayPreferences,
 			UsernameMinLength:              3,
 			UsernameMaxLength:              32,
-			PasswordMinLength:              12,
-			PasswordMaxLength:              128,
-			RequireUpper:                   true,
-			RequireLower:                   true,
-			RequireDigit:                   true,
-			DisableAfterDays:               0,
-			ExpiryAction:                   "disable",
-			DeleteAfterDays:                0,
-			CanInvite:                      true,
-			CanCreateInvitations:           true,
-		},
-		{
-			ID:                             "sponsor",
-			Name:                           "Parrain",
-			Description:                    "Compte parrain: peut creer des liens courts vers le profil Invité temporaire.",
-			EnableAllFolders:               true,
-			EnableAllDevices:               true,
-			EnableAllChannels:              true,
-			EnableDownload:                 true,
-			EnableRemoteAccess:             true,
-			EnableMediaPlayback:            true,
-			EnableAudioPlaybackTranscoding: true,
-			EnableVideoPlaybackTranscoding: true,
-			EnablePlaybackRemuxing:         true,
-			MaxSessions:                    0,
-			BitrateLimit:                   0,
-			UserConfiguration:              defaultUserConfiguration,
-			DisplayPreferences:             defaultDisplayPreferences,
-			UsernameMinLength:              3,
-			UsernameMaxLength:              32,
 			PasswordMinLength:              10,
 			PasswordMaxLength:              128,
-			RequireDigit:                   true,
 			DisableAfterDays:               0,
 			ExpiryAction:                   "disable",
 			DeleteAfterDays:                0,
 			CanInvite:                      true,
 			CanCreateInvitations:           true,
-			TargetPresetID:                 "temporary_guest",
-			AllowedTargetPresetIDs:         []string{"temporary_guest"},
-			InviteQuotaDay:                 3,
-			InviteQuotaMonth:               10,
-			InviteMaxUses:                  1,
-			InviteMaxLinkHours:             168,
-			InviteLinkValidityDays:         7,
-			InviteAllowLanguage:            true,
-			CanCreateTemporaryInvitations:  true,
-			AllowedTemporaryPresetIDs:      []string{"temporary_guest"},
-			DefaultTemporaryDurationDays:   30,
-			MaxTemporaryDurationDays:       30,
+			AllowedTargetPresetIDs:         []string{"admin", "inviter_chain", "inviter_simple", "standard"},
 		},
 	}
 }
@@ -1484,7 +1427,7 @@ type MatrixWebhook struct {
 // applique les valeurs par défaut, et valide les champs requis.
 //
 // Seuls les paramètres App + Jellyfin sont chargés ici.
-// LDAP, SMTP et Webhooks sont chargés depuis la base de données.
+// SMTP et Webhooks sont chargés depuis la base de données.
 func Load() (*Config, error) {
 	cfg := &Config{
 		Port:              getEnvInt("JELLYGATE_PORT", 8097),
@@ -1495,7 +1438,8 @@ func Load() (*Config, error) {
 		TLSKey:            getEnv("JELLYGATE_TLS_KEY", ""),
 		DefaultLang:       NormalizeLanguageTag(getEnv("JELLYGATE_DEFAULT_LANG", "")),
 		EnableDebugRoutes: getEnvBool("JELLYGATE_ENABLE_DEBUG_ROUTES", false),
-		TrustProxyHeaders: getEnvBool("JELLYGATE_TRUST_PROXY_HEADERS", false),
+		TrustProxyHeaders: getEnvBool("JELLYGATE_TRUST_PROXY_HEADERS", true),
+		TrustedProxies:    parseTrustedProxies(getEnv("JELLYGATE_TRUSTED_PROXIES", "")),
 
 		Database: DatabaseConfig{
 			Type:     strings.TrimSpace(strings.ToLower(getEnv("DB_TYPE", ""))),
@@ -1518,6 +1462,52 @@ func Load() (*Config, error) {
 			JellyTrackURL:    strings.TrimSpace(getEnv("JELLYTRACK_URL", "")),
 			JellyTrackAPIKey: strings.TrimSpace(getEnv("JELLYTRACK_API_KEY", "")),
 		},
+
+		Authentik: AuthentikConfig{
+			Enabled:            getEnvBool("OIDC_ENABLED", getEnvBool("AUTHENTIK_ENABLED", getEnvBool("JELLYGATE_OIDC_ENABLED", true))),
+			URL:                strings.TrimRight(strings.TrimSpace(getEnv("OIDC_URL", getEnv("AUTHENTIK_URL", getEnv("JELLYGATE_AUTHENTIK_URL", getEnv("JELLYGATE_OIDC_URL", ""))))), "/"),
+			IssuerURL:          strings.TrimRight(strings.TrimSpace(getEnv("OIDC_URL", getEnv("OIDC_ISSUER_URL", getEnv("AUTHENTIK_URL", getEnv("JELLYGATE_OIDC_URL", ""))))), "/"),
+			ClientID:           strings.TrimSpace(getEnv("OIDC_CLIENT_ID", getEnv("JELLYGATE_OIDC_CLIENT_ID", ""))),
+			ClientSecret:       strings.TrimSpace(getEnv("OIDC_CLIENT_SECRET", getEnv("JELLYGATE_OIDC_CLIENT_SECRET", ""))),
+			RedirectURL:        strings.TrimSpace(getEnv("OIDC_REDIRECT_URL", getEnv("JELLYGATE_OIDC_REDIRECT_URL", ""))),
+			APIToken:           strings.TrimSpace(getEnv("OIDC_API_TOKEN", getEnv("AUTHENTIK_API_TOKEN", getEnv("JELLYGATE_OIDC_API_TOKEN", getEnv("JELLYGATE_AUTHENTIK_API_TOKEN", ""))))),
+			UserGroup:          getEnv("OIDC_USER_GROUP", getEnv("AUTHENTIK_USER_GROUP", getEnv("JELLYGATE_OIDC_USER_GROUP", getEnv("JELLYGATE_AUTHENTIK_USER_GROUP", "")))),
+			AdminGroup:         getEnv("OIDC_ADMIN_GROUP", getEnv("AUTHENTIK_ADMIN_GROUP", getEnv("JELLYGATE_OIDC_ADMIN_GROUP", getEnv("JELLYGATE_AUTHENTIK_ADMIN_GROUP", "")))),
+			JellyfinUserGroup:  getEnv("OIDC_JELLYFIN_USER_GROUP", getEnv("JELLYFIN_USER_GROUP", getEnv("AUTHENTIK_JELLYFIN_USER_GROUP", getEnv("JELLYGATE_JELLYFIN_USER_GROUP", "")))),
+			EnrollmentFlowSlug: getEnv("OIDC_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_OIDC_ENROLLMENT_FLOW_SLUG", getEnv("JELLYGATE_AUTHENTIK_ENROLLMENT_FLOW_SLUG", getEnv("AUTHENTIK_ENROLLMENT_FLOW", ""))))),
+		},
+
+		LocalAdmin: LocalAdminConfig{
+			Enabled:  getEnv("JELLYGATE_LOCAL_ADMIN_PASSWORD", getEnv("LOCAL_ADMIN_PASSWORD", "")) != "",
+			Username: getEnv("JELLYGATE_LOCAL_ADMIN_USER", getEnv("LOCAL_ADMIN_USER", "admin")),
+			Password: getEnv("JELLYGATE_LOCAL_ADMIN_PASSWORD", getEnv("LOCAL_ADMIN_PASSWORD", "")),
+		},
+	}
+
+	if cfg.Authentik.URL != "" {
+		if u, err := url.Parse(cfg.Authentik.URL); err == nil && u.Scheme != "" && u.Host != "" && u.Path != "" && u.Path != "/" {
+			if cfg.Authentik.IssuerURL == "" || cfg.Authentik.IssuerURL == cfg.Authentik.URL {
+				cfg.Authentik.IssuerURL = cfg.Authentik.URL
+			}
+			cfg.Authentik.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if cfg.Authentik.URL == "" && cfg.Authentik.IssuerURL != "" {
+		if u, err := url.Parse(cfg.Authentik.IssuerURL); err == nil && u.Scheme != "" && u.Host != "" {
+			cfg.Authentik.URL = u.Scheme + "://" + u.Host
+		}
+	}
+	if cfg.Authentik.IssuerURL == "" && cfg.Authentik.URL != "" {
+		cfg.Authentik.IssuerURL = cfg.Authentik.URL + "/application/o/jellygate/"
+	} else if cfg.Authentik.IssuerURL != "" {
+		if u, err := url.Parse(cfg.Authentik.IssuerURL); err == nil {
+			if u.Path == "" || u.Path == "/" {
+				cfg.Authentik.IssuerURL = strings.TrimRight(cfg.Authentik.IssuerURL, "/") + "/application/o/jellygate/"
+			}
+		}
+	}
+	if cfg.Authentik.RedirectURL == "" && cfg.BaseURL != "" {
+		cfg.Authentik.RedirectURL = strings.TrimRight(cfg.BaseURL, "/") + "/auth/callback"
 	}
 
 	if err := cfg.validate(); err != nil {
@@ -1525,6 +1515,11 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// Validate vérifie que la configuration est valide.
+func (c *Config) Validate() error {
+	return c.validate()
 }
 
 // validate vérifie que tous les champs requis sont renseignés.
@@ -1536,17 +1531,27 @@ func (c *Config) validate() error {
 		errs = append(errs, "JELLYGATE_SECRET est requis")
 	} else if len(c.SecretKey) < 32 {
 		errs = append(errs, "JELLYGATE_SECRET doit faire au minimum 32 caractères")
+	} else if isKnownInsecureSecret(c.SecretKey) {
+		errs = append(errs, "JELLYGATE_SECRET utilise une valeur d'exemple ou triviale non sécurisée (générez une clé aléatoire avec 'openssl rand -hex 32')")
+	}
+
+	// Local Emergency Admin
+	if c.LocalAdmin.Enabled {
+		if len(c.LocalAdmin.Password) < 12 {
+			errs = append(errs, "JELLYGATE_LOCAL_ADMIN_PASSWORD doit faire au minimum 12 caractères pour sécuriser le compte administrateur de secours")
+		} else if isKnownInsecurePassword(c.LocalAdmin.Password) {
+			errs = append(errs, "JELLYGATE_LOCAL_ADMIN_PASSWORD utilise un mot de passe d'exemple non sécurisé")
+		}
 	}
 	if err := validateHTTPURL(c.BaseURL); err != nil {
 		errs = append(errs, "JELLYGATE_BASE_URL doit etre une URL http/https valide: "+err.Error())
 	}
 
-	// Jellyfin
-	if c.Jellyfin.URL == "" {
-		errs = append(errs, "JELLYFIN_URL est requis")
-	}
-	if c.Jellyfin.APIKey == "" {
-		errs = append(errs, "JELLYFIN_API_KEY est requis")
+	// Jellyfin (optionnel)
+	if c.Jellyfin.URL != "" {
+		if err := validateHTTPURL(c.Jellyfin.URL); err != nil {
+			errs = append(errs, "JELLYFIN_URL doit etre une URL http/https valide: "+err.Error())
+		}
 	}
 
 	// Validation de la langue par défaut si fournie
@@ -1645,4 +1650,87 @@ func getEnvBool(key string, defaultVal bool) bool {
 	default:
 		return defaultVal
 	}
+}
+
+// DefaultTrustedProxies retourne les sous-réseaux privés et boucles locales autorisés par défaut.
+func DefaultTrustedProxies() []string {
+	return []string{
+		"127.0.0.1/32",
+		"::1/128",
+		"10.0.0.0/8",
+		"172.16.0.0/12",
+		"192.168.0.0/16",
+		"fc00::/7",
+	}
+}
+
+func parseTrustedProxies(raw string) []string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return DefaultTrustedProxies()
+	}
+	var res []string
+	for _, part := range strings.Split(trimmed, ",") {
+		clean := strings.TrimSpace(part)
+		if clean != "" {
+			res = append(res, clean)
+		}
+	}
+	if len(res) == 0 {
+		return DefaultTrustedProxies()
+	}
+	return res
+}
+
+func isKnownInsecureSecret(s string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(s))
+	insecureDefaults := []string{
+		"change_this_to_a_secure_random_32_character_string",
+		"secret_key_please_change_me_to_random_32_characters",
+		"0123456789abcdef0123456789abcdef",
+		"abcdefghijklmnopqrstuvwxyz012345",
+		"your_strong_secret_key_here_at_least_32_chars",
+		"changeme_changeme_changeme_changeme",
+	}
+	for _, def := range insecureDefaults {
+		if normalized == def {
+			return true
+		}
+	}
+
+	// Rejeter les répétitions du même caractère (ex: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	allSame := true
+	for i := 1; i < len(normalized); i++ {
+		if normalized[i] != normalized[0] {
+			allSame = false
+			break
+		}
+	}
+	if allSame {
+		return true
+	}
+
+	// Exiger au moins 6 caractères distincts pour une clé secrète de 32+ caractères
+	distinct := make(map[rune]struct{})
+	for _, r := range normalized {
+		distinct[r] = struct{}{}
+	}
+	return len(distinct) < 6
+}
+
+func isKnownInsecurePassword(p string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(p))
+	insecurePasswords := []string{
+		"change_this_to_a_secure_local_password",
+		"administrator",
+		"password12345",
+		"adminadminadmin",
+		"123456789012",
+	}
+	for _, def := range insecurePasswords {
+		if normalized == def {
+			return true
+		}
+	}
+	return false
 }
