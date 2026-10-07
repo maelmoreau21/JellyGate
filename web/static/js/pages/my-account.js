@@ -202,12 +202,22 @@
 
             tbody.innerHTML = list.map(inv => {
                 const inviteUrl = `${window.location.origin}/invite/${inv.code}`;
+                const isExpired = inv.expires_at ? new Date(inv.expires_at).getTime() < Date.now() : false;
+                const isExhausted = inv.max_uses > 0 && inv.used_count >= inv.max_uses;
+                let statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Actif</span>';
+                if (isExhausted) {
+                    statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">Épuisé</span>';
+                } else if (isExpired) {
+                    statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">Expiré</span>';
+                }
+
                 return `
                 <tr class="hover:bg-white/[0.04] transition-colors group">
                     <td class="px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <span class="font-mono text-xs text-jg-accent font-bold tracking-wider">${inv.code}</span>
-                            <button class="btn-copy-link opacity-0 group-hover:opacity-100 p-1.5 hover:bg-jg-accent/10 rounded-lg text-jg-accent transition-all" data-url="${inviteUrl}">
+                        <div class="flex items-center gap-2.5">
+                            <span class="font-mono text-xs text-jg-accent font-bold tracking-wider">${JG.esc(inv.code)}</span>
+                            ${statusBadge}
+                            <button type="button" class="btn-copy-link opacity-0 group-hover:opacity-100 p-1 hover:bg-jg-accent/10 rounded-lg text-jg-accent transition-all" data-url="${inviteUrl}" title="Copier le lien">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
                             </button>
                         </div>
@@ -219,11 +229,11 @@
                         </div>
                     </td>
                     <td class="px-6 py-4 text-xs text-jg-text-muted">
-                        ${inv.expires_at ? new Date(inv.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short' }) : '<span class="opacity-30">∞</span>'}
+                        ${inv.expires_at ? new Date(inv.expires_at).toLocaleDateString(uiLocale, { day: '2-digit', month: 'short', year: 'numeric' }) : '<span class="opacity-30">∞</span>'}
                     </td>
                     <td class="px-6 py-4 text-right">
-                        <button class="btn-delete-sponsor jg-btn jg-btn-ghost jg-btn-danger w-9 h-9 p-0 flex items-center justify-center rounded-xl hover:bg-rose-500/10" data-code="${inv.code}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <button type="button" class="btn-delete-sponsor inline-flex items-center justify-center w-8 h-8 rounded-lg text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-500/25 border border-rose-500/20 hover:border-rose-500/40 transition-all cursor-pointer" data-id="${inv.id || ''}" data-code="${inv.code}" title="Supprimer ce lien d'invitation">
+                            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
                     </td>
                 </tr>
@@ -246,12 +256,16 @@
 
             tbody.querySelectorAll('.btn-delete-sponsor').forEach(btn => {
                 btn.onclick = async () => {
-                    const code = btn.dataset.code;
-                    if (!(await JG.confirm(i18n.sponsorshipDeleteTitle || 'Delete link', i18n.sponsorshipDeleteConfirm || 'Delete this invitation link?', { danger: true }))) return;
-                    const delRes = await JG.api(`/admin/api/invitations/${code}`, { method: 'DELETE' });
-                    if (delRes.success) {
-                        JG.toast(i18n.sponsorshipDeleted || 'Link deleted', 'success');
+                    const target = btn.dataset.id || btn.dataset.code;
+                    const code = btn.dataset.code || '';
+                    if (!target) return;
+                    if (!(await JG.confirm(i18n.sponsorshipDeleteTitle || 'Supprimer le lien', i18n.sponsorshipDeleteConfirm || `Voulez-vous vraiment supprimer le lien ${code} ?`, { danger: true }))) return;
+                    const delRes = await JG.api(`/admin/api/invitations/${encodeURIComponent(target)}`, { method: 'DELETE' });
+                    if (delRes && delRes.success) {
+                        JG.toast(i18n.sponsorshipDeleted || 'Lien supprimé avec succès', 'success');
                         loadSponsorships();
+                    } else {
+                        JG.toast((delRes && delRes.message) || 'Impossible de supprimer le lien', 'error');
                     }
                 };
             });

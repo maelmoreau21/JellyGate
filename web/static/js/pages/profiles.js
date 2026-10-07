@@ -188,7 +188,7 @@
             return;
         }
         els['profiles-list'].innerHTML = rows.map(({ preset, index }) => {
-            const active = index === state.selected ? 'is-selected' : '';
+            const active = '';
             const libs = profileLibrariesLabel(preset);
             const admin = preset.is_administrator ? `<span class="badge badge-danger">${JG.esc(t('tagAdmin', 'Admin'))}</span>` : '';
             const invite = (preset.can_invite || preset.can_create_invitations) ? `<span class="badge badge-accent">${JG.esc(t('tagSponsor', 'Parrain'))}</span>` : '';

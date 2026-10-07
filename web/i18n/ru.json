@@ -252,6 +252,7 @@
   "chart_registrations_label": "Регистрации",
   "col_actions": "Действия",
   "col_created_at": "Дата",
+  "col_registered_at": "Дата регистрации",
   "col_email": "E-mail",
   "col_invited_by": "Приглашен",
   "col_jellyfin": "Jellyfin",

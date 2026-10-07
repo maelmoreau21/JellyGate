@@ -1481,21 +1481,29 @@ func (h *AdminHandler) DeleteInvitation(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusUnauthorized, APIResponse{Success: false, Message: "Non authentifié"})
 		return
 	}
-	invID, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
-	if err != nil {
+	idParam := strings.TrimSpace(chi.URLParam(r, "id"))
+	if idParam == "" {
 		writeJSON(w, http.StatusBadRequest, APIResponse{Success: false, Message: "ID invalide"})
 		return
 	}
 
+	var invID int64
 	var authInvID sql.NullString
 	var createdBy string
-	err = h.db.QueryRow(`SELECT authentik_invitation_id, created_by FROM invitations WHERE id = ?`, invID).Scan(&authInvID, &createdBy)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+	var queryErr error
+
+	invIDParsed, parseErr := strconv.ParseInt(idParam, 10, 64)
+	if parseErr == nil {
+		queryErr = h.db.QueryRow(`SELECT id, authentik_invitation_id, created_by FROM invitations WHERE id = ?`, invIDParsed).Scan(&invID, &authInvID, &createdBy)
+	} else {
+		queryErr = h.db.QueryRow(`SELECT id, authentik_invitation_id, created_by FROM invitations WHERE code = ?`, idParam).Scan(&invID, &authInvID, &createdBy)
+	}
+	if queryErr != nil {
+		if errors.Is(queryErr, sql.ErrNoRows) {
 			writeJSON(w, http.StatusNotFound, APIResponse{Success: false, Message: "Invitation introuvable"})
 			return
 		}
-		slog.Error("Erreur lecture invitation pour suppression", "id", invID, "error", err)
+		slog.Error("Erreur lecture invitation pour suppression", "id", idParam, "error", queryErr)
 		writeJSON(w, http.StatusInternalServerError, APIResponse{Success: false, Message: "Erreur DB"})
 		return
 	}

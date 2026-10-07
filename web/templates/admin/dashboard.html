@@ -112,27 +112,39 @@
     </div>
 </div>
 
-<div class="jg-card p-0 overflow-hidden shadow-2xl">
-    <div class="px-6 py-5 border-b border-jg-border flex items-center justify-between bg-white/[0.02]">
-        <h2 class="font-bold text-lg text-jg-text">{{ .T "dashboard_recent_users" }}</h2>
-        <a href="/admin/users" class="text-jg-accent text-sm font-semibold hover:underline flex items-center gap-1">
-            {{ .T "view_all" }} 
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<div class="jg-card p-0 overflow-hidden shadow-xl border border-white/10 bg-slate-900/40 backdrop-blur-md rounded-2xl mb-8">
+    <div class="px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white/[0.015]">
+        <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+            </div>
+            <div>
+                <h2 class="font-bold text-base text-jg-text flex items-center gap-2">
+                    {{ .T "dashboard_recent_users" }}
+                    <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-400">5 derniers</span>
+                </h2>
+                <p class="text-xs text-jg-text-muted">Comptes récemment inscrits sur votre serveur Jellyfin</p>
+            </div>
+        </div>
+        <a href="/admin/users" class="jg-btn jg-btn-ghost text-xs font-semibold px-3.5 py-2 rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors self-start sm:self-auto">
+            <span>{{ .T "view_all" }}</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </a>
     </div>
     <div class="jg-table-wrap overflow-x-auto">
-        <table class="jg-table w-full text-sm text-left" id="recent-users-table">
-            <thead class="bg-jg-bg-secondary text-jg-text-muted uppercase text-[10px] font-bold tracking-widest">
+        <table class="jg-table w-full text-sm text-left align-middle" id="recent-users-table">
+            <thead class="bg-jg-bg-secondary/70 text-jg-text-muted uppercase text-[10px] font-bold tracking-widest border-b border-white/5">
                 <tr>
                     <th class="px-6 py-4">{{ .T "col_username" }}</th>
                     <th class="px-6 py-4">{{ .T "col_status" }}</th>
                     <th class="px-6 py-4">{{ .T "col_invited_by" }}</th>
-                    <th class="px-6 py-4">{{ .T "col_created_at" }}</th>
+                    <th class="px-6 py-4">{{ or (.T "col_registered_at") "Date d'inscription" }}</th>
+                    <th class="px-6 py-4 text-right">{{ .T "col_actions" }}</th>
                 </tr>
             </thead>
-            <tbody id="recent-users-body" class="divide-y divide-jg-border">
+            <tbody id="recent-users-body" class="divide-y divide-white/5">
                 <tr>
-                    <td colspan="4" class="text-center py-12">
+                    <td colspan="5" class="text-center py-12">
                         <div class="flex flex-col items-center gap-3">
                             <span class="spinner w-8 h-8 border-2 border-jg-accent border-t-transparent animate-spin rounded-full"></span>
                             <span class="text-jg-text-muted animate-pulse">{{ .T "loading" }}...</span>

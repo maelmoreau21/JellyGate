@@ -252,6 +252,7 @@
   "chart_registrations_label": "Registraties",
   "col_actions": "Acties",
   "col_created_at": "Datum",
+  "col_registered_at": "Registratiedatum",
   "col_email": "E-mail",
   "col_invited_by": "Uitgenodigd door",
   "col_jellyfin": "Jellyfin",

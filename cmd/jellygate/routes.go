@@ -214,7 +214,9 @@ func setupRouter(p RouterParams) *chi.Mux {
 				r.Get("/authentik", p.AdminHandler.AuthentikPage)
 				r.Get("/sso", p.AdminHandler.AuthentikPage)
 				r.Get("/security", p.AdminHandler.SecurityPage)
-				r.Get("/pending-actions", p.AdminHandler.PendingActionsPage)
+				r.Get("/pending-actions", func(w http.ResponseWriter, r *http.Request) {
+					http.Redirect(w, r, "/admin/security", http.StatusSeeOther)
+				})
 				r.Get("/automation", func(w http.ResponseWriter, r *http.Request) {
 					http.Redirect(w, r, "/admin/settings#scheduler", http.StatusSeeOther)
 				})
@@ -316,7 +318,9 @@ func setupRouter(p RouterParams) *chi.Mux {
 				r.Get("/settings", p.AdminHandler.SettingsPage)
 				r.Get("/email-templates", p.AdminHandler.EmailTemplatesPage)
 
-				r.Get("/logs", p.AdminHandler.LogsPage)
+				r.Get("/logs", func(w http.ResponseWriter, r *http.Request) {
+					http.Redirect(w, r, "/admin/security#system", http.StatusSeeOther)
+				})
 			})
 
 			// ── Routes d'invitations (Filtrées en interne selon IsAdmin) ────

@@ -252,6 +252,7 @@
   "chart_registrations_label": "注册",
   "col_actions": "行动",
   "col_created_at": "日期",
+  "col_registered_at": "注册日期",
   "col_email": "电子邮件",
   "col_invited_by": "邀请人",
   "col_jellyfin": "Jellyfin",

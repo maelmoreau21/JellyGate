@@ -252,6 +252,7 @@
   "chart_registrations_label": "Rejestracje",
   "col_actions": "Akcje",
   "col_created_at": "Data",
+  "col_registered_at": "Data rejestracji",
   "col_email": "E-mail",
   "col_invited_by": "Zaproszony przez",
   "col_jellyfin": "Jellyfin",

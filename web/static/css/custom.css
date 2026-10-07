@@ -331,10 +331,21 @@ html:not(.dark) .jg-data-studio {
 
 .jg-profiles-table .jg-profile-row {
     cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .jg-profiles-table .jg-profile-row td {
     vertical-align: middle;
+}
+
+.jg-profiles-table .jg-profile-row.is-selected,
+.jg-profiles-table .jg-profile-row.is-selected td {
+    background: transparent !important;
+}
+
+.jg-profiles-table .jg-profile-row:hover,
+.jg-profiles-table .jg-profile-row:hover td {
+    background: rgba(139, 92, 246, 0.08) !important;
 }
 
 .jg-profile-edit-section {
@@ -2332,6 +2343,32 @@ html:not(.dark) .email-template-multilingual-note {
 
 .jg-sidebar.open {
     transform: translateX(0);
+}
+
+.jg-sidebar-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--jg-border);
+    background: rgba(9, 9, 11, 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    position: relative;
+    z-index: 20;
+    box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.4);
+    flex-shrink: 0;
+}
+
+html:not(.dark) .jg-sidebar-header {
+    background: rgba(248, 250, 252, 0.7);
+    box-shadow: 0 4px 16px -4px rgba(15, 23, 42, 0.06);
+}
+
+.jg-nav {
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    mask-image: linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%);
 }
 
 .jg-nav-item {
