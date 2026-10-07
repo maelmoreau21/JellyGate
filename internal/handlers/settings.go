@@ -84,100 +84,11 @@ func (h *SettingsHandler) SetJellyfinClient(jfClient *jellyfin.Client) {
 }
 
 // resolveEffectiveAuthentikConfig combine la configuration stockée en base SQL avec les variables d'environnement.
-// Les variables d'environnement (Docker Compose / .env) sont STRICTEMENT prioritaires.
 func (h *SettingsHandler) resolveEffectiveAuthentikConfig() config.AuthentikConfig {
-	cfg := config.AuthentikConfig{
-		Enabled:            false,
-		UserGroup:          "jellygate-users",
-		AdminGroup:         "jellygate-admins",
-		JellyfinUserGroup:  "jellyfin-users",
-		EnrollmentFlowSlug: "default-enrollment-flow",
+	if h == nil {
+		return ResolveEffectiveAuthentikConfig(nil, nil)
 	}
-
-	if h.db != nil {
-		if dbCfg, err := h.db.GetAuthentikConfig(); err == nil {
-			if dbCfg.URL != "" || dbCfg.IssuerURL != "" || dbCfg.ClientID != "" || dbCfg.APIToken != "" || dbCfg.Enabled {
-				cfg = dbCfg
-			}
-		}
-	}
-
-	// Les variables d'environnement Docker écrasent systématiquement la config DB si définies
-	if h.cfg != nil {
-		env := h.cfg.Authentik
-
-		if strings.TrimSpace(env.URL) != "" {
-			cfg.URL = strings.TrimSpace(env.URL)
-		}
-		if strings.TrimSpace(env.IssuerURL) != "" {
-			cfg.IssuerURL = strings.TrimSpace(env.IssuerURL)
-		}
-		if strings.TrimSpace(env.ClientID) != "" {
-			cfg.ClientID = strings.TrimSpace(env.ClientID)
-		}
-		if strings.TrimSpace(env.ClientSecret) != "" {
-			cfg.ClientSecret = strings.TrimSpace(env.ClientSecret)
-		}
-		if strings.TrimSpace(env.RedirectURL) != "" {
-			cfg.RedirectURL = strings.TrimSpace(env.RedirectURL)
-		}
-		if strings.TrimSpace(env.APIToken) != "" {
-			cfg.APIToken = strings.TrimSpace(env.APIToken)
-		}
-		if strings.TrimSpace(env.UserGroup) != "" {
-			cfg.UserGroup = strings.TrimSpace(env.UserGroup)
-		}
-		if strings.TrimSpace(env.AdminGroup) != "" {
-			cfg.AdminGroup = strings.TrimSpace(env.AdminGroup)
-		}
-		if strings.TrimSpace(env.JellyfinUserGroup) != "" {
-			cfg.JellyfinUserGroup = strings.TrimSpace(env.JellyfinUserGroup)
-		}
-		if strings.TrimSpace(env.InvitersGroup) != "" {
-			cfg.InvitersGroup = strings.TrimSpace(env.InvitersGroup)
-		}
-		if strings.TrimSpace(env.InvitersRecursiveGroup) != "" {
-			cfg.InvitersRecursiveGroup = strings.TrimSpace(env.InvitersRecursiveGroup)
-		}
-		if strings.TrimSpace(env.EnrollmentFlowSlug) != "" {
-			cfg.EnrollmentFlowSlug = strings.TrimSpace(env.EnrollmentFlowSlug)
-		}
-		if env.Enabled || (env.URL != "" || env.IssuerURL != "" || env.ClientID != "") {
-			cfg.Enabled = true
-		}
-	}
-
-	if cfg.UserGroup == "" {
-		cfg.UserGroup = "jellygate-users"
-	}
-	if cfg.AdminGroup == "" {
-		cfg.AdminGroup = "jellygate-admins"
-	}
-	if cfg.JellyfinUserGroup == "" {
-		cfg.JellyfinUserGroup = "jellyfin-users"
-	}
-	if cfg.EnrollmentFlowSlug == "" {
-		cfg.EnrollmentFlowSlug = "default-enrollment-flow"
-	}
-
-	if cfg.URL != "" {
-		if u, err := url.Parse(cfg.URL); err == nil && u.Scheme != "" && u.Host != "" && u.Path != "" && u.Path != "/" {
-			if cfg.IssuerURL == "" || cfg.IssuerURL == cfg.URL {
-				cfg.IssuerURL = cfg.URL
-			}
-			cfg.URL = u.Scheme + "://" + u.Host
-		}
-	}
-	if cfg.URL == "" && cfg.IssuerURL != "" {
-		if u, err := url.Parse(cfg.IssuerURL); err == nil && u.Scheme != "" && u.Host != "" {
-			cfg.URL = u.Scheme + "://" + u.Host
-		}
-	}
-	if cfg.IssuerURL == "" && cfg.URL != "" {
-		cfg.IssuerURL = cfg.URL + "/application/o/jellygate/"
-	}
-
-	return cfg
+	return ResolveEffectiveAuthentikConfig(h.cfg, h.db)
 }
 
 func (h *SettingsHandler) isAuthentikEnvManaged() bool {

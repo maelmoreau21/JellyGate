@@ -41,7 +41,7 @@ services:
       - DB_USER=${DB_USER:-${POSTGRES_USER:?❌ POSTGRES_USER or DB_USER is required}}
       - DB_PASSWORD=${DB_PASSWORD:-${POSTGRES_PASSWORD:?❌ POSTGRES_PASSWORD or DB_PASSWORD is required}}
       - DB_NAME=${DB_NAME:-${POSTGRES_DB:-jellygate}}
-      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - DB_SSLMODE=${DB_SSLMODE:-prefer}
 
       # ── Jellyfin (Optional) ──────────────────────────────────────────
       - JELLYFIN_URL=${JELLYFIN_URL:-}

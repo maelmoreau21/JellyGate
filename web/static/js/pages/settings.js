@@ -98,22 +98,21 @@
     }
     window.applySSOPreset = applySSOPreset;
 
-    function copyCallbackURL() {
+    async function copyCallbackURL() {
         const input = document.getElementById('oidc_redirect_url');
         const val = (input && input.value) ? input.value : (window.location.origin + '/auth/callback');
-        navigator.clipboard.writeText(val).then(() => {
+        const ok = await JG.copyText(val);
+        if (ok) {
             const textSpan = document.getElementById('copy-callback-text');
             if (textSpan) {
                 const original = textSpan.textContent;
                 textSpan.textContent = 'Copié !';
                 setTimeout(() => { textSpan.textContent = original; }, 2000);
             }
-            if (window.JG && JG.toast) {
-                JG.toast('URL de redirection copiée dans le presse-papier !', 'success');
+            if (window.JG && typeof JG.toast === 'function') {
+                JG.toast('URL de redirection copiée !', 'success');
             }
-        }).catch(err => {
-            console.error('Erreur copie presse-papier:', err);
-        });
+        }
     }
     window.copyCallbackURL = copyCallbackURL;
 
@@ -2109,25 +2108,6 @@
         const callbackUrl = window.location.origin + '/auth/callback';
         const displayEl = document.getElementById('display-callback-url');
         if (displayEl) displayEl.textContent = callbackUrl;
-    }
-
-    function copyCallbackURL() {
-        const callbackUrl = window.location.origin + '/auth/callback';
-        navigator.clipboard.writeText(callbackUrl).then(() => {
-            const textSpan = document.getElementById('copy-callback-text');
-            if (textSpan) {
-                const original = textSpan.textContent;
-                textSpan.textContent = 'Copié !';
-                setTimeout(() => { textSpan.textContent = original; }, 2000);
-            }
-            if (window.JG && typeof JG.toast === 'function') {
-                JG.toast('URL de redirection copiée !', 'success');
-            }
-        }).catch(() => {
-            if (window.JG && typeof JG.toast === 'function') {
-                JG.toast('Impossible de copier l\'URL', 'error');
-            }
-        });
     }
 
     async function testSMTPConnection() {

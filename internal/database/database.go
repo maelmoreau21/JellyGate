@@ -144,7 +144,10 @@ func buildPostgresDSN(cfg config.DatabaseConfig) (string, error) {
 	name := strings.TrimSpace(cfg.Name)
 	sslMode := strings.TrimSpace(cfg.SSLMode)
 	if sslMode == "" {
-		sslMode = "disable"
+		sslMode = "prefer"
+	}
+	if sslMode == "disable" {
+		slog.Warn("[SEC] PostgreSQL SSL désactivé (DB_SSLMODE=disable) — la connexion n'est PAS chiffrée. Utilisez 'require' ou 'prefer' en production.")
 	}
 	if host == "" || user == "" || name == "" {
 		return "", fmt.Errorf("configuration postgres incomplete (DB_HOST, DB_USER, DB_NAME)")

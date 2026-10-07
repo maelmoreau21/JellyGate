@@ -66,6 +66,10 @@
             }
         }).catch(err => {
             console.error('Dashboard load error:', err);
+            ['stat-users', 'stat-active', 'stat-invitations', 'stat-banned'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = '—';
+            });
         });
     }
 

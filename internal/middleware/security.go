@@ -2,7 +2,9 @@ package middleware
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
@@ -78,17 +80,20 @@ func SecurityHeaders(baseURL string) func(http.Handler) http.Handler {
 	}
 }
 
-// EnsureCSRFCookie cree un cookie CSRF si absent.
-func EnsureCSRFCookie(baseURL string) func(http.Handler) http.Handler {
+// EnsureCSRFCookie cree un cookie CSRF signe par HMAC si absent ou invalide.
+func EnsureCSRFCookie(secretKey, baseURL string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			token := ""
 			if existing, err := r.Cookie(csrfCookieName); err == nil {
-				token = strings.TrimSpace(existing.Value)
+				candidate := strings.TrimSpace(existing.Value)
+				if validateCSRFToken(secretKey, candidate) {
+					token = candidate
+				}
 			}
 
 			if token == "" {
-				freshToken, tokenErr := generateCSRFToken()
+				freshToken, tokenErr := generateSignedCSRFToken(secretKey)
 				if tokenErr == nil {
 					token = freshToken
 					// #nosec G124 -- CSRF token is intentionally readable by frontend JS for X-CSRF-Token headers.
@@ -110,8 +115,9 @@ func EnsureCSRFCookie(baseURL string) func(http.Handler) http.Handler {
 	}
 }
 
-// RequireCSRF verifie le token sur les methodes mutables.
-func RequireCSRF() func(http.Handler) http.Handler {
+// RequireCSRF verifie le token sur les methodes mutables, en validant
+// l'authenticité cryptographique du cookie (HMAC) et la correspondance avec le token soumis.
+func RequireCSRF(secretKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !isUnsafeMethod(r.Method) {
@@ -125,12 +131,18 @@ func RequireCSRF() func(http.Handler) http.Handler {
 				return
 			}
 
+			cookieToken := strings.TrimSpace(cookie.Value)
+			// Vérifier que le cookie a bien été émis par ce serveur (protection injection de cookie de sous-domaine)
+			if !validateCSRFToken(secretKey, cookieToken) {
+				http.Error(w, "CSRF cookie invalide", http.StatusForbidden)
+				return
+			}
+
 			token := strings.TrimSpace(r.Header.Get(csrfHeaderName))
 			if token == "" {
 				token = strings.TrimSpace(r.FormValue("_csrf"))
 			}
 
-			cookieToken := strings.TrimSpace(cookie.Value)
 			if token == "" || subtle.ConstantTimeCompare([]byte(token), []byte(cookieToken)) != 1 {
 				http.Error(w, "CSRF token invalide", http.StatusForbidden)
 				return
@@ -159,6 +171,39 @@ func RequestIsHTTPS(r *http.Request, baseURL string) bool {
 		return true
 	}
 	return false
+}
+
+func computeCSRFSignature(secretKey, rawToken string) string {
+	mac := hmac.New(sha256.New, []byte(secretKey))
+	mac.Write([]byte("jellygate-csrf-token-v1:"))
+	mac.Write([]byte(rawToken))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func validateCSRFToken(secretKey, token string) bool {
+	if strings.TrimSpace(secretKey) == "" || strings.TrimSpace(token) == "" {
+		return false
+	}
+	parts := strings.Split(token, ".")
+	if len(parts) != 2 {
+		return false
+	}
+	raw, sig := parts[0], parts[1]
+	if len(raw) < 32 || len(sig) == 0 {
+		return false
+	}
+	expectedSig := computeCSRFSignature(secretKey, raw)
+	return subtle.ConstantTimeCompare([]byte(sig), []byte(expectedSig)) == 1
+}
+
+func generateSignedCSRFToken(secretKey string) (string, error) {
+	buf := make([]byte, 32)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	raw := hex.EncodeToString(buf)
+	sig := computeCSRFSignature(secretKey, raw)
+	return raw + "." + sig, nil
 }
 
 func generateCSRFToken() (string, error) {

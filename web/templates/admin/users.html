@@ -176,14 +176,21 @@
                             </select>
                         </div>
                         <span>{{ .T "logs_per_page_suffix" }}</span>
-                        <span>{{ .T "logs_per_page_suffix" }}</span>
                     </div>
                     
                     <div class="flex items-center gap-1" id="pagination-controls">
                         {{/* Injected via JS */}}
                     </div>
 
-           <div id="selection-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 bg-[#050506]/85 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
+                    <div class="text-[10px] uppercase tracking-widest font-black text-jg-text-muted/60" id="pagination-info">
+                        {{ .T "logs_page_label" }} 1 {{ .T "logs_of_label" }} 1
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{/* ── Selection Bar Flottante ── */}}
+        <div id="selection-bar" class="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 p-2 bg-[#050506]/85 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl transition-all duration-300 translate-y-24 opacity-0 pointer-events-none">
             <div class="flex items-center gap-3 px-4 text-sm font-bold text-jg-text">
                 <span class="w-6 h-6 rounded-full bg-jg-accent/20 text-jg-accent flex items-center justify-center text-xs" id="selection-count">0</span>
                 <span class="hidden sm:inline">{{ .T "users_bulk_selected_suffix" }}</span>
@@ -211,13 +218,6 @@
                 <span class="hidden sm:inline">{{ .T "users_bulk_title" }}</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             </button>
-        </div>
-
-                    <div class="text-[10px] uppercase tracking-widest font-black text-jg-text-muted/60" id="pagination-info">
-                        {{ .T "logs_page_label" }} 1 {{ .T "logs_of_label" }} 1
-                    </div>
-                </div>
-            </div>
         </div>
 
         {{/* ── Bulk Actions Drawer ───────────────────────────────────────────── */}}

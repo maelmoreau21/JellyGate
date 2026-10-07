@@ -12,6 +12,8 @@
         const confirmPassword = document.getElementById('password_confirm');
         const matchMessage = document.getElementById('password-match-msg');
         const policyMessage = document.getElementById('password-policy-msg');
+        const usernameMsg = document.getElementById('username-msg');
+        const emailMsg = document.getElementById('email-msg');
         const inputs = form.querySelectorAll('.jg-input');
         const policy = {
             usernameMinLength: parseInt(form.dataset.usernameMinLength || '3', 10) || 3,
@@ -52,6 +54,93 @@
             return errors;
         }
 
+        function validateUsername(input) {
+            if (!input) return true;
+            const rawVal = input.value || '';
+            const value = rawVal.trim();
+            if (!value) {
+                input.classList.remove('is-valid', 'is-invalid');
+                if (usernameMsg) {
+                    usernameMsg.className = 'text-xs mt-1 text-slate-500 hidden';
+                    usernameMsg.textContent = '';
+                }
+                return false;
+            }
+            if (/\s/.test(rawVal)) {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                if (usernameMsg) {
+                    usernameMsg.className = 'text-xs mt-1 text-red-400';
+                    usernameMsg.textContent = 'Les espaces ne sont pas autorisés dans le nom d\'utilisateur';
+                }
+                return false;
+            }
+            if (value.length < policy.usernameMinLength) {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                if (usernameMsg) {
+                    usernameMsg.className = 'text-xs mt-1 text-red-400';
+                    usernameMsg.textContent = `Doit contenir au moins ${policy.usernameMinLength} caractères`;
+                }
+                return false;
+            }
+            if (value.length > policy.usernameMaxLength) {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                if (usernameMsg) {
+                    usernameMsg.className = 'text-xs mt-1 text-red-400';
+                    usernameMsg.textContent = `Doit contenir au maximum ${policy.usernameMaxLength} caractères`;
+                }
+                return false;
+            }
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            if (usernameMsg) {
+                usernameMsg.className = 'text-xs mt-1 text-emerald-400';
+                usernameMsg.textContent = '✓ Nom d\'utilisateur valide';
+            }
+            return true;
+        }
+
+        function validateEmail(input) {
+            if (!input) return true;
+            const value = (input.value || '').trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!value) {
+                if (policy.requireEmail) {
+                    input.classList.remove('is-valid');
+                    input.classList.add('is-invalid');
+                    if (emailMsg) {
+                        emailMsg.className = 'text-xs mt-1 text-red-400';
+                        emailMsg.textContent = 'L\'adresse email est obligatoire';
+                    }
+                    return false;
+                }
+                input.classList.remove('is-valid', 'is-invalid');
+                if (emailMsg) {
+                    emailMsg.className = 'text-xs mt-1 text-slate-500 hidden';
+                    emailMsg.textContent = '';
+                }
+                return true;
+            }
+            if (!emailRegex.test(value)) {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                if (emailMsg) {
+                    emailMsg.className = 'text-xs mt-1 text-red-400';
+                    emailMsg.textContent = 'Format d\'adresse email invalide (ex: nom@domaine.com)';
+                }
+                return false;
+            }
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            if (emailMsg) {
+                emailMsg.className = 'text-xs mt-1 text-emerald-400';
+                emailMsg.textContent = '✓ Adresse email valide';
+            }
+            return true;
+        }
+
         inputs.forEach((input) => {
             input.addEventListener('input', () => {
                 if (input.id === 'password') {
@@ -60,6 +149,7 @@
                         input.classList.remove('is-valid', 'is-invalid');
                         if (policyMessage) {
                             policyMessage.className = 'text-xs mt-1 text-slate-500';
+                            policyMessage.textContent = '';
                         }
                     } else if (errors.length === 0) {
                         input.classList.remove('is-invalid');
@@ -80,16 +170,12 @@
                 }
 
                 if (input.id === 'username') {
-                    const value = (input.value || '').trim();
-                    if (!value) {
-                        input.classList.remove('is-valid', 'is-invalid');
-                    } else if (value.length < policy.usernameMinLength || value.length > policy.usernameMaxLength) {
-                        input.classList.remove('is-valid');
-                        input.classList.add('is-invalid');
-                    } else {
-                        input.classList.remove('is-invalid');
-                        input.classList.add('is-valid');
-                    }
+                    validateUsername(input);
+                    return;
+                }
+
+                if (input.id === 'email') {
+                    validateEmail(input);
                     return;
                 }
 
@@ -133,13 +219,22 @@
         }
 
         form.addEventListener('submit', (event) => {
+            const usernameEl = document.getElementById('username');
+            if (usernameEl && !usernameEl.readOnly) {
+                if (!validateUsername(usernameEl)) {
+                    event.preventDefault();
+                    usernameEl.focus();
+                    return;
+                }
+            }
+
             const emailEl = document.getElementById('email');
-            if (policy.requireEmail && emailEl && !emailEl.value.trim()) {
-                event.preventDefault();
-                emailEl.classList.remove('is-valid');
-                emailEl.classList.add('is-invalid');
-                emailEl.focus();
-                return;
+            if (emailEl) {
+                if (!validateEmail(emailEl)) {
+                    event.preventDefault();
+                    emailEl.focus();
+                    return;
+                }
             }
 
             if (password && confirmPassword) {
@@ -149,6 +244,9 @@
                     if (passwordErrors.length > 0 && policyMessage) {
                         policyMessage.textContent = `${t.password_policy_missing || 'Missing requirements'}: ${passwordErrors.join(', ')}`;
                         policyMessage.className = 'text-xs mt-1 text-red-400';
+                        password.focus();
+                    } else if (password.value !== confirmPassword.value) {
+                        confirmPassword.focus();
                     }
                     return;
                 }

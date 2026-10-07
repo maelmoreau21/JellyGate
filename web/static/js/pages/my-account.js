@@ -230,11 +230,17 @@
             `;}).join('');
 
             tbody.querySelectorAll('.btn-copy-link').forEach(btn => {
-                btn.onclick = () => {
+                btn.onclick = async () => {
                     const url = btn.dataset.url;
-                    navigator.clipboard.writeText(url).then(() => {
-                        JG.toast(i18n.sponsorshipLinkCopied || 'Link copied!', 'success');
-                    });
+                    const ok = await JG.copyText(url);
+                    if (ok) {
+                        JG.toast(i18n.sponsorshipLinkCopied || 'Lien copié dans le presse-papier !', 'success');
+                        const origText = btn.innerHTML;
+                        btn.innerHTML = '<span>✓ Copié !</span>';
+                        setTimeout(() => { btn.innerHTML = origText; }, 2000);
+                    } else {
+                        JG.toast(i18n.copyUnavailable || 'Impossible de copier le lien', 'error');
+                    }
                 };
             });
 

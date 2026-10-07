@@ -32,10 +32,9 @@ const (
 	// de rester connecte sur ce navigateur.
 	RememberDuration = 30 * 24 * time.Hour
 
-	// IndefiniteDuration garde une session persistante tres longtemps.
-	// Les navigateurs peuvent appliquer leur propre limite, mais le serveur ne
-	// l'expire pas avant cette duree sauf deconnexion ou revocation globale.
-	IndefiniteDuration = 10 * 365 * 24 * time.Hour
+	// IndefiniteDuration garde une session persistante longue (90 jours max).
+	// Borner la session longue à 90 jours prévient les failles de sessions éternelles (Q-4).
+	IndefiniteDuration = 90 * 24 * time.Hour
 )
 
 // ── Clés de contexte ────────────────────────────────────────────────────────

@@ -155,6 +155,7 @@
                         placeholder="john_doe" autocomplete="username" {{ if not .Data.ForcedUsername }}autofocus{{ end }} required
                         value="{{ or .Data.ForcedUsername .Data.SubmittedUsername }}"
                         {{ if .Data.ForcedUsername }}readonly tabindex="-1"{{ end }}>
+                    <p id="username-msg" class="text-xs mt-1 text-slate-500 hidden"></p>
                 </div>
 
                 {{/* Email */}}
@@ -169,6 +170,7 @@
                         placeholder="john@example.com" autocomplete="email"
                         {{ if .Data.RequireEmail }}required{{ end }}
                         value="{{ .Data.SubmittedEmail }}">
+                    <p id="email-msg" class="text-xs mt-1 text-slate-500 hidden"></p>
                 </div>
 
                 {{/* Password */}}

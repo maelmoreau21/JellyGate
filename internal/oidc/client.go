@@ -237,7 +237,15 @@ func (c *oidcClient) HandleCallback(r *http.Request) (*Claims, error) {
 
 	redirectURI := c.getRedirectURI(r)
 	if redirectCookie, err := r.Cookie(CookieRedirectURI); err == nil && strings.TrimSpace(redirectCookie.Value) != "" {
-		redirectURI = strings.TrimSpace(redirectCookie.Value)
+		candidate := strings.TrimSpace(redirectCookie.Value)
+		// SEC: Valider que le redirect_uri du cookie est cohérent avec celui attendu.
+		// Empêche toute injection de cookie de détourner le code OAuth vers un domaine externe.
+		if u, err := url.Parse(candidate); err == nil && u.IsAbs() {
+			expectedURL, errExp := url.Parse(redirectURI)
+			if errExp == nil && strings.EqualFold(u.Host, expectedURL.Host) && strings.EqualFold(u.Scheme, expectedURL.Scheme) {
+				redirectURI = candidate
+			}
+		}
 	}
 
 	data := url.Values{}

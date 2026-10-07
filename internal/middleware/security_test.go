@@ -126,3 +126,89 @@ func TestStaticFileFilter(t *testing.T) {
 		}
 	})
 }
+
+func TestCSRF_Protection(t *testing.T) {
+	secretKey := "test-super-secret-key-that-is-at-least-32-chars-long"
+
+	dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	ensureMW := EnsureCSRFCookie(secretKey, "http://localhost:8080")
+	requireMW := RequireCSRF(secretKey)
+	fullStack := ensureMW(requireMW(dummyHandler))
+
+	t.Run("safe method GET allowed without CSRF headers", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/test", nil)
+		rr := httptest.NewRecorder()
+		fullStack.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200 OK for GET, got %d", rr.Code)
+		}
+		// Should set signed cookie
+		cookieHeader := rr.Header().Get("Set-Cookie")
+		if !strings.Contains(cookieHeader, "jg_csrf=") {
+			t.Errorf("expected Set-Cookie to include jg_csrf, got %s", cookieHeader)
+		}
+	})
+
+	t.Run("POST rejected when cookie is missing", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+		rr := httptest.NewRecorder()
+		requireMW(dummyHandler).ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusForbidden {
+			t.Errorf("expected 403 Forbidden, got %d", rr.Code)
+		}
+	})
+
+	t.Run("POST rejected with forged / unsigned cookie (subdomain injection simulation)", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+		forgedToken := "forged-attacker-token-12345678901234567890"
+		req.AddCookie(&http.Cookie{Name: "jg_csrf", Value: forgedToken})
+		req.Header.Set("X-CSRF-Token", forgedToken)
+		rr := httptest.NewRecorder()
+		requireMW(dummyHandler).ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusForbidden {
+			t.Errorf("expected 403 Forbidden for forged cookie, got %d", rr.Code)
+		}
+	})
+
+	t.Run("POST rejected when token does not match cookie", func(t *testing.T) {
+		validToken, err := generateSignedCSRFToken(secretKey)
+		if err != nil {
+			t.Fatalf("failed to generate signed token: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+		req.AddCookie(&http.Cookie{Name: "jg_csrf", Value: validToken})
+		req.Header.Set("X-CSRF-Token", "different-token")
+		rr := httptest.NewRecorder()
+		requireMW(dummyHandler).ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusForbidden {
+			t.Errorf("expected 403 Forbidden for mismatched token, got %d", rr.Code)
+		}
+	})
+
+	t.Run("POST accepted with valid signed cookie and matching X-CSRF-Token header", func(t *testing.T) {
+		validToken, err := generateSignedCSRFToken(secretKey)
+		if err != nil {
+			t.Fatalf("failed to generate signed token: %v", err)
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/api/test", nil)
+		req.AddCookie(&http.Cookie{Name: "jg_csrf", Value: validToken})
+		req.Header.Set("X-CSRF-Token", validToken)
+		rr := httptest.NewRecorder()
+		requireMW(dummyHandler).ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected 200 OK for valid CSRF, got %d", rr.Code)
+		}
+	})
+}
+

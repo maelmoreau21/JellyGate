@@ -161,23 +161,31 @@
         function renderPagination() {
             const container = document.getElementById('pagination-controls');
             if (!container) return;
+
+            const perPageSelect = document.getElementById('items-per-page');
+            if (perPageSelect && paginationMeta.limit) {
+                perPageSelect.value = String(paginationMeta.limit);
+            }
+
+            const totalPages = Math.max(1, paginationMeta.total_pages || 1);
+            const currentPage = Math.max(1, Math.min(paginationMeta.page || 1, totalPages));
             
             const info = document.getElementById('pagination-info');
             if (info) {
-                info.textContent = (i18n.pageLabel || 'Page') + ' ' + paginationMeta.page + ' ' + (i18n.pageOf || 'sur') + ' ' + paginationMeta.total_pages;
+                info.textContent = (i18n.pageLabel || 'Page') + ' ' + currentPage + ' ' + (i18n.pageOf || 'sur') + ' ' + totalPages;
             }
 
             let html = '';
             const previousLabel = JG.esc(i18n.previous || 'Previous');
             const nextLabel = JG.esc(i18n.next || 'Next');
             // Previous
-            html += `<button class="jg-btn jg-btn-ghost h-10 px-3 flex items-center justify-center rounded-xl text-xs font-semibold ${paginationMeta.page <= 1 ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page - 1}" ${paginationMeta.page <= 1 ? 'disabled' : ''}>
+            html += `<button class="jg-btn jg-btn-ghost h-10 px-3 flex items-center justify-center rounded-xl text-xs font-semibold ${currentPage <= 1 ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${currentPage - 1}" ${currentPage <= 1 ? 'disabled' : ''}>
                 ${previousLabel}
             </button>`;
 
             // Simple pagination: 1 ... current-1 current current+1 ... total
-            const startPage = Math.max(1, paginationMeta.page - 2);
-            const endPage = Math.min(paginationMeta.total_pages, paginationMeta.page + 2);
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
 
             if (startPage > 1) {
                 html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl" data-page="1">1</button>`;
@@ -185,17 +193,17 @@
             }
 
             for (let i = startPage; i <= endPage; i++) {
-                const active = i === paginationMeta.page ? 'bg-jg-accent text-always-white font-bold' : 'hover:bg-white/5';
+                const active = i === currentPage ? 'bg-jg-accent text-always-white font-bold' : 'hover:bg-white/5';
                 html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl ${active}" data-page="${i}">${i}</button>`;
             }
 
-            if (endPage < paginationMeta.total_pages) {
-                if (endPage < paginationMeta.total_pages - 1) html += `<span class="px-2 text-jg-text-muted">...</span>`;
-                html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl" data-page="${paginationMeta.total_pages}">${paginationMeta.total_pages}</button>`;
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span class="px-2 text-jg-text-muted">...</span>`;
+                html += `<button class="jg-btn jg-btn-ghost w-10 h-10 p-0 rounded-xl" data-page="${totalPages}">${totalPages}</button>`;
             }
 
             // Next
-            html += `<button class="jg-btn jg-btn-ghost h-10 px-3 flex items-center justify-center rounded-xl text-xs font-semibold ${paginationMeta.page >= paginationMeta.total_pages ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${paginationMeta.page + 1}" ${paginationMeta.page >= paginationMeta.total_pages ? 'disabled' : ''}>
+            html += `<button class="jg-btn jg-btn-ghost h-10 px-3 flex items-center justify-center rounded-xl text-xs font-semibold ${currentPage >= totalPages ? 'opacity-30 cursor-not-allowed' : ''}" data-page="${currentPage + 1}" ${currentPage >= totalPages ? 'disabled' : ''}>
                 ${nextLabel}
             </button>`;
 
@@ -203,8 +211,8 @@
 
             container.querySelectorAll('button[data-page]').forEach(btn => {
                 btn.onclick = () => {
-                    const p = parseInt(btn.dataset.page);
-                    if (p > 0 && p <= paginationMeta.total_pages && p !== paginationMeta.page) {
+                    const p = parseInt(btn.dataset.page, 10);
+                    if (p > 0 && p <= totalPages && p !== paginationMeta.page) {
                         paginationMeta.page = p;
                         loadUsers();
                     }
@@ -237,7 +245,9 @@
             if (users.length === 0) {
                 const help = paginationMeta.total === 0 ? i18n.usersNoLocal : i18n.usersNoFilterMatch;
                 tbody.innerHTML = '<tr><td colspan="7" class="text-center text-slate-500 py-24">' + JG.esc(help) + '</td></tr>';
-                updateSelectionUI(); return;
+                updateSelectionUI();
+                renderPagination();
+                return;
             }
             tbody.innerHTML = users.map((user) => {
                 const userID = String(user.id);
@@ -551,9 +561,12 @@
         });
 
         document.getElementById('items-per-page')?.addEventListener('change', (e) => {
-            paginationMeta.limit = parseInt(e.target.value);
-            paginationMeta.page = 1;
-            loadUsers();
+            const limit = parseInt(e.target.value, 10);
+            if (Number.isFinite(limit) && limit > 0) {
+                paginationMeta.limit = limit;
+                paginationMeta.page = 1;
+                loadUsers();
+            }
         });
 
         document.getElementById('filter-status')?.addEventListener('change', applyFilters);

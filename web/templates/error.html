@@ -1,0 +1,53 @@
+{{/* error.html — Page d'erreur personnalisée (404, 403, 405, 500) */}}
+{{ template "base.html" . }}
+
+{{ define "title" }}{{ or .Data.Title "Erreur" }} ({{ or .Data.StatusCode 404 }}) — JellyGate{{ end }}
+
+{{ define "body" }}
+<div class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-lg text-center">
+        <div class="glass-card p-8 sm:p-10 shadow-2xl relative overflow-hidden">
+            {{/* Decorative ambient glow */}}
+            <div class="absolute -top-16 -left-16 w-32 h-32 bg-purple-600/20 rounded-full blur-2xl pointer-events-none"></div>
+            <div class="absolute -bottom-16 -right-16 w-32 h-32 bg-indigo-600/20 rounded-full blur-2xl pointer-events-none"></div>
+
+            {{/* Code badge */}}
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-tr from-purple-600/20 to-indigo-600/20 border border-purple-500/30 text-purple-400 font-extrabold text-3xl mb-6 shadow-inner">
+                {{ or .Data.StatusCode 404 }}
+            </div>
+
+            <h1 class="text-2xl sm:text-3xl font-bold mb-3 tracking-tight text-white">
+                {{ or .Data.Title "Page introuvable" }}
+            </h1>
+
+            <p class="text-sm sm:text-base text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">
+                {{ or .Data.Message "La page demandée n'existe pas, a été déplacée ou est temporairement inaccessible." }}
+            </p>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button type="button" id="btn-error-back" class="jg-btn jg-btn-ghost w-full sm:w-auto px-5 py-2.5 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    <span>Page précédente</span>
+                </button>
+                <a href="/admin/" class="jg-btn jg-btn-primary w-full sm:w-auto px-6 py-2.5 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span>Tableau de bord</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<script nonce="{{ .ScriptNonce }}">
+document.getElementById('btn-error-back')?.addEventListener('click', function() {
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        window.location.href = '/';
+    }
+});
+</script>
+{{ end }}
