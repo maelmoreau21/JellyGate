@@ -320,7 +320,7 @@
 
             const res = await JG.api(`/admin/api/logs?${params.toString()}`);
             if (!res?.success) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-12 text-rose-300">Erreur de chargement du journal d'audit</td></tr>';
+                tbody.innerHTML = "<tr><td colspan=\"5\" class=\"text-center py-12 text-rose-300\">Erreur de chargement du journal d'audit</td></tr>";
                 return;
             }
 
