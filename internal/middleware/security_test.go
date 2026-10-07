@@ -211,4 +211,3 @@ func TestCSRF_Protection(t *testing.T) {
 		}
 	})
 }
-

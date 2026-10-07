@@ -100,6 +100,19 @@ func TestErrorHandlers(t *testing.T) {
 		}
 	})
 
+	t.Run("Browser 404 for path containing api substring returns HTML", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/invite/apiculture", nil)
+		rr := httptest.NewRecorder()
+		handleNotFound(renderEngine)(rr, req)
+
+		if rr.Code != http.StatusNotFound {
+			t.Errorf("status = %d, want 404", rr.Code)
+		}
+		if ct := rr.Header().Get("Content-Type"); !strings.Contains(ct, "text/html") {
+			t.Errorf("content-type = %s, want html", ct)
+		}
+	})
+
 	t.Run("API 405 returns JSON", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/some-endpoint", nil)
 		rr := httptest.NewRecorder()

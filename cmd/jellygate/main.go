@@ -341,5 +341,3 @@ func main() {
 
 	slog.Info("✅ JellyGate arrêté proprement")
 }
-
-

@@ -418,9 +418,21 @@ func adminLandingPath(r *http.Request, secretKey string, validators ...jgmw.Sess
 	return "/admin/"
 }
 
+func isJSONRequest(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	path := r.URL.Path
+	return strings.HasPrefix(path, "/api/") ||
+		strings.Contains(path, "/api/") ||
+		path == "/api" ||
+		path == "/admin/api" ||
+		strings.Contains(r.Header.Get("Accept"), "application/json")
+}
+
 func handleNotFound(renderEngine *render.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.Contains(r.URL.Path, "/api") || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		if isJSONRequest(r) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusNotFound)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
@@ -448,7 +460,7 @@ func handleNotFound(renderEngine *render.Engine) http.HandlerFunc {
 
 func handleMethodNotAllowed(renderEngine *render.Engine) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/api/") || strings.Contains(r.URL.Path, "/api") || strings.Contains(r.Header.Get("Accept"), "application/json") {
+		if isJSONRequest(r) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			_ = json.NewEncoder(w).Encode(map[string]interface{}{
