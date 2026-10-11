@@ -394,6 +394,7 @@ func normalizeExpiryAction(raw string) string {
 func (h *AdminHandler) StartExpirationJob(ctx context.Context) {
 	ticker := time.NewTicker(1 * time.Hour)
 	go func() {
+		defer ticker.Stop()
 		// Faire une première vérification au démarrage court
 		time.Sleep(5 * time.Second)
 		h.runExpirationCheck()

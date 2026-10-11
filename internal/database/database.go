@@ -80,7 +80,7 @@ func New(dbCfg config.DatabaseConfig, dataDir, secretKey string) (*DB, error) {
 		pragmas := []string{
 			"PRAGMA journal_mode=WAL",
 			"PRAGMA synchronous=NORMAL",
-			"PRAGMA cache_size=-64000",
+			"PRAGMA cache_size=-8000",
 			"PRAGMA busy_timeout=5000",
 			"PRAGMA foreign_keys=ON",
 			"PRAGMA temp_store=MEMORY",
@@ -94,7 +94,7 @@ func New(dbCfg config.DatabaseConfig, dataDir, secretKey string) (*DB, error) {
 
 		// SQLite: augmentation des connexions ouvertes grâce au mode WAL
 		conn.SetMaxOpenConns(10)
-		conn.SetMaxIdleConns(5)
+		conn.SetMaxIdleConns(2)
 		conn.SetConnMaxLifetime(0)
 		conn.SetConnMaxIdleTime(5 * time.Minute)
 

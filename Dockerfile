@@ -1,7 +1,8 @@
 # =============================================================================
 # JellyGate — Dockerfile (Multi-stage build)
 # =============================================================================
-# Postgres 18 runtime base to ensure pg_dump/pg_restore major-match in Docker.
+# Ultra-lightweight multi-arch image (Alpine 3.23 + PostgreSQL 18 client tools)
+# Ensures pg_dump/pg_restore major-match (PostgreSQL 18) while minimizing size.
 # =============================================================================
 
 # ── Step 1: Go binary compilation ───────────────────────────────────────────
@@ -35,41 +36,34 @@ RUN CGO_ENABLED=0 \
       -ldflags="-s -w" \
       -trimpath \
       -o /build/jellygate \
-      ./cmd/jellygate
+      ./cmd/jellygate \
+    && chmod 0550 /build/jellygate
 
-# ── Step 2: Minimal final image ─────────────────────────────────────────────
-FROM postgres:18-alpine
+# ── Step 2: Minimal final runtime image ─────────────────────────────────────
+FROM alpine:3.23
 
-# TLS certificates + utility tools + security upgrades + Postgres server cleanup to minimize image size
-RUN apk update && apk upgrade --no-cache \
-    && apk add --no-cache ca-certificates tzdata wget \
-    && rm -rf /usr/local/bin/postgres \
-              /usr/local/bin/initdb \
-              /usr/local/bin/pg_ctl \
-              /usr/local/bin/pg_controldata \
-              /usr/local/bin/pg_resetwal \
-              /usr/local/bin/pg_receivewal \
-              /usr/local/bin/pg_recvlogical \
-              /usr/local/bin/pg_waldump \
-              /usr/local/lib/postgresql \
-              /usr/local/share/postgresql \
-              /var/lib/postgresql
+# TLS certificates + timezone data + wget (healthcheck) + PostgreSQL 18 client utilities (pg_dump, pg_restore)
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    wget \
+    postgresql18-client \
+    && ln -sf /usr/bin/pg_dump /usr/local/bin/pg_dump \
+    && ln -sf /usr/bin/pg_restore /usr/local/bin/pg_restore
 
-# Non-root user for security
-RUN addgroup -S jellygate && adduser -S jellygate -G jellygate
+# Non-root user for security (UID/GID 1000)
+RUN addgroup -S -g 1000 jellygate && adduser -S -u 1000 -G jellygate jellygate
 
 # Data directory
 RUN mkdir -p /data && chown jellygate:jellygate /data
 
 WORKDIR /app
 
-# Copy the compiled binary
+# Copy the compiled binary with correct permissions in one layer (avoids duplicate layer size)
 COPY --from=builder --chown=jellygate:jellygate /build/jellygate .
 
-# Copy the web assets (templates, static, locales)
+# Copy web assets (templates, static, locales)
 COPY --from=builder --chown=jellygate:jellygate /build/web ./web
-
-RUN chmod 0550 /app/jellygate
 
 # Switch to non-root user
 USER jellygate
